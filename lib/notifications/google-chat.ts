@@ -255,11 +255,20 @@ export interface ReplyAgentHITLNotification {
 
 /**
  * Send a Reply Agent HITL approval request to Google Chat
+ * Uses dedicated GOOGLE_CHAT_REPLIES_WEBHOOK_URL for Campaign Replies channel
  * Includes Approve/Reject buttons that link to the approval endpoint
  */
 export async function sendReplyAgentHITLNotification(
   notification: ReplyAgentHITLNotification
 ): Promise<{ success: boolean; error?: string }> {
+  // Use dedicated Campaign Replies channel
+  const repliesWebhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
+
+  if (!repliesWebhookUrl) {
+    console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping Reply Agent notification');
+    return { success: false, error: 'Replies webhook URL not configured' };
+  }
+
   const approveUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=approve`;
   const rejectUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=reject`;
   const editUrl = `${notification.appUrl}/reply-agent-result?action=edit&id=${notification.draftId}`;
@@ -357,7 +366,31 @@ export async function sendReplyAgentHITLNotification(
     ],
   };
 
-  return sendGoogleChatNotification(message);
+  // Send directly to Campaign Replies channel (not the generic webhook)
+  try {
+    const response = await fetch(repliesWebhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Campaign Replies notification failed:', errorText);
+      return { success: false, error: errorText };
+    }
+
+    console.log('✅ Campaign Replies notification sent');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Campaign Replies notification error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }
 
 /**
