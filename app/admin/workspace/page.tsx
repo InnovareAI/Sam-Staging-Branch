@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { ConfirmModal } from '@/components/ui/CustomModal'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,7 +54,15 @@ export default function AdminWorkspacePage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member')
   const [showInviteDialog, setShowInviteDialog] = useState(false)
-  
+
+  // Confirm modal state (replaces native browser confirm)
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+
   // Workspace settings form
   const [workspaceForm, setWorkspaceForm] = useState({
     name: '',
@@ -237,33 +246,38 @@ export default function AdminWorkspacePage() {
     }
   }
 
-  const handleRemoveMember = async (memberId: string) => {
-    if (!confirm('Are you sure you want to remove this member?')) return
-    
-    setLoading(true)
-    setMessage(null)
-    
-    try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      
-      const { error } = await supabase
-        .from('workspace_members')
-        .delete()
-        .eq('id', memberId)
-      
-      if (error) throw error
-      
-      setMessage({ type: 'success', text: 'Member removed successfully!' })
-      setTimeout(() => setMessage(null), 3000)
-      fetchMembers()
-    } catch (error: any) {
-      setMessage({ type: 'error', text: 'Failed to remove member' })
-    } finally {
-      setLoading(false)
-    }
+  const handleRemoveMember = (memberId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remove Member',
+      message: 'Are you sure you want to remove this member?',
+      onConfirm: async () => {
+        setLoading(true)
+        setMessage(null)
+
+        try {
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+          )
+
+          const { error } = await supabase
+            .from('workspace_members')
+            .delete()
+            .eq('id', memberId)
+
+          if (error) throw error
+
+          setMessage({ type: 'success', text: 'Member removed successfully!' })
+          setTimeout(() => setMessage(null), 3000)
+          fetchMembers()
+        } catch (error: any) {
+          setMessage({ type: 'error', text: 'Failed to remove member' })
+        } finally {
+          setLoading(false)
+        }
+      }
+    })
   }
 
   const getRoleBadge = (role: string) => {
@@ -682,6 +696,20 @@ export default function AdminWorkspacePage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Confirm Modal - replaces native browser confirm() */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmModal.onConfirm()
+          setConfirmModal(prev => ({ ...prev, isOpen: false }))
+        }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Remove"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

@@ -232,3 +232,97 @@ export function LoadingModal({
     </CustomModal>
   );
 }
+
+export function PromptModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  title = 'Enter Value',
+  message,
+  placeholder = '',
+  defaultValue = '',
+  submitText = 'Submit',
+  cancelText = 'Cancel',
+  inputType = 'text',
+  required = false
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (value: string) => void;
+  title?: string;
+  message?: string;
+  placeholder?: string;
+  defaultValue?: string;
+  submitText?: string;
+  cancelText?: string;
+  inputType?: 'text' | 'textarea';
+  required?: boolean;
+}) {
+  const [value, setValue] = React.useState(defaultValue);
+
+  // Reset value when modal opens with new defaultValue
+  React.useEffect(() => {
+    if (isOpen) {
+      setValue(defaultValue);
+    }
+  }, [isOpen, defaultValue]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (required && !value.trim()) return;
+    onSubmit(value);
+    onClose();
+  };
+
+  return (
+    <CustomModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      size="sm"
+    >
+      <form onSubmit={handleSubmit} className="p-6">
+        {message && (
+          <p className="text-gray-300 mb-4">{message}</p>
+        )}
+
+        {inputType === 'textarea' ? (
+          <textarea
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+            rows={4}
+            autoFocus
+          />
+        ) : (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            autoFocus
+          />
+        )}
+
+        <div className="flex space-x-3 justify-end mt-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors font-medium"
+          >
+            {cancelText}
+          </button>
+          <button
+            type="submit"
+            disabled={required && !value.trim()}
+            className="px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors font-medium focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitText}
+          </button>
+        </div>
+      </form>
+    </CustomModal>
+  );
+}

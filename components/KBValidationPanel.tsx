@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { InfoModal, PromptModal } from '@/components/ui/CustomModal';
 
 interface KBItemToValidate {
   kb_item_id: string;
@@ -38,6 +39,20 @@ export default function KBValidationPanel({
   const [correctionMode, setCorrectionMode] = useState<string | null>(null);
   const [correctionValue, setCorrectionValue] = useState<any>({});
   const [correctionReason, setCorrectionReason] = useState('');
+
+  // Info modal state (replaces native browser alert)
+  const [infoModal, setInfoModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+  }>({ isOpen: false, title: '', message: '' });
+
+  const showInfo = (title: string, message: string) => {
+    setInfoModal({ isOpen: true, title, message });
+  };
+
+  // Prompt modal state for rejection reason (replaces native browser prompt)
+  const [rejectingItemId, setRejectingItemId] = useState<string | null>(null);
 
   const supabase = createClientComponentClient();
 
@@ -87,11 +102,11 @@ export default function KBValidationPanel({
         setItems(items.filter(item => item.kb_item_id !== kbItemId));
         onValidationComplete?.();
       } else {
-        alert(`Validation failed: ${result.error}`);
+        showInfo('Validation Failed', result.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Validation error:', error);
-      alert('Failed to validate item');
+      showInfo('Error', 'Failed to validate item');
     } finally {
       setValidating(null);
     }
@@ -121,11 +136,11 @@ export default function KBValidationPanel({
         setItems(items.filter(item => item.kb_item_id !== kbItemId));
         onValidationComplete?.();
       } else {
-        alert(`Rejection failed: ${result.error}`);
+        showInfo('Rejection Failed', result.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Rejection error:', error);
-      alert('Failed to reject item');
+      showInfo('Error', 'Failed to reject item');
     } finally {
       setValidating(null);
     }
@@ -159,11 +174,11 @@ export default function KBValidationPanel({
         setCorrectionReason('');
         onValidationComplete?.();
       } else {
-        alert(`Correction failed: ${result.error}`);
+        showInfo('Correction Failed', result.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Correction error:', error);
-      alert('Failed to correct item');
+      showInfo('Error', 'Failed to correct item');
     } finally {
       setValidating(null);
     }
@@ -321,10 +336,7 @@ export default function KBValidationPanel({
                 Correct
               </button>
               <button
-                onClick={() => {
-                  const reason = prompt('Why are you rejecting this item?');
-                  if (reason) handleReject(item.kb_item_id, reason);
-                }}
+                onClick={() => setRejectingItemId(item.kb_item_id)}
                 disabled={validating === item.kb_item_id}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
               >
@@ -347,6 +359,31 @@ export default function KBValidationPanel({
           )}
         </div>
       ))}
+
+      {/* Info Modal - replaces native browser alert() */}
+      <InfoModal
+        isOpen={infoModal.isOpen}
+        onClose={() => setInfoModal(prev => ({ ...prev, isOpen: false }))}
+        title={infoModal.title}
+        message={infoModal.message}
+      />
+
+      {/* Prompt Modal - replaces native browser prompt() for rejection reason */}
+      <PromptModal
+        isOpen={rejectingItemId !== null}
+        onClose={() => setRejectingItemId(null)}
+        onSubmit={(reason) => {
+          if (rejectingItemId && reason.trim()) {
+            handleReject(rejectingItemId, reason);
+          }
+          setRejectingItemId(null);
+        }}
+        title="Reject KB Item"
+        message="Please provide a reason for rejecting this item:"
+        placeholder="Enter rejection reason..."
+        submitText="Reject"
+        required
+      />
     </div>
   );
 }

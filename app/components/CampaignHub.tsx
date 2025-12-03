@@ -49,6 +49,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 // All UI components now use custom Tailwind (shadcn removed)
 import CampaignApprovalScreen from '@/app/components/CampaignApprovalScreen';
 import { UnipileModal } from '@/components/integrations/UnipileModal';
+import { ConfirmModal } from '@/components/ui/CustomModal';
 
 // Helper function to get human-readable campaign type labels
 function getCampaignTypeLabel(type: string): string {
@@ -97,6 +98,32 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   const [loadingReachInbox, setLoadingReachInbox] = useState(false);
   const [pushingToReachInbox, setPushingToReachInbox] = useState(false);
   const [reachInboxConfigured, setReachInboxConfigured] = useState(false);
+
+  // Confirm modal state (replaces native browser confirm dialogs)
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    confirmVariant?: 'danger' | 'primary' | 'success';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  // Helper to show confirm modal
+  const showConfirmModal = (config: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    confirmVariant?: 'danger' | 'primary' | 'success';
+    onConfirm: () => void;
+  }) => {
+    setConfirmModal({ isOpen: true, ...config });
+  };
 
   // Check if ReachInbox is configured for this workspace
   useEffect(() => {
@@ -310,9 +337,13 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   });
 
   const archiveCampaign = (campaignId: string) => {
-    if (confirm('Archive this campaign? This will permanently stop it and move it to archived campaigns.')) {
-      archiveMutation.mutate(campaignId);
-    }
+    showConfirmModal({
+      title: 'Archive Campaign',
+      message: 'Archive this campaign? This will permanently stop it and move it to archived campaigns.',
+      confirmText: 'Archive',
+      confirmVariant: 'danger',
+      onConfirm: () => archiveMutation.mutate(campaignId)
+    });
   };
 
   // REACT QUERY: Mutation for executing campaign
@@ -713,21 +744,27 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   const handleBulkDelete = async () => {
     if (selectedCampaigns.size === 0) return;
 
-    const confirmDelete = confirm(`Delete ${selectedCampaigns.size} campaign(s)? This cannot be undone.`);
-    if (!confirmDelete) return;
-
-    try {
-      await Promise.all(
-        Array.from(selectedCampaigns).map(campaignId =>
-          fetch(`/api/campaigns/${campaignId}`, { method: 'DELETE' })
-        )
-      );
-      toastSuccess(`Deleted ${selectedCampaigns.size} campaign(s)`);
-      clearSelection();
-      refetch();
-    } catch (error) {
-      toastError('Failed to delete some campaigns');
-    }
+    const count = selectedCampaigns.size;
+    showConfirmModal({
+      title: 'Delete Campaigns',
+      message: `Delete ${count} campaign(s)? This cannot be undone.`,
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        try {
+          await Promise.all(
+            Array.from(selectedCampaigns).map(campaignId =>
+              fetch(`/api/campaigns/${campaignId}`, { method: 'DELETE' })
+            )
+          );
+          toastSuccess(`Deleted ${count} campaign(s)`);
+          clearSelection();
+          refetch();
+        } catch (error) {
+          toastError('Failed to delete some campaigns');
+        }
+      }
+    });
   };
 
   const handleBulkPause = async () => {
@@ -4295,10 +4332,16 @@ Would you like me to adjust these or create more variations?`
                           type="button"
                           className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
                           onClick={() => {
-                            if (confirm(`Remove Message ${index + 2}?`)) {
-                              removeFollowUpMessage(index);
-                              toastSuccess(`Message ${index + 2} removed`);
-                            }
+                            showConfirmModal({
+                              title: 'Remove Message',
+                              message: `Remove Message ${index + 2}?`,
+                              confirmText: 'Remove',
+                              confirmVariant: 'danger',
+                              onConfirm: () => {
+                                removeFollowUpMessage(index);
+                                toastSuccess(`Message ${index + 2} removed`);
+                              }
+                            });
                           }}
                         >
                           <X size={12} className="mr-1" />
@@ -4700,10 +4743,16 @@ Would you like me to adjust these or create more variations?`
                           type="button"
                           className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
                           onClick={() => {
-                            if (confirm(`Remove Message ${index + 2}?`)) {
-                              removeFollowUpMessage(index);
-                              toastSuccess(`Message ${index + 2} removed`);
-                            }
+                            showConfirmModal({
+                              title: 'Remove Message',
+                              message: `Remove Message ${index + 2}?`,
+                              confirmText: 'Remove',
+                              confirmVariant: 'danger',
+                              onConfirm: () => {
+                                removeFollowUpMessage(index);
+                                toastSuccess(`Message ${index + 2} removed`);
+                              }
+                            });
                           }}
                         >
                           <X size={12} className="mr-1" />
@@ -5087,10 +5136,16 @@ Would you like me to adjust these or create more variations?`
                       type="button"
                       className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
                       onClick={() => {
-                        if (confirm(`Remove Follow-up ${index + 1}?`)) {
-                          removeFollowUpMessage(index);
-                          toastSuccess(`Follow-up ${index + 1} removed`);
-                        }
+                        showConfirmModal({
+                          title: 'Remove Follow-up',
+                          message: `Remove Follow-up ${index + 1}?`,
+                          confirmText: 'Remove',
+                          confirmVariant: 'danger',
+                          onConfirm: () => {
+                            removeFollowUpMessage(index);
+                            toastSuccess(`Follow-up ${index + 1} removed`);
+                          }
+                        });
                       }}
                     >
                       <X size={12} className="mr-1" />
@@ -7542,35 +7597,36 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   };
 
   // Handler for archiving campaign
-  const archiveCampaign = async (campaignId: string, campaignName: string) => {
-    try {
-      // Confirm before archiving
-      const confirmed = window.confirm(
-        `Archive campaign "${campaignName}"?\n\nThis will move the campaign to the Completed tab. You can still view it later.`
-      );
+  const archiveCampaign = (campaignId: string, campaignName: string) => {
+    showConfirmModal({
+      title: 'Archive Campaign',
+      message: `Archive campaign "${campaignName}"?\n\nThis will move the campaign to the Completed tab. You can still view it later.`,
+      confirmText: 'Archive',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        try {
+          console.log(`📦 Archiving campaign ${campaignId}`);
 
-      if (!confirmed) return;
+          const response = await fetch(`/api/campaigns/${campaignId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'archived' })
+          });
 
-      console.log(`📦 Archiving campaign ${campaignId}`);
+          if (!response.ok) {
+            throw new Error('Failed to archive campaign');
+          }
 
-      const response = await fetch(`/api/campaigns/${campaignId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'archived' })
-      });
+          toastSuccess('Campaign archived successfully');
 
-      if (!response.ok) {
-        throw new Error('Failed to archive campaign');
+          // Refresh campaigns list
+          queryClient.invalidateQueries({ queryKey: ['campaigns', workspaceId] });
+        } catch (error) {
+          console.error('Error archiving campaign:', error);
+          toastError('Failed to archive campaign');
+        }
       }
-
-      toastSuccess('Campaign archived successfully');
-
-      // Refresh campaigns list
-      queryClient.invalidateQueries({ queryKey: ['campaigns', workspaceId] });
-    } catch (error) {
-      console.error('Error archiving campaign:', error);
-      toastError('Failed to archive campaign');
-    }
+    });
   };
 
   // Multi-select handlers
@@ -7644,29 +7700,32 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDeleteWithConfirm = () => {
     if (selectedCampaigns.size === 0) return;
 
-    const confirmDelete = window.confirm(
-      `Delete ${selectedCampaigns.size} campaign(s)? This cannot be undone.`
-    );
+    const count = selectedCampaigns.size;
+    showConfirmModal({
+      title: 'Delete Campaigns',
+      message: `Delete ${count} campaign(s)? This cannot be undone.`,
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        try {
+          await Promise.all(
+            Array.from(selectedCampaigns).map(campaignId =>
+              fetch(`/api/campaigns/${campaignId}`, { method: 'DELETE' })
+            )
+          );
 
-    if (!confirmDelete) return;
-
-    try {
-      await Promise.all(
-        Array.from(selectedCampaigns).map(campaignId =>
-          fetch(`/api/campaigns/${campaignId}`, { method: 'DELETE' })
-        )
-      );
-
-      toastSuccess(`Deleted ${selectedCampaigns.size} campaign(s)`);
-      clearSelection();
-      queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
-    } catch (error) {
-      console.error('Failed to delete campaigns:', error);
-      toastError('Failed to delete some campaigns');
-    }
+          toastSuccess(`Deleted ${count} campaign(s)`);
+          clearSelection();
+          queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+        } catch (error) {
+          console.error('Failed to delete campaigns:', error);
+          toastError('Failed to delete some campaigns');
+        }
+      }
+    });
   };
 
   // Handle campaign setting changes
@@ -8131,30 +8190,36 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                 </button>
                                 {item.type === 'draft' && (
                                   <button
-                                    onClick={async (e) => {
+                                    onClick={(e) => {
                                       e.stopPropagation();
-                                      if (confirm(`Delete draft "${item.name}"?`)) {
-                                        try {
-                                          const response = await fetch(
-                                            `/api/campaigns/draft?draftId=${item.draft.id}&workspaceId=${workspaceId}`,
-                                            { method: 'DELETE' }
-                                          );
-                                          if (response.ok) {
-                                            if (currentDraftId === item.draft.id) {
-                                              setCurrentDraftId(null);
+                                      showConfirmModal({
+                                        title: 'Delete Draft',
+                                        message: `Delete draft "${item.name}"?`,
+                                        confirmText: 'Delete',
+                                        confirmVariant: 'danger',
+                                        onConfirm: async () => {
+                                          try {
+                                            const response = await fetch(
+                                              `/api/campaigns/draft?draftId=${item.draft.id}&workspaceId=${workspaceId}`,
+                                              { method: 'DELETE' }
+                                            );
+                                            if (response.ok) {
+                                              if (currentDraftId === item.draft.id) {
+                                                setCurrentDraftId(null);
+                                              }
+                                              try {
+                                                localStorage.removeItem(`campaign-draft-${workspaceId}`);
+                                              } catch (e) {
+                                                console.warn('Failed to clear localStorage draft:', e);
+                                              }
+                                              queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                                              toastSuccess('Draft deleted');
                                             }
-                                            try {
-                                              localStorage.removeItem(`campaign-draft-${workspaceId}`);
-                                            } catch (e) {
-                                              console.warn('Failed to clear localStorage draft:', e);
-                                            }
-                                            queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
-                                            toastSuccess('Draft deleted');
+                                          } catch (error) {
+                                            toastError('Failed to delete draft');
                                           }
-                                        } catch (error) {
-                                          toastError('Failed to delete draft');
                                         }
-                                      }
+                                      });
                                     }}
                                     className="text-red-400 hover:text-red-300 transition-colors"
                                     title="Delete draft"
@@ -8996,39 +9061,41 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 <h4 className="text-white font-medium mb-2">Delete campaign</h4>
                 <p className="text-gray-400 text-sm mb-3">Deleting a campaign will stop all the campaign's activity. Contacts from the campaign will remain in 'My Network' and in your 'Inbox', however, they will no longer receive messages from the deleted campaign. You will be able to continue manual communication with these contacts.</p>
                 <button
-                  onClick={async () => {
+                  onClick={() => {
                     if (!selectedCampaign) return;
 
-                    const confirmed = confirm(
-                      `Are you sure you want to delete "${selectedCampaign.name}"?\n\nThis action cannot be undone. The campaign will be archived if it has sent messages, or permanently deleted if it hasn't.`
-                    );
+                    showConfirmModal({
+                      title: 'Delete Campaign',
+                      message: `Are you sure you want to delete "${selectedCampaign.name}"?\n\nThis action cannot be undone. The campaign will be archived if it has sent messages, or permanently deleted if it hasn't.`,
+                      confirmText: 'Delete',
+                      confirmVariant: 'danger',
+                      onConfirm: async () => {
+                        try {
+                          const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
+                            method: 'DELETE'
+                          });
 
-                    if (!confirmed) return;
+                          if (response.ok) {
+                            const result = await response.json();
+                            toastSuccess(result.message || 'Campaign deleted successfully');
 
-                    try {
-                      const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
-                        method: 'DELETE'
-                      });
+                            // Close settings modal
+                            setShowCampaignSettings(false);
+                            setSelectedCampaign(null);
 
-                      if (response.ok) {
-                        const result = await response.json();
-                        toastSuccess(result.message || 'Campaign deleted successfully');
-
-                        // Close settings modal
-                        setShowCampaignSettings(false);
-                        setSelectedCampaign(null);
-
-                        // Refresh campaigns list
-                        queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
-                        queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
-                      } else {
-                        const error = await response.json();
-                        toastError(error.error || 'Failed to delete campaign');
+                            // Refresh campaigns list
+                            queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+                            queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
+                          } else {
+                            const error = await response.json();
+                            toastError(error.error || 'Failed to delete campaign');
+                          }
+                        } catch (error) {
+                          console.error('Delete campaign error:', error);
+                          toastError('Failed to delete campaign. Please try again.');
+                        }
                       }
-                    } catch (error) {
-                      console.error('Delete campaign error:', error);
-                      toastError('Failed to delete campaign. Please try again.');
-                    }
+                    });
                   }}
                   className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                 >
@@ -10092,6 +10159,20 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               .catch(err => console.error('Failed to recheck accounts:', err));
           }
         }}
+      />
+
+      {/* Custom Confirm Modal - replaces native browser confirm() */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmModal.onConfirm();
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        confirmVariant={confirmModal.confirmVariant}
       />
 
       </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { ConfirmModal } from '@/components/ui/CustomModal';
 import {
   Target,
   Plus,
@@ -48,6 +49,14 @@ export default function ProfilesListPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Confirm modal state (replaces native browser confirm)
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
   useEffect(() => {
     loadProfiles();
   }, [workspaceId]);
@@ -90,26 +99,29 @@ export default function ProfilesListPage() {
     }
   };
 
-  const deleteProfile = async (profileId: string) => {
-    if (!confirm('Are you sure you want to delete this profile? This cannot be undone.')) {
-      return;
-    }
+  const deleteProfile = (profileId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Profile',
+      message: 'Are you sure you want to delete this profile? This cannot be undone.',
+      onConfirm: async () => {
+        setActionLoading(profileId);
+        try {
+          const response = await fetch(`/api/linkedin-commenting/monitors/${profileId}`, {
+            method: 'DELETE'
+          });
 
-    setActionLoading(profileId);
-    try {
-      const response = await fetch(`/api/linkedin-commenting/monitors/${profileId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        setProfiles(prev => prev.filter(p => p.id !== profileId));
+          if (response.ok) {
+            setProfiles(prev => prev.filter(p => p.id !== profileId));
+          }
+        } catch (error) {
+          console.error('Failed to delete profile:', error);
+        } finally {
+          setActionLoading(null);
+          setOpenMenuId(null);
+        }
       }
-    } catch (error) {
-      console.error('Failed to delete profile:', error);
-    } finally {
-      setActionLoading(null);
-      setOpenMenuId(null);
-    }
+    });
   };
 
   const filteredProfiles = profiles.filter(profile => {
@@ -369,6 +381,20 @@ export default function ProfilesListPage() {
           existingMonitor={editingProfile || undefined}
         />
       )}
+
+      {/* Confirm Modal - replaces native browser confirm() */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmModal.onConfirm();
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 }

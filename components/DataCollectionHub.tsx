@@ -2136,6 +2136,128 @@ export default function DataCollectionHub({
                 <span>Approve All</span>
               </button>
 
+              {/* Button: Approve Selected (conditional - only when prospects are selected) */}
+              {selectedProspectIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const selectedIds = Array.from(selectedProspectIds)
+                    const selectedProspects = prospectData.filter(p => selectedIds.includes(p.id) && p.approvalStatus !== 'approved')
+                    if (selectedProspects.length === 0) {
+                      toastInfo('All selected prospects are already approved')
+                      return
+                    }
+                    setProspectData(prev => prev.map(p =>
+                      selectedIds.includes(p.id)
+                        ? { ...p, approvalStatus: 'approved' as const }
+                        : p
+                    ))
+                    toastSuccess(`✅ Approved ${selectedProspects.length} prospect(s)`)
+                    // Update in database
+                    for (const prospect of selectedProspects) {
+                      const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+                      if (sessionId) {
+                        try {
+                          await fetch('/api/prospect-approval/decisions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              session_id: sessionId,
+                              prospect_id: prospect.id,
+                              decision: 'approved'
+                            })
+                          })
+                        } catch (error) {
+                          console.error('Error approving prospect:', prospect.id, error)
+                        }
+                      }
+                    }
+                    // Also update in workspace_prospects if they're from new architecture
+                    if (workspaceId) {
+                      try {
+                        await fetch('/api/prospects/approve', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            workspaceId,
+                            action: 'approve',
+                            prospectIds: selectedIds
+                          })
+                        })
+                      } catch (error) {
+                        console.error('Error approving in workspace_prospects:', error)
+                      }
+                    }
+                    setSelectedProspectIds(new Set()) // Clear selection after action
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Approve ({selectedProspectIds.size})</span>
+                </button>
+              )}
+
+              {/* Button: Reject Selected (conditional - only when prospects are selected) */}
+              {selectedProspectIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const selectedIds = Array.from(selectedProspectIds)
+                    const selectedProspects = prospectData.filter(p => selectedIds.includes(p.id) && p.approvalStatus !== 'rejected')
+                    if (selectedProspects.length === 0) {
+                      toastInfo('All selected prospects are already rejected')
+                      return
+                    }
+                    setProspectData(prev => prev.map(p =>
+                      selectedIds.includes(p.id)
+                        ? { ...p, approvalStatus: 'rejected' as const }
+                        : p
+                    ))
+                    toastSuccess(`❌ Rejected ${selectedProspects.length} prospect(s)`)
+                    // Update in database
+                    for (const prospect of selectedProspects) {
+                      const sessionId = (prospect as any)?.session_id || (prospect as any)?.sessionId
+                      if (sessionId) {
+                        try {
+                          await fetch('/api/prospect-approval/decisions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              session_id: sessionId,
+                              prospect_id: prospect.id,
+                              decision: 'rejected'
+                            })
+                          })
+                        } catch (error) {
+                          console.error('Error rejecting prospect:', prospect.id, error)
+                        }
+                      }
+                    }
+                    // Also update in workspace_prospects if they're from new architecture
+                    if (workspaceId) {
+                      try {
+                        await fetch('/api/prospects/approve', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            workspaceId,
+                            action: 'reject',
+                            prospectIds: selectedIds
+                          })
+                        })
+                      } catch (error) {
+                        console.error('Error rejecting in workspace_prospects:', error)
+                      }
+                    }
+                    setSelectedProspectIds(new Set()) // Clear selection after action
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white bg-orange-600 hover:bg-orange-700 transition-colors"
+                >
+                  <XCircle className="w-4 h-4" />
+                  <span>Reject ({selectedProspectIds.size})</span>
+                </button>
+              )}
+
               {/* Button: Undo Dismissals (conditional) */}
               {dismissedProspectIds.size > 0 && (
                 <button
