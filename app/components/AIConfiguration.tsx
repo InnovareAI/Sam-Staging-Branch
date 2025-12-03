@@ -70,9 +70,9 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
       name: 'Follow-Up Agent',
       description: 'Automatically send follow-up messages based on prospect behavior',
       icon: Send,
-      status: 'active',
+      status: 'coming-soon',
       color: 'green',
-      onClick: () => {}, // TODO: Link to follow-up config
+      onClick: () => {},
     },
     {
       id: 'inbox-agent',

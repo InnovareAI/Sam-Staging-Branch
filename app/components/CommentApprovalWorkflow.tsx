@@ -87,6 +87,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [generatingAiReply, setGeneratingAiReply] = useState(false);
+  const [regeneratingComment, setRegeneratingComment] = useState(false);
 
   // Fetch real pending comments from database
   useEffect(() => {
@@ -522,6 +523,36 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
     }
   };
 
+  // Ask Sam - Regenerate the comment with AI
+  const handleAskSamRegenerate = async (commentId: string, postId: string) => {
+    setRegeneratingComment(true);
+    try {
+      const response = await fetch(`/api/linkedin-commenting/comments/${postId}/regenerate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to regenerate comment');
+      }
+
+      const data = await response.json();
+      if (data.comment) {
+        // Update the local state with the new comment
+        setPendingComments(prev => prev.map(c =>
+          c.id === commentId ? { ...c, generatedComment: data.comment } : c
+        ));
+        toastSuccess('Sam generated a new comment! Review it before approving.');
+      }
+    } catch (error) {
+      console.error('Error regenerating comment:', error);
+      toastError(error instanceof Error ? error.message : 'Failed to regenerate comment');
+    } finally {
+      setRegeneratingComment(false);
+    }
+  };
+
   // Refresh engagement metrics for all posted comments
   const handleRefreshEngagement = async () => {
     setRefreshingEngagement(true);
@@ -853,13 +884,34 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-white">Your Comment</h3>
                   {editingCommentId !== selectedComment.id && (
-                    <button
-                      onClick={() => handleStartEdit(selectedComment.id, selectedComment.generatedComment)}
-                      className="text-pink-400 hover:text-pink-300 text-sm flex items-center gap-1"
-                    >
-                      <Edit3 size={16} />
-                      Edit
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {/* Ask Sam Button */}
+                      <button
+                        onClick={() => handleAskSamRegenerate(selectedComment.id, selectedComment.postId)}
+                        disabled={regeneratingComment}
+                        className="px-3 py-1.5 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 disabled:from-gray-600 disabled:to-gray-600 text-white rounded-full text-sm font-medium transition-all flex items-center gap-1.5"
+                      >
+                        {regeneratingComment ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" />
+                            Thinking...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={14} />
+                            Ask Sam
+                          </>
+                        )}
+                      </button>
+                      {/* Edit Button */}
+                      <button
+                        onClick={() => handleStartEdit(selectedComment.id, selectedComment.generatedComment)}
+                        className="text-pink-400 hover:text-pink-300 text-sm flex items-center gap-1"
+                      >
+                        <Edit3 size={16} />
+                        Edit
+                      </button>
+                    </div>
                   )}
                 </div>
 

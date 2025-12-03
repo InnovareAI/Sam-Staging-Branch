@@ -45,6 +45,10 @@ export default function ReplyAgentModal({ isOpen, onClose, workspaceId }: ReplyA
     try {
       const supabase = createClient();
 
+      // Get the current user's email
+      const { data: { user } } = await supabase.auth.getUser();
+      const userEmail = user?.email || null;
+
       // Load reply agent config
       const { data, error } = await supabase
         .from('workspace_reply_agent_config')
@@ -53,23 +57,29 @@ export default function ReplyAgentModal({ isOpen, onClose, workspaceId }: ReplyA
         .single();
 
       if (data) {
-        setConfig(data);
-      }
-
-      // Check for connected email accounts
-      const { data: emailAccounts } = await supabase
-        .from('user_unipile_accounts')
-        .select('account_email, provider')
-        .eq('workspace_id', workspaceId)
-        .in('provider', ['GMAIL', 'OUTLOOK'])
-        .limit(1)
-        .single();
-
-      if (emailAccounts) {
-        setConfig(prev => ({ ...prev, connected_email: emailAccounts.account_email }));
+        // Merge loaded config but preserve defaults for unset fields
+        setConfig(prev => ({
+          ...prev,
+          ...data,
+          // Keep Opus 4.5 as default if not explicitly set in DB
+          ai_model: data.ai_model || 'claude-opus-4-5-20251101',
+          // Use user's login email
+          connected_email: userEmail,
+        }));
+      } else {
+        // No config exists yet, just use user's email
+        setConfig(prev => ({ ...prev, connected_email: userEmail }));
       }
     } catch (error) {
       console.error('Failed to load reply agent config:', error);
+      // Still try to get user email on error
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          setConfig(prev => ({ ...prev, connected_email: user.email }));
+        }
+      } catch {}
     } finally {
       setLoading(false);
     }
@@ -160,26 +170,19 @@ export default function ReplyAgentModal({ isOpen, onClose, workspaceId }: ReplyA
                 </label>
               </div>
 
-              {/* Connected Email Status */}
+              {/* Your Email Account */}
               <div className="p-4 bg-gray-700 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-white font-medium">Connected Email Account</div>
-                  {config.connected_email ? (
-                    <CheckCircle size={20} className="text-green-400" />
-                  ) : (
-                    <AlertCircle size={20} className="text-yellow-400" />
-                  )}
+                  <div className="text-white font-medium">Your Email Account</div>
+                  <CheckCircle size={20} className="text-green-400" />
                 </div>
-                {config.connected_email ? (
-                  <div className="flex items-center space-x-2 text-gray-300">
-                    <Mail size={16} />
-                    <span className="text-sm">{config.connected_email}</span>
-                  </div>
-                ) : (
-                  <div className="text-gray-400 text-sm">
-                    No email account connected. Configure email providers first.
-                  </div>
-                )}
+                <div className="flex items-center space-x-2 text-gray-300">
+                  <Mail size={16} />
+                  <span className="text-sm">{config.connected_email || 'Loading...'}</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Replies will be sent from your account email address
+                </p>
               </div>
 
               {/* Approval Mode */}
@@ -289,49 +292,36 @@ export default function ReplyAgentModal({ isOpen, onClose, workspaceId }: ReplyA
                 </p>
               </div>
 
-              {/* Save Button */}
-              <button
-                onClick={handleSave}
-                disabled={saving || !config.connected_email}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    <span>Save Configuration</span>
-                  </>
-                )}
-              </button>
-
-              {saveMessage && (
-                <p className={`text-sm text-center ${
-                  saveMessage.startsWith('✓') ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {saveMessage}
-                </p>
-              )}
-
-              {!config.connected_email && (
-                <div className="p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
-                  <div className="flex items-start space-x-2">
-                    <AlertCircle size={20} className="text-yellow-400 mt-0.5" />
-                    <div className="text-yellow-200 text-sm">
-                      Please connect an email account in <strong>Email Providers</strong> before enabling the Reply Agent.
-                    </div>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-gray-700">
+        {/* Footer - Always visible Save and Close buttons */}
+        <div className="p-6 border-t border-gray-700 space-y-3">
+          {saveMessage && (
+            <p className={`text-sm text-center ${
+              saveMessage.startsWith('✓') ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {saveMessage}
+            </p>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving || loading}
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+          >
+            {saving ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                <span>Save Configuration</span>
+              </>
+            )}
+          </button>
           <button
             onClick={onClose}
             className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"

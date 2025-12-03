@@ -86,6 +86,15 @@ interface Settings {
   auto_approve_enabled: boolean;
   auto_approve_start_time: string;
   auto_approve_end_time: string;
+
+  // Section 12: Post Type Blocklist
+  block_job_posts: boolean;
+  block_event_posts: boolean;
+  block_promotional_posts: boolean;
+  block_repost_only: boolean;
+  block_generic_motivation: boolean;
+  block_self_promotion: boolean;
+  custom_blocked_keywords: string[];
 }
 
 const defaultSettings: Settings = {
@@ -142,6 +151,15 @@ const defaultSettings: Settings = {
   auto_approve_enabled: false,
   auto_approve_start_time: '09:00',
   auto_approve_end_time: '17:00',
+
+  // Section 12: Post Type Blocklist
+  block_job_posts: true,
+  block_event_posts: false,
+  block_promotional_posts: false,
+  block_repost_only: false,
+  block_generic_motivation: false,
+  block_self_promotion: false,
+  custom_blocked_keywords: [],
 };
 
 const frameworkDescriptions: Record<string, string> = {
@@ -169,6 +187,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     guardrails: false,
     scheduling: false,
     automation: false,
+    blocklist: false,
     advanced: false,
   });
 
@@ -177,6 +196,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
   const [newAdmiredComment, setNewAdmiredComment] = useState('');
   const [newCompetitor, setNewCompetitor] = useState('');
   const [newBlacklistedProfile, setNewBlacklistedProfile] = useState('');
+  const [newBlockedKeyword, setNewBlockedKeyword] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -249,6 +269,14 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
           auto_approve_enabled: data.auto_approve_enabled ?? defaultSettings.auto_approve_enabled,
           auto_approve_start_time: data.auto_approve_start_time || defaultSettings.auto_approve_start_time,
           auto_approve_end_time: data.auto_approve_end_time || defaultSettings.auto_approve_end_time,
+          // Section 12: Post Type Blocklist
+          block_job_posts: data.block_job_posts ?? defaultSettings.block_job_posts,
+          block_event_posts: data.block_event_posts ?? defaultSettings.block_event_posts,
+          block_promotional_posts: data.block_promotional_posts ?? defaultSettings.block_promotional_posts,
+          block_repost_only: data.block_repost_only ?? defaultSettings.block_repost_only,
+          block_generic_motivation: data.block_generic_motivation ?? defaultSettings.block_generic_motivation,
+          block_self_promotion: data.block_self_promotion ?? defaultSettings.block_self_promotion,
+          custom_blocked_keywords: data.custom_blocked_keywords || [],
         });
       }
     } catch (error) {
@@ -327,6 +355,14 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
         auto_approve_enabled: settings.auto_approve_enabled,
         auto_approve_start_time: settings.auto_approve_start_time,
         auto_approve_end_time: settings.auto_approve_end_time,
+        // Section 12: Post Type Blocklist
+        block_job_posts: settings.block_job_posts,
+        block_event_posts: settings.block_event_posts,
+        block_promotional_posts: settings.block_promotional_posts,
+        block_repost_only: settings.block_repost_only,
+        block_generic_motivation: settings.block_generic_motivation,
+        block_self_promotion: settings.block_self_promotion,
+        custom_blocked_keywords: settings.custom_blocked_keywords.length > 0 ? settings.custom_blocked_keywords : null,
         is_active: true,
         updated_at: new Date().toISOString(),
       };
@@ -443,7 +479,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     </button>
   );
 
-  const addArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention' | 'blacklisted_profiles', value: string, setter: (v: string) => void) => {
+  const addArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention' | 'blacklisted_profiles' | 'custom_blocked_keywords', value: string, setter: (v: string) => void) => {
     if (value.trim()) {
       setSettings(prev => ({
         ...prev,
@@ -453,7 +489,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     }
   };
 
-  const removeArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention' | 'blacklisted_profiles', index: number) => {
+  const removeArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention' | 'blacklisted_profiles' | 'custom_blocked_keywords', index: number) => {
     setSettings(prev => ({
       ...prev,
       [field]: (prev[field] || []).filter((_, i) => i !== index)
@@ -1351,7 +1387,101 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
         )}
       </div>
 
-      {/* Section 11: Advanced */}
+      {/* Section 12: Post Type Blocklist */}
+      <div className="border border-gray-600 rounded-lg overflow-hidden">
+        <SectionHeader title="Post Type Blocklist" section="blocklist" description="Filter out certain types of posts" />
+        {expandedSections.blocklist && (
+          <div className="p-4 bg-gray-800 space-y-5">
+            <div className="p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg mb-4">
+              <p className="text-blue-200 text-xs">Block certain types of posts from being discovered and shown in your approval queue. These filters are applied during post discovery.</p>
+            </div>
+
+            <Toggle
+              checked={settings.block_job_posts}
+              onChange={(v) => setSettings({ ...settings, block_job_posts: v })}
+              label="Block Job Postings"
+              description="Filter out hiring announcements, job listings, and recruitment posts"
+            />
+
+            <Toggle
+              checked={settings.block_event_posts}
+              onChange={(v) => setSettings({ ...settings, block_event_posts: v })}
+              label="Block Event Promotions"
+              description="Filter out webinar invites, conference announcements, and event promotions"
+            />
+
+            <Toggle
+              checked={settings.block_promotional_posts}
+              onChange={(v) => setSettings({ ...settings, block_promotional_posts: v })}
+              label="Block Promotional/Sales Posts"
+              description="Filter out product launches, sales pitches, and promotional content"
+            />
+
+            <Toggle
+              checked={settings.block_repost_only}
+              onChange={(v) => setSettings({ ...settings, block_repost_only: v })}
+              label="Block Reposts Without Commentary"
+              description="Filter out shared posts without original commentary"
+            />
+
+            <Toggle
+              checked={settings.block_generic_motivation}
+              onChange={(v) => setSettings({ ...settings, block_generic_motivation: v })}
+              label="Block Generic Motivation Posts"
+              description="Filter out 'hustle culture' and generic motivational content"
+            />
+
+            <Toggle
+              checked={settings.block_self_promotion}
+              onChange={(v) => setSettings({ ...settings, block_self_promotion: v })}
+              label="Block Self-Promotion Posts"
+              description="Filter out 'I'm thrilled to announce' and braggy achievement posts"
+            />
+
+            {/* Custom Blocked Keywords */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Custom Blocked Keywords</label>
+              <p className="text-xs text-gray-400 mb-2">Posts containing these words/phrases will be filtered out</p>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {(settings.custom_blocked_keywords || []).map((keyword, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-red-900/30 border border-red-700/50 rounded-full text-sm text-red-200">
+                    {keyword}
+                    <button
+                      onClick={() => removeArrayItem('custom_blocked_keywords', idx)}
+                      className="text-red-300 hover:text-red-100"
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newBlockedKeyword}
+                  onChange={(e) => setNewBlockedKeyword(e.target.value)}
+                  placeholder="Add keyword or phrase to block..."
+                  className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addArrayItem('custom_blocked_keywords', newBlockedKeyword, setNewBlockedKeyword);
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => addArrayItem('custom_blocked_keywords', newBlockedKeyword, setNewBlockedKeyword)}
+                  className="px-3 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Section 13: Advanced */}
       <div className="border border-gray-600 rounded-lg overflow-hidden">
         <SectionHeader title="Advanced" section="advanced" description="System prompt override (experts only)" />
         {expandedSections.advanced && (

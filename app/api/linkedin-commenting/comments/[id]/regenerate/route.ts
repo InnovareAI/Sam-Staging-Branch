@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/app/lib/supabase';
+import { supabaseAdmin } from '@/app/lib/supabase';
 import { getClaudeClient } from '@/lib/llm/claude-client';
 
 export const dynamic = 'force-dynamic';
@@ -9,11 +10,11 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const commentId = params.id;
+    const postId = params.id;
 
-    const supabase = await createServerSupabaseClient();
+    const supabase = supabaseAdmin();
 
-    // Get the post details
+    // Get the post details - postId is from linkedin_posts_discovered
     const { data: post, error: fetchError } = await supabase
       .from('linkedin_posts_discovered')
       .select(`
@@ -23,18 +24,21 @@ export async function POST(
           name
         )
       `)
-      .eq('id', commentId)
+      .eq('id', postId)
       .single();
 
     if (fetchError || !post) {
-      return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
+      console.error('Post not found:', postId, fetchError);
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
+
+    const workspaceId = (post.linkedin_post_monitors as any).workspace_id;
 
     // Get brand guidelines for the workspace
     const { data: guidelines } = await supabase
       .from('linkedin_brand_guidelines')
       .select('*')
-      .eq('workspace_id', (post.linkedin_post_monitors as any).workspace_id)
+      .eq('workspace_id', workspaceId)
       .eq('is_active', true)
       .maybeSingle();
 
@@ -51,8 +55,8 @@ export async function POST(
 
     const userPrompt = `Generate a new comment for this LinkedIn post.
 
-Post Author: ${post.post_author}
-${post.post_author_headline ? `Author Headline: ${post.post_author_headline}` : ''}
+Post Author: ${post.author_name}
+${post.author_title ? `Author Headline: ${post.author_title}` : ''}
 
 Post Content:
 ${post.post_content}
@@ -71,14 +75,15 @@ Generate a single comment that engages with the post content.`;
     // Clean up the response
     const newComment = response.trim().replace(/^["']|["']$/g, '');
 
-    // Update the comment
+    // Update the comment in linkedin_post_comments table
     const { data: updated, error: updateError } = await supabase
-      .from('linkedin_posts_discovered')
+      .from('linkedin_post_comments')
       .update({
-        generated_comment: newComment,
-        regenerated_at: new Date().toISOString()
+        comment_text: newComment,
+        updated_at: new Date().toISOString()
       })
-      .eq('id', commentId)
+      .eq('post_id', postId)
+      .eq('status', 'pending_approval')
       .select()
       .single();
 
