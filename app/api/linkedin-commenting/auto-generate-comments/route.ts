@@ -169,7 +169,47 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Save comment to database with status='pending_approval'
+        // Determine status based on auto_approve setting
+        let commentStatus = 'pending_approval';
+        let scheduledPostTime: string | null = null;
+
+        if (monitor.auto_approve_enabled) {
+          // Auto-approve: schedule the comment for posting
+          commentStatus = 'scheduled';
+
+          // Count already scheduled comments today
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const { count: scheduledToday } = await supabase
+            .from('linkedin_post_comments')
+            .select('id', { count: 'exact', head: true })
+            .eq('workspace_id', workspace_id)
+            .eq('status', 'scheduled')
+            .gte('scheduled_post_time', today.toISOString());
+
+          // Calculate scheduled time (spread throughout day, 36 min apart)
+          const POSTING_START_HOUR = 6;
+          const POSTING_END_HOUR = 18;
+          const MAX_COMMENTS_PER_DAY = 20;
+          const minutesBetween = Math.floor((POSTING_END_HOUR - POSTING_START_HOUR) * 60 / MAX_COMMENTS_PER_DAY);
+
+          const now = new Date();
+          const tz = brandGuidelines?.timezone || 'America/Los_Angeles';
+          const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false });
+          const currentHour = parseInt(formatter.format(now));
+
+          let scheduled = new Date(now);
+          if (currentHour < POSTING_START_HOUR || currentHour >= POSTING_END_HOUR) {
+            scheduled.setDate(scheduled.getDate() + (currentHour >= POSTING_END_HOUR ? 1 : 0));
+            scheduled.setHours(POSTING_START_HOUR, 0, 0, 0);
+          }
+          scheduled = new Date(scheduled.getTime() + (scheduledToday || 0) * minutesBetween * 60 * 1000);
+          scheduledPostTime = scheduled.toISOString();
+
+          console.log(`   🤖 Auto-approved, scheduled for ${scheduledPostTime}`);
+        }
+
+        // Save comment to database
         const { data: savedComment, error: saveError } = await supabase
           .from('linkedin_post_comments')
           .insert({
@@ -177,7 +217,9 @@ export async function POST(request: NextRequest) {
             monitor_id: monitor_id,
             post_id: post.id,
             comment_text: generatedComment.comment_text,
-            status: 'pending_approval',
+            status: commentStatus,
+            scheduled_post_time: scheduledPostTime,
+            approved_at: monitor.auto_approve_enabled ? new Date().toISOString() : null,
             generated_at: new Date().toISOString(),
             generation_metadata: {
               model: generatedComment.generation_metadata.model,
