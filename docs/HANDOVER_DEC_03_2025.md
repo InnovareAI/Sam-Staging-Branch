@@ -345,6 +345,7 @@ WHERE workspace_id = 'workspace-uuid';
 ## Commit History
 
 ```
+ca237482 - Add country selector to commenting agent settings
 [latest] - Add multi-timezone/country support for campaigns and comments
 a46628fe - Add Dec 3 handover
 067ecf99 - Add 10-day per-author comment cooldown
@@ -353,4 +354,75 @@ a46628fe - Add Dec 3 handover
 [previous] - Add auto-like on comments
 [previous] - Setup Brian Neirby commenting agent
 [previous] - Configure Thorsten commenting agent
+```
+
+---
+
+## Multi-Timezone Implementation Summary (Dec 3, 2025)
+
+### What Was Built
+
+1. **Campaign-level Timezone Support** (`process-send-queue/route.ts`)
+   - Queue processor respects target country's timezone
+   - Supports 30+ countries with country-specific holidays
+   - Friday-Saturday weekends for Middle East countries (AE, SA, KW, QA, BH, OM, JO, EG)
+   - Campaign can override workspace defaults via `country_code` or `schedule_settings` JSON
+
+2. **Commenting Agent Timezone Support** (`process-comment-queue/route.ts`)
+   - Comments scheduled in target country's business hours
+   - Uses workspace settings from `linkedin_brand_guidelines` table
+   - Same holiday/weekend support as campaigns
+
+3. **Settings UI** (`CommentingAgentSettings.tsx`)
+   - Added country selector dropdown (20+ countries)
+   - Countries grouped by region (Americas, Europe, Africa, Asia-Pacific, Middle East)
+   - Auto-maps country selection to appropriate timezone
+   - Holiday toggle description updates based on selected country
+
+### Architecture
+
+```
+Workspace Level (linkedin_brand_guidelines)
+├── country_code: Default target country
+├── timezone: Default timezone
+└── Override on per-campaign basis
+
+Campaign Level (campaigns table)
+├── country_code: Target country (overrides workspace)
+├── timezone: Target timezone (overrides workspace)
+└── schedule_settings: JSON for additional customization
+```
+
+### Supported Countries
+
+| Region | Countries |
+|--------|-----------|
+| Americas | US, CA |
+| Europe | GB, DE, FR, NL, BE, CH, AT, IT, ES, PT, IE |
+| Africa | ZA |
+| Asia-Pacific | AU, NZ, JP, SG |
+| Middle East | AE, SA |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/api/cron/process-send-queue/route.ts` | Campaign country-specific scheduling |
+| `app/api/cron/process-comment-queue/route.ts` | Workspace timezone checking |
+| `app/components/CommentingAgentSettings.tsx` | Country selector UI |
+| `lib/scheduling-config.ts` | Holiday definitions for 30+ countries |
+
+### Testing
+
+To verify timezone settings are working:
+```sql
+-- Check workspace country setting
+SELECT workspace_id, country_code, timezone
+FROM linkedin_brand_guidelines
+WHERE workspace_id = 'your-workspace-id';
+
+-- Check campaign country override
+SELECT id, campaign_name, country_code, timezone
+FROM campaigns
+WHERE workspace_id = 'your-workspace-id';
 ```
