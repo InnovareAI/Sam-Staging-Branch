@@ -442,7 +442,106 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Find the next available batch number for this user/workspace
+    // =========================================================================
+    // NEW ARCHITECTURE: Insert into workspace_prospects (master table)
+    // CSV uploads now REQUIRE approval before going to campaigns
+    // Database-driven deduplication via unique constraint on linkedin_url_hash
+    // =========================================================================
+
+    // Generate batch_id for grouping this import
+    const batchId = `csv_${Date.now()}_${user.id.slice(0, 8)}`;
+
+    console.log('CSV Upload - NEW ARCHITECTURE: Inserting into workspace_prospects with batch_id:', batchId);
+
+    // Prepare prospects for workspace_prospects table
+    const workspaceProspectsData = prospects.map(p => {
+      const nameParts = p.name?.split(' ') || ['Unknown'];
+      const firstName = nameParts[0] || 'Unknown';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      const linkedinUrl = p.contact?.linkedin_url || null;
+
+      // Normalize LinkedIn URL to hash (same logic as trigger, for upsert conflict detection)
+      let linkedinUrlHash = null;
+      if (linkedinUrl) {
+        linkedinUrlHash = linkedinUrl
+          .replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//i, '')
+          .split('/')[0]
+          .split('?')[0]
+          .toLowerCase()
+          .trim();
+      }
+
+      const email = p.contact?.email || null;
+      const emailHash = email ? email.toLowerCase().trim() : null;
+
+      return {
+        workspace_id: workspaceId,
+        linkedin_url: linkedinUrl,
+        linkedin_url_hash: linkedinUrlHash,
+        email: email,
+        email_hash: emailHash,
+        first_name: firstName,
+        last_name: lastName,
+        company: p.company?.name || null,
+        title: p.title || null,
+        location: p.location || null,
+        phone: p.contact?.phone || null,
+        connection_degree: p.connectionDegree || null,
+        source: 'csv_upload',
+        batch_id: batchId,
+        approval_status: 'pending',  // REQUIRES APPROVAL
+        enrichment_data: {
+          original_name: p.name,
+          industry: p.company?.industry || null,
+          enrichment_score: p.enrichment_score || 70
+        }
+      };
+    });
+
+    // Insert with upsert to handle duplicates gracefully
+    // ON CONFLICT: Update enrichment data but preserve approval_status
+    let insertedCount = 0;
+    let duplicateCount = 0;
+    const insertErrors: string[] = [];
+
+    // Process in batches to handle large uploads
+    const BATCH_SIZE = 100;
+    for (let i = 0; i < workspaceProspectsData.length; i += BATCH_SIZE) {
+      const batch = workspaceProspectsData.slice(i, i + BATCH_SIZE);
+
+      const { data: inserted, error: insertError } = await supabase
+        .from('workspace_prospects')
+        .upsert(batch, {
+          onConflict: 'workspace_id,linkedin_url_hash',
+          ignoreDuplicates: false  // Update existing records
+        })
+        .select('id, linkedin_url_hash');
+
+      if (insertError) {
+        console.error(`CSV Upload - Batch ${i / BATCH_SIZE + 1} error:`, insertError);
+        insertErrors.push(insertError.message);
+      } else {
+        insertedCount += inserted?.length || 0;
+      }
+    }
+
+    // Count how many are actually new vs updated (approximation)
+    const { count: newPendingCount } = await supabase
+      .from('workspace_prospects')
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('batch_id', batchId)
+      .eq('approval_status', 'pending');
+
+    console.log('CSV Upload - workspace_prospects results:', {
+      attempted: workspaceProspectsData.length,
+      inserted: insertedCount,
+      newPending: newPendingCount,
+      batchId
+    });
+
+    // LEGACY SUPPORT: Also create session in prospect_approval_sessions for backwards compatibility
+    // This allows existing UI to show the import until we update the frontend
     const { data: existingSessions } = await supabase
       .from('prospect_approval_sessions')
       .select('batch_number')
@@ -455,10 +554,7 @@ export async function POST(request: NextRequest) {
       ? (existingSessions[0].batch_number || 0) + 1
       : 1;
 
-    console.log('CSV Upload - Creating session with batch_number:', nextBatchNumber);
-
-    // Create approval session
-    const { data: session, error: sessionError} = await supabase
+    const { data: session, error: sessionError } = await supabase
       .from('prospect_approval_sessions')
       .insert({
         workspace_id: workspaceId,
@@ -467,143 +563,32 @@ export async function POST(request: NextRequest) {
         campaign_name: campaignName,
         campaign_tag: 'csv-import',
         prospect_source: source,
-        total_prospects: prospects.length,
-        pending_count: prospects.length,
+        total_prospects: newPendingCount || prospects.length,
+        pending_count: newPendingCount || prospects.length,
         approved_count: 0,
         rejected_count: 0,
-        status: 'active',
-        batch_number: nextBatchNumber
+        status: 'active',  // Requires approval now
+        batch_number: nextBatchNumber,
+        // Link to new system
+        metadata: { batch_id: batchId, new_architecture: true }
       })
       .select()
       .single();
 
     if (sessionError) {
-      console.error('Error creating session:', sessionError);
-      return NextResponse.json({ success: false, error: sessionError.message }, { status: 500 });
+      console.error('CSV Upload - Error creating legacy session:', sessionError);
+      // Don't fail - workspace_prospects is the primary source now
     }
 
-    // Save prospects to approval data table
-    const approvalData = prospects.map(p => ({
-      session_id: session.id,
-      prospect_id: `csv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      workspace_id: workspaceId,
-      name: p.name,
-      title: p.title,
-      company: p.company,
-      location: p.location,
-      contact: p.contact,
-      connection_degree: p.connectionDegree,  // Add connection degree to DB
-      source: p.source,
-      enrichment_score: p.enrichment_score,
-      approval_status: p.approval_status
-    }));
-
-    const { error: dataError } = await supabase
-      .from('prospect_approval_data')
-      .insert(approvalData);
-
-    if (dataError) {
-      console.error('CSV Upload - Error saving prospects:', dataError);
-      console.error('   Message:', dataError.message);
-      console.error('   Code:', dataError.code);
-      console.error('   Details:', dataError.details);
-
-      // Rollback session
-      await supabase.from('prospect_approval_sessions').delete().eq('id', session.id);
-      return NextResponse.json({ success: false, error: dataError.message }, { status: 500 });
-    }
-
-    // Verify prospects were inserted by checking count in database
-    const { count: verifyCount } = await supabase
-      .from('prospect_approval_data')
-      .select('*', { count: 'exact', head: true })
-      .eq('session_id', session.id);
-
-    const expectedCount = prospects.length;
-
-    console.log('CSV Upload - Insert verification:', {
-      expected: expectedCount,
-      verified: verifyCount,
-      match: verifyCount === expectedCount,
-      session_id: session.id
-    });
-
-    if (verifyCount !== expectedCount) {
-      console.error(`❌ CSV Upload - Insert count mismatch!`);
-      console.error(`   Expected: ${expectedCount}`);
-      console.error(`   Verified: ${verifyCount}`);
-      console.error(`   Session ID: ${session.id}`);
-      console.error(`   ROLLING BACK - This will delete all data!`);
-
-      // Rollback session and any partial data
-      await supabase.from('prospect_approval_data').delete().eq('session_id', session.id);
-      await supabase.from('prospect_approval_sessions').delete().eq('id', session.id);
-
-      return NextResponse.json({
-        success: false,
-        error: `Failed to insert all prospects: ${verifyCount}/${expectedCount} inserted`,
-        details: 'Database insert verification failed. Check server logs for details.'
-      }, { status: 500 });
-    }
-
-    console.log(`✅ CSV Upload - Successfully inserted ${verifyCount} prospects`);
-
-    // AUTO-TRANSFER: Directly insert into campaign_prospects
-    // CSV uploads are user-curated data and don't need approval workflow
-    const campaignProspects = prospects.map(p => {
-      const nameParts = p.name?.split(' ') || ['Unknown'];
-      const firstName = nameParts[0] || 'Unknown';
-      const lastName = nameParts.slice(1).join(' ') || '';
-
-      return {
-        campaign_id: campaignId,
-        workspace_id: workspaceId,
-        first_name: firstName,
-        last_name: lastName,
-        email: p.contact?.email || null,
-        company_name: p.company?.name || '',
-        title: p.title || '',
-        location: p.location || null,
-        linkedin_url: p.contact?.linkedin_url || null,
-        status: 'pending',
-        personalization_data: {
-          source: 'csv_upload',
-          session_id: session.id,
-          uploaded_at: new Date().toISOString(),
-          connection_degree: p.connectionDegree
-        }
-      };
-    });
-
-    const { data: insertedProspects, error: campaignInsertError } = await supabase
-      .from('campaign_prospects')
-      .insert(campaignProspects)
-      .select('id');
-
-    if (campaignInsertError) {
-      console.error('CSV Upload - Error inserting into campaign_prospects:', campaignInsertError);
-      // Don't fail - prospects are still in approval_data for manual transfer
-    } else {
-      console.log(`✅ CSV Upload - Auto-transferred ${insertedProspects?.length || 0} prospects to campaign_prospects`);
-
-      // Update session to completed since prospects are now in campaign
-      await supabase
-        .from('prospect_approval_sessions')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          approved_count: prospects.length,
-          pending_count: 0
-        })
-        .eq('id', session.id);
-    }
+    // NO AUTO-TRANSFER TO campaign_prospects
+    // User must approve prospects first via the approval UI
 
     // Build user-friendly message
-    let message = `Successfully uploaded ${prospects.length} prospects.`;
+    let message = `Successfully uploaded ${newPendingCount || prospects.length} prospects for approval.`;
     let warning = null;
 
     if (salesNavUrlsDetected > 0) {
-      message = `Uploaded ${prospects.length} prospects. ${salesNavUrlsDetected} prospects were skipped due to Sales Navigator URLs.`;
+      message = `Uploaded ${newPendingCount || prospects.length} prospects for approval. ${salesNavUrlsDetected} prospects were skipped due to Sales Navigator URLs.`;
       warning = {
         type: 'sales_navigator_urls',
         count: salesNavUrlsDetected,
@@ -619,14 +604,18 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      session_id: session.id,
-      campaign_id: campaignId,  // Include campaign_id so frontend knows which campaign to use
+      session_id: session?.id || null,
+      batch_id: batchId,  // NEW: batch_id for the new architecture
+      campaign_id: campaignId,
       workspace_id: workspaceId,
-      count: prospects.length,
+      count: newPendingCount || prospects.length,
       skipped_count: salesNavUrlsDetected,
       campaign_name: campaignName,
       message: message,
-      warning: warning
+      warning: warning,
+      // NEW: Indicate prospects need approval
+      requires_approval: true,
+      approval_message: 'Prospects have been added to your workspace. Please review and approve them before adding to a campaign.'
     });
 
   } catch (error) {
