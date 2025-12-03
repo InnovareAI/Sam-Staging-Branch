@@ -1775,14 +1775,24 @@ export default function DataCollectionHub({
 
   // Proceed to Campaign Hub with approved prospects ONLY (disregard rejected and pending)
   const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger') => {
-    // ALWAYS filter for approved prospects only, even if override is provided
-    // This ensures rejected and pending prospects are never sent to Campaign Hub
-    const approvedProspects = prospectsOverride && prospectsOverride.length > 0
-      ? prospectsOverride.filter(p => p.approvalStatus === 'approved')
-      : prospectData.filter(p => p.approvalStatus === 'approved')
+    // When prospectsOverride is provided (from preflight), use them directly
+    // These prospects have already been validated by preflight check
+    // Only filter by approvalStatus when using prospectData (local state)
+    let approvedProspects: ProspectData[];
+
+    if (prospectsOverride && prospectsOverride.length > 0) {
+      // From preflight - prospects are validated, use them directly
+      // They may not have approvalStatus set, so don't filter by it
+      approvedProspects = prospectsOverride;
+      console.log('📊 Using preflight-validated prospects:', approvedProspects.length);
+    } else {
+      // From local state - filter by approval status
+      approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved');
+      console.log('📊 Using locally approved prospects:', approvedProspects.length);
+    }
 
     if (approvedProspects.length === 0) {
-      toastError('⚠️ No approved prospects found. Please approve at least one prospect before proceeding to Campaign Hub.')
+      toastError('⚠️ No prospects found. Please approve prospects before proceeding to Campaign Hub.')
       return
     }
 
@@ -1806,35 +1816,56 @@ export default function DataCollectionHub({
 
   // Auto-detect campaign type and go directly to preflight (NO manual selection)
   const autoDetectAndCreateCampaign = async () => {
+    // CRITICAL: Check workspace ID first - this is the most common cause of failure
+    if (!actualWorkspaceId) {
+      toastError('No workspace selected. Please select a workspace from the sidebar before creating a campaign.')
+      console.error('❌ Create Campaign failed: actualWorkspaceId is undefined/null')
+      return
+    }
+
     const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
     let prospectsToSend = selectedProspectIds.size > 0
       ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
       : approvedProspects
 
     if (prospectsToSend.length === 0) {
-      toastError('No approved prospects to create campaign')
+      toastError('No approved prospects to create campaign. Please approve some prospects first.')
       return
     }
 
     // Helper to check LinkedIn URL
     const hasLinkedIn = (p: any) => p.contact?.linkedin_url || p.linkedin_url || p.linkedinUrl
 
+    // Helper to check if email exists
+    const hasEmail = (p: any) => p.contact?.email || p.email || p.email_address
+
     // Count eligible prospects for each type
+    // MESSENGER: Must be 1st degree connection
     const messengerProspects = prospectsToSend.filter(p => {
       if (!hasLinkedIn(p)) return false
       const degree = String(p.connection_degree || p.connectionDegree || '').toLowerCase()
       return degree.includes('1st') || degree === '1'
     })
 
+    // CONNECTOR: Has LinkedIn but NOT 1st degree (includes unknown/empty degree)
+    // If degree is empty, assume they need a connection request
     const connectorProspects = prospectsToSend.filter(p => {
       if (!hasLinkedIn(p)) return false
       const degree = String(p.connection_degree || p.connectionDegree || '').toLowerCase()
+      // Not 1st degree = needs connection request
       return !degree.includes('1st') && degree !== '1'
     })
 
-    const emailProspects = prospectsToSend.filter(p =>
-      p.contact?.email || p.email || p.email_address
-    )
+    // EMAIL: Has email address
+    const emailProspects = prospectsToSend.filter(p => hasEmail(p))
+
+    console.log('📊 Campaign type eligibility:', {
+      total: prospectsToSend.length,
+      messenger: messengerProspects.length,
+      connector: connectorProspects.length,
+      email: emailProspects.length,
+      workspaceId: actualWorkspaceId
+    })
 
     // Auto-detect: use the type with the most eligible prospects
     let detectedType: 'connector' | 'messenger' | 'email'
@@ -1850,7 +1881,17 @@ export default function DataCollectionHub({
       detectedType = 'email'
       eligibleProspects = emailProspects
     } else {
-      toastError('No eligible prospects found. Prospects need LinkedIn URLs with connection degree or email addresses.')
+      // More helpful error message
+      const hasLinkedInUrls = prospectsToSend.some(p => hasLinkedIn(p))
+      const hasEmails = prospectsToSend.some(p => hasEmail(p))
+
+      if (!hasLinkedInUrls && !hasEmails) {
+        toastError('No eligible prospects found. Your prospects need either LinkedIn URLs or email addresses.')
+      } else if (hasLinkedInUrls && !hasEmails) {
+        toastError('LinkedIn prospects found but no connection degree set. This is needed to determine campaign type.')
+      } else {
+        toastError('No eligible prospects found. Please check prospect data has LinkedIn URLs or emails.')
+      }
       return
     }
 
@@ -1875,12 +1916,27 @@ export default function DataCollectionHub({
         })
       })
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Pre-flight API error:', response.status, errorData)
+
+        if (response.status === 401) {
+          toastError('Session expired. Please refresh the page and try again.')
+        } else if (response.status === 403) {
+          toastError('You don\'t have access to this workspace. Please check your workspace membership.')
+        } else {
+          toastError(`Pre-flight check failed: ${errorData.error || 'Unknown error'}`)
+        }
+        setShowPreflightModal(false)
+        return
+      }
+
       const data = await response.json()
       console.log('📊 Pre-flight results:', data.summary)
       setPreflightResults(data)
     } catch (error) {
       console.error('Pre-flight check failed:', error)
-      toastError('Failed to verify prospects')
+      toastError('Failed to verify prospects. Please check your internet connection and try again.')
       setShowPreflightModal(false)
     } finally {
       setIsRunningPreflight(false)
