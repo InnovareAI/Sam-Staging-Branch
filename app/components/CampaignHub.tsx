@@ -6057,6 +6057,21 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
+  // Confirm modal state (replaces native browser confirm dialogs)
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    confirmVariant?: 'danger' | 'primary' | 'success';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
   // Account connection wizards state (for CampaignBuilder)
   const [showUnipileWizard, setShowUnipileWizard] = useState(false);
   const [unipileProvider, setUnipileProvider] = useState<'LINKEDIN' | 'GOOGLE' | 'OUTLOOK'>('LINKEDIN');
