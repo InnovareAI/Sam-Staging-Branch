@@ -426,3 +426,165 @@ SELECT id, campaign_name, country_code, timezone
 FROM campaigns
 WHERE workspace_id = 'your-workspace-id';
 ```
+
+---
+
+## Reply Agent (Dec 3, 2025) ✅ BUILT
+
+### What Was Built
+
+Complete HITL (Human-in-the-Loop) reply system for LinkedIn messages:
+
+1. **Database Table** (`reply_agent_drafts`)
+   - Stores AI-generated reply drafts
+   - Tracks inbound message, research findings, approval status
+   - 48-hour expiry on pending drafts
+
+2. **Cron Processor** (`/api/cron/reply-agent-process`)
+   - Polls Unipile for new inbound messages every 5 minutes
+   - Detects intent using Claude (INTERESTED, QUESTION, OBJECTION, etc.)
+   - Generates personalized reply with research context
+   - Sends HITL email via Postmark for manual approval
+
+3. **Approval Endpoint** (`/api/reply-agent/approve`)
+   - GET: Email link clicks (approve/reject)
+   - POST: UI-based approval with edit capability
+   - Sends approved message via Unipile
+
+4. **Result Page** (`/app/reply-agent-result/page.tsx`)
+   - Landing page for email action clicks
+   - Shows success/error/info with styled UI
+
+5. **Config Modal** (`ReplyAgentModal.tsx`)
+   - Save button moved to always-visible footer
+   - Research-first guidelines template
+   - 300px textarea with monospace font
+
+### Files Created/Modified
+
+| File | Purpose |
+|------|---------|
+| `/app/api/cron/reply-agent-process/route.ts` | Main cron processor |
+| `/app/api/reply-agent/approve/route.ts` | Approve/reject endpoint |
+| `/app/reply-agent-result/page.tsx` | Result landing page |
+| `/netlify/functions/reply-agent-process.ts` | Netlify scheduled function |
+| `/supabase/migrations/20251203_create_reply_agent_drafts.sql` | Database schema |
+| `/supabase/migrations/20251203_create_workspace_reply_agent_config.sql` | Config table |
+| `/app/components/ReplyAgentModal.tsx` | Updated UI |
+
+### HITL Email Flow
+
+```
+Prospect Replies → Cron Detects → AI Generates Draft → Email to Owner
+      ↓                                                      ↓
+   Unipile                                          Approve/Reject/Edit
+      ↓                                                      ↓
+   SAM Sends                                         Click → Send via Unipile
+```
+
+### Test Script
+
+```bash
+node scripts/js/test-reply-agent.mjs
+```
+Sends test HITL email to workspace owner (tl@innovareai.com)
+
+### Industry-Adaptive Tone (Dec 3, 2025)
+
+SAM automatically adjusts reply tone based on prospect's industry:
+
+| Industry/Type | Tone | Language Style |
+|---------------|------|----------------|
+| **Tech/SaaS Startup** | Casual, direct | "Hey", short sentences, no fluff |
+| **Consulting/Advisory** | Professional, peer-level | Speak as equals, reference methodology |
+| **Coaching/Training** | Warm, outcomes-focused | Focus on client transformation |
+| **SME/Traditional** | Respectful, clear value | No jargon, concrete benefits |
+| **Enterprise** | Polished, strategic | Business impact, ROI language |
+| **Solo/Founder** | Personal, time-aware | Respect their bandwidth |
+| **Agency** | Creative, results-driven | Portfolio thinking, client wins |
+
+**Key Rules:**
+- Sound human, not templated
+- NO corporate buzzwords (leverage, synergy, robust)
+- NO fake enthusiasm ("Thanks so much!", "Love what you're doing!")
+- NO "bodies" or "headcount" language for professional services
+
+### Contextual Greetings (Dec 3, 2025)
+
+Replies include human touches based on date/time:
+
+| Context | Greeting |
+|---------|----------|
+| Monday | "Hope your Monday is off to a good start!" |
+| Friday | "Happy Friday!" |
+| Post-Thanksgiving | "Hope you had a great Thanksgiving!" |
+| Christmas/New Year | "Hope you have a great holiday season!" / "Happy New Year!" |
+| Morning (before noon) | "Hope your morning is going well!" |
+| Afternoon (12-5 PM) | "Hope your afternoon is going well!" |
+
+**Files Updated:**
+- `/scripts/js/test-reply-agent.mjs` - Test mode toggle (STARTUP/CONSULTANT)
+- `/app/api/cron/reply-agent-process/route.ts` - `getContextualGreeting()` function
+
+---
+
+## TODO: Prospect Scoring Agent (Future Feature)
+
+### Overview
+
+Score every uploaded/searched prospect based on website and LinkedIn profile to prioritize outreach.
+
+### Implementation Requirements (~16 hours)
+
+| Component | Effort | Description |
+|-----------|--------|-------------|
+| **Database table** `prospect_scores` | 1h | Store scores + ICP config per workspace |
+| **Research fetcher** | 2h | Reuse Reply Agent research (LinkedIn, company, website) |
+| **AI scoring prompt** | 2h | Claude analyzes against ICP criteria |
+| **Upload hook** | 2h | Auto-score after CSV upload |
+| **Search hook** | 2h | Score as prospects discovered |
+| **UI score badge** | 3h | 🔥 Hot (80+) / ⭐ Good (60-79) / 🤔 Low (<60) |
+| **ICP config modal** | 4h | Define scoring criteria per workspace |
+
+### Scoring Criteria (Configurable)
+
+```
+ICP Match Score (0-100):
+├── Title/Seniority Match (25 pts) - VP, Director, C-level
+├── Company Size Fit (20 pts) - 50-500 employees
+├── Industry Alignment (20 pts) - SaaS, Tech, etc.
+├── Tech Stack Match (15 pts) - Uses relevant tools
+├── Intent Signals (10 pts) - Recent posts, job changes
+└── Geography (10 pts) - Target regions
+```
+
+### Architecture
+
+```
+Upload/Search
+     ↓
+Queue prospects for scoring
+     ↓
+Background job fetches:
+  - LinkedIn profile (Unipile)
+  - Company page (Unipile)
+  - Website (web scrape)
+     ↓
+Claude analyzes against ICP config
+     ↓
+Score saved to prospect_scores
+     ↓
+UI shows badge: 🔥 Hot / ⭐ Good / 🤔 Low
+```
+
+### Data Sources
+
+| Source | API | What We Score |
+|--------|-----|---------------|
+| LinkedIn Profile | Unipile | Title, seniority, experience, activity |
+| Company LinkedIn | Unipile | Size, industry, growth signals |
+| Website | Jina.ai / scraper | Tech stack, product fit, funding |
+
+### Priority
+
+**Medium** - Nice to have for prioritizing outreach, not blocking core functionality

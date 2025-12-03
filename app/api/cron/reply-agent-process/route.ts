@@ -20,6 +20,53 @@ interface UnipileMessage {
   is_inbound: boolean;
 }
 
+/**
+ * Generate contextual greeting based on current date/time
+ * Makes replies feel human without over-personalizing
+ */
+function getContextualGreeting(): string | null {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sunday, 5 = Friday
+  const month = now.getMonth(); // 0 = Jan, 11 = Dec
+  const date = now.getDate();
+  const hour = now.getHours();
+
+  // Check for holidays (US-centric)
+  // Thanksgiving: 4th Thursday of November
+  if (month === 10) { // November
+    const firstThursday = new Date(now.getFullYear(), 10, 1);
+    while (firstThursday.getDay() !== 4) firstThursday.setDate(firstThursday.getDate() + 1);
+    const thanksgiving = firstThursday.getDate() + 21; // 4th Thursday
+
+    if (date >= thanksgiving && date <= thanksgiving + 4) {
+      return "Hope you had a great Thanksgiving!";
+    }
+    if (date >= thanksgiving - 7 && date < thanksgiving) {
+      return "Hope you have a great Thanksgiving week!";
+    }
+  }
+
+  // Christmas/New Year period
+  if (month === 11 && date >= 20) {
+    if (date >= 26) return "Hope you're enjoying the holiday week!";
+    return "Hope you have a great holiday season!";
+  }
+  if (month === 0 && date <= 5) {
+    return "Happy New Year!";
+  }
+
+  // Day of week greetings
+  if (day === 1) return "Hope your Monday is off to a good start!";
+  if (day === 5) return "Happy Friday!";
+
+  // Time-based for other days
+  if (hour < 12) return "Hope your morning is going well!";
+  if (hour >= 12 && hour < 17) return "Hope your afternoon is going well!";
+
+  // Default - no greeting (some messages don't need one)
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   // Verify cron secret
   const authHeader = request.headers.get('x-cron-secret');
@@ -229,26 +276,90 @@ Respond with just the intent category (e.g., "INTERESTED").`;
     }
 
     // Build context for reply generation
-    const prospectContext = `
-Prospect: ${prospect.first_name || ''} ${prospect.last_name || ''}
-Title: ${prospect.title || 'Unknown'}
-Company: ${prospect.company || 'Unknown'}
-LinkedIn: ${prospect.linkedin_url || 'N/A'}
-`;
+    const prospectName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim();
+    const prospectCompany = prospect.company || 'Unknown';
+    const prospectTitle = prospect.title || 'Unknown';
 
-    const systemPrompt = config.reply_guidelines || `You are a professional sales representative. Generate a helpful, concise reply.`;
+    // Get contextual greeting (Happy Friday, Hope you had a great Thanksgiving, etc.)
+    const contextGreeting = getContextualGreeting();
 
-    const userPrompt = `Generate a reply to this prospect message.
+    // Use custom guidelines if set, otherwise use default industry-adaptive prompt
+    const systemPrompt = config.reply_guidelines || `You are a sales rep for SAM AI, an AI-powered LinkedIn outreach automation platform.
 
-${prospectContext}
+## ADD A HUMAN TOUCH (IF APPROPRIATE)
+${contextGreeting ? `
+Today's contextual greeting: "${contextGreeting}"
 
-Their message: "${inboundMessage.text}"
+You may optionally START your reply with this greeting if it feels natural. Don't force it if the prospect's message is urgent or business-focused. Use your judgment.
+` : `
+No special greeting needed today - just dive into your response naturally.
+`}
 
-Detected intent: ${intent}
+## WHO YOU'RE TALKING TO
 
-Tone: ${config.response_tone || 'professional'}
+**Name:** ${prospectName}
+**Title:** ${prospectTitle}
+**Company:** ${prospectCompany}
 
-Keep the reply under 100 words. Sound human, not templated. One clear CTA if appropriate.
+## ADAPT YOUR TONE TO THEIR WORLD
+
+Match your language to their industry and company type:
+
+| Industry/Type | Tone | Language Style |
+|---------------|------|----------------|
+| **Tech/SaaS Startup** | Casual, direct | "Hey", short sentences, no fluff |
+| **Consulting/Advisory** | Professional, peer-level | Speak as equals, reference methodology |
+| **Coaching/Training** | Warm, outcomes-focused | Focus on client transformation |
+| **SME/Traditional** | Respectful, clear value | No jargon, concrete benefits |
+| **Enterprise** | Polished, strategic | Business impact, ROI language |
+| **Solo/Founder** | Personal, time-aware | Respect their bandwidth |
+| **Agency** | Creative, results-driven | Portfolio thinking, client wins |
+
+## WHAT SAM DOES FOR THEM
+
+SAM AI automates personalized LinkedIn outreach:
+- Reach more prospects without additional staff
+- AI writes personalized messages based on research
+- Handles follow-ups automatically
+- Tracks engagement and replies
+
+## RESPONSE RULES
+
+1. Reference something SPECIFIC about their business/role
+2. Connect to a SAM benefit that makes sense for THEIR world
+3. Keep it SHORT (3-4 sentences max)
+4. End with simple CTA
+
+## UNIVERSAL TONE RULES
+
+- Sound human, not templated
+- NO corporate buzzwords (leverage, synergy, robust)
+- NO fake enthusiasm ("Thanks so much!", "Love what you're doing!")
+- NO "bodies" or "headcount" language for professional services
+- Match their level of formality
+
+## EXAMPLES BY TYPE:
+
+**Startup:** "Hey ${prospect.first_name} - scaling outbound at ${prospectCompany}? That's what we built SAM for. Quick 15 min to show you how?"
+
+**Consultant:** "${prospect.first_name} - curious how you're currently reaching new clients. SAM helps consultants maintain consistent outreach without eating billable hours. Worth a conversation?"
+
+**Coach:** "${prospect.first_name} - many coaches we work with struggle to find time for business development. SAM keeps the pipeline warm so you can focus on clients. Interested?"
+
+**SME:** "${prospect.first_name} - wondering if growing your sales pipeline is on the radar. SAM automates LinkedIn outreach so you reach more prospects without adding staff. Happy to show you."`;
+
+    const userPrompt = `Generate a highly personalized reply to this prospect.
+
+PROSPECT:
+- Name: ${prospectName}
+- Title: ${prospectTitle}
+- Company: ${prospectCompany}
+
+THEIR MESSAGE: "${inboundMessage.text}"
+
+DETECTED INTENT: ${intent}
+
+IMPORTANT: Sound human and conversational. Mention their company/role. No generic responses.
 
 Reply:`;
 
