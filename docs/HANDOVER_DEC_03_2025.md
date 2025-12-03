@@ -193,9 +193,101 @@ AND lpc.created_at > NOW() - INTERVAL '10 days';
 
 ---
 
+---
+
+## LinkedIn Outbound Campaign System
+
+### Architecture
+
+```
+Campaign Created → Prospects Queued → Cron Sends CRs → Poll Accepted → Send Follow-ups
+      ↓                  ↓                ↓                 ↓               ↓
+   UI/API         send_queue table    1 per 30min      Every 5min      3 days later
+                                      (rate limit)     check accepts
+```
+
+### Campaign Messaging Rules
+
+| Rule | Setting |
+|------|---------|
+| Connection requests/day | ~20 max (30 min spacing) |
+| Follow-up delay | 3 days after CR accepted |
+| Business hours only | Weekdays, skip holidays |
+| Rate limiting | 1 CR every 30 minutes |
+
+### Message Flow
+
+1. **Connection Request (CR)**
+   - Personalized with first name, company, title
+   - Max 300 characters
+   - Sent via queue system (not immediate)
+
+2. **Follow-up Messages** (after CR accepted)
+   - Message 1: 3 days after acceptance
+   - Message 2: 3 days after Message 1
+   - Message 3: 3 days after Message 2
+   - Goodbye: If no response after Message 3
+
+### Queue System
+
+**Table:** `send_queue`
+```sql
+- campaign_id, prospect_id
+- linkedin_user_id, message
+- scheduled_for (timestamp)
+- status: pending → sent | failed
+- sent_at, error_message
+```
+
+**Processing:** Cron runs every minute, sends 1 message if due
+
+### Key Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/campaigns/direct/send-connection-requests-queued` | Queue CRs for campaign |
+| `POST /api/cron/process-send-queue` | Process queue (1/min) |
+| `POST /api/cron/poll-accepted-connections` | Check for acceptances |
+| `POST /api/campaigns/direct/process-follow-ups` | Send follow-up messages |
+
+### Unipile Integration
+
+**Credentials (Production):**
+- DSN: `api6.unipile.com:13670`
+- API Key: Set via `netlify env:set UNIPILE_API_KEY`
+
+**Critical Bug Fix (Nov 22):**
+- NEVER use `/api/v1/users/profile?identifier=` for vanity URLs with numbers
+- USE `/api/v1/users/{vanity}?account_id=` instead (legacy endpoint works correctly)
+
+### Holiday Blocking
+
+Queue automatically skips:
+- Saturdays & Sundays
+- US Holidays: Thanksgiving, Christmas, New Year's, MLK Day, Presidents Day, Memorial Day, July 4th, Labor Day, Veterans Day
+
+### Prospect Status Flow
+
+```
+pending → connection_request_sent → connected → messaged → replied | no_reply
+```
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `/app/api/campaigns/direct/send-connection-requests-queued/route.ts` | Queue creation |
+| `/app/api/cron/process-send-queue/route.ts` | Queue processor |
+| `/app/api/cron/poll-accepted-connections/route.ts` | Check acceptances |
+| `/app/api/campaigns/direct/process-follow-ups/route.ts` | Follow-up sender |
+| `/netlify/functions/process-send-queue.ts` | Netlify cron trigger |
+
+---
+
 ## Commit History
 
 ```
+a46628fe - Add Dec 3 handover
 067ecf99 - Add 10-day per-author comment cooldown
 [previous] - Add daily repost feature
 [previous] - Add auto-approve and comment scheduling
