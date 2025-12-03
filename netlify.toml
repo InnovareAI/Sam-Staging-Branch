@@ -127,6 +127,12 @@
 [functions."process-comment-queue"]
   schedule = "*/30 * * * *"
 
+# Daily Repost: Share high-engagement posts once per day at 10 AM PT (6 PM UTC)
+# Finds posts with 100+ likes or 20+ comments and creates a quote post with your comment
+# Limit: 1 repost per day per workspace
+[functions."daily-repost"]
+  schedule = "0 18 * * *"
+
 # ============================================
 # CRM BI-DIRECTIONAL SYNC (Dec 2, 2025)
 # ============================================
