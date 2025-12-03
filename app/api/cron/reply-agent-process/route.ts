@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { getClaudeClient } from '@/lib/llm/claude-client';
+import { sendReplyAgentHITLNotification } from '@/lib/notifications/google-chat';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -491,6 +492,19 @@ async function sendHITLEmail(
       const error = await response.text();
       console.error('Postmark error:', error);
     }
+
+    // Also send to Google Chat for team visibility
+    await sendReplyAgentHITLNotification({
+      draftId: draft.id,
+      approvalToken: draft.approval_token,
+      prospectName: draft.prospect_name || 'Unknown',
+      prospectTitle: prospect.title,
+      prospectCompany: draft.prospect_company,
+      inboundMessage: inboundText,
+      draftReply: draft.draft_text,
+      intent: draft.intent_detected || 'UNCLEAR',
+      appUrl: APP_URL,
+    });
 
   } catch (error) {
     console.error('Error sending HITL email:', error);

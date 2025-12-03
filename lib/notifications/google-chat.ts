@@ -239,6 +239,128 @@ export async function sendHealthCheckNotification(
 }
 
 /**
+ * Reply Agent HITL notification interface
+ */
+export interface ReplyAgentHITLNotification {
+  draftId: string;
+  approvalToken: string;
+  prospectName: string;
+  prospectTitle?: string;
+  prospectCompany?: string;
+  inboundMessage: string;
+  draftReply: string;
+  intent: string;
+  appUrl: string;
+}
+
+/**
+ * Send a Reply Agent HITL approval request to Google Chat
+ * Includes Approve/Reject buttons that link to the approval endpoint
+ */
+export async function sendReplyAgentHITLNotification(
+  notification: ReplyAgentHITLNotification
+): Promise<{ success: boolean; error?: string }> {
+  const approveUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=approve`;
+  const rejectUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=reject`;
+  const editUrl = `${notification.appUrl}/reply-agent-result?action=edit&id=${notification.draftId}`;
+
+  const intentEmoji: Record<string, string> = {
+    'INTERESTED': '🔥',
+    'QUESTION': '❓',
+    'OBJECTION': '⚡',
+    'TIMING': '⏰',
+    'VAGUE_POSITIVE': '👍',
+    'UNCLEAR': '🤔',
+    'NOT_INTERESTED': '❌',
+  };
+
+  const message: GoogleChatMessage = {
+    cardsV2: [
+      {
+        cardId: `reply-agent-${notification.draftId}`,
+        card: {
+          header: {
+            title: `📬 New Reply from ${notification.prospectName}`,
+            subtitle: `${notification.prospectTitle || ''} at ${notification.prospectCompany || 'Unknown'}`,
+            imageType: 'CIRCLE',
+          },
+          sections: [
+            {
+              header: `Intent: ${intentEmoji[notification.intent] || '💬'} ${notification.intent}`,
+              widgets: [
+                {
+                  textParagraph: {
+                    text: `<b>Their Message:</b>\n"${notification.inboundMessage}"`,
+                  },
+                },
+              ],
+            },
+            {
+              header: '💡 SAM\'s Draft Reply',
+              widgets: [
+                {
+                  textParagraph: {
+                    text: notification.draftReply,
+                  },
+                },
+              ],
+            },
+            {
+              widgets: [
+                {
+                  buttonList: {
+                    buttons: [
+                      {
+                        text: '✓ Approve & Send',
+                        onClick: {
+                          openLink: {
+                            url: approveUrl,
+                          },
+                        },
+                        color: {
+                          red: 0.063,
+                          green: 0.722,
+                          blue: 0.506,
+                          alpha: 1,
+                        },
+                      },
+                      {
+                        text: '✗ Reject',
+                        onClick: {
+                          openLink: {
+                            url: rejectUrl,
+                          },
+                        },
+                        color: {
+                          red: 0.937,
+                          green: 0.267,
+                          blue: 0.267,
+                          alpha: 1,
+                        },
+                      },
+                      {
+                        text: '✏️ Edit First',
+                        onClick: {
+                          openLink: {
+                            url: editUrl,
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  return sendGoogleChatNotification(message);
+}
+
+/**
  * Send a daily campaign summary notification
  */
 export async function sendDailyCampaignSummary(
