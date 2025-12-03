@@ -7892,7 +7892,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       type: 'draft',
                       name: draft.name,
                       campaignType: draft.type || draft.campaign_type || 'connector',
-                      prospectCount: draft.draft_data?.csvData?.length || 0,
+                      // Use prospect_count from API (includes campaign_prospects), fallback to draft_data
+                      prospectCount: draft.prospect_count || draft.draft_data?.csvData?.length || 0,
                       date: draft.updated_at,
                       draft,
                       prospects: null,

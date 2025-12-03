@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const draftData = {
-      csvData: csvData || [],
-    };
+    // CRITICAL FIX: No longer store csvData in draft_data
+    // Prospects go directly into campaign_prospects table
+    const draftData = {};
 
     if (draftId) {
       // Update existing draft
@@ -81,6 +81,37 @@ export async function POST(request: NextRequest) {
           { error: 'Failed to update draft' },
           { status: 500 }
         );
+      }
+
+      // Insert prospects into campaign_prospects if provided
+      if (csvData && csvData.length > 0) {
+        const prospectsToInsert = csvData.map((p: any) => ({
+          campaign_id: draftId,
+          workspace_id: workspaceId,
+          first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
+          last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
+          linkedin_url: p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url,
+          provider_id: p.provider_id || p.providerId || null,
+          company: p.company || p.organization || null,
+          title: p.title || p.job_title || null,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        })).filter((p: any) => p.linkedin_url);
+
+        if (prospectsToInsert.length > 0) {
+          // Use upsert to handle duplicates gracefully
+          const { error: insertError } = await supabase
+            .from('campaign_prospects')
+            .upsert(prospectsToInsert, {
+              onConflict: 'campaign_id,linkedin_url',
+              ignoreDuplicates: true
+            });
+
+          if (insertError) {
+            console.error('Error inserting prospects:', insertError);
+            // Don't fail the entire operation - draft is saved
+          }
+        }
       }
 
       return NextResponse.json({
@@ -113,6 +144,33 @@ export async function POST(request: NextRequest) {
           { error: 'Failed to create draft' },
           { status: 500 }
         );
+      }
+
+      // Insert prospects into campaign_prospects if provided
+      if (csvData && csvData.length > 0) {
+        const prospectsToInsert = csvData.map((p: any) => ({
+          campaign_id: campaign.id,
+          workspace_id: workspaceId,
+          first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
+          last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
+          linkedin_url: p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url,
+          provider_id: p.provider_id || p.providerId || null,
+          company: p.company || p.organization || null,
+          title: p.title || p.job_title || null,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        })).filter((p: any) => p.linkedin_url);
+
+        if (prospectsToInsert.length > 0) {
+          const { error: insertError } = await supabase
+            .from('campaign_prospects')
+            .insert(prospectsToInsert);
+
+          if (insertError) {
+            console.error('Error inserting prospects:', insertError);
+            // Don't fail the entire operation - draft is saved
+          }
+        }
       }
 
       return NextResponse.json({
@@ -197,7 +255,23 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ drafts: [] });
       }
 
-      return NextResponse.json({ drafts });
+      // Enrich drafts with prospect count from campaign_prospects table
+      // (CSV uploads put prospects there, not in draft_data.csvData)
+      const enrichedDrafts = await Promise.all(
+        (drafts || []).map(async (draft) => {
+          const { count } = await supabase
+            .from('campaign_prospects')
+            .select('*', { count: 'exact', head: true })
+            .eq('campaign_id', draft.id);
+
+          return {
+            ...draft,
+            prospect_count: count || draft.draft_data?.csvData?.length || 0
+          };
+        })
+      );
+
+      return NextResponse.json({ drafts: enrichedDrafts });
     }
   } catch (error: any) {
     console.error('Draft fetch error:', error);

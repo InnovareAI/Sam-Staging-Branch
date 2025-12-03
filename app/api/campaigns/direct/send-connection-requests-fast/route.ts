@@ -71,13 +71,56 @@ export async function POST(req: NextRequest) {
     // 1. Fetch campaign - use admin client for cron, or user client for RLS check
     const { data: campaign, error: campaignError } = await supabaseAdmin
       .from('campaigns')
-      .select('id, campaign_name, message_templates, workspace_id')
+      .select('id, campaign_name, message_templates, workspace_id, draft_data')
       .eq('id', campaignId)
       .single();
 
     if (campaignError || !campaign) {
       console.error('Campaign not found or access denied:', campaignError);
       return NextResponse.json({ error: 'Campaign not found or access denied' }, { status: 404 });
+    }
+
+    // 1.5. CRITICAL FIX: Transfer draft_data.csvData to campaign_prospects if needed
+    // This handles the case where drafts were created with prospects stored in draft_data
+    // but never transferred to campaign_prospects table
+    const draftData = campaign.draft_data as { csvData?: any[] } | null;
+    if (draftData?.csvData && draftData.csvData.length > 0) {
+      // Check if campaign_prospects is empty for this campaign
+      const { count: existingCount } = await supabaseAdmin
+        .from('campaign_prospects')
+        .select('*', { count: 'exact', head: true })
+        .eq('campaign_id', campaignId);
+
+      if (existingCount === 0) {
+        console.log(`📦 Transferring ${draftData.csvData.length} prospects from draft_data to campaign_prospects`);
+
+        // Map draft_data.csvData to campaign_prospects format
+        const prospectsToInsert = draftData.csvData.map((p: any) => ({
+          campaign_id: campaignId,
+          workspace_id: campaign.workspace_id,
+          first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
+          last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
+          linkedin_url: p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url,
+          provider_id: p.provider_id || p.providerId || null,
+          company: p.company || p.organization || null,
+          title: p.title || p.job_title || null,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        })).filter((p: any) => p.linkedin_url); // Only insert prospects with LinkedIn URLs
+
+        if (prospectsToInsert.length > 0) {
+          const { error: insertError } = await supabaseAdmin
+            .from('campaign_prospects')
+            .insert(prospectsToInsert);
+
+          if (insertError) {
+            console.error('❌ Error transferring draft prospects:', insertError);
+            // Continue anyway - don't fail the entire activation
+          } else {
+            console.log(`✅ Transferred ${prospectsToInsert.length} prospects to campaign_prospects`);
+          }
+        }
+      }
     }
 
     // 2. Fetch pending prospects (limit 50)

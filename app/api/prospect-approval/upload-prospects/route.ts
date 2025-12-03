@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
         connection_degree: p.connectionDegree || p.connection_degree || null,  // CRITICAL: Preserve connectionDegree from SAM scrape (DB column is snake_case)
         source: p.source || source || 'manual-upload',
         enrichment_score: p.enrichment_score || 70,
-        approval_status: 'pending',
+        approval_status: p.approval_status || 'pending',  // Respect status sent from client, default to pending
         created_at: new Date().toISOString()
       };
     });
