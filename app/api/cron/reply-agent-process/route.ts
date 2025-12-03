@@ -411,7 +411,8 @@ async function sendHITLEmail(
 
     const approveUrl = `${APP_URL}/api/reply-agent/approve?token=${draft.approval_token}&action=approve`;
     const rejectUrl = `${APP_URL}/api/reply-agent/approve?token=${draft.approval_token}&action=reject`;
-    const editUrl = `${APP_URL}/workspace/${draft.workspace_id}/reply-agent?draft=${draft.id}`;
+    const editUrl = `${APP_URL}/reply-agent/edit?id=${draft.id}&token=${draft.approval_token}`;
+    const instructionsUrl = `${APP_URL}/reply-agent/instructions?id=${draft.id}&token=${draft.approval_token}`;
 
     const emailBody = `
 <!DOCTYPE html>
@@ -428,6 +429,7 @@ async function sendHITLEmail(
     .approve { background: #10b981; color: white; }
     .reject { background: #ef4444; color: white; }
     .edit { background: #6b7280; color: white; }
+    .instructions { background: #7c3aed; color: white; }
     .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
     .intent { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
   </style>
@@ -456,7 +458,10 @@ async function sendHITLEmail(
       <div style="margin-top: 24px;">
         <a href="${approveUrl}" class="button approve">✓ Approve & Send</a>
         <a href="${rejectUrl}" class="button reject">✗ Reject</a>
-        <a href="${editUrl}" class="button edit">✏️ Edit First</a>
+      </div>
+      <div style="margin-top: 12px;">
+        <a href="${editUrl}" class="button edit">✏️ Edit Reply</a>
+        <a href="${instructionsUrl}" class="button instructions">💬 Add Instructions</a>
       </div>
 
       <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">
@@ -483,7 +488,7 @@ async function sendHITLEmail(
         To: ownerEmail,
         Subject: `📬 ${draft.prospect_name || 'Prospect'} replied - Review SAM's draft`,
         HtmlBody: emailBody,
-        TextBody: `New reply from ${draft.prospect_name}:\n\n"${inboundText}"\n\nSAM's draft reply:\n\n"${draft.draft_text}"\n\nApprove: ${approveUrl}\nReject: ${rejectUrl}`,
+        TextBody: `New reply from ${draft.prospect_name}:\n\n"${inboundText}"\n\nSAM's draft reply:\n\n"${draft.draft_text}"\n\nApprove: ${approveUrl}\nReject: ${rejectUrl}\n\nEdit Reply: ${editUrl}\nAdd Instructions: ${instructionsUrl}`,
         MessageStream: 'outbound'
       })
     });
