@@ -5184,7 +5184,8 @@ Would you like me to adjust these or create more variations?`
                 type="button"
                 onClick={async () => {
                   await saveDraft(true);
-                  toastSuccess('Campaign draft saved successfully');
+                  toastSuccess('Campaign draft saved! Find it in the "In Progress" tab.');
+                  queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
                 }}
                 disabled={isSavingDraft || !name.trim()}
                 className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
