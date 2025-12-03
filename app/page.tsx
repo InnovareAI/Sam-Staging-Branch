@@ -3656,15 +3656,6 @@ export default function Page() {
                   onClick={() => setShowAnalyticsReportingModal(true)}
                 />
 
-                {/* Profile Management */}
-                <SimpleTileCard
-                  title="Profile Management"
-                  description="Manage your account information, update profile details, change password, and configure personal preferences."
-                  icon={User}
-                  color="blue"
-                  onClick={() => {}}
-                />
-
               </div>
 
             </div>
