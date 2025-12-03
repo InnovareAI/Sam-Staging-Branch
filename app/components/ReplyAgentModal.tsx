@@ -29,7 +29,7 @@ export default function ReplyAgentModal({ isOpen, onClose, workspaceId }: ReplyA
     approval_mode: 'manual',
     response_tone: 'professional',
     reply_delay_hours: 2,
-    ai_model: 'claude-3.5-sonnet',
+    ai_model: 'claude-opus-4-5-20251101',
     reply_guidelines: 'Always be professional and helpful. Reference our product benefits when relevant. Ask qualifying questions to understand prospect needs.',
     connected_email: null,
   });
@@ -265,6 +265,8 @@ export default function ReplyAgentModal({ isOpen, onClose, workspaceId }: ReplyA
                   onChange={(e) => setConfig({ ...config, ai_model: e.target.value })}
                   className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
+                  <option value="claude-opus-4-5-20251101">Claude Opus 4.5 (Recommended)</option>
+                  <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
                   <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
                   <option value="gpt-4">GPT-4</option>
                   <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
