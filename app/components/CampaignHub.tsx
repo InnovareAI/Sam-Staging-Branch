@@ -6028,55 +6028,105 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [campaignFilter, setCampaignFilter] = useState<'active' | 'paused' | 'archived' | 'completed' | 'pending'>('active');
 
   // REACT QUERY: Fetch pending campaigns with caching - LAZY LOAD when tab is active
+  // NEW ARCHITECTURE: Uses workspace_prospects table (database-driven)
   const { data: pendingCampaignsFromDB = [], isLoading: loadingPendingFromDB } = useQuery({
     queryKey: ['pendingCampaigns', actualWorkspaceId],
     queryFn: async () => {
       if (!actualWorkspaceId) return [];
 
-      // Use new optimized approved prospects API
-      const response = await fetch(`/api/prospect-approval/approved?workspace_id=${actualWorkspaceId}`);
-      if (!response.ok) return [];
+      // NEW: Fetch from workspace_prospects (approved but not in campaign)
+      const newArchResponse = await fetch(`/api/prospects/approve?workspaceId=${actualWorkspaceId}&status=approved_available`);
 
-      const data = await response.json();
-      if (!data.success || !data.prospects) return [];
+      // Also fetch legacy data for backwards compatibility
+      const legacyResponse = await fetch(`/api/prospect-approval/approved?workspace_id=${actualWorkspaceId}`);
 
-      // Group approved prospects by campaign name
       const campaignGroups: Record<string, any> = {};
 
-      for (const prospect of data.prospects) {
-        const campaignName = prospect.prospect_approval_sessions?.campaign_name || `Session-${prospect.session_id?.slice(0, 8)}`;
+      // Process NEW architecture data (workspace_prospects)
+      if (newArchResponse.ok) {
+        const newData = await newArchResponse.json();
+        if (newData.success && newData.prospects?.length > 0) {
+          // Group by batch_id (replaces session concept)
+          for (const prospect of newData.prospects) {
+            const groupKey = prospect.batch_id || 'workspace_prospects';
+            const campaignName = `Import ${new Date(prospect.created_at).toLocaleDateString()}`;
 
-        if (!campaignGroups[campaignName]) {
-          campaignGroups[campaignName] = {
-            campaignName,
-            campaignTag: prospect.prospect_approval_sessions?.campaign_tag || prospect.prospect_approval_sessions?.prospect_source || 'linkedin',
-            sessionId: prospect.session_id,
-            prospects: [],
-            createdAt: prospect.created_at
-          };
+            if (!campaignGroups[groupKey]) {
+              campaignGroups[groupKey] = {
+                campaignName,
+                campaignTag: prospect.source || 'csv_upload',
+                batchId: prospect.batch_id,
+                prospects: [],
+                createdAt: prospect.created_at,
+                isNewArchitecture: true
+              };
+            }
+
+            campaignGroups[groupKey].prospects.push({
+              id: prospect.id,
+              prospect_id: prospect.id,
+              name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+              first_name: prospect.first_name || '',
+              last_name: prospect.last_name || '',
+              title: prospect.title || '',
+              company: prospect.company || '',
+              company_name: prospect.company || '',
+              email: prospect.email || '',
+              linkedin_url: prospect.linkedin_url || '',
+              phone: prospect.phone || '',
+              location: prospect.location || '',
+              campaignTag: prospect.source || 'linkedin',
+              isNewArchitecture: true
+            });
+          }
         }
+      }
 
-        // Split name into first and last
-        const nameParts = (prospect.name || '').trim().split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
+      // Process LEGACY data (prospect_approval_data) - for backwards compat
+      if (legacyResponse.ok) {
+        const legacyData = await legacyResponse.json();
+        if (legacyData.success && legacyData.prospects?.length > 0) {
+          for (const prospect of legacyData.prospects) {
+            const campaignName = prospect.prospect_approval_sessions?.campaign_name || `Session-${prospect.session_id?.slice(0, 8)}`;
+            const groupKey = `legacy_${campaignName}`;
 
-        campaignGroups[campaignName].prospects.push({
-          id: prospect.prospect_id,
-          prospect_id: prospect.prospect_id, // CRITICAL: Also include as prospect_id for API compatibility
-          name: prospect.name,
-          first_name: firstName,
-          last_name: lastName,
-          title: prospect.title || '',
-          company: prospect.company?.name || '',
-          company_name: prospect.company?.name || '',
-          email: prospect.contact?.email || '',
-          linkedin_url: prospect.contact?.linkedin_url || prospect.linkedin_url || '', // Check both locations
-          phone: prospect.contact?.phone || '',
-          industry: prospect.company?.industry?.[0] || '',
-          location: prospect.location || '',
-          campaignTag: prospect.prospect_approval_sessions?.campaign_tag || prospect.prospect_approval_sessions?.campaign_name || 'linkedin'
-        });
+            // Skip if already in new architecture
+            if (campaignGroups[groupKey]) continue;
+
+            if (!campaignGroups[groupKey]) {
+              campaignGroups[groupKey] = {
+                campaignName,
+                campaignTag: prospect.prospect_approval_sessions?.campaign_tag || prospect.prospect_approval_sessions?.prospect_source || 'linkedin',
+                sessionId: prospect.session_id,
+                prospects: [],
+                createdAt: prospect.created_at,
+                isNewArchitecture: false
+              };
+            }
+
+            const nameParts = (prospect.name || '').trim().split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+
+            campaignGroups[groupKey].prospects.push({
+              id: prospect.prospect_id,
+              prospect_id: prospect.prospect_id,
+              name: prospect.name,
+              first_name: firstName,
+              last_name: lastName,
+              title: prospect.title || '',
+              company: prospect.company?.name || '',
+              company_name: prospect.company?.name || '',
+              email: prospect.contact?.email || '',
+              linkedin_url: prospect.contact?.linkedin_url || prospect.linkedin_url || '',
+              phone: prospect.contact?.phone || '',
+              industry: prospect.company?.industry?.[0] || '',
+              location: prospect.location || '',
+              campaignTag: prospect.prospect_approval_sessions?.campaign_tag || 'linkedin',
+              isNewArchitecture: false
+            });
+          }
+        }
       }
 
       // Convert to array sorted by creation date
