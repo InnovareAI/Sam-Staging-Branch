@@ -123,12 +123,12 @@ export async function POST(req: NextRequest) {
 
     // CHECK 5: Campaign status anomalies (active campaigns with no queue activity)
     // NOTE: Skip this check if campaign launch failed (validation errors) - those are expected
-    const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+    const campaignAgeThreshold = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
     const { data: activeCampaigns } = await supabase
       .from('campaigns')
       .select('id, name, status, created_at')
       .eq('status', 'active')
-      .lt('created_at', thirtyMinAgo); // Only check campaigns older than 30 min (allow launch time)
+      .lt('created_at', campaignAgeThreshold); // Only check campaigns older than 30 min (allow launch time)
 
     for (const campaign of activeCampaigns || []) {
       const { count: queueCount } = await supabase
