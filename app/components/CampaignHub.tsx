@@ -916,7 +916,35 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
         >
           <div className="p-6 pb-4">
             <div className="flex justify-between items-start">
-              <div className="flex-1">
+              <div className="flex-1 flex items-start gap-3">
+                {/* Checkbox selector for draft campaigns */}
+                {c.status === 'draft' && (
+                  <label className="relative flex items-center cursor-pointer mt-1" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedCampaigns.has(c.id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        const newSelected = new Set(selectedCampaigns);
+                        if (e.target.checked) {
+                          newSelected.add(c.id);
+                        } else {
+                          newSelected.delete(c.id);
+                        }
+                        setSelectedCampaigns(newSelected);
+                      }}
+                      className="w-5 h-5 rounded border-2 border-gray-500 bg-gray-700 checked:bg-purple-500 checked:border-purple-500 focus:ring-2 focus:ring-purple-400 focus:ring-offset-0 cursor-pointer appearance-none transition-colors"
+                    />
+                    <svg
+                      className={`absolute w-5 h-5 pointer-events-none text-white transition-opacity ${selectedCampaigns.has(c.id) ? 'opacity-100' : 'opacity-0'}`}
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </label>
+                )}
+                <div>
                 <h3 className="text-white font-semibold text-lg group-hover:text-white mb-2">
                   {c.name}
                 </h3>
@@ -924,6 +952,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   {getStatusIcon(c.status)}
                   {getStatusLabel(c.status)}
                 </span>
+                </div>
               </div>
               <div className="flex gap-2 ml-4 relative z-10">
                 {c.status === 'active' ? (
