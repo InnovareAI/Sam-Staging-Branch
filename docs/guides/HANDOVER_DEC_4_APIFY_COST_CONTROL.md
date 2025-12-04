@@ -132,5 +132,37 @@ To scrape a new hashtag, manually start a run in Apify console:
 
 ---
 
-**Last Updated:** December 4, 2025 11:58 UTC
+**Last Updated:** December 4, 2025 22:00 UTC (FIX ACTUALLY DEPLOYED)
 **Author:** Claude (Opus 4.5)
+
+---
+
+## UPDATE: December 4, 2025 22:00 UTC
+
+### Auto-Start Was NOT Disabled
+
+The earlier handover incorrectly claimed auto-start was disabled. The code was STILL starting new runs, resulting in:
+- 21:00 run: 4,681 results = **$4.68**
+- 18:30 run: 897 results = $0.90
+
+### Fix Actually Applied Now
+
+File: `app/api/linkedin-commenting/discover-posts-apify/route.ts` (lines 978-987)
+
+```typescript
+// Step 3: DISABLED - Do NOT auto-start Apify runs
+// CRITICAL: sasky actor ignores ALL cost limits (maxResults, maxItems) and charges $0.001/result
+// with NO way to cap it. A single run returned 4,681 results = $4.68
+// To scrape new hashtags: manually start runs in Apify console
+if (!datasetId) {
+  console.log(`⛔ No completed run found for #${keyword}. Auto-start DISABLED.`);
+  continue;
+}
+```
+
+The system now:
+1. **Does NOT start new Apify runs** - automatic runs are permanently disabled
+2. Uses existing run data only (within last 2 hours)
+3. Logs warning when no data exists for a hashtag
+
+Deployed to production: https://app.meet-sam.com
