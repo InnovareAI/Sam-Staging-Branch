@@ -310,9 +310,10 @@ export async function POST(request: NextRequest) {
     }));
     console.log('🔍 Hashtags being searched:', JSON.stringify(hashtagsBeingSearched));
 
-    // Actor URLs - replace with custom actors when ready
+    // Actor URLs
     const PROFILE_ACTOR = 'apimaestro~linkedin-profile-posts';
-    const HASHTAG_ACTOR = 'apimaestro~linkedin-posts-search-scraper-no-cookies';
+    // Custom hashtag actor from InnovareAI Apify organization
+    const HASHTAG_ACTOR = 'HTdyczuehykuGguHO';
     // Company actor: Use same profile actor - it works with company vanity names too
     const COMPANY_ACTOR = 'apimaestro~linkedin-profile-posts';
 
