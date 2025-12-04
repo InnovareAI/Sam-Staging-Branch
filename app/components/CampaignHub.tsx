@@ -6170,6 +6170,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               linkedin_url: prospect.linkedin_url || '',
               phone: prospect.phone || '',
               location: prospect.location || '',
+              connection_degree: prospect.connection_degree || '',
               campaignTag: prospect.source || 'linkedin',
               isNewArchitecture: true
             });
@@ -6217,6 +6218,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               phone: prospect.contact?.phone || '',
               industry: prospect.company?.industry?.[0] || '',
               location: prospect.location || '',
+              connection_degree: prospect.connection_degree || '',
               campaignTag: prospect.prospect_approval_sessions?.campaign_tag || 'linkedin',
               isNewArchitecture: false
             });
@@ -6224,8 +6226,23 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         }
       }
 
-      // Convert to array sorted by creation date
-      const campaigns = Object.values(campaignGroups).sort((a: any, b: any) =>
+      // Convert to array, add campaignType based on connection_degree, and sort by creation date
+      const campaigns = Object.values(campaignGroups).map((group: any) => {
+        // Determine campaignType from prospects' connection_degree
+        // 1st degree → messenger, 2nd/3rd degree → connector
+        const firstDegreeCount = group.prospects.filter((p: any) =>
+          p.connection_degree === '1st' || p.connection_degree === '1' || p.connection_degree?.toLowerCase()?.includes('1st')
+        ).length;
+        const totalCount = group.prospects.length;
+
+        // If majority (>50%) are 1st degree → messenger, else connector
+        const campaignType = totalCount > 0 && (firstDegreeCount / totalCount) > 0.5 ? 'messenger' : 'connector';
+
+        return {
+          ...group,
+          campaignType
+        };
+      }).sort((a: any, b: any) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
