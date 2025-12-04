@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/app/lib/supabase';
+import { createServerSupabaseClient, supabaseAdmin } from '@/app/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,18 +11,39 @@ export async function GET(
   try {
     const monitorId = params.id;
     const supabase = await createServerSupabaseClient();
+    const adminClient = supabaseAdmin();
 
-    const { data: monitor, error } = await supabase
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Use admin client to bypass RLS for the query
+    const { data: monitor, error } = await adminClient
       .from('linkedin_post_monitors')
       .select('*')
       .eq('id', monitorId)
       .single();
 
     if (error) {
+      console.error('Error fetching monitor:', error);
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
 
-    return NextResponse.json(monitor);
+    // Verify user has access to this workspace
+    const { data: member } = await adminClient
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', monitor.workspace_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({ error: 'Access denied to this monitor' }, { status: 403 });
+    }
+
+    return NextResponse.json({ monitor });
 
   } catch (error) {
     console.error('Error fetching monitor:', error);
@@ -42,6 +63,36 @@ export async function PATCH(
     const monitorId = params.id;
     const body = await request.json();
     const supabase = await createServerSupabaseClient();
+    const adminClient = supabaseAdmin();
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get monitor to check workspace access
+    const { data: existingMonitor } = await adminClient
+      .from('linkedin_post_monitors')
+      .select('workspace_id')
+      .eq('id', monitorId)
+      .single();
+
+    if (!existingMonitor) {
+      return NextResponse.json({ error: 'Monitor not found' }, { status: 404 });
+    }
+
+    // Verify user has access to this workspace
+    const { data: member } = await adminClient
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', existingMonitor.workspace_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     // Build update object with only provided fields
     const updateData: any = {
@@ -58,7 +109,7 @@ export async function PATCH(
     if (body.auto_approve_start_time !== undefined) updateData.auto_approve_start_time = body.auto_approve_start_time;
     if (body.auto_approve_end_time !== undefined) updateData.auto_approve_end_time = body.auto_approve_end_time;
 
-    const { data: monitor, error } = await supabase
+    const { data: monitor, error } = await adminClient
       .from('linkedin_post_monitors')
       .update(updateData)
       .eq('id', monitorId)
@@ -93,9 +144,39 @@ export async function DELETE(
   try {
     const monitorId = params.id;
     const supabase = await createServerSupabaseClient();
+    const adminClient = supabaseAdmin();
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get monitor to check workspace access
+    const { data: existingMonitor } = await adminClient
+      .from('linkedin_post_monitors')
+      .select('workspace_id')
+      .eq('id', monitorId)
+      .single();
+
+    if (!existingMonitor) {
+      return NextResponse.json({ error: 'Monitor not found' }, { status: 404 });
+    }
+
+    // Verify user has access to this workspace
+    const { data: member } = await adminClient
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', existingMonitor.workspace_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
 
     // First delete associated discovered posts
-    const { error: postsError } = await supabase
+    const { error: postsError } = await adminClient
       .from('linkedin_posts_discovered')
       .delete()
       .eq('monitor_id', monitorId);
@@ -105,7 +186,7 @@ export async function DELETE(
     }
 
     // Then delete the monitor
-    const { error } = await supabase
+    const { error } = await adminClient
       .from('linkedin_post_monitors')
       .delete()
       .eq('id', monitorId);

@@ -1095,18 +1095,22 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
           <div className="px-6 pb-6">
             {c.status !== 'draft' && (
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-700 group-hover:border-purple-400">
+              <div className="grid grid-cols-4 gap-3 pt-4 border-t border-gray-700 group-hover:border-purple-400">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-white group-hover:text-white mb-1">{c.sent}</div>
+                  <div className="text-xl font-bold text-white group-hover:text-white mb-1">{c.sent}</div>
                   <div className="text-gray-400 group-hover:text-purple-100 text-xs">Sent</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-white group-hover:text-white mb-1">{c.opened}</div>
-                  <div className="text-gray-400 group-hover:text-purple-100 text-xs">Opened</div>
+                  <div className="text-xl font-bold text-green-400 group-hover:text-green-300 mb-1">{c.connections || 0}</div>
+                  <div className="text-gray-400 group-hover:text-purple-100 text-xs">Connected</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-white group-hover:text-white mb-1">{c.replied}</div>
+                  <div className="text-xl font-bold text-blue-400 group-hover:text-blue-300 mb-1">{c.replied}</div>
                   <div className="text-gray-400 group-hover:text-purple-100 text-xs">Replied</div>
+                </div>
+                <div className="text-center">
+                  <div className={`text-xl font-bold mb-1 ${(c.failed || 0) > 0 ? 'text-red-400 group-hover:text-red-300' : 'text-gray-500'}`}>{c.failed || 0}</div>
+                  <div className="text-gray-400 group-hover:text-purple-100 text-xs">Failed</div>
                 </div>
               </div>
             )}

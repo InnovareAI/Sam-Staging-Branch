@@ -150,6 +150,7 @@ export async function GET(req: NextRequest) {
     // Build detailed count maps
     const connectedCountMap: Record<string, number> = {};
     const repliedCountMap: Record<string, number> = {};
+    const failedCountMap: Record<string, number> = {};
 
     allProspects?.forEach((p: { campaign_id: string; status: string; responded_at: string | null }) => {
       // Count sent (CR sent or beyond)
@@ -167,6 +168,12 @@ export async function GET(req: NextRequest) {
       if (p.responded_at || p.status === 'replied') {
         repliedCountMap[p.campaign_id] = (repliedCountMap[p.campaign_id] || 0) + 1;
       }
+
+      // Count failed (includes errors, already invited, rate limited, etc.)
+      const failedStatuses = ['failed', 'error', 'already_invited', 'invitation_declined', 'rate_limited', 'rate_limited_cr', 'rate_limited_message', 'bounced'];
+      if (failedStatuses.includes(p.status)) {
+        failedCountMap[p.campaign_id] = (failedCountMap[p.campaign_id] || 0) + 1;
+      }
     });
 
     // Transform campaigns with counts
@@ -175,6 +182,7 @@ export async function GET(req: NextRequest) {
       const sent = sentCountMap[campaign.id] || 0;
       const connections = connectedCountMap[campaign.id] || 0;
       const replied = repliedCountMap[campaign.id] || 0;
+      const failed = failedCountMap[campaign.id] || 0;
       const responseRate = sent > 0 ? Math.round((replied / sent) * 100) : 0;
 
       return {
@@ -186,6 +194,7 @@ export async function GET(req: NextRequest) {
         replied: replied,
         connections: connections,
         replies: replied,
+        failed: failed,
         response_rate: responseRate
       };
     });

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@/app/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,14 @@ export async function GET(request: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify user is authenticated
+    const authSupabase = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await authSupabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { searchParams } = new URL(request.url);
     const monitorId = searchParams.get('monitor_id');
@@ -21,8 +29,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'monitor_id is required' }, { status: 400 });
     }
 
+    // Get monitor to verify workspace access
+    const { data: monitor } = await adminClient
+      .from('linkedin_post_monitors')
+      .select('workspace_id')
+      .eq('id', monitorId)
+      .single();
+
+    if (!monitor) {
+      return NextResponse.json({ error: 'Monitor not found' }, { status: 404 });
+    }
+
+    // Verify user has access to this workspace
+    const { data: member } = await adminClient
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', monitor.workspace_id)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
     // Get posts for this monitor
-    const { data: posts, error: postsError } = await supabase
+    const { data: posts, error: postsError } = await adminClient
       .from('linkedin_posts_discovered')
       .select('*')
       .eq('monitor_id', monitorId)
@@ -40,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     // Get comments for these posts
     const postIds = posts.map(p => p.id);
-    const { data: comments, error: commentsError } = await supabase
+    const { data: comments, error: commentsError } = await adminClient
       .from('linkedin_post_comments')
       .select('*')
       .in('post_id', postIds);
