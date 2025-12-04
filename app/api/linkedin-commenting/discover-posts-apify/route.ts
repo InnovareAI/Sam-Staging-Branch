@@ -270,26 +270,38 @@ export async function POST(request: NextRequest) {
     let totalDiscovered = 0;
     const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN;
 
-    // DAILY LIMIT: Max 25 Apify requests per workspace per day (across ALL monitor types)
+    // DAILY LIMIT: Max 25 Apify API calls per workspace per day (across ALL monitor types)
+    // Each API call = 1 post returned. 25 calls × $0.005/result = $0.125/day max per workspace
+    // Rate limiting is enforced by increment_apify_call_counter() function in database
     const MAX_APIFY_REQUESTS_PER_DAY = 25;
     const today = new Date().toISOString().split('T')[0];
 
-    // Get today's discovery count per workspace
-    const workspaceIdsAll = [...new Set(monitors.map(m => m.workspace_id))];
-    const { data: todaysCounts } = await supabase
-      .from('linkedin_posts_discovered')
-      .select('workspace_id')
-      .in('workspace_id', workspaceIdsAll)
-      .gte('created_at', `${today}T00:00:00Z`);
+    // Helper function to check and increment Apify call counter
+    // Returns true if allowed to make API call, false if limit reached
+    const canMakeApifyCall = async (workspaceId: string): Promise<boolean> => {
+      const { data, error } = await supabase.rpc('increment_apify_call_counter', {
+        p_workspace_id: workspaceId
+      });
+      if (error) {
+        console.error(`❌ Error checking rate limit for ${workspaceId}:`, error);
+        // On error, be conservative and block
+        return false;
+      }
+      return data === true;
+    };
 
-    // Count posts discovered today per workspace
+    // Track API calls made per workspace (for logging, actual limit in DB)
     const workspacePostsToday = new Map<string, number>();
-    (todaysCounts || []).forEach((row: any) => {
-      const count = workspacePostsToday.get(row.workspace_id) || 0;
-      workspacePostsToday.set(row.workspace_id, count + 1);
-    });
 
-    console.log(`📊 Posts discovered today per workspace:`, Object.fromEntries(workspacePostsToday));
+    // Get remaining calls for logging
+    const workspaceIdsAll = [...new Set(monitors.map(m => m.workspace_id))];
+    for (const wsId of workspaceIdsAll) {
+      const { data } = await supabase.rpc('get_remaining_apify_calls', { p_workspace_id: wsId });
+      // Store used count (25 - remaining)
+      workspacePostsToday.set(wsId, MAX_APIFY_REQUESTS_PER_DAY - (data || 0));
+    }
+
+    console.log(`📊 Apify calls used today per workspace:`, Object.fromEntries(workspacePostsToday));
 
     // Debug: Log hashtag monitors configuration
     const hashtagsBeingSearched = hashtagMonitors.map(m => ({
@@ -338,12 +350,16 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // UNIFIED DAILY LIMIT: 25 posts per workspace per day (across all monitor types)
-        const currentDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
-        if (currentDailyCount >= MAX_APIFY_REQUESTS_PER_DAY) {
+        // UNIFIED DAILY LIMIT: 25 API calls per workspace per day (across all monitor types)
+        // Check and increment counter atomically using database function
+        const canProceed = await canMakeApifyCall(monitor.workspace_id);
+        if (!canProceed) {
+          const currentDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
           console.log(`⏸️ Workspace ${monitor.workspace_id} hit daily Apify limit (${currentDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY})`);
           continue;
         }
+        // Increment local counter for logging
+        workspacePostsToday.set(monitor.workspace_id, (workspacePostsToday.get(monitor.workspace_id) || 0) + 1);
 
         const settings = settingsMap.get(monitor.workspace_id) || {
           profile_scrape_interval_days: 1
@@ -718,17 +734,21 @@ export async function POST(request: NextRequest) {
     // Process hashtag monitors
     for (const monitor of hashtagMonitors) {
       try {
-        // UNIFIED DAILY LIMIT: 25 posts per workspace per day (across all monitor types)
-        const currentDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
-        if (currentDailyCount >= MAX_APIFY_REQUESTS_PER_DAY) {
+        // UNIFIED DAILY LIMIT: 25 API calls per workspace per day (across all monitor types)
+        const canProceedHashtag = await canMakeApifyCall(monitor.workspace_id);
+        if (!canProceedHashtag) {
+          const currentDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
           console.log(`⏸️ Workspace ${monitor.workspace_id} hit daily Apify limit (${currentDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY}), skipping hashtag monitors`);
           continue;
         }
+        // Increment local counter for logging
+        workspacePostsToday.set(monitor.workspace_id, (workspacePostsToday.get(monitor.workspace_id) || 0) + 1);
 
         const hashtagEntry = monitor.hashtags.find((h: string) => h.startsWith('HASHTAG:'));
         if (!hashtagEntry) continue;
 
         const keyword = hashtagEntry.replace('HASHTAG:', '').trim();
+        const currentDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
         console.log(`\n#️⃣ Searching hashtag: ${keyword} (workspace daily: ${currentDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY})`);
 
         // Start Apify actor run for hashtag search
@@ -737,10 +757,10 @@ export async function POST(request: NextRequest) {
         // Use waitForFinish to avoid polling (Netlify timeouts)
         const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}&waitForFinish=120`;
 
-        // IMPORTANT: This Apify actor charges per result
-        // 3 posts per hashtag × 6 hashtags = 18 posts max per search cycle
-        // Daily limit of 20 posts enforced at workspace level
-        const POSTS_PER_HASHTAG = 3;
+        // IMPORTANT: This Apify actor charges per result ($5 / 1,000 results)
+        // Rate limit: 25 searches per workspace per day, 1 search = 1 post
+        // Daily limit of 25 Apify API calls enforced at workspace level
+        const POSTS_PER_HASHTAG = 1;
 
         const startResponse = await fetch(startRunUrl, {
           method: 'POST',
@@ -1054,28 +1074,25 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // UNIFIED DAILY LIMIT: 25 posts per workspace per day (across all monitor types)
-        const currentDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
-        if (currentDailyCount >= MAX_APIFY_REQUESTS_PER_DAY) {
-          console.log(`⏸️ Workspace ${monitor.workspace_id} hit daily Apify limit (${currentDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY}), skipping company monitors`);
-          continue;
-        }
-
         // Get all company entries from this monitor
         const companyEntries = monitor.hashtags.filter((h: string) => h.startsWith('COMPANY:'));
 
         for (const companyEntry of companyEntries) {
           if (companiesScrapedThisRun >= MAX_COMPANIES_PER_RUN) break;
 
-          // Re-check daily limit inside inner loop
-          const innerDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
-          if (innerDailyCount >= MAX_APIFY_REQUESTS_PER_DAY) {
-            console.log(`⏸️ Workspace daily limit reached during company scraping`);
+          // UNIFIED DAILY LIMIT: 25 API calls per workspace per day (across all monitor types)
+          const canProceedCompany = await canMakeApifyCall(monitor.workspace_id);
+          if (!canProceedCompany) {
+            const innerDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
+            console.log(`⏸️ Workspace ${monitor.workspace_id} hit daily Apify limit (${innerDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY}), skipping company`);
             break;
           }
+          // Increment local counter for logging
+          workspacePostsToday.set(monitor.workspace_id, (workspacePostsToday.get(monitor.workspace_id) || 0) + 1);
 
           const companySlug = companyEntry.replace('COMPANY:', '').trim();
-          console.log(`\n🏢 Scraping company: ${companySlug} (workspace daily: ${innerDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY})`);
+          const companyDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
+          console.log(`\n🏢 Scraping company: ${companySlug} (workspace daily: ${companyDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY})`);
 
           // Start Apify actor run for company posts
           console.log(`📡 Starting Apify company posts actor for ${companySlug}...`);

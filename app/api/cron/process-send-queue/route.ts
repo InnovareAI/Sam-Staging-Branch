@@ -133,8 +133,30 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(error.title || error.message || `HTTP ${response.status}`);
+    const errorBody = await response.text().catch(() => '');
+    let error: any = { message: 'Unknown error' };
+    try {
+      error = JSON.parse(errorBody);
+    } catch {
+      error = { message: errorBody || `HTTP ${response.status}` };
+    }
+
+    // Log full error for debugging (helps diagnose "Unknown error" failures)
+    console.error(`🔴 Unipile API Error [${response.status}] ${endpoint}:`, {
+      status: response.status,
+      title: error.title,
+      message: error.message,
+      type: error.type,
+      detail: error.detail,
+      fullBody: errorBody.substring(0, 500)
+    });
+
+    // Include type in error for better status handling
+    const errorMsg = error.title || error.message || `HTTP ${response.status}`;
+    const err = new Error(errorMsg);
+    (err as any).type = error.type;
+    (err as any).status = response.status;
+    throw err;
   }
 
   return response.json();
@@ -179,6 +201,37 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+/**
+ * Log activity to database for auditing and debugging
+ */
+async function logActivity(
+  actionType: string,
+  actionStatus: 'success' | 'failed' | 'skipped',
+  details: Record<string, any>,
+  options?: {
+    workspaceId?: string;
+    campaignId?: string;
+    prospectId?: string;
+    errorMessage?: string;
+    durationMs?: number;
+  }
+) {
+  try {
+    await supabase.from('system_activity_log').insert({
+      workspace_id: options?.workspaceId || null,
+      campaign_id: options?.campaignId || null,
+      prospect_id: options?.prospectId || null,
+      action_type: actionType,
+      action_status: actionStatus,
+      details,
+      error_message: options?.errorMessage || null,
+      duration_ms: options?.durationMs || null,
+    });
+  } catch (logError) {
+    console.error('Failed to log activity:', logError);
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -584,6 +637,18 @@ export async function POST(req: NextRequest) {
 
       console.log(`📊 Remaining in queue: ${remainingCount}`);
 
+      // Log success to database
+      await logActivity('queue_send', 'success', {
+        prospect_name: `${prospect.first_name} ${prospect.last_name}`,
+        linkedin_url: prospect.linkedin_url,
+        message_type: messageType,
+        remaining_in_queue: remainingCount,
+      }, {
+        workspaceId: campaign.workspace_id,
+        campaignId: queueItem.campaign_id,
+        prospectId: prospect.id,
+      });
+
       return NextResponse.json({
         success: true,
         processed: 1,
@@ -639,6 +704,21 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString()
         })
         .eq('id', prospect.id);
+
+      // Log to database for auditing
+      await logActivity('queue_send', 'failed', {
+        prospect_name: `${prospect.first_name} ${prospect.last_name}`,
+        linkedin_url: prospect.linkedin_url,
+        queue_status: queueStatus,
+        prospect_status: prospectStatus,
+        error_type: (sendError as any).type || 'unknown',
+        api_status: (sendError as any).status || null,
+      }, {
+        workspaceId: campaign.workspace_id,
+        campaignId: queueItem.campaign_id,
+        prospectId: prospect.id,
+        errorMessage,
+      });
 
       return NextResponse.json({
         success: false,

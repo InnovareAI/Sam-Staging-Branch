@@ -95,6 +95,11 @@ interface Settings {
   block_generic_motivation: boolean;
   block_self_promotion: boolean;
   custom_blocked_keywords: string[];
+
+  // Section 13: Email Digest
+  digest_email: string;
+  digest_enabled: boolean;
+  digest_timezone: string;
 }
 
 const defaultSettings: Settings = {
@@ -160,6 +165,11 @@ const defaultSettings: Settings = {
   block_generic_motivation: false,
   block_self_promotion: false,
   custom_blocked_keywords: [],
+
+  // Section 13: Email Digest
+  digest_email: '',
+  digest_enabled: false,
+  digest_timezone: 'America/New_York',
 };
 
 const frameworkDescriptions: Record<string, string> = {
@@ -188,6 +198,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     scheduling: false,
     automation: false,
     blocklist: false,
+    digest: false,
     advanced: false,
   });
 
@@ -277,6 +288,10 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
           block_generic_motivation: data.block_generic_motivation ?? defaultSettings.block_generic_motivation,
           block_self_promotion: data.block_self_promotion ?? defaultSettings.block_self_promotion,
           custom_blocked_keywords: data.custom_blocked_keywords || [],
+          // Section 13: Email Digest
+          digest_email: data.digest_email || '',
+          digest_enabled: data.digest_enabled ?? false,
+          digest_timezone: data.digest_timezone || defaultSettings.digest_timezone,
         });
       }
     } catch (error) {
@@ -363,6 +378,10 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
         block_generic_motivation: settings.block_generic_motivation,
         block_self_promotion: settings.block_self_promotion,
         custom_blocked_keywords: settings.custom_blocked_keywords.length > 0 ? settings.custom_blocked_keywords : null,
+        // Section 13: Email Digest
+        digest_email: settings.digest_email || null,
+        digest_enabled: settings.digest_enabled,
+        digest_timezone: settings.digest_timezone,
         is_active: true,
         updated_at: new Date().toISOString(),
       };
@@ -1481,7 +1500,69 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
         )}
       </div>
 
-      {/* Section 13: Advanced */}
+      {/* Section 13: Email Digest */}
+      <div className="border border-gray-600 rounded-lg overflow-hidden">
+        <SectionHeader title="Email Digest" section="digest" description="Daily email with pending comments for approval" />
+        {expandedSections.digest && (
+          <div className="p-4 bg-gray-800 space-y-5">
+            <div className="p-3 bg-pink-900/20 border border-pink-700/50 rounded-lg mb-4">
+              <p className="text-pink-200 text-xs">Receive a daily email with AI-generated comments waiting for your approval. Click Approve or Reject directly from your inbox.</p>
+            </div>
+
+            <Toggle
+              checked={settings.digest_enabled}
+              onChange={(v) => setSettings({ ...settings, digest_enabled: v })}
+              label="Enable Email Digest"
+              description="Receive daily email with pending comments"
+            />
+
+            {settings.digest_enabled && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+                  <input
+                    type="email"
+                    value={settings.digest_email}
+                    onChange={(e) => setSettings({ ...settings, digest_email: e.target.value })}
+                    placeholder="your@email.com"
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Where to send the daily digest</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Digest Timezone</label>
+                  <select
+                    value={settings.digest_timezone}
+                    onChange={(e) => setSettings({ ...settings, digest_timezone: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  >
+                    <optgroup label="Americas">
+                      <option value="America/New_York">Eastern Time (ET)</option>
+                      <option value="America/Chicago">Central Time (CT)</option>
+                      <option value="America/Denver">Mountain Time (MT)</option>
+                      <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                    </optgroup>
+                    <optgroup label="Europe">
+                      <option value="Europe/London">London (GMT/BST)</option>
+                      <option value="Europe/Berlin">Berlin (CET)</option>
+                      <option value="Europe/Paris">Paris (CET)</option>
+                    </optgroup>
+                    <optgroup label="Asia-Pacific">
+                      <option value="Australia/Sydney">Sydney (AEST)</option>
+                      <option value="Asia/Tokyo">Tokyo (JST)</option>
+                      <option value="Asia/Singapore">Singapore (SGT)</option>
+                    </optgroup>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Digest is sent at 8:00 AM in your timezone</p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Section 14: Advanced */}
       <div className="border border-gray-600 rounded-lg overflow-hidden">
         <SectionHeader title="Advanced" section="advanced" description="System prompt override (experts only)" />
         {expandedSections.advanced && (
