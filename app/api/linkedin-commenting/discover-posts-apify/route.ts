@@ -177,7 +177,7 @@ function isEngagementBait(postContent: string): { isBait: boolean; matchedPatter
 async function resolveCorrectUrn(
   activityUrn: string,
   unipileAccountId: string
-): Promise<{ socialId: string; authorName?: string; authorHeadline?: string } | null> {
+): Promise<{ socialId: string; authorName?: string; authorHeadline?: string; postContent?: string } | null> {
   try {
     // Query Unipile with the activity URN to get the actual post details
     const response = await fetch(
@@ -201,10 +201,13 @@ async function resolveCorrectUrn(
     // Unipile returns the correct social_id (usually ugcPost format)
     if (data.social_id) {
       console.log(`✅ Resolved URN: ${activityUrn} → ${data.social_id}`);
+      // Extract post content - Unipile uses 'text' or 'body' fields
+      const postContent = data.text || data.body || data.content || '';
       return {
         socialId: data.social_id,
         authorName: data.author?.name,
-        authorHeadline: data.author?.headline
+        authorHeadline: data.author?.headline,
+        postContent: postContent
       };
     }
 
@@ -733,8 +736,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Process hashtag monitors
-    for (const monitor of hashtagMonitors) {
+    // Process hashtag monitors - ONE AT A TIME (round-robin by last_scraped_at)
+    // This prevents Netlify timeout (60s) since the Apify actor can take 8+ minutes for all hashtags
+    // Sort by last_scraped_at (oldest first) to ensure fair rotation
+    const sortedHashtagMonitors = [...hashtagMonitors].sort((a, b) => {
+      const aTime = a.last_scraped_at ? new Date(a.last_scraped_at).getTime() : 0;
+      const bTime = b.last_scraped_at ? new Date(b.last_scraped_at).getTime() : 0;
+      return aTime - bTime; // Oldest first
+    });
+
+    // Only process ONE hashtag monitor per cron run
+    const hashtagMonitorToProcess = sortedHashtagMonitors[0];
+    const hashtagMonitorsToProcess = hashtagMonitorToProcess ? [hashtagMonitorToProcess] : [];
+
+    console.log(`#️⃣ Processing 1 of ${hashtagMonitors.length} hashtag monitors (round-robin by last_scraped_at)`);
+    if (hashtagMonitorToProcess) {
+      const hashtagEntry = hashtagMonitorToProcess.hashtags?.find((h: string) => h.startsWith('HASHTAG:'));
+      console.log(`   Selected: ${hashtagEntry?.replace('HASHTAG:', '')} (last scraped: ${hashtagMonitorToProcess.last_scraped_at || 'never'})`);
+    }
+
+    for (const monitor of hashtagMonitorsToProcess) {
       try {
         // UNIFIED DAILY LIMIT: 25 API calls per workspace per day (across all monitor types)
         const canProceedHashtag = await canMakeApifyCall(monitor.workspace_id);
@@ -751,60 +772,181 @@ export async function POST(request: NextRequest) {
 
         const keyword = hashtagEntry.replace('HASHTAG:', '').trim();
         const currentDailyCount = workspacePostsToday.get(monitor.workspace_id) || 0;
-        console.log(`\n#️⃣ Searching hashtag: ${keyword} (workspace daily: ${currentDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY})`);
+        console.log(`\n#️⃣ Processing hashtag: ${keyword} (workspace daily: ${currentDailyCount}/${MAX_APIFY_REQUESTS_PER_DAY})`);
 
-        // Start Apify actor run for hashtag search
-        console.log(`📡 Starting Apify hashtag search actor for #${keyword}...`);
+        // ASYNC POLLING APPROACH:
+        // 1. Check for completed runs from previous cron invocations
+        // 2. If no completed run found, start a new one (don't wait)
+        // 3. Process any completed results
 
-        // Use waitForFinish to avoid polling (Netlify timeouts)
-        const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}&waitForFinish=120`;
-
-        // IMPORTANT: This Apify actor charges per result ($5 / 1,000 results)
-        // Rate limit: 25 searches per workspace per day
-        // Daily limit of 25 Apify API calls enforced at workspace level
-        // Request 10 posts, expect ~4 after filters (hiring, bait, author cooldown)
+        const hashtagWithPrefix = keyword.startsWith('#') ? keyword : `#${keyword}`;
         const POSTS_PER_HASHTAG = 10;
 
-        const startResponse = await fetch(startRunUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            keyword: keyword,
-            // Try multiple parameter names - Apify actors vary
-            maxResults: POSTS_PER_HASHTAG,
-            resultsLimit: POSTS_PER_HASHTAG,
-            limit: POSTS_PER_HASHTAG,
-            maxPosts: POSTS_PER_HASHTAG
-            // Note: We filter by age (7 days) in our code, not at Apify level
-          })
-        });
+        // Step 1: Check for recent runs (SUCCEEDED or ABORTED with data) for this actor (last 2 hours)
+        // Note: ABORTED runs can still have partial data we can use
+        console.log(`🔍 Checking for completed Apify runs for #${keyword}...`);
+        const runsListUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}&limit=10`;
 
-        if (!startResponse.ok) {
-          console.error(`❌ Failed to start Apify hashtag actor: ${startResponse.status}`);
-          const errorText = await startResponse.text();
-          console.error(`   Error: ${errorText}`);
-          continue;
+        let datasetId: string | null = null;
+        let runId: string | null = null;
+
+        try {
+          const runsResponse = await fetch(runsListUrl);
+          if (runsResponse.ok) {
+            const runsData = await runsResponse.json();
+            const recentRuns = runsData.data?.items || [];
+
+            // Find a run that matches our hashtag (SUCCEEDED or ABORTED with data)
+            for (const run of recentRuns) {
+              // Skip RUNNING runs - they're not ready yet
+              if (run.status === 'RUNNING' || run.status === 'READY') continue;
+
+              // Check if this run was for our hashtag (within last 2 hours)
+              const runAge = Date.now() - new Date(run.startedAt).getTime();
+              const twoHoursMs = 2 * 60 * 60 * 1000;
+
+              if (runAge < twoHoursMs && (run.status === 'SUCCEEDED' || run.status === 'ABORTED')) {
+                // Fetch the run's input to check which hashtag it was for
+                const inputUrl = `https://api.apify.com/v2/key-value-stores/${run.defaultKeyValueStoreId}/records/INPUT?token=${APIFY_API_TOKEN}`;
+                const inputResponse = await fetch(inputUrl);
+
+                if (inputResponse.ok) {
+                  const inputData = await inputResponse.json();
+                  // Handle all input formats: {hashtags: ["#foo"]}, {hashtag: "#foo"}, {keyword: "foo"}
+                  // Normalize by stripping # prefix and lowercasing for comparison
+                  const normalizeHashtag = (h: string) => h.replace(/^#/, '').toLowerCase();
+                  const keywordNormalized = normalizeHashtag(keyword);
+
+                  let runHashtags: string[] = [];
+                  if (inputData.hashtags && Array.isArray(inputData.hashtags)) {
+                    runHashtags = inputData.hashtags;
+                  } else if (inputData.hashtag) {
+                    runHashtags = [inputData.hashtag];
+                  } else if (inputData.keyword) {
+                    runHashtags = [inputData.keyword];
+                  }
+
+                  const runHashtagsNormalized = runHashtags.map(normalizeHashtag);
+
+                  if (runHashtagsNormalized.includes(keywordNormalized)) {
+                    // CRITICAL FIX (Dec 4): Check if dataset has items before using
+                    // SUCCEEDED runs can have 0 items, while ABORTED runs may have partial data
+                    const datasetInfoUrl = `https://api.apify.com/v2/datasets/${run.defaultDatasetId}?token=${APIFY_API_TOKEN}`;
+                    const datasetInfoResponse = await fetch(datasetInfoUrl);
+                    if (datasetInfoResponse.ok) {
+                      const datasetInfo = await datasetInfoResponse.json();
+                      const itemCount = datasetInfo.data?.itemCount || 0;
+                      if (itemCount === 0) {
+                        console.log(`⚠️ Run ${run.id} (${run.status}) has 0 items, checking next run...`);
+                        continue; // Skip runs with no items
+                      }
+                      console.log(`✅ Found run ${run.id} (${run.status}) for #${keyword} with ${itemCount} items (${Math.round(runAge / 60000)} min ago)`);
+                    } else {
+                      console.log(`✅ Found completed run ${run.id} for #${keyword} from ${Math.round(runAge / 60000)} minutes ago`);
+                    }
+                    datasetId = run.defaultDatasetId;
+                    runId = run.id;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`⚠️ Error checking existing runs:`, error);
         }
 
-        const runData = await startResponse.json();
-        const runId = runData.data?.id;
-        const defaultDatasetId = runData.data?.defaultDatasetId;
-        const runStatus = runData.data?.status;
+        // Step 2: Check if there's already a RUNNING run for this hashtag (avoid duplicates)
+        let runAlreadyInProgress = false;
+        if (!datasetId) {
+          try {
+            const runningUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}&status=RUNNING&limit=5`;
+            const runningResponse = await fetch(runningUrl);
+            if (runningResponse.ok) {
+              const runningData = await runningResponse.json();
+              for (const run of runningData.data?.items || []) {
+                const inputUrl = `https://api.apify.com/v2/key-value-stores/${run.defaultKeyValueStoreId}/records/INPUT?token=${APIFY_API_TOKEN}`;
+                const inputResponse = await fetch(inputUrl);
+                if (inputResponse.ok) {
+                  const inputData = await inputResponse.json();
+                  // Handle all input formats with normalization
+                  const normalizeHashtag = (h: string) => h.replace(/^#/, '').toLowerCase();
+                  const keywordNormalized = normalizeHashtag(keyword);
 
-        console.log(`📊 Apify run ${runId}: status=${runStatus}, dataset=${defaultDatasetId}`);
+                  let runHashtags: string[] = [];
+                  if (inputData.hashtags && Array.isArray(inputData.hashtags)) {
+                    runHashtags = inputData.hashtags;
+                  } else if (inputData.hashtag) {
+                    runHashtags = [inputData.hashtag];
+                  } else if (inputData.keyword) {
+                    runHashtags = [inputData.keyword];
+                  }
 
-        // With waitForFinish, the run should already be complete
-        if (runStatus !== 'SUCCEEDED') {
-          console.error(`❌ Hashtag search run did not succeed: ${runStatus}`);
-          continue;
+                  const runHashtagsNormalized = runHashtags.map(normalizeHashtag);
+                  if (runHashtagsNormalized.includes(keywordNormalized)) {
+                    console.log(`⏳ Run already in progress for #${keyword} (run ${run.id}). Skipping to avoid duplicate costs.`);
+                    runAlreadyInProgress = true;
+                    break;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(`⚠️ Error checking running jobs:`, e);
+          }
+
+          if (runAlreadyInProgress) {
+            // Update last_scraped_at anyway to rotate to next hashtag
+            await supabase
+              .from('linkedin_post_monitors')
+              .update({ last_scraped_at: new Date().toISOString() })
+              .eq('id', monitor.id);
+            continue; // Skip this monitor
+          }
+
+          console.log(`📡 No completed/running run found. Starting new Apify run for #${keyword}...`);
+
+          // Start WITHOUT waitForFinish - returns immediately
+          const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}`;
+
+          // Actor parameters: hashtag (singular string), maxPages (limits Google pages searched)
+          // The actor searches Google for "site:linkedin.com #hashtag" so more pages = more results
+          const startResponse = await fetch(startRunUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              hashtag: hashtagWithPrefix, // Use singular hashtag parameter
+              maxPages: 2 // Limit to 2 Google pages (~20 results) to save credits
+            })
+          });
+
+          if (!startResponse.ok) {
+            console.error(`❌ Failed to start Apify hashtag actor: ${startResponse.status}`);
+            const errorText = await startResponse.text();
+            console.error(`   Error: ${errorText}`);
+            continue;
+          }
+
+          const runData = await startResponse.json();
+          runId = runData.data?.id;
+          const runStatus = runData.data?.status;
+
+          console.log(`🚀 Started Apify run ${runId} (status: ${runStatus})`);
+          console.log(`   Results will be available on next cron run (~5-10 minutes)`);
+
+          // Update last_scraped_at to mark this monitor as recently processed
+          await supabase
+            .from('linkedin_post_monitors')
+            .update({ last_scraped_at: new Date().toISOString() })
+            .eq('id', monitor.id);
+
+          continue; // Move to next monitor, results will be fetched on next cron run
         }
 
-        console.log(`✅ Hashtag search completed successfully`);
+        console.log(`📦 Fetching results from dataset ${datasetId}...`);
 
         // Get dataset items
-        const datasetUrl = `https://api.apify.com/v2/datasets/${defaultDatasetId}/items?token=${APIFY_API_TOKEN}`;
+        const datasetUrl = `https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_TOKEN}`;
         const dataResponse = await fetch(datasetUrl);
 
         if (!dataResponse.ok) {
@@ -818,11 +960,24 @@ export async function POST(request: NextRequest) {
         console.log(`📦 Raw Apify hashtag response:`, JSON.stringify(data).substring(0, 500));
 
         // Hashtag search actor returns array of posts
-        // SAFETY: Slice to our limit even if Apify returns more (they charge per result!)
+        // Actor returns: {author_name, hashtag, post_url}
+        // CRITICAL: Filter by our target hashtag - runs may contain mixed results from multiple hashtags
         const rawPosts = Array.isArray(data) ? data : [];
-        const posts = rawPosts.slice(0, POSTS_PER_HASHTAG);
+        const normalizeHashtag = (h: string) => h.replace(/^#/, '').toLowerCase();
+        const keywordNormalized = normalizeHashtag(keyword);
 
-        console.log(`📦 Apify hashtag search returned ${rawPosts.length} posts, using first ${posts.length}`);
+        // Filter posts to only those matching our target hashtag
+        const matchingPosts = rawPosts.filter((p: any) => {
+          const postHashtag = p.hashtag ? normalizeHashtag(p.hashtag) : '';
+          return postHashtag === keywordNormalized;
+        });
+
+        console.log(`📦 Apify returned ${rawPosts.length} total, ${matchingPosts.length} match #${keyword}`);
+
+        // SAFETY: Slice to our limit even if Apify returns more (they charge per result!)
+        const posts = matchingPosts.slice(0, POSTS_PER_HASHTAG);
+
+        console.log(`📦 Using ${posts.length} posts for #${keyword}`);
 
         if (!posts || posts.length === 0) {
           console.log(`⚠️ No posts found for hashtag #${keyword}`);
@@ -858,12 +1013,27 @@ export async function POST(request: NextRequest) {
         console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeDays} days (filtered ${posts.length - recentPosts.length})`);
 
         // Check which posts already exist
-        // Note: Apify hashtag actor uses: post_url, full_urn, activity_id
-        const existingUrls = recentPosts.map((p: any) => p.post_url || p.url || p.postUrl).filter(Boolean);
+        // Actor HTdyczuehykuGguHO returns: {author_name, hashtag, post_url}
+        // Extract activity ID from post_url: https://www.linkedin.com/posts/username_hashtag-activity-7402050035590623232-xxxx
+        const extractActivityId = (url: string): string | null => {
+          const match = url?.match(/-activity-(\d+)/);
+          return match ? match[1] : null;
+        };
 
-        // Extract original social_ids for duplicate checking (preserve format)
+        const extractAuthorVanity = (url: string): string | null => {
+          // URL format: /posts/username_hashtag-activity-... OR /posts/username-hashtag-activity-...
+          const match = url?.match(/\/posts\/([^_-]+)/);
+          return match ? match[1] : null;
+        };
+
+        const existingUrls = recentPosts.map((p: any) => p.post_url).filter(Boolean);
+
+        // Extract activity IDs from URLs for duplicate checking
         const existingSocialIds = recentPosts
-          .map((p: any) => p.full_urn || p.urn || p.postUrn || p.activity_id || p.id)
+          .map((p: any) => {
+            const activityId = extractActivityId(p.post_url);
+            return activityId ? `urn:li:activity:${activityId}` : null;
+          })
           .filter(Boolean);
 
         const { data: existingPosts } = await supabase
@@ -882,15 +1052,13 @@ export async function POST(request: NextRequest) {
         );
 
         const newPostsRaw = recentPosts.filter((p: any) => {
-          const url = p.post_url || p.url || p.postUrl;
+          const url = p.post_url;
+          if (!url) return false; // Skip posts without URL
           if (existingUrlSet.has(url)) return false;
 
-          // Compare using numeric ID (handles any URN format variation)
-          const socialId = p.full_urn || p.urn || p.postUrn || p.activity_id || p.id;
-          if (!socialId) return true; // No social_id, assume new
-
-          const numericMatch = String(socialId).match(/(\d{16,20})/);
-          if (numericMatch && existingDbNumericIds.has(numericMatch[1])) {
+          // Extract activity ID from URL and compare
+          const activityId = extractActivityId(url);
+          if (activityId && existingDbNumericIds.has(activityId)) {
             return false; // Numeric ID already exists
           }
 
@@ -920,8 +1088,9 @@ export async function POST(request: NextRequest) {
         console.log(`🔄 Hashtag: Authors with recent comments (10d cooldown): ${recentlyCommentedAuthors.size}`);
 
         const newPosts = newPostsRaw.filter((p: any) => {
-          const postContent = p.text || p.content || '';
-          const authorProfileId = p.authorProfileId || p.author?.username || p.author?.vanityName || p.author?.profile_id;
+          // Actor HTdyczuehykuGguHO only returns {author_name, hashtag, post_url}
+          // Extract author vanity from post_url for cooldown check
+          const authorProfileId = extractAuthorVanity(p.post_url);
 
           // Check author 10-day cooldown
           if (authorProfileId && recentlyCommentedAuthors.has(authorProfileId)) {
@@ -930,21 +1099,9 @@ export async function POST(request: NextRequest) {
             return false;
           }
 
-          // Check for hiring posts first
-          const hiringCheck = isHiringPost(postContent);
-          if (hiringCheck.isHiring) {
-            hiringSkipped++;
-            console.log(`💼 Skipping hiring hashtag post: "${hiringCheck.matchedPattern}" - ${postContent.substring(0, 80)}...`);
-            return false;
-          }
-
-          // Check for engagement bait
-          const baitCheck = isEngagementBait(postContent);
-          if (baitCheck.isBait) {
-            engagementBaitSkipped++;
-            console.log(`🚫 Skipping engagement bait hashtag post: "${baitCheck.matchedPattern}" - ${postContent.substring(0, 80)}...`);
-            return false;
-          }
+          // NOTE: Actor HTdyczuehykuGguHO only returns URLs, not post content
+          // Hiring and engagement bait filtering will happen during comment generation
+          // when we fetch the full post content via Unipile/resolveCorrectUrn
           return true;
         });
 
@@ -974,22 +1131,19 @@ export async function POST(request: NextRequest) {
 
           const unipileAccountId = linkedinAccount?.unipile_account_id;
 
-          // CRITICAL: Resolve correct URNs from Unipile before storing
-          // Apify returns activity URNs from URLs, but Unipile needs ugcPost URNs to post comments
-          // These have DIFFERENT numeric IDs!
+          // Actor HTdyczuehykuGguHO returns: {author_name, hashtag, post_url}
+          // Extract activity ID from URL and resolve via Unipile for correct URN + post content
           const postsToInsert = await Promise.all(newPosts.map(async (post: any) => {
-            // Hashtag actor returns: full_urn, activity_id
-            // Profile actor returns: urn.activity_urn, full_urn
-            let apifySocialId = post.full_urn || post.urn || post.postUrn || post.activity_id || post.id;
-
-            // Normalize to URN format if just a number
-            if (apifySocialId && /^\d+$/.test(String(apifySocialId))) {
-              apifySocialId = `urn:li:activity:${apifySocialId}`;
-            }
+            // Extract activity ID from post_url
+            const activityId = extractActivityId(post.post_url);
+            const authorVanity = extractAuthorVanity(post.post_url);
+            let apifySocialId = activityId ? `urn:li:activity:${activityId}` : null;
 
             // Resolve the correct URN from Unipile (activity → ugcPost)
+            // This also fetches post content, author details, and engagement metrics
             let finalSocialId = apifySocialId;
             let resolvedAuthor: { authorName?: string; authorHeadline?: string } = {};
+            let postContent = '';
 
             if (unipileAccountId && apifySocialId) {
               const resolved = await resolveCorrectUrn(apifySocialId, unipileAccountId);
@@ -999,29 +1153,27 @@ export async function POST(request: NextRequest) {
                   authorName: resolved.authorName,
                   authorHeadline: resolved.authorHeadline
                 };
+                // resolveCorrectUrn may return post content in the future
+                postContent = resolved.postContent || '';
               }
             }
 
             return {
               workspace_id: monitor.workspace_id,
               monitor_id: monitor.id,
-              social_id: finalSocialId,
-              // Hashtag actor: post_url, Profile actor: url
-              share_url: post.post_url || post.url || post.postUrl || `https://www.linkedin.com/feed/update/${apifySocialId}`,
-              post_content: post.text || post.content || '',
-              author_name: resolvedAuthor.authorName || post.authorName || post.author?.name || post.author?.first_name || 'Unknown',
-              author_profile_id: post.authorProfileId || post.author?.username || post.author?.vanityName || post.author?.profile_id || null,
-              author_title: resolvedAuthor.authorHeadline || post.authorTitle || post.author?.headline || null,
-              author_headline: resolvedAuthor.authorHeadline || post.authorHeadline || post.author?.headline || null,
+              social_id: finalSocialId || apifySocialId,
+              share_url: post.post_url,
+              post_content: postContent, // Will be empty until fetched via Unipile
+              author_name: resolvedAuthor.authorName || post.author_name || 'Unknown',
+              author_profile_id: authorVanity || null,
+              author_title: resolvedAuthor.authorHeadline || null,
+              author_headline: resolvedAuthor.authorHeadline || null,
               hashtags: [keyword],
-              post_date: post.postedAt || post.posted_at?.timestamp || post.posted_at?.date
-                ? new Date(post.postedAt || post.posted_at?.timestamp || post.posted_at?.date).toISOString()
-                : new Date().toISOString(),
+              post_date: new Date().toISOString(), // Actor doesn't provide date
               engagement_metrics: {
-                // Hashtag actor: stats.comments, stats.total_reactions, stats.shares
-                comments: post.numComments || post.stats?.comments || post.stats?.comments_count || 0,
-                reactions: post.numLikes || post.stats?.total_reactions || 0,
-                reposts: post.numReposts || post.stats?.shares || post.stats?.reposts_count || 0
+                comments: 0, // Actor doesn't provide engagement stats
+                reactions: 0,
+                reposts: 0
               },
               status: 'discovered'
             };
@@ -1060,6 +1212,13 @@ export async function POST(request: NextRequest) {
             }
           }
         }
+
+        // Update last_scraped_at for round-robin rotation
+        await supabase
+          .from('linkedin_post_monitors')
+          .update({ last_scraped_at: new Date().toISOString() })
+          .eq('id', monitor.id);
+        console.log(`📅 Updated last_scraped_at for monitor ${monitor.id}`);
 
       } catch (error) {
         console.error(`❌ Error processing hashtag monitor ${monitor.id}:`, error);
@@ -1370,15 +1529,19 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      monitorsProcessed: profileMonitors.length + hashtagMonitors.length + companyMonitors.length,
+      monitorsProcessed: profileMonitors.length + hashtagMonitorsToProcess.length + companyMonitors.length,
       profileMonitorsProcessed: profileMonitors.length,
-      hashtagMonitorsProcessed: hashtagMonitors.length,
+      hashtagMonitorsProcessed: hashtagMonitorsToProcess.length, // Only 1 per run (round-robin)
+      hashtagMonitorsTotal: hashtagMonitors.length, // Total available
       companyMonitorsProcessed: companyMonitors.length,
       postsDiscovered: totalDiscovered,
       debug: {
-        hashtagsSearched: hashtagsBeingSearched,
+        hashtagProcessedThisRun: hashtagMonitorToProcess ? {
+          id: hashtagMonitorToProcess.id,
+          hashtag: hashtagMonitorToProcess.hashtags?.find((h: string) => h.startsWith('HASHTAG:'))?.replace('HASHTAG:', '')
+        } : null,
         companiesScraped: companiesScrapedThisRun,
-        note: 'Check Netlify logs for detailed Apify response data'
+        note: 'Processing 1 hashtag per cron run (round-robin by last_scraped_at)'
       }
     });
 
