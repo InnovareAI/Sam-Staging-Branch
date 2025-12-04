@@ -115,6 +115,16 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
     // Validate and enrich data
     const validatedData = await validateAndEnrichProspects(prospects)
 
+    console.log('🔍 CSV Upload - Validation results:', {
+      total: prospects.length,
+      valid: validatedData.valid.length,
+      invalid: validatedData.invalid.length,
+      missingLinkedIn: validatedData.missing_linkedin_count,
+      sampleProspect: prospects[0],
+      sampleValid: validatedData.valid[0],
+      issues: validatedData.issues.slice(0, 3)
+    });
+
     // Generate batch_id for grouping this import
     const batchId = `csv_${Date.now()}_${userId.slice(0, 8)}`;
     console.log('📦 CSV Upload - Batch ID:', batchId);
@@ -235,6 +245,7 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
     }
 
     console.log(`✅ CSV Upload - Inserted: ${insertedCount}, Updated: ${duplicateCount}, Errors: ${insertErrors.length}`);
+    console.log('📝 CSV Upload - Insert errors:', insertErrors.slice(0, 5));
 
     // Count how many are actually new pending approvals
     const { count: newPendingCount } = await supabaseAdmin
@@ -543,7 +554,7 @@ function detectFieldMapping(headers: string[]) {
     }
   })
   
-  console.log('Field mapping:', mapping);
+  console.log('🗺️ CSV Upload - Field mapping detected:', JSON.stringify(mapping));
   return mapping
 }
 
