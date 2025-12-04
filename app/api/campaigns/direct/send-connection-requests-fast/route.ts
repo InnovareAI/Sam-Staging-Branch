@@ -263,30 +263,29 @@ export async function POST(req: NextRequest) {
       const companyName = prospect.company_name || prospect.company || '';
       const title = prospect.title || prospect.job_title || '';
 
+      // CRITICAL: Process double-brace {{var}} BEFORE single-brace {var}
+      // Otherwise {firstName} matches inside {{firstName}} leaving {value}
       const personalizedMessage = connectionMessage
-        // Standard {snake_case} format
+        // Double-brace patterns FIRST (most specific)
+        .replace(/\{\{firstName\}\}/g, firstName)
+        .replace(/\{\{lastName\}\}/g, lastName)
+        .replace(/\{\{companyName\}\}/g, companyName)
+        .replace(/\{\{company\}\}/gi, companyName)
+        .replace(/\{\{first_name\}\}/gi, firstName)
+        .replace(/\{\{last_name\}\}/gi, lastName)
+        .replace(/\{\{company_name\}\}/gi, companyName)
+        .replace(/\{\{title\}\}/gi, title)
+        // Single-brace patterns AFTER (less specific)
+        .replace(/\{firstName\}/g, firstName)
+        .replace(/\{lastName\}/g, lastName)
+        .replace(/\{companyName\}/g, companyName)
+        .replace(/\{jobTitle\}/g, title)
         .replace(/\{first_name\}/gi, firstName)
         .replace(/\{last_name\}/gi, lastName)
         .replace(/\{company_name\}/gi, companyName)
         .replace(/\{company\}/gi, companyName)
         .replace(/\{title\}/gi, title)
-        .replace(/\{job_title\}/gi, title)
-        // Also handle {{double_braces}} format some templates use
-        .replace(/\{\{first_name\}\}/gi, firstName)
-        .replace(/\{\{last_name\}\}/gi, lastName)
-        .replace(/\{\{company_name\}\}/gi, companyName)
-        .replace(/\{\{company\}\}/gi, companyName)
-        .replace(/\{\{title\}\}/gi, title)
-        // Also handle {camelCase} format
-        .replace(/\{firstName\}/g, firstName)
-        .replace(/\{lastName\}/g, lastName)
-        .replace(/\{companyName\}/g, companyName)
-        .replace(/\{jobTitle\}/g, title)
-        // CRITICAL: {{camelCase}} double braces (used by Charissa campaigns)
-        .replace(/\{\{firstName\}\}/g, firstName)
-        .replace(/\{\{lastName\}\}/g, lastName)
-        .replace(/\{\{companyName\}\}/g, companyName)
-        .replace(/\{\{company\}\}/g, companyName);
+        .replace(/\{job_title\}/gi, title);
 
       // Log if any variables weren't replaced (debugging)
       if (personalizedMessage.includes('{') && personalizedMessage.includes('}')) {

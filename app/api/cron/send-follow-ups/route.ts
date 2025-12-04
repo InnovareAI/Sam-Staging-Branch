@@ -380,28 +380,31 @@ export async function POST(req: NextRequest) {
         }
 
         // Personalize message - ALL formats (Dec 4 fix)
+        // CRITICAL: Process double-brace {{var}} BEFORE single-brace {var}
         const firstName = prospect.first_name || '';
         const lastName = prospect.last_name || '';
         const companyName = prospect.company_name || '';
         const title = prospect.title || '';
         const industry = prospect.industry || '';
         const personalizedMessage = messageTemplate
+          // Double-brace patterns FIRST
+          .replace(/\{\{firstName\}\}/g, firstName)
+          .replace(/\{\{lastName\}\}/g, lastName)
+          .replace(/\{\{companyName\}\}/g, companyName)
+          .replace(/\{\{company\}\}/gi, companyName)
+          .replace(/\{\{first_name\}\}/gi, firstName)
+          .replace(/\{\{last_name\}\}/gi, lastName)
+          .replace(/\{\{company_name\}\}/gi, companyName)
+          // Single-brace patterns AFTER
+          .replace(/\{firstName\}/g, firstName)
+          .replace(/\{lastName\}/g, lastName)
+          .replace(/\{companyName\}/g, companyName)
           .replace(/\{first_name\}/gi, firstName)
           .replace(/\{last_name\}/gi, lastName)
           .replace(/\{company_name\}/gi, companyName)
           .replace(/\{company\}/gi, companyName)
           .replace(/\{title\}/gi, title)
-          .replace(/\{industry\}/gi, industry)
-          .replace(/\{\{first_name\}\}/gi, firstName)
-          .replace(/\{\{last_name\}\}/gi, lastName)
-          .replace(/\{\{company_name\}\}/gi, companyName)
-          .replace(/\{\{company\}\}/gi, companyName)
-          .replace(/\{firstName\}/g, firstName)
-          .replace(/\{lastName\}/g, lastName)
-          .replace(/\{companyName\}/g, companyName)
-          .replace(/\{\{firstName\}\}/g, firstName)
-          .replace(/\{\{lastName\}\}/g, lastName)
-          .replace(/\{\{companyName\}\}/g, companyName);
+          .replace(/\{industry\}/gi, industry);
 
         console.log(`   Sending follow-up #${currentIndex + 1}: "${personalizedMessage.substring(0, 50)}..."`);
 
