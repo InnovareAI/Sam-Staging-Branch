@@ -127,11 +127,15 @@
 [functions."process-comment-queue"]
   schedule = "*/30 * * * *"
 
-# Daily Repost: Share high-engagement posts once per day at 10 AM PT (6 PM UTC)
-# Finds posts with 100+ likes or 20+ comments and creates a quote post with your comment
-# Limit: 1 repost per day per workspace
-[functions."daily-repost"]
-  schedule = "0 18 * * *"
+# Daily Repost: DISABLED - Does not repost full article content
+# Was: Share high-engagement posts once per day at 10 AM PT (6 PM UTC)
+# [functions."daily-repost"]
+#   schedule = "0 18 * * *"
+
+# Commenting Digest: Send daily email with pending comments for approval at 8 AM PT (4 PM UTC)
+# Users can approve/reject comments directly from email links
+[functions."commenting-digest"]
+  schedule = "0 16 * * *"
 
 # ============================================
 # CRM BI-DIRECTIONAL SYNC (Dec 2, 2025)
@@ -148,7 +152,8 @@
 # ============================================
 
 # Real-time Error Monitor: Check for critical campaign errors every 5 minutes
+# DISABLED - Too noisy, sending false alerts for auto-cleaned stale items
 # Detects: failed sends, stuck queue, stuck prospects, cron gaps, queue anomalies
 # Alerts to Google Chat immediately on critical issues
-[functions."realtime-error-monitor"]
-  schedule = "*/5 * * * *"
+# [functions."realtime-error-monitor"]
+#   schedule = "*/5 * * * *"
