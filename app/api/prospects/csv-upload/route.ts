@@ -167,32 +167,74 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
       };
     });
 
-    // Insert with upsert to handle duplicates gracefully
+    // Insert prospects - use INSERT with conflict handling
     let insertedCount = 0;
+    let duplicateCount = 0;
     const insertErrors: string[] = [];
-    const BATCH_SIZE = 100;
+    const BATCH_SIZE = 50;
 
     console.log('💾 CSV Upload - Inserting into workspace_prospects:', workspaceProspectsData.length, 'records');
 
-    for (let i = 0; i < workspaceProspectsData.length; i += BATCH_SIZE) {
-      const batch = workspaceProspectsData.slice(i, i + BATCH_SIZE);
+    // Insert one by one to handle duplicates gracefully
+    for (const prospect of workspaceProspectsData) {
+      try {
+        // Skip if no linkedin_url_hash (can't dedupe without it)
+        if (!prospect.linkedin_url_hash) {
+          console.warn('⚠️ Skipping prospect without linkedin_url_hash:', prospect.first_name);
+          continue;
+        }
 
-      const { data: inserted, error: insertError } = await supabaseAdmin
-        .from('workspace_prospects')
-        .upsert(batch, {
-          onConflict: 'workspace_id,linkedin_url_hash',
-          ignoreDuplicates: false  // Update existing records
-        })
-        .select('id');
+        // Check if exists first
+        const { data: existing } = await supabaseAdmin
+          .from('workspace_prospects')
+          .select('id')
+          .eq('workspace_id', prospect.workspace_id)
+          .eq('linkedin_url_hash', prospect.linkedin_url_hash)
+          .maybeSingle();
 
-      if (insertError) {
-        console.error(`CSV Upload - Batch ${Math.floor(i / BATCH_SIZE) + 1} error:`, insertError);
-        insertErrors.push(insertError.message);
-      } else {
-        insertedCount += inserted?.length || 0;
-        console.log(`✅ CSV Upload - Batch ${Math.floor(i / BATCH_SIZE) + 1} inserted:`, inserted?.length);
+        if (existing) {
+          // Update existing
+          const { error: updateError } = await supabaseAdmin
+            .from('workspace_prospects')
+            .update({
+              first_name: prospect.first_name,
+              last_name: prospect.last_name,
+              company: prospect.company,
+              title: prospect.title,
+              batch_id: prospect.batch_id,
+              approval_status: 'pending',
+              enrichment_data: prospect.enrichment_data
+            })
+            .eq('id', existing.id);
+
+          if (updateError) {
+            console.error('Update error:', updateError.message);
+            insertErrors.push(updateError.message);
+          } else {
+            duplicateCount++;
+          }
+        } else {
+          // Insert new
+          const { data: inserted, error: insertError } = await supabaseAdmin
+            .from('workspace_prospects')
+            .insert(prospect)
+            .select('id')
+            .single();
+
+          if (insertError) {
+            console.error('Insert error:', insertError.message);
+            insertErrors.push(insertError.message);
+          } else {
+            insertedCount++;
+          }
+        }
+      } catch (err: any) {
+        console.error('Prospect processing error:', err.message);
+        insertErrors.push(err.message);
       }
     }
+
+    console.log(`✅ CSV Upload - Inserted: ${insertedCount}, Updated: ${duplicateCount}, Errors: ${insertErrors.length}`);
 
     // Count how many are actually new pending approvals
     const { count: newPendingCount } = await supabaseAdmin
@@ -240,8 +282,8 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
         approved_count: 0,
         rejected_count: 0,
         status: 'active',  // Requires approval
-        batch_number: nextBatchNumber,
-        metadata: { batch_id: batchId, filename: file.name }
+        batch_number: nextBatchNumber
+        // Note: metadata column doesn't exist in this table
       })
       .select()
       .single();
