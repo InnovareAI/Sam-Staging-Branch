@@ -90,16 +90,26 @@ export async function GET(request: NextRequest) {
 
     // FIXED: Verify session belongs to user's workspace using workspace_id not organization_id
     // CRITICAL FIX: Use adminClient to bypass RLS (Nov 28)
+    // CRITICAL FIX (Dec 4): Also fetch metadata to check if using new architecture
+    console.log(`🔍 [PROSPECTS] Looking up session: ${sessionId}`);
     const { data: session, error: sessionError } = await adminClient
       .from('prospect_approval_sessions')
-      .select('user_id, workspace_id')
+      .select('user_id, workspace_id, metadata')
       .eq('id', sessionId)
       .single()
 
+    console.log(`🔍 [PROSPECTS] Session lookup result:`, {
+      found: !!session,
+      error: sessionError?.message || 'none',
+      errorCode: sessionError?.code || 'none'
+    });
+
     if (sessionError || !session) {
+      console.error(`❌ [PROSPECTS] Session not found: ${sessionId}, error: ${JSON.stringify(sessionError)}`);
       return NextResponse.json({
         success: false,
-        error: 'Session not found'
+        error: 'Session not found',
+        debug: { sessionId, errorMessage: sessionError?.message, errorCode: sessionError?.code }
       }, { status: 404 })
     }
 
@@ -120,52 +130,109 @@ export async function GET(request: NextRequest) {
     // Calculate offset for pagination
     const offset = (page - 1) * limit
 
-    // CRITICAL FIX: Use admin client to bypass RLS for prospect_approval_data queries
-    // Get all decisions for this session first
-    const { data: decisions } = await adminClient
-      .from('prospect_approval_decisions')
-      .select('prospect_id, decision, reason, decided_by, decided_at')
-      .eq('session_id', sessionId)
+    // CRITICAL FIX (Dec 4): Check if session uses new architecture (workspace_prospects table)
+    const sessionMetadata = session.metadata as { new_architecture?: boolean; batch_id?: string } | null
+    const isNewArchitecture = sessionMetadata?.new_architecture === true
+    const batchId = sessionMetadata?.batch_id
 
-    // Create a map of decisions by prospect_id for fast lookup
-    const decisionsMap = new Map(
-      (decisions || []).map(d => [d.prospect_id, d])
-    )
+    console.log(`🔍 [PROSPECTS] Session ${sessionId}: new_architecture=${isNewArchitecture}, batch_id=${batchId}`);
 
-    // Build query - get ALL prospects first, we'll filter by status after joining decisions
-    // USE ADMIN CLIENT to bypass RLS policies
-    console.log(`🔍 [PROSPECTS] Querying prospect_approval_data for session: ${sessionId}`);
+    let prospects: any[] = []
 
-    let query = adminClient
-      .from('prospect_approval_data')
-      .select('*', { count: 'exact' })
-      .eq('session_id', sessionId)
+    if (isNewArchitecture && batchId) {
+      // NEW ARCHITECTURE: Query from workspace_prospects table using batch_id
+      console.log(`🔍 [PROSPECTS] Querying workspace_prospects for batch_id: ${batchId}`);
 
-    // Apply sorting
-    const { data: prospectsRaw, error } = await query
-      .order(sortBy, { ascending: sortOrder === 'asc' })
+      let query = adminClient
+        .from('workspace_prospects')
+        .select('*', { count: 'exact' })
+        .eq('workspace_id', session.workspace_id)
+        .eq('batch_id', batchId)
 
-    console.log(`📊 [PROSPECTS] Query result: ${prospectsRaw?.length || 0} prospects, error: ${error?.message || 'none'}`);
-
-    if (error) throw error
-
-    // Merge prospects with their decision metadata
-    // CRITICAL: prospect_approval_data does NOT have approval_status column
-    // We must get status from prospect_approval_decisions table
-    let prospects = (prospectsRaw || []).map((p: any) => {
-      const decision = decisionsMap.get(p.prospect_id)
-      return {
-        ...p,
-        // Get status from decision, default to 'pending' if no decision exists
-        approval_status: decision?.decision || 'pending',
-        decision_reason: decision?.reason || null,
-        decided_by: decision?.decided_by || null,
-        decided_at: decision?.decided_at || null
+      // Apply status filter if specified
+      if (status && status !== 'all') {
+        query = query.eq('approval_status', status)
       }
-    })
 
-    // NOW apply status filter after merging (can't filter on non-existent column before)
-    if (status && status !== 'all') {
+      // Apply sorting - map sortBy to correct column names
+      const sortColumn = sortBy === 'enrichment_score' ? 'created_at' : sortBy
+      const { data: prospectsRaw, error } = await query
+        .order(sortColumn, { ascending: sortOrder === 'asc' })
+
+      console.log(`📊 [PROSPECTS] workspace_prospects result: ${prospectsRaw?.length || 0} prospects, error: ${error?.message || 'none'}`);
+
+      if (error) throw error
+
+      // Map workspace_prospects format to expected format
+      prospects = (prospectsRaw || []).map((p: any) => ({
+        prospect_id: p.id,
+        name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown',
+        title: p.title || '',
+        company: { name: p.company || '', industry: p.enrichment_data?.industry || '' },
+        contact: {
+          email: p.email || '',
+          linkedin_url: p.linkedin_url || '',
+          linkedin_user_id: p.linkedin_user_id || null,
+          phone: p.phone || ''
+        },
+        location: p.location || '',
+        connection_degree: p.connection_degree,
+        enrichment_score: p.enrichment_data?.enrichment_score || 70,
+        source: p.source || 'csv_upload',
+        approval_status: p.approval_status || 'pending',
+        linkedin_user_id: p.linkedin_user_id || null,
+        created_at: p.created_at,
+        workspace_id: p.workspace_id
+      }))
+    } else {
+      // LEGACY ARCHITECTURE: Query from prospect_approval_data table
+      // Get all decisions for this session first
+      const { data: decisions } = await adminClient
+        .from('prospect_approval_decisions')
+        .select('prospect_id, decision, reason, decided_by, decided_at')
+        .eq('session_id', sessionId)
+
+      // Create a map of decisions by prospect_id for fast lookup
+      const decisionsMap = new Map(
+        (decisions || []).map(d => [d.prospect_id, d])
+      )
+
+      // Build query - get ALL prospects first, we'll filter by status after joining decisions
+      // USE ADMIN CLIENT to bypass RLS policies
+      console.log(`🔍 [PROSPECTS] Querying prospect_approval_data for session: ${sessionId}`);
+
+      let query = adminClient
+        .from('prospect_approval_data')
+        .select('*', { count: 'exact' })
+        .eq('session_id', sessionId)
+
+      // Apply sorting
+      const { data: prospectsRaw, error } = await query
+        .order(sortBy, { ascending: sortOrder === 'asc' })
+
+      console.log(`📊 [PROSPECTS] Query result: ${prospectsRaw?.length || 0} prospects, error: ${error?.message || 'none'}`);
+
+      if (error) throw error
+
+      // Merge prospects with their decision metadata
+      // CRITICAL: prospect_approval_data does NOT have approval_status column
+      // We must get status from prospect_approval_decisions table
+      prospects = (prospectsRaw || []).map((p: any) => {
+        const decision = decisionsMap.get(p.prospect_id)
+        return {
+          ...p,
+          // Get status from decision, default to 'pending' if no decision exists
+          approval_status: decision?.decision || 'pending',
+          decision_reason: decision?.reason || null,
+          decided_by: decision?.decided_by || null,
+          decided_at: decision?.decided_at || null
+        }
+      })
+    }
+
+    // For LEGACY architecture, apply status filter after merging (can't filter on non-existent column before)
+    // For NEW architecture, status filter was already applied in the query above
+    if (!isNewArchitecture && status && status !== 'all') {
       prospects = prospects.filter(p => p.approval_status === status)
     }
 
