@@ -479,10 +479,11 @@ export async function POST(request: NextRequest) {
 
         if (posts.length === 0) continue;
 
-        // Filter posts by age (last 30 minutes for maximum engagement)
+        // Filter posts by age (last 7 days)
         // Fresh posts get more visibility when commented on quickly
-        const maxAgeMinutes = 30;
-        const cutoffDate = Date.now() - (maxAgeMinutes * 60 * 1000);
+        // Note: 30 minutes was too aggressive - most hashtag search results are older
+        const maxAgeDays = 7;
+        const cutoffDate = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
 
         const recentPosts = posts.filter((post: any) => {
           // Apify returns timestamp in milliseconds
@@ -491,7 +492,7 @@ export async function POST(request: NextRequest) {
           return postTimestamp >= cutoffDate;
         });
 
-        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeMinutes} minutes`);
+        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeDays} days`);
 
         // Check which posts already exist (check both URL and social_id)
         const existingUrls = recentPosts.map((p: any) => p.url).filter(Boolean);
@@ -758,9 +759,10 @@ export async function POST(request: NextRequest) {
         const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}&waitForFinish=120`;
 
         // IMPORTANT: This Apify actor charges per result ($5 / 1,000 results)
-        // Rate limit: 25 searches per workspace per day, 1 search = 1 post
+        // Rate limit: 25 searches per workspace per day
         // Daily limit of 25 Apify API calls enforced at workspace level
-        const POSTS_PER_HASHTAG = 1;
+        // Request 10 posts, expect ~4 after filters (hiring, bait, author cooldown)
+        const POSTS_PER_HASHTAG = 10;
 
         const startResponse = await fetch(startRunUrl, {
           method: 'POST',
@@ -826,9 +828,11 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Filter posts by age (last 30 minutes for maximum engagement)
-        const maxAgeMinutes = 30;
-        const cutoffDate = Date.now() - (maxAgeMinutes * 60 * 1000);
+        // Filter posts by age (last 7 days for hashtag searches)
+        // CRITICAL FIX (Dec 4): Was 30 minutes - too aggressive, filtered out all posts
+        // Hashtag searches return posts by relevance, not recency, so most are hours/days old
+        const maxAgeDays = 7;
+        const cutoffDate = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
 
         // Debug: Log first post structure to understand the data format
         if (posts.length > 0) {
@@ -839,18 +843,18 @@ export async function POST(request: NextRequest) {
           // Hashtag actor may use different timestamp field
           const postTimestamp = post.postedAt || post.posted_at?.timestamp || post.timestamp || post.date;
           if (!postTimestamp) {
-            console.log(`⚠️ Post has no timestamp, skipping (too risky)`);
-            return false; // Skip if no timestamp - can't verify freshness
+            console.log(`⚠️ Post has no timestamp, including anyway (can't verify freshness)`);
+            return true; // Include posts without timestamp - let other filters handle quality
           }
           const ts = typeof postTimestamp === 'number' ? postTimestamp : new Date(postTimestamp).getTime();
           const isRecent = ts >= cutoffDate;
           if (!isRecent) {
-            console.log(`⏰ Post filtered out - too old: ${new Date(ts).toISOString()}`);
+            console.log(`⏰ Post filtered out - older than ${maxAgeDays} days: ${new Date(ts).toISOString()}`);
           }
           return isRecent;
         });
 
-        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeMinutes} minutes (filtered ${posts.length - recentPosts.length})`);
+        console.log(`⏰ Found ${recentPosts.length} posts from last ${maxAgeDays} days (filtered ${posts.length - recentPosts.length})`);
 
         // Check which posts already exist
         // Note: Apify hashtag actor uses: post_url, full_urn, activity_id
@@ -1156,18 +1160,19 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          // Filter posts by age (last 30 minutes for maximum engagement)
-          const maxAgeMinutes = 30;
-          const cutoffDate = Date.now() - (maxAgeMinutes * 60 * 1000);
+          // Filter posts by age (last 7 days for company posts)
+          // CRITICAL FIX (Dec 4): Was 30 minutes - too aggressive
+          const maxAgeDays = 7;
+          const cutoffDate = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
 
           const recentPosts = posts.filter((post: any) => {
             const postTimestamp = post.postedAt || post.posted_at?.timestamp || post.timestamp || post.date;
-            if (!postTimestamp) return false; // Skip if no timestamp - can't verify freshness
+            if (!postTimestamp) return true; // Include posts without timestamp - let other filters handle quality
             const ts = typeof postTimestamp === 'number' ? postTimestamp : new Date(postTimestamp).getTime();
             return ts >= cutoffDate;
           });
 
-          console.log(`⏰ Found ${recentPosts.length} company posts from last ${maxAgeMinutes} minutes`);
+          console.log(`⏰ Found ${recentPosts.length} company posts from last ${maxAgeDays} days`);
 
           // Check which posts already exist
           const existingUrls = recentPosts.map((p: any) => p.post_url || p.url || p.postUrl).filter(Boolean);
