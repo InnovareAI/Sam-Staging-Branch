@@ -124,16 +124,32 @@ export async function POST(request: NextRequest) {
         follow_up_message: campaign.linkedin_config?.follow_up_message || null
       },
       contacts: prospects.map(prospect => {
-        // Helper function to personalize any text with prospect data
+        // Helper function to personalize any text with prospect data (Dec 4 fix - ALL formats)
+        const firstName = prospect.first_name || '';
+        const lastName = prospect.last_name || '';
+        const fullName = `${firstName} ${lastName}`.trim();
+        const companyName = prospect.company_name || '';
+        const title = prospect.title || 'Professional';
         const personalizeText = (text) => {
           if (!text) return text;
           return text
-            .replace(/{first_name}/g, prospect.first_name || '')
-            .replace(/{last_name}/g, prospect.last_name || '')
-            .replace(/{company_name}/g, prospect.company_name || '')
-            .replace(/{company}/g, prospect.company_name || '')
-            .replace(/{title}/g, prospect.title || 'Professional')
-            .replace(/{full_name}/g, `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim())
+            .replace(/\{first_name\}/gi, firstName)
+            .replace(/\{last_name\}/gi, lastName)
+            .replace(/\{company_name\}/gi, companyName)
+            .replace(/\{company\}/gi, companyName)
+            .replace(/\{title\}/gi, title)
+            .replace(/\{full_name\}/gi, fullName)
+            .replace(/\{\{first_name\}\}/gi, firstName)
+            .replace(/\{\{last_name\}\}/gi, lastName)
+            .replace(/\{\{company_name\}\}/gi, companyName)
+            .replace(/\{\{company\}\}/gi, companyName)
+            .replace(/\{\{title\}\}/gi, title)
+            .replace(/\{firstName\}/g, firstName)
+            .replace(/\{lastName\}/g, lastName)
+            .replace(/\{companyName\}/g, companyName)
+            .replace(/\{\{firstName\}\}/g, firstName)
+            .replace(/\{\{lastName\}\}/g, lastName)
+            .replace(/\{\{companyName\}\}/g, companyName)
         }
         
         // Get base messages

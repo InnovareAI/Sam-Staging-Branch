@@ -429,13 +429,28 @@ export async function POST(req: NextRequest) {
 
         console.log(`✅ ${prospect.first_name} is connected - queuing ${allMessages.length} messages`);
 
-        // Queue all messages for this prospect
+        // Queue all messages for this prospect - ALL formats (Dec 4 fix)
+        const firstName = prospect.first_name || '';
+        const lastName = prospect.last_name || '';
+        const companyName = prospect.company_name || '';
+        const title = prospect.title || '';
         for (let messageIndex = 0; messageIndex < allMessages.length; messageIndex++) {
           const message = allMessages[messageIndex]
-            .replace(/{first_name}/g, prospect.first_name || '')
-            .replace(/{last_name}/g, prospect.last_name || '')
-            .replace(/{company_name}/g, prospect.company_name || '')
-            .replace(/{title}/g, prospect.title || '');
+            .replace(/\{first_name\}/gi, firstName)
+            .replace(/\{last_name\}/gi, lastName)
+            .replace(/\{company_name\}/gi, companyName)
+            .replace(/\{company\}/gi, companyName)
+            .replace(/\{title\}/gi, title)
+            .replace(/\{\{first_name\}\}/gi, firstName)
+            .replace(/\{\{last_name\}\}/gi, lastName)
+            .replace(/\{\{company_name\}\}/gi, companyName)
+            .replace(/\{\{company\}\}/gi, companyName)
+            .replace(/\{firstName\}/g, firstName)
+            .replace(/\{lastName\}/g, lastName)
+            .replace(/\{companyName\}/g, companyName)
+            .replace(/\{\{firstName\}\}/g, firstName)
+            .replace(/\{\{lastName\}\}/g, lastName)
+            .replace(/\{\{companyName\}\}/g, companyName);
 
           const scheduledFor = calculateNextSendTime(
             now,

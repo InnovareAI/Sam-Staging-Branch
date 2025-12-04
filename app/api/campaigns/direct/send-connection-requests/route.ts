@@ -312,12 +312,27 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // Personalize message
+        // Personalize message - ALL formats (Dec 4 fix)
+        const firstName = prospect.first_name || '';
+        const lastName = prospect.last_name || '';
+        const companyName = prospect.company_name || '';
+        const title = prospect.title || '';
         const personalizedMessage = connectionRequestMessage
-          .replace(/{first_name}/g, prospect.first_name)
-          .replace(/{last_name}/g, prospect.last_name)
-          .replace(/{company_name}/g, prospect.company_name || '')
-          .replace(/{title}/g, prospect.title || '');
+          .replace(/\{first_name\}/gi, firstName)
+          .replace(/\{last_name\}/gi, lastName)
+          .replace(/\{company_name\}/gi, companyName)
+          .replace(/\{company\}/gi, companyName)
+          .replace(/\{title\}/gi, title)
+          .replace(/\{\{first_name\}\}/gi, firstName)
+          .replace(/\{\{last_name\}\}/gi, lastName)
+          .replace(/\{\{company_name\}\}/gi, companyName)
+          .replace(/\{\{company\}\}/gi, companyName)
+          .replace(/\{firstName\}/g, firstName)
+          .replace(/\{lastName\}/g, lastName)
+          .replace(/\{companyName\}/g, companyName)
+          .replace(/\{\{firstName\}\}/g, firstName)
+          .replace(/\{\{lastName\}\}/g, lastName)
+          .replace(/\{\{companyName\}\}/g, companyName);
 
         // Send connection request via REST API
         const payload = {

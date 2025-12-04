@@ -281,7 +281,12 @@ export async function POST(req: NextRequest) {
         .replace(/\{firstName\}/g, firstName)
         .replace(/\{lastName\}/g, lastName)
         .replace(/\{companyName\}/g, companyName)
-        .replace(/\{jobTitle\}/g, title);
+        .replace(/\{jobTitle\}/g, title)
+        // CRITICAL: {{camelCase}} double braces (used by Charissa campaigns)
+        .replace(/\{\{firstName\}\}/g, firstName)
+        .replace(/\{\{lastName\}\}/g, lastName)
+        .replace(/\{\{companyName\}\}/g, companyName)
+        .replace(/\{\{company\}\}/g, companyName);
 
       // Log if any variables weren't replaced (debugging)
       if (personalizedMessage.includes('{') && personalizedMessage.includes('}')) {

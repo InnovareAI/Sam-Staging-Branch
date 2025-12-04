@@ -229,7 +229,7 @@ export default function ProfilesListPage() {
             <div
               key={profile.id}
               onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${profile.id}`)}
-              className="bg-gray-800 rounded-xl p-5 border border-gray-700 hover:border-gray-600 transition-colors cursor-pointer"
+              className="bg-gray-800 rounded-xl p-5 border border-gray-700 hover:border-pink-600/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 {/* Profile Info */}
@@ -242,7 +242,7 @@ export default function ProfilesListPage() {
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-white font-semibold truncate">{profile.name || 'Unnamed Profile'}</h3>
+                      <h3 className="text-white font-semibold truncate group-hover:text-pink-400 transition-colors">{profile.name || 'Unnamed Profile'}</h3>
                       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                         profile.status === 'active'
                           ? 'bg-green-600/20 text-green-400'

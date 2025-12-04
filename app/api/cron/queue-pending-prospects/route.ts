@@ -31,9 +31,10 @@ export async function POST(req: NextRequest) {
 
   try {
     // 1. Get all active connector campaigns (connection request campaigns)
+    // CRITICAL FIX (Dec 4): Also fetch connection_message and linkedin_config for message source
     const { data: activeCampaigns, error: campError } = await supabase
       .from('campaigns')
-      .select('id, campaign_name, linkedin_account_id, message_templates')
+      .select('id, campaign_name, linkedin_account_id, message_templates, connection_message, linkedin_config')
       .eq('status', 'active')
       .eq('campaign_type', 'connector');
 
@@ -54,9 +55,10 @@ export async function POST(req: NextRequest) {
 
     for (const campaign of activeCampaigns) {
       // 2. Get pending prospects for this campaign
+      // CRITICAL FIX (Dec 4): Include company, title for full personalization
       const { data: pendingProspects, error: prospError } = await supabase
         .from('campaign_prospects')
-        .select('id, first_name, last_name, linkedin_url, linkedin_user_id')
+        .select('id, first_name, last_name, linkedin_url, linkedin_user_id, company, company_name, title')
         .eq('campaign_id', campaign.id)
         .eq('status', 'pending')
         .not('linkedin_url', 'is', null);
@@ -83,8 +85,18 @@ export async function POST(req: NextRequest) {
       console.log(`⚠️ Campaign "${campaign.campaign_name}": ${unqueuedProspects.length} unqueued prospects`);
 
       // 4. Queue them with 2-minute spacing
-      const connectionMessage = campaign.message_templates?.connection_request ||
-        'Hi {first_name}, I\'d like to connect!';
+      // CRITICAL FIX (Dec 4): Check multiple sources for connection message
+      const linkedinConfig = campaign.linkedin_config as { connection_message?: string } | null;
+      const connectionMessage =
+        campaign.message_templates?.connection_request ||
+        campaign.connection_message ||
+        linkedinConfig?.connection_message ||
+        null;
+
+      if (!connectionMessage) {
+        console.error(`⚠️ Campaign "${campaign.campaign_name}" has NO connection message - skipping`);
+        continue;
+      }
 
       const SPACING_MINUTES = 2;
       const queueRecords = [];
@@ -94,10 +106,28 @@ export async function POST(req: NextRequest) {
         const prospect = unqueuedProspects[i];
         const scheduledTime = new Date(now.getTime() + (i * SPACING_MINUTES * 60 * 1000));
 
+        // Full personalization - all variable formats
+        const firstName = prospect.first_name || '';
+        const lastName = prospect.last_name || '';
+        const companyName = prospect.company_name || prospect.company || '';
+        const title = prospect.title || '';
+
         const personalizedMessage = connectionMessage
-          .replace(/\{first_name\}/g, prospect.first_name || '')
-          .replace(/\{last_name\}/g, prospect.last_name || '')
-          .replace(/\{\{firstName\}\}/g, prospect.first_name || '');
+          .replace(/\{first_name\}/gi, firstName)
+          .replace(/\{last_name\}/gi, lastName)
+          .replace(/\{company_name\}/gi, companyName)
+          .replace(/\{company\}/gi, companyName)
+          .replace(/\{title\}/gi, title)
+          .replace(/\{\{first_name\}\}/gi, firstName)
+          .replace(/\{\{last_name\}\}/gi, lastName)
+          .replace(/\{\{company_name\}\}/gi, companyName)
+          .replace(/\{\{company\}\}/gi, companyName)
+          .replace(/\{firstName\}/g, firstName)
+          .replace(/\{lastName\}/g, lastName)
+          .replace(/\{companyName\}/g, companyName)
+          .replace(/\{\{firstName\}\}/g, firstName)
+          .replace(/\{\{lastName\}\}/g, lastName)
+          .replace(/\{\{companyName\}\}/g, companyName);
 
         queueRecords.push({
           campaign_id: campaign.id,
