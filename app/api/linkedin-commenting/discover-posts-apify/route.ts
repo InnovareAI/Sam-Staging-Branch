@@ -749,6 +749,19 @@ export async function POST(request: NextRequest) {
     const hashtagMonitorToProcess = sortedHashtagMonitors[0];
     const hashtagMonitorsToProcess = hashtagMonitorToProcess ? [hashtagMonitorToProcess] : [];
 
+    // Debug collector for response
+    const hashtagDebug: any = {
+      runsFound: 0,
+      runsChecked: 0,
+      runMatchedId: null,
+      datasetId: null,
+      rawPostsCount: 0,
+      matchingPostsCount: 0,
+      newPostsCount: 0,
+      insertedCount: 0,
+      error: null
+    };
+
     console.log(`#️⃣ Processing 1 of ${hashtagMonitors.length} hashtag monitors (round-robin by last_scraped_at)`);
     if (hashtagMonitorToProcess) {
       const hashtagEntry = hashtagMonitorToProcess.hashtags?.find((h: string) => h.startsWith('HASHTAG:'));
@@ -795,10 +808,12 @@ export async function POST(request: NextRequest) {
           if (runsResponse.ok) {
             const runsData = await runsResponse.json();
             const recentRuns = runsData.data?.items || [];
+            hashtagDebug.runsFound = recentRuns.length;
             console.log(`📋 Found ${recentRuns.length} total Apify runs to check`);
 
             // Find a run that matches our hashtag (SUCCEEDED or ABORTED with data)
             for (const run of recentRuns) {
+              hashtagDebug.runsChecked++;
               console.log(`   Checking run ${run.id}: status=${run.status}, age=${Math.round((Date.now() - new Date(run.startedAt).getTime()) / 60000)}min`);
               // Skip RUNNING runs - they're not ready yet
               if (run.status === 'RUNNING' || run.status === 'READY') continue;
@@ -849,6 +864,8 @@ export async function POST(request: NextRequest) {
                     }
                     datasetId = run.defaultDatasetId;
                     runId = run.id;
+                    hashtagDebug.runMatchedId = run.id;
+                    hashtagDebug.datasetId = run.defaultDatasetId;
                     break;
                   }
                 }
@@ -857,6 +874,7 @@ export async function POST(request: NextRequest) {
           }
         } catch (error) {
           console.error(`⚠️ Error checking existing runs:`, error);
+          hashtagDebug.error = error instanceof Error ? error.message : String(error);
         }
 
         // Step 2: Check if there's already a RUNNING run for this hashtag (avoid duplicates)
@@ -981,6 +999,8 @@ export async function POST(request: NextRequest) {
           return postHashtag === keywordNormalized;
         });
 
+        hashtagDebug.rawPostsCount = rawPosts.length;
+        hashtagDebug.matchingPostsCount = matchingPosts.length;
         console.log(`📦 Apify returned ${rawPosts.length} total, ${matchingPosts.length} match #${keyword}`);
 
         // SAFETY: Slice to our limit even if Apify returns more (they charge per result!)
@@ -1124,6 +1144,7 @@ export async function POST(request: NextRequest) {
           console.log(`🚫 Filtered out ${engagementBaitSkipped} engagement bait hashtag posts`);
         }
 
+        hashtagDebug.newPostsCount = newPosts.length;
         console.log(`🆕 Found ${newPosts.length} new hashtag posts to store (${recentPosts.length - newPostsRaw.length} exist, ${authorCooldownSkipped} cooldown, ${hiringSkipped} hiring, ${engagementBaitSkipped} bait)`);
 
         // Store new posts
@@ -1549,6 +1570,7 @@ export async function POST(request: NextRequest) {
           id: hashtagMonitorToProcess.id,
           hashtag: hashtagMonitorToProcess.hashtags?.find((h: string) => h.startsWith('HASHTAG:'))?.replace('HASHTAG:', '')
         } : null,
+        hashtagDebug,
         companiesScraped: companiesScrapedThisRun,
         note: 'Processing 1 hashtag per cron run (round-robin by last_scraped_at)'
       }
