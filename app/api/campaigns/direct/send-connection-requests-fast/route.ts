@@ -69,10 +69,10 @@ export async function POST(req: NextRequest) {
     console.log(`🚀 FAST queue creation for campaign: ${campaignId} (${isCronTrigger ? 'cron' : `user: ${user?.email}`})`);
 
     // 1. Fetch campaign - use admin client for cron, or user client for RLS check
-    // CRITICAL FIX (Dec 4): Also fetch linkedin_config which stores connection_message for some campaigns
+    // CRITICAL FIX (Dec 4): Also fetch connection_message column AND linkedin_config
     const { data: campaign, error: campaignError } = await supabaseAdmin
       .from('campaigns')
-      .select('id, campaign_name, message_templates, workspace_id, draft_data, linkedin_config')
+      .select('id, campaign_name, message_templates, workspace_id, draft_data, linkedin_config, connection_message')
       .eq('id', campaignId)
       .single();
 
@@ -181,16 +181,18 @@ export async function POST(req: NextRequest) {
     const SPACING_MINUTES = Math.floor(MINUTES_PER_DAY / MAX_PER_DAY); // ~24 minutes between each
 
     const queueRecords = [];
-    // CRITICAL FIX (Dec 4): Check multiple locations for connection message
+    // CRITICAL FIX (Dec 4): Check ALL possible locations for connection message
     // Different campaign types store messages in different places:
     // 1. message_templates.connection_request (standard)
-    // 2. linkedin_config.connection_message (Charissa/LinkedIn-only campaigns)
-    // 3. draft_data.connectionRequestMessage (wizard drafts)
+    // 2. connection_message column (direct column on campaigns table)
+    // 3. linkedin_config.connection_message (Charissa/LinkedIn-only campaigns)
+    // 4. draft_data.connectionRequestMessage (wizard drafts)
     const linkedinConfig = campaign.linkedin_config as { connection_message?: string } | null;
     const draftDataMsg = (campaign.draft_data as { connectionRequestMessage?: string } | null);
 
     const connectionMessage =
       campaign.message_templates?.connection_request ||
+      campaign.connection_message ||
       linkedinConfig?.connection_message ||
       draftDataMsg?.connectionRequestMessage ||
       null;
@@ -198,16 +200,18 @@ export async function POST(req: NextRequest) {
     if (!connectionMessage) {
       console.error('❌ CRITICAL: No connection message found in campaign!');
       console.error('  - message_templates.connection_request:', campaign.message_templates?.connection_request);
+      console.error('  - connection_message column:', campaign.connection_message);
       console.error('  - linkedin_config.connection_message:', linkedinConfig?.connection_message);
       console.error('  - draft_data.connectionRequestMessage:', draftDataMsg?.connectionRequestMessage);
       return NextResponse.json({
         error: 'Campaign has no connection message configured. Please edit the campaign and add a connection request message.',
-        details: 'No message found in message_templates, linkedin_config, or draft_data'
+        details: 'No message found in message_templates, connection_message column, linkedin_config, or draft_data'
       }, { status: 400 });
     }
 
     console.log('✅ Using connection message from:',
-      campaign.message_templates?.connection_request ? 'message_templates' :
+      campaign.message_templates?.connection_request ? 'message_templates.connection_request' :
+      campaign.connection_message ? 'connection_message column' :
       linkedinConfig?.connection_message ? 'linkedin_config' : 'draft_data');
 
     // Start scheduling from now or next business hour
