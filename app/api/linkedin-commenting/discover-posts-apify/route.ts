@@ -814,7 +814,7 @@ export async function POST(request: NextRequest) {
                   const inputData = await inputResponse.json();
                   // Handle all input formats: {hashtags: ["#foo"]}, {hashtag: "#foo"}, {keyword: "foo"}
                   // Normalize by stripping # prefix and lowercasing for comparison
-                  const normalizeHashtag = (h: string) => h.replace(/^#/, '').toLowerCase();
+                  const normalizeHashtag = (h: string) => h.replace(/^#+/, '').toLowerCase();
                   const keywordNormalized = normalizeHashtag(keyword);
 
                   let runHashtags: string[] = [];
@@ -870,7 +870,7 @@ export async function POST(request: NextRequest) {
                 if (inputResponse.ok) {
                   const inputData = await inputResponse.json();
                   // Handle all input formats with normalization
-                  const normalizeHashtag = (h: string) => h.replace(/^#/, '').toLowerCase();
+                  const normalizeHashtag = (h: string) => h.replace(/^#+/, '').toLowerCase();
                   const keywordNormalized = normalizeHashtag(keyword);
 
                   let runHashtags: string[] = [];
@@ -963,7 +963,9 @@ export async function POST(request: NextRequest) {
         // Actor returns: {author_name, hashtag, post_url}
         // CRITICAL: Filter by our target hashtag - runs may contain mixed results from multiple hashtags
         const rawPosts = Array.isArray(data) ? data : [];
-        const normalizeHashtag = (h: string) => h.replace(/^#/, '').toLowerCase();
+        // CRITICAL FIX: Actor returns hashtags with double ## (e.g., "##genai")
+        // Strip ALL leading # characters, not just one
+        const normalizeHashtag = (h: string) => h.replace(/^#+/, '').toLowerCase();
         const keywordNormalized = normalizeHashtag(keyword);
 
         // Filter posts to only those matching our target hashtag
