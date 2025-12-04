@@ -804,7 +804,10 @@ export async function POST(request: NextRequest) {
         let runId: string | null = null;
 
         try {
+          hashtagDebug.apifyUrl = runsListUrl.replace(APIFY_API_TOKEN, 'TOKEN');
           const runsResponse = await fetch(runsListUrl);
+          hashtagDebug.apifyResponseOk = runsResponse.ok;
+          hashtagDebug.apifyResponseStatus = runsResponse.status;
           if (runsResponse.ok) {
             const runsData = await runsResponse.json();
             const recentRuns = runsData.data?.items || [];
@@ -875,6 +878,7 @@ export async function POST(request: NextRequest) {
         } catch (error) {
           console.error(`⚠️ Error checking existing runs:`, error);
           hashtagDebug.error = error instanceof Error ? error.message : String(error);
+          hashtagDebug.errorStack = error instanceof Error ? error.stack : undefined;
         }
 
         // Step 2: Check if there's already a RUNNING run for this hashtag (avoid duplicates)
