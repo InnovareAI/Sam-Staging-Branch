@@ -78,7 +78,18 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
 
     // Parse CSV
     const csvText = await file.text()
+    console.log('📄 CSV Upload - Raw CSV length:', csvText.length, 'chars');
+    console.log('📄 CSV Upload - First 500 chars:', csvText.substring(0, 500));
+
     const csvData = parseCSV(csvText)
+
+    console.log('📊 CSV Upload - Parse result:', {
+      success: csvData.success,
+      dataLength: csvData.data?.length || 0,
+      fieldMapping: csvData.field_mapping,
+      detectedFields: csvData.detected_fields,
+      error: csvData.error
+    });
 
     if (!csvData.success) {
       return NextResponse.json({
@@ -89,6 +100,9 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
 
     const prospects = csvData.data
     console.log('📊 CSV Upload - Parsed prospects:', prospects.length);
+    if (prospects.length > 0) {
+      console.log('📊 CSV Upload - First prospect:', JSON.stringify(prospects[0]));
+    }
 
     // Check quota (skip for now if function doesn't exist)
     let quotaCheck = { has_quota: true };
@@ -184,6 +198,12 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
     const BATCH_SIZE = 50;
 
     console.log('💾 CSV Upload - Inserting into workspace_prospects:', workspaceProspectsData.length, 'records');
+    if (workspaceProspectsData.length > 0) {
+      console.log('💾 CSV Upload - First workspace prospect:', JSON.stringify(workspaceProspectsData[0]));
+    }
+    const withHash = workspaceProspectsData.filter(p => p.linkedin_url_hash);
+    const withoutHash = workspaceProspectsData.filter(p => !p.linkedin_url_hash);
+    console.log(`💾 CSV Upload - With linkedin_url_hash: ${withHash.length}, Without: ${withoutHash.length}`);
 
     // Insert one by one to handle duplicates gracefully
     for (const prospect of workspaceProspectsData) {

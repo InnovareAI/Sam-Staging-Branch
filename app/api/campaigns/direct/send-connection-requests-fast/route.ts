@@ -69,9 +69,10 @@ export async function POST(req: NextRequest) {
     console.log(`🚀 FAST queue creation for campaign: ${campaignId} (${isCronTrigger ? 'cron' : `user: ${user?.email}`})`);
 
     // 1. Fetch campaign - use admin client for cron, or user client for RLS check
+    // CRITICAL FIX (Dec 4): Also fetch linkedin_config which stores connection_message for some campaigns
     const { data: campaign, error: campaignError } = await supabaseAdmin
       .from('campaigns')
-      .select('id, campaign_name, message_templates, workspace_id, draft_data')
+      .select('id, campaign_name, message_templates, workspace_id, draft_data, linkedin_config')
       .eq('id', campaignId)
       .single();
 
@@ -180,8 +181,34 @@ export async function POST(req: NextRequest) {
     const SPACING_MINUTES = Math.floor(MINUTES_PER_DAY / MAX_PER_DAY); // ~24 minutes between each
 
     const queueRecords = [];
-    const connectionMessage = campaign.message_templates?.connection_request ||
-      'Hi {first_name}, I\'d like to connect!';
+    // CRITICAL FIX (Dec 4): Check multiple locations for connection message
+    // Different campaign types store messages in different places:
+    // 1. message_templates.connection_request (standard)
+    // 2. linkedin_config.connection_message (Charissa/LinkedIn-only campaigns)
+    // 3. draft_data.connectionRequestMessage (wizard drafts)
+    const linkedinConfig = campaign.linkedin_config as { connection_message?: string } | null;
+    const draftDataMsg = (campaign.draft_data as { connectionRequestMessage?: string } | null);
+
+    const connectionMessage =
+      campaign.message_templates?.connection_request ||
+      linkedinConfig?.connection_message ||
+      draftDataMsg?.connectionRequestMessage ||
+      null;
+
+    if (!connectionMessage) {
+      console.error('❌ CRITICAL: No connection message found in campaign!');
+      console.error('  - message_templates.connection_request:', campaign.message_templates?.connection_request);
+      console.error('  - linkedin_config.connection_message:', linkedinConfig?.connection_message);
+      console.error('  - draft_data.connectionRequestMessage:', draftDataMsg?.connectionRequestMessage);
+      return NextResponse.json({
+        error: 'Campaign has no connection message configured. Please edit the campaign and add a connection request message.',
+        details: 'No message found in message_templates, linkedin_config, or draft_data'
+      }, { status: 400 });
+    }
+
+    console.log('✅ Using connection message from:',
+      campaign.message_templates?.connection_request ? 'message_templates' :
+      linkedinConfig?.connection_message ? 'linkedin_config' : 'draft_data');
 
     // Start scheduling from now or next business hour
     let scheduledTime = new Date();
@@ -225,12 +252,37 @@ export async function POST(req: NextRequest) {
         scheduledTime = new Date(scheduledTime.getTime() + (SPACING_MINUTES * 60 * 1000));
       }
 
-      // Personalize message
+      // Personalize message - handle all variable formats and null values
+      // CRITICAL FIX (Dec 4): Add fallbacks for undefined/null prospect fields
+      const firstName = prospect.first_name || prospect.firstName || '';
+      const lastName = prospect.last_name || prospect.lastName || '';
+      const companyName = prospect.company_name || prospect.company || '';
+      const title = prospect.title || prospect.job_title || '';
+
       const personalizedMessage = connectionMessage
-        .replace(/\{first_name\}/g, prospect.first_name)
-        .replace(/\{last_name\}/g, prospect.last_name)
-        .replace(/\{company_name\}/g, prospect.company_name || '')
-        .replace(/\{company\}/g, prospect.company_name || '');
+        // Standard {snake_case} format
+        .replace(/\{first_name\}/gi, firstName)
+        .replace(/\{last_name\}/gi, lastName)
+        .replace(/\{company_name\}/gi, companyName)
+        .replace(/\{company\}/gi, companyName)
+        .replace(/\{title\}/gi, title)
+        .replace(/\{job_title\}/gi, title)
+        // Also handle {{double_braces}} format some templates use
+        .replace(/\{\{first_name\}\}/gi, firstName)
+        .replace(/\{\{last_name\}\}/gi, lastName)
+        .replace(/\{\{company_name\}\}/gi, companyName)
+        .replace(/\{\{company\}\}/gi, companyName)
+        .replace(/\{\{title\}\}/gi, title)
+        // Also handle {camelCase} format
+        .replace(/\{firstName\}/g, firstName)
+        .replace(/\{lastName\}/g, lastName)
+        .replace(/\{companyName\}/g, companyName)
+        .replace(/\{jobTitle\}/g, title);
+
+      // Log if any variables weren't replaced (debugging)
+      if (personalizedMessage.includes('{') && personalizedMessage.includes('}')) {
+        console.warn(`⚠️ Unreplaced variables in message for ${firstName}: "${personalizedMessage.substring(0, 100)}..."`)
+      }
 
       queueRecords.push({
         campaign_id: campaignId,
