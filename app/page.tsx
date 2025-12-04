@@ -3288,22 +3288,30 @@ export default function Page() {
                     {commentingCampaigns.map((campaign) => {
                       // Extract profile vanities from hashtags array (format: "PROFILE:vanity_name")
                       const hashtags = campaign.hashtags || [];
-                      console.log('🔍 Campaign hashtags:', campaign.name, hashtags);
                       const profileVanities = hashtags
                         .filter((tag: string) => tag.startsWith('PROFILE:'))
                         .map((tag: string) => tag.replace('PROFILE:', ''));
-                      console.log('🔍 Extracted profiles:', profileVanities);
+                      // Extract hashtag monitors (format: "HASHTAG:keyword")
+                      const hashtagMonitors = hashtags
+                        .filter((tag: string) => tag.startsWith('HASHTAG:'))
+                        .map((tag: string) => '#' + tag.replace('HASHTAG:', ''));
+                      // Extract company monitors (format: "COMPANY:slug")
+                      const companyMonitors = hashtags
+                        .filter((tag: string) => tag.startsWith('COMPANY:'))
+                        .map((tag: string) => tag.replace('COMPANY:', ''));
                       const keywords = campaign.keywords || [];
-                      const displayProfiles = profileVanities.length > 0
-                        ? profileVanities.join(', ')
-                        : 'No profiles yet - click to add';
-                      const hasProfiles = profileVanities.length > 0;
                       const campaignName = campaign.name || campaign.campaign_name || 'Unnamed Campaign';
+
+                      // Determine monitor type for display
+                      const isHashtagMonitor = hashtagMonitors.length > 0;
+                      const isCompanyMonitor = companyMonitors.length > 0;
+                      const isProfileMonitor = profileVanities.length > 0;
 
                       return (
                         <div
                           key={campaign.id}
-                          className="bg-gray-700/50 rounded-lg p-4 border border-gray-600"
+                          onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${campaign.id}`)}
+                          className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 cursor-pointer hover:border-gray-500 transition-colors"
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
@@ -3331,9 +3339,29 @@ export default function Page() {
                             </div>
                           </div>
 
-                          {/* Profile List */}
-                          <div className="space-y-2 mb-3">
-                            {profileVanities.length > 0 ? (
+                          {/* Monitor Target Display */}
+                          <div className="space-y-2 mb-3" onClick={(e) => e.stopPropagation()}>
+                            {isHashtagMonitor ? (
+                              // Hashtag monitor - show hashtags as clickable targets
+                              <div className="flex flex-wrap gap-2">
+                                {hashtagMonitors.map((hashtag, idx) => (
+                                  <span key={idx} className="px-3 py-1.5 bg-green-600/20 text-green-400 rounded-full text-sm font-medium">
+                                    {hashtag}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : isCompanyMonitor ? (
+                              // Company monitor - show company names
+                              <div className="flex flex-wrap gap-2">
+                                {companyMonitors.map((company, idx) => (
+                                  <span key={idx} className="px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-full text-sm font-medium flex items-center gap-1">
+                                    <Building2 size={14} />
+                                    {company}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : profileVanities.length > 0 ? (
+                              // Profile monitor - show profile buttons
                               profileVanities.map((vanity, idx) => (
                                 <button
                                   key={idx}
@@ -3368,7 +3396,7 @@ export default function Page() {
                                 </button>
                               ))
                             ) : (
-                              <div className="text-sm text-gray-500 italic">No profiles yet - click Edit to add</div>
+                              <div className="text-sm text-gray-500 italic">No target configured - click Edit to add</div>
                             )}
                           </div>
 

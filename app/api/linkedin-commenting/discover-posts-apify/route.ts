@@ -769,6 +769,27 @@ export async function POST(request: NextRequest) {
       console.log(`   Selected: ${hashtagEntry?.replace('HASHTAG:', '')} (last scraped: ${hashtagMonitorToProcess.last_scraped_at || 'never'})`);
     }
 
+    // GLOBAL COST CONTROL: Abort ALL running runs with >= MAX_ITEMS
+    const GLOBAL_MAX_ITEMS = 25;
+    try {
+      const runningUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}&status=RUNNING&limit=10`;
+      const runningResp = await fetch(runningUrl);
+      if (runningResp.ok) {
+        const runningData = await runningResp.json();
+        for (const run of runningData.data?.items || []) {
+          const dsResp = await fetch(`https://api.apify.com/v2/datasets/${run.defaultDatasetId}?token=${APIFY_API_TOKEN}`);
+          const dsData = dsResp.ok ? await dsResp.json() : null;
+          const itemCount = dsData?.data?.itemCount || 0;
+          if (itemCount >= GLOBAL_MAX_ITEMS) {
+            console.log(`🛑 GLOBAL ABORT: Run ${run.id} has ${itemCount} items. Aborting.`);
+            await fetch(`https://api.apify.com/v2/actor-runs/${run.id}/abort?token=${APIFY_API_TOKEN}`, { method: 'POST' });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`⚠️ Global abort check error:`, e);
+    }
+
     for (const monitor of hashtagMonitorsToProcess) {
       try {
         // UNIFIED DAILY LIMIT: 25 API calls per workspace per day (across all monitor types)
@@ -882,8 +903,8 @@ export async function POST(request: NextRequest) {
           hashtagDebug.errorStack = error instanceof Error ? error.stack : undefined;
         }
 
-        // Step 2: Check if there's already a RUNNING run for this hashtag (avoid duplicates)
-        let runAlreadyInProgress = false;
+        // Step 2: Check RUNNING runs - abort if >= MAX_ITEMS, use data
+        const MAX_ITEMS = 25;
         if (!datasetId) {
           try {
             const runningUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}&status=RUNNING&limit=5`;
@@ -895,23 +916,30 @@ export async function POST(request: NextRequest) {
                 const inputResponse = await fetch(inputUrl);
                 if (inputResponse.ok) {
                   const inputData = await inputResponse.json();
-                  // Handle all input formats with normalization
                   const normalizeHashtag = (h: string) => h.replace(/^#+/, '').toLowerCase();
                   const keywordNormalized = normalizeHashtag(keyword);
 
                   let runHashtags: string[] = [];
-                  if (inputData.hashtags && Array.isArray(inputData.hashtags)) {
-                    runHashtags = inputData.hashtags;
-                  } else if (inputData.hashtag) {
-                    runHashtags = [inputData.hashtag];
-                  } else if (inputData.keyword) {
-                    runHashtags = [inputData.keyword];
-                  }
+                  if (inputData.hashtags && Array.isArray(inputData.hashtags)) runHashtags = inputData.hashtags;
+                  else if (inputData.hashtag) runHashtags = [inputData.hashtag];
+                  else if (inputData.keyword) runHashtags = [inputData.keyword];
 
-                  const runHashtagsNormalized = runHashtags.map(normalizeHashtag);
-                  if (runHashtagsNormalized.includes(keywordNormalized)) {
-                    console.log(`⏳ Run already in progress for #${keyword} (run ${run.id}). Skipping to avoid duplicate costs.`);
-                    runAlreadyInProgress = true;
+                  if (runHashtags.map(normalizeHashtag).includes(keywordNormalized)) {
+                    // Check item count - abort if >= MAX_ITEMS
+                    const dsResp = await fetch(`https://api.apify.com/v2/datasets/${run.defaultDatasetId}?token=${APIFY_API_TOKEN}`);
+                    const dsData = dsResp.ok ? await dsResp.json() : null;
+                    const itemCount = dsData?.data?.itemCount || 0;
+
+                    if (itemCount >= MAX_ITEMS) {
+                      console.log(`🛑 Run ${run.id} has ${itemCount} items. Aborting and using data.`);
+                      await fetch(`https://api.apify.com/v2/actor-runs/${run.id}/abort?token=${APIFY_API_TOKEN}`, { method: 'POST' });
+                      datasetId = run.defaultDatasetId;
+                      runId = run.id;
+                    } else {
+                      console.log(`⏳ Run ${run.id} in progress (${itemCount} items). Waiting for more data.`);
+                      await supabase.from('linkedin_post_monitors').update({ last_scraped_at: new Date().toISOString() }).eq('id', monitor.id);
+                      continue;
+                    }
                     break;
                   }
                 }
@@ -920,53 +948,28 @@ export async function POST(request: NextRequest) {
           } catch (e) {
             console.warn(`⚠️ Error checking running jobs:`, e);
           }
+        }
 
-          if (runAlreadyInProgress) {
-            // Update last_scraped_at anyway to rotate to next hashtag
-            await supabase
-              .from('linkedin_post_monitors')
-              .update({ last_scraped_at: new Date().toISOString() })
-              .eq('id', monitor.id);
-            continue; // Skip this monitor
+        // Step 3: No runs at all? Fire-and-forget a new one
+        if (!datasetId) {
+          console.log(`🚀 No run for #${keyword}. Starting new run (fire-and-forget)...`);
+          try {
+            const startResp = await fetch(`https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ hashtag: `#${keyword}`, maxPages: 1 })
+            });
+            if (startResp.ok) {
+              const runData = await startResp.json();
+              console.log(`✅ Started run ${runData.data.id}. Will check on next cron.`);
+            } else {
+              console.error(`❌ Failed to start run: ${startResp.status}`);
+            }
+          } catch (e) {
+            console.error(`❌ Start run error:`, e);
           }
-
-          console.log(`📡 No completed/running run found. Starting new Apify run for #${keyword}...`);
-
-          // Start WITHOUT waitForFinish - returns immediately
-          const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}`;
-
-          // Actor parameters: hashtag (singular string), maxPages (limits Google pages searched)
-          // The actor searches Google for "site:linkedin.com #hashtag" so more pages = more results
-          const startResponse = await fetch(startRunUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              hashtag: hashtagWithPrefix, // Use singular hashtag parameter
-              maxPages: 2 // Limit to 2 Google pages (~20 results) to save credits
-            })
-          });
-
-          if (!startResponse.ok) {
-            console.error(`❌ Failed to start Apify hashtag actor: ${startResponse.status}`);
-            const errorText = await startResponse.text();
-            console.error(`   Error: ${errorText}`);
-            continue;
-          }
-
-          const runData = await startResponse.json();
-          runId = runData.data?.id;
-          const runStatus = runData.data?.status;
-
-          console.log(`🚀 Started Apify run ${runId} (status: ${runStatus})`);
-          console.log(`   Results will be available on next cron run (~5-10 minutes)`);
-
-          // Update last_scraped_at to mark this monitor as recently processed
-          await supabase
-            .from('linkedin_post_monitors')
-            .update({ last_scraped_at: new Date().toISOString() })
-            .eq('id', monitor.id);
-
-          continue; // Move to next monitor, results will be fetched on next cron run
+          await supabase.from('linkedin_post_monitors').update({ last_scraped_at: new Date().toISOString() }).eq('id', monitor.id);
+          continue;
         }
 
         if (!datasetId) {
