@@ -280,17 +280,41 @@ export async function POST(request: NextRequest) {
 
 async function checkQueueProspectConsistency(supabase: any): Promise<QACheck> {
   // Find queue items where prospect status doesn't match
-  const { data: inconsistent } = await supabase
+  // Valid statuses for sent queue items: connection_request_sent, message_sent, accepted,
+  // connected, messaging, replied, already_invited
+  const validStatuses = [
+    'connection_request_sent', 'message_sent', 'accepted',
+    'connected', 'messaging', 'replied', 'already_invited'
+  ];
+
+  const { data: queueItems } = await supabase
     .from('send_queue')
-    .select(`
-      id, status, prospect_id,
-      campaign_prospects!inner(id, status)
-    `)
+    .select('id, prospect_id')
     .eq('status', 'sent')
-    .neq('campaign_prospects.status', 'connection_request_sent')
-    .neq('campaign_prospects.status', 'message_sent')
-    .neq('campaign_prospects.status', 'accepted')
-    .limit(50);
+    .limit(100);
+
+  if (!queueItems || queueItems.length === 0) {
+    return {
+      check_name: 'Queue-Prospect Status Consistency',
+      category: 'consistency',
+      status: 'pass',
+      details: 'No sent queue items to check',
+      affected_records: 0
+    };
+  }
+
+  // Check prospect statuses
+  const prospectIds = queueItems.map((q: any) => q.prospect_id);
+  const { data: prospects } = await supabase
+    .from('campaign_prospects')
+    .select('id, status')
+    .in('id', prospectIds);
+
+  const prospectStatusMap = new Map((prospects || []).map((p: any) => [p.id, p.status]));
+  const inconsistent = queueItems.filter((q: any) => {
+    const status = prospectStatusMap.get(q.prospect_id);
+    return status && !validStatuses.includes(status);
+  });
 
   const count = inconsistent?.length || 0;
 
