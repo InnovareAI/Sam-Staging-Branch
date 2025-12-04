@@ -5989,6 +5989,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [selectedCampaignProspects, setSelectedCampaignProspects] = useState<any[] | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<any>(null);
+  // CRITICAL FIX (Dec 4): Track selected campaign type when opening builder from In Progress tab
+  const [selectedCampaignType, setSelectedCampaignType] = useState<'connector' | 'messenger' | 'email' | null>(null);
 
   // Track when campaign was created from initialProspects to prevent showing in Campaign Creator
   const [campaignCreatedFromInitial, setCampaignCreatedFromInitial] = useState(false);
@@ -7889,11 +7891,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   setShowBuilder(false);
                   setSelectedCampaignProspects(null); // Clear selected campaign prospects
                   setSelectedDraft(null); // Clear selected draft
+                  setSelectedCampaignType(null); // CRITICAL FIX (Dec 4): Clear selected campaign type
                   setCampaignFilter('paused'); // Switch to Paused tab to show approved campaign
                   onCampaignCreated?.();
                 }}
                 initialProspects={selectedCampaignProspects || initialProspects}
-                initialCampaignType={initialCampaignType}
+                initialCampaignType={selectedCampaignType || initialCampaignType}
                 draftToLoad={selectedDraft}
                 onPrepareForApproval={(campaignData) => {
                   setCampaignDataForApproval(campaignData);
@@ -7991,6 +7994,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 onClick={() => {
                   setSelectedCampaignProspects(null);
                   setSelectedDraft(null);
+                  setSelectedCampaignType(null); // Clear to use default
                   setShowBuilder(true);
                 }}
                 className="px-4 py-2 my-1 mr-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
@@ -8104,6 +8108,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               } else {
                                 setSelectedCampaignProspects(item.prospects);
                               }
+                              // CRITICAL FIX (Dec 4): Set the campaign type from the item
+                              const itemType = item.campaignType as 'connector' | 'messenger' | 'email';
+                              setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType : 'connector');
                               setShowBuilder(true);
                             }}
                             className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
@@ -8146,6 +8153,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                     } else {
                                       setSelectedCampaignProspects(item.prospects);
                                     }
+                                    // CRITICAL FIX (Dec 4): Set the campaign type from the item
+                                    const itemType = item.campaignType as 'connector' | 'messenger' | 'email';
+                                    setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType : 'connector');
                                     setShowBuilder(true);
                                   }}
                                   className={`flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors ${
