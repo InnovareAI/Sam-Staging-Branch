@@ -504,9 +504,11 @@ function parseCSV(csvText: string) {
 
 function detectFieldMapping(headers: string[]) {
   const mapping: any = {}
-  
+
   headers.forEach(header => {
-    const lowerHeader = header.toLowerCase().replace(/_/g, '')
+    // CRITICAL FIX (Dec 4): Remove BOTH underscores AND spaces for matching
+    // "First Name" should match "firstname", "first_name", etc.
+    const lowerHeader = header.toLowerCase().replace(/[_\s]/g, '')
     
     // First name detection
     if (lowerHeader.includes('firstname') || lowerHeader === 'first') {
@@ -565,10 +567,13 @@ function mapToStandardFields(prospect: any, fieldMapping: any) {
   }
 
   // Handle first_name + last_name with normalization
+  // CRITICAL FIX (Dec 4): Support first_name ALONE without last_name
   let rawName = '';
-  if (fieldMapping.first_name && fieldMapping.last_name) {
+  if (fieldMapping.first_name) {
     const firstName = prospect[fieldMapping.first_name.toLowerCase().replace(/\s+/g, '_')] || '';
-    const lastName = prospect[fieldMapping.last_name.toLowerCase().replace(/\s+/g, '_')] || '';
+    const lastName = fieldMapping.last_name
+      ? (prospect[fieldMapping.last_name.toLowerCase().replace(/\s+/g, '_')] || '')
+      : '';
     rawName = `${firstName} ${lastName}`.trim();
   } else if (fieldMapping.name && prospect[fieldMapping.name.toLowerCase().replace(/\s+/g, '_')]) {
     rawName = prospect[fieldMapping.name.toLowerCase().replace(/\s+/g, '_')]
@@ -628,10 +633,11 @@ async function validateAndEnrichProspects(prospects: any[]) {
       prospectIssues.push('Missing LinkedIn URL (required for LinkedIn campaigns)')
     }
     
-    // Check for required fields
-    if (!prospect.name && !prospect.email) {
+    // Check for required fields - for LinkedIn campaigns, LinkedIn URL alone is sufficient
+    // CRITICAL FIX (Dec 4): Accept LinkedIn URL as valid identifier
+    if (!prospect.name && !prospect.email && !prospect.linkedinUrl) {
       isValid = false
-      prospectIssues.push('Missing both name and email')
+      prospectIssues.push('Missing name, email, and LinkedIn URL - at least one required')
     }
     
     // Validate email format
