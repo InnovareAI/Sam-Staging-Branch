@@ -795,9 +795,11 @@ export async function POST(request: NextRequest) {
           if (runsResponse.ok) {
             const runsData = await runsResponse.json();
             const recentRuns = runsData.data?.items || [];
+            console.log(`📋 Found ${recentRuns.length} total Apify runs to check`);
 
             // Find a run that matches our hashtag (SUCCEEDED or ABORTED with data)
             for (const run of recentRuns) {
+              console.log(`   Checking run ${run.id}: status=${run.status}, age=${Math.round((Date.now() - new Date(run.startedAt).getTime()) / 60000)}min`);
               // Skip RUNNING runs - they're not ready yet
               if (run.status === 'RUNNING' || run.status === 'READY') continue;
 
@@ -827,6 +829,7 @@ export async function POST(request: NextRequest) {
                   }
 
                   const runHashtagsNormalized = runHashtags.map(normalizeHashtag);
+                  console.log(`      Input hashtags: ${JSON.stringify(runHashtags)} → ${JSON.stringify(runHashtagsNormalized)}, looking for: ${keywordNormalized}`);
 
                   if (runHashtagsNormalized.includes(keywordNormalized)) {
                     // CRITICAL FIX (Dec 4): Check if dataset has items before using
@@ -943,7 +946,11 @@ export async function POST(request: NextRequest) {
           continue; // Move to next monitor, results will be fetched on next cron run
         }
 
-        console.log(`📦 Fetching results from dataset ${datasetId}...`);
+        if (!datasetId) {
+          console.log(`❌ No datasetId found after run search - this shouldn't happen!`);
+          continue;
+        }
+        console.log(`📦 Fetching results from dataset ${datasetId} (run ${runId})...`);
 
         // Get dataset items
         const datasetUrl = `https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_TOKEN}`;
