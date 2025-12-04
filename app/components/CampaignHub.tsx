@@ -8044,11 +8044,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     }
                   });
 
-                  const hasDrafts = draftCampaigns.length > 0;
+                  // SIMPLIFIED (Dec 4): Only check pending campaigns (no drafts)
                   const hasPending = pendingCampaigns.length > 0;
-                  const isLoading = loadingDrafts || loadingPendingFromDB;
+                  const isLoading = loadingPendingFromDB;
 
-                  if (isLoading && !hasDrafts && !hasPending) {
+                  if (isLoading && !hasPending) {
                     return (
                       <div className="text-center py-12">
                         <div className="text-gray-400">Loading...</div>
@@ -8056,7 +8056,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     );
                   }
 
-                  if (!hasDrafts && !hasPending) {
+                  if (!hasPending) {
                     return (
                       <div className="text-center py-12">
                         <CheckCircle className="mx-auto text-green-400 mb-4" size={48} />
@@ -8066,36 +8066,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     );
                   }
 
-                  // Merge drafts and pending into one list, prioritizing drafts
-                  // Filter out pending campaigns that have a matching draft (same name)
-                  const draftNames = new Set(draftCampaigns.map((d: any) => d.name?.toLowerCase()));
-                  const filteredPending = pendingCampaigns.filter(
-                    p => !draftNames.has(p.campaignName?.toLowerCase())
-                  );
-
-                  // Build unified list: drafts first, then pending without drafts
-                  const allItems: any[] = [
-                    ...draftCampaigns.map((draft: any) => ({
-                      type: 'draft',
-                      name: draft.name,
-                      campaignType: draft.type || draft.campaign_type || 'connector',
-                      // Use prospect_count from API (includes campaign_prospects), fallback to draft_data
-                      prospectCount: draft.prospect_count || draft.draft_data?.csvData?.length || 0,
-                      date: draft.updated_at,
-                      draft,
-                      // CRITICAL FIX (Dec 4): Use prospects from API (now includes campaign_prospects data)
-                      prospects: draft.prospects || null,
-                    })),
-                    ...filteredPending.map((pending: any) => ({
-                      type: 'pending',
-                      name: pending.campaignName,
-                      campaignType: pending.campaignType || 'connector',
-                      prospectCount: pending.prospects?.length || 0,
-                      date: pending.createdAt,
-                      draft: null,
-                      prospects: pending.prospects,
-                    })),
-                  ];
+                  // SIMPLIFIED (Dec 4): ONLY show pending campaigns from prospect_approval_sessions
+                  // No drafts - single source of truth
+                  const allItems: any[] = pendingCampaigns.map((pending: any) => ({
+                    type: 'pending',
+                    name: pending.campaignName,
+                    campaignType: pending.campaignType || 'connector',
+                    prospectCount: pending.prospects?.length || 0,
+                    date: pending.createdAt,
+                    draft: null,
+                    prospects: pending.prospects,
+                  }));
 
                   return (
                     <table className="w-full">
@@ -8112,16 +8093,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       <tbody>
                         {allItems.map((item, idx) => (
                           <tr
-                            key={`${item.type}-${item.name}-${idx}`}
+                            key={`pending-${item.name}-${idx}`}
                             onClick={() => {
-                              if (item.type === 'draft') {
-                                setSelectedDraft(item.draft);
-                                // CRITICAL FIX (Dec 4): Also pass prospects from draft
-                                setSelectedCampaignProspects(item.prospects || []);
-                              } else {
-                                setSelectedCampaignProspects(item.prospects);
-                              }
-                              // CRITICAL FIX (Dec 4): Set the campaign type from the item
+                              // SIMPLIFIED (Dec 4): Only pending campaigns from prospect_approval_sessions
+                              setSelectedCampaignProspects(item.prospects);
+                              // Set campaign type from item
                               const itemType = item.campaignType as 'connector' | 'messenger' | 'email';
                               setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType : 'connector');
                               setShowBuilder(true);
@@ -8130,7 +8106,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           >
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                <div className={`w-2 h-2 rounded-full ${item.type === 'draft' ? 'bg-blue-500' : 'bg-yellow-500'}`}></div>
+                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
                                 <span className="text-white font-medium">{item.name}</span>
                               </div>
                             </td>
@@ -8138,15 +8114,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               <span className="text-gray-300">{getCampaignTypeLabel(item.campaignType)}</span>
                             </td>
                             <td className="px-6 py-4">
-                              {item.type === 'draft' ? (
-                                <span className="px-2 py-1 bg-blue-600/20 text-blue-400 text-xs rounded-full border border-blue-500/40">
-                                  Draft
-                                </span>
-                              ) : (
-                                <span className="px-2 py-1 bg-yellow-600/20 text-yellow-400 text-xs rounded-full border border-yellow-500/40">
-                                  Ready
-                                </span>
-                              )}
+                              <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs rounded-full border border-green-500/40">
+                                Ready
+                              </span>
                             </td>
                             <td className="px-6 py-4">
                               <div className="text-white">{item.prospectCount}</div>
@@ -8157,68 +8127,19 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (item.type === 'draft') {
-                                      setSelectedDraft(item.draft);
-                                    } else {
-                                      setSelectedCampaignProspects(item.prospects);
-                                    }
-                                    // CRITICAL FIX (Dec 4): Set the campaign type from the item
-                                    const itemType = item.campaignType as 'connector' | 'messenger' | 'email';
-                                    setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType : 'connector');
-                                    setShowBuilder(true);
-                                  }}
-                                  className={`flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors ${
-                                    item.type === 'draft'
-                                      ? 'bg-blue-600 hover:bg-blue-700'
-                                      : 'bg-purple-600 hover:bg-purple-700'
-                                  }`}
-                                >
-                                  {item.type === 'draft' ? 'Continue' : 'Create Campaign'}
-                                </button>
-                                {item.type === 'draft' && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      showConfirmModal({
-                                        title: 'Delete Draft',
-                                        message: `Delete draft "${item.name}"?`,
-                                        confirmText: 'Delete',
-                                        confirmVariant: 'danger',
-                                        onConfirm: async () => {
-                                          try {
-                                            const response = await fetch(
-                                              `/api/campaigns/draft?draftId=${item.draft.id}&workspaceId=${workspaceId}`,
-                                              { method: 'DELETE' }
-                                            );
-                                            if (response.ok) {
-                                              if (currentDraftId === item.draft.id) {
-                                                setCurrentDraftId(null);
-                                              }
-                                              try {
-                                                localStorage.removeItem(`campaign-draft-${workspaceId}`);
-                                              } catch (e) {
-                                                console.warn('Failed to clear localStorage draft:', e);
-                                              }
-                                              queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
-                                              toastSuccess('Draft deleted');
-                                            }
-                                          } catch (error) {
-                                            toastError('Failed to delete draft');
-                                          }
-                                        }
-                                      });
-                                    }}
-                                    className="text-red-400 hover:text-red-300 transition-colors"
-                                    title="Delete draft"
-                                  >
-                                    <X size={16} />
-                                  </button>
-                                )}
-                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // SIMPLIFIED (Dec 4): Only pending campaigns
+                                  setSelectedCampaignProspects(item.prospects);
+                                  const itemType = item.campaignType as 'connector' | 'messenger' | 'email';
+                                  setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType : 'connector');
+                                  setShowBuilder(true);
+                                }}
+                                className="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors bg-purple-600 hover:bg-purple-700"
+                              >
+                                Create Campaign
+                              </button>
                             </td>
                           </tr>
                         ))}
