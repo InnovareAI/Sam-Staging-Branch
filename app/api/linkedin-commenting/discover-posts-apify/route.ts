@@ -975,22 +975,13 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Step 3: No runs - start one (fire-and-forget, protected by 2hr cooldown)
+        // Step 3: DISABLED - Do NOT auto-start Apify runs
+        // CRITICAL: sasky actor ignores ALL cost limits (maxResults, maxItems) and charges $0.001/result
+        // with NO way to cap it. A single run returned 4,681 results = $4.68
+        // To scrape new hashtags: manually start runs in Apify console
         if (!datasetId) {
-          console.log(`🚀 No run for #${keyword}. Starting run (will abort at 5 items)...`);
-          try {
-            const startResp = await fetch(`https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ hashtag: `#${keyword}`, maxPages: 1 })
-            });
-            if (startResp.ok) {
-              const runData = await startResp.json();
-              console.log(`✅ Started run ${runData.data.id}. Will abort at 5 items on next check.`);
-            }
-          } catch (e) {
-            console.error(`❌ Start run error:`, e);
-          }
+          console.log(`⛔ No completed run found for #${keyword}. Auto-start DISABLED to prevent runaway costs.`);
+          console.log(`   To scrape this hashtag: manually start a run in Apify console`);
           await supabase.from('linkedin_post_monitors').update({ last_scraped_at: new Date().toISOString() }).eq('id', monitor.id);
           continue;
         }
