@@ -177,7 +177,7 @@ export default function Page() {
   const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
-  const [workspacesLoading, setWorkspacesLoading] = useState(false);
+  const [workspacesLoading, setWorkspacesLoading] = useState(true); // Start true - loading until proven otherwise
   const [userVerified, setUserVerified] = useState(false); // Becomes true after user change detection runs
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isWorkspaceAdmin, setIsWorkspaceAdmin] = useState(false);
@@ -1272,11 +1272,13 @@ export default function Page() {
           await loadWorkspaces(user.id, isAdmin, user.email || session?.user?.email);
         } else {
           setSession(null);
+          setWorkspacesLoading(false); // No user = no workspaces to load
         }
       } catch (error) {
         console.error('Error getting user:', error);
         setUser(null);
         setSession(null);
+        setWorkspacesLoading(false); // Error = no workspaces loaded
       } finally {
         console.log('✅ Auth check complete, setting isAuthLoading to false');
         clearTimeout(timeoutId);
