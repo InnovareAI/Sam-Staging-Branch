@@ -298,7 +298,8 @@ export async function POST(request: NextRequest) {
     const workspacePostsToday = new Map<string, number>();
 
     // Get remaining calls for logging
-    const workspaceIdsAll = [...new Set(monitors.map(m => m.workspace_id))];
+    const monitorsArray = Array.isArray(monitors) ? monitors : [];
+    const workspaceIdsAll = [...new Set(monitorsArray.map(m => m.workspace_id))];
     for (const wsId of workspaceIdsAll) {
       const { data } = await supabase.rpc('get_remaining_apify_calls', { p_workspace_id: wsId });
       // Store used count (25 - remaining)
@@ -740,7 +741,8 @@ export async function POST(request: NextRequest) {
     // Process hashtag monitors - ONE AT A TIME (round-robin by last_scraped_at)
     // This prevents Netlify timeout (60s) since the Apify actor can take 8+ minutes for all hashtags
     // Sort by last_scraped_at (oldest first) to ensure fair rotation
-    const sortedHashtagMonitors = [...hashtagMonitors].sort((a, b) => {
+    const hashtagMonitorsArray = Array.isArray(hashtagMonitors) ? hashtagMonitors : [];
+    const sortedHashtagMonitors = [...hashtagMonitorsArray].sort((a, b) => {
       const aTime = a.last_scraped_at ? new Date(a.last_scraped_at).getTime() : 0;
       const bTime = b.last_scraped_at ? new Date(b.last_scraped_at).getTime() : 0;
       return aTime - bTime; // Oldest first
@@ -769,14 +771,36 @@ export async function POST(request: NextRequest) {
       console.log(`   Selected: ${hashtagEntry?.replace('HASHTAG:', '')} (last scraped: ${hashtagMonitorToProcess.last_scraped_at || 'never'})`);
     }
 
+    // 2-HOUR COOLDOWN: Skip if any hashtag was scraped within 2 hours
+    const COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 hours
+    const mostRecentScrape = sortedHashtagMonitors[sortedHashtagMonitors.length - 1];
+    if (mostRecentScrape?.last_scraped_at) {
+      const lastScrapeTime = new Date(mostRecentScrape.last_scraped_at).getTime();
+      const timeSinceScrape = Date.now() - lastScrapeTime;
+      if (timeSinceScrape < COOLDOWN_MS) {
+        const minutesRemaining = Math.ceil((COOLDOWN_MS - timeSinceScrape) / 60000);
+        console.log(`⏸️ 2hr cooldown active. Last scrape: ${Math.round(timeSinceScrape / 60000)} min ago. Resume in ${minutesRemaining} min.`);
+        return NextResponse.json({
+          success: true,
+          monitorsProcessed: 0,
+          hashtagMonitorsProcessed: 0,
+          cooldownActive: true,
+          cooldownRemainingMinutes: minutesRemaining,
+          note: `2-hour cooldown between hashtag scrapes. ${minutesRemaining} minutes remaining.`
+        });
+      }
+    }
+
     // GLOBAL COST CONTROL: Abort ALL running runs with >= MAX_ITEMS
-    const GLOBAL_MAX_ITEMS = 25;
+    // 5 items = $0.005 per hashtag, 2hr cooldown between hashtags
+    const GLOBAL_MAX_ITEMS = 5;
     try {
       const runningUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}&status=RUNNING&limit=10`;
       const runningResp = await fetch(runningUrl);
       if (runningResp.ok) {
         const runningData = await runningResp.json();
-        for (const run of runningData.data?.items || []) {
+        const runningItems = Array.isArray(runningData.data?.items) ? runningData.data.items : [];
+        for (const run of runningItems) {
           const dsResp = await fetch(`https://api.apify.com/v2/datasets/${run.defaultDatasetId}?token=${APIFY_API_TOKEN}`);
           const dsData = dsResp.ok ? await dsResp.json() : null;
           const itemCount = dsData?.data?.itemCount || 0;
@@ -832,7 +856,7 @@ export async function POST(request: NextRequest) {
           hashtagDebug.apifyResponseStatus = runsResponse.status;
           if (runsResponse.ok) {
             const runsData = await runsResponse.json();
-            const recentRuns = runsData.data?.items || [];
+            const recentRuns = Array.isArray(runsData.data?.items) ? runsData.data.items : [];
             hashtagDebug.runsFound = recentRuns.length;
             console.log(`📋 Found ${recentRuns.length} total Apify runs to check`);
 
@@ -904,14 +928,15 @@ export async function POST(request: NextRequest) {
         }
 
         // Step 2: Check RUNNING runs - abort if >= MAX_ITEMS, use data
-        const MAX_ITEMS = 25;
+        const MAX_ITEMS = 5; // 5 results = $0.005
         if (!datasetId) {
           try {
             const runningUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}&status=RUNNING&limit=5`;
             const runningResponse = await fetch(runningUrl);
             if (runningResponse.ok) {
               const runningData = await runningResponse.json();
-              for (const run of runningData.data?.items || []) {
+              const runningItems2 = Array.isArray(runningData.data?.items) ? runningData.data.items : [];
+              for (const run of runningItems2) {
                 const inputUrl = `https://api.apify.com/v2/key-value-stores/${run.defaultKeyValueStoreId}/records/INPUT?token=${APIFY_API_TOKEN}`;
                 const inputResponse = await fetch(inputUrl);
                 if (inputResponse.ok) {
@@ -950,9 +975,9 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Step 3: No runs at all? Fire-and-forget a new one
+        // Step 3: No runs - start one (fire-and-forget, protected by 2hr cooldown)
         if (!datasetId) {
-          console.log(`🚀 No run for #${keyword}. Starting new run (fire-and-forget)...`);
+          console.log(`🚀 No run for #${keyword}. Starting run (will abort at 5 items)...`);
           try {
             const startResp = await fetch(`https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}`, {
               method: 'POST',
@@ -961,9 +986,7 @@ export async function POST(request: NextRequest) {
             });
             if (startResp.ok) {
               const runData = await startResp.json();
-              console.log(`✅ Started run ${runData.data.id}. Will check on next cron.`);
-            } else {
-              console.error(`❌ Failed to start run: ${startResp.status}`);
+              console.log(`✅ Started run ${runData.data.id}. Will abort at 5 items on next check.`);
             }
           } catch (e) {
             console.error(`❌ Start run error:`, e);
