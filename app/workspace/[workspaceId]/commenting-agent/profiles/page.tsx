@@ -228,7 +228,8 @@ export default function ProfilesListPage() {
           {filteredProfiles.map((profile) => (
             <div
               key={profile.id}
-              className="bg-gray-800 rounded-xl p-5 border border-gray-700 hover:border-gray-600 transition-colors"
+              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${profile.id}`)}
+              className="bg-gray-800 rounded-xl p-5 border border-gray-700 hover:border-gray-600 transition-colors cursor-pointer"
             >
               <div className="flex items-center justify-between">
                 {/* Profile Info */}
@@ -280,7 +281,7 @@ export default function ProfilesListPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => toggleProfileStatus(profile)}
                     disabled={actionLoading === profile.id}
