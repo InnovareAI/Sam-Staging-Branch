@@ -7996,22 +7996,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 })()}
               </button>
 
-              {/* Spacer to push Create Campaign button to the right */}
+              {/* Spacer */}
               <div className="flex-1" />
-
-              {/* Create Campaign Button - Opens builder with no pre-loaded prospects */}
-              <button
-                onClick={() => {
-                  setSelectedCampaignProspects(null);
-                  setSelectedDraft(null);
-                  setSelectedCampaignType(null); // Clear to use default
-                  setShowBuilder(true);
-                }}
-                className="px-4 py-2 my-1 mr-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-              >
-                <Plus size={16} />
-                Create Campaign
-              </button>
             </div>
 
             {/* Conditional Content: Campaign Table OR In Progress Table (merged drafts + pending) */}
