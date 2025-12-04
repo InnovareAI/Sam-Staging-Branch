@@ -27,16 +27,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  console.log('🔍 [v2] Checking for unqueued pending prospects...');
+  console.log('🔍 [v3] Checking for unqueued pending prospects (connector + messenger)...');
 
   try {
-    // 1. Get all active connector campaigns (connection request campaigns)
+    // 1. Get all active campaigns (both connector and messenger types)
     // CRITICAL FIX (Dec 4): Also fetch connection_message and linkedin_config for message source
+    // FIX (Dec 4): Also handle messenger campaigns, not just connector
     const { data: activeCampaigns, error: campError } = await supabase
       .from('campaigns')
-      .select('id, campaign_name, linkedin_account_id, message_templates, connection_message, linkedin_config')
+      .select('id, campaign_name, linkedin_account_id, message_templates, connection_message, linkedin_config, campaign_type')
       .eq('status', 'active')
-      .eq('campaign_type', 'connector');
+      .in('campaign_type', ['connector', 'messenger']);
 
     if (campError) {
       console.error('Error fetching campaigns:', campError);
@@ -56,14 +57,20 @@ export async function POST(req: NextRequest) {
     for (const campaign of activeCampaigns) {
       console.log(`\n🔍 Checking campaign: ${campaign.id} (${campaign.campaign_name || 'unnamed'})`);
 
-      // 2. Get pending prospects for this campaign
+      // 2. Get prospects that need to be queued
       // CRITICAL FIX (Dec 4): Include company, title for full personalization
       // FIX (Dec 4): campaign_prospects has company_name, NOT company
+      // FIX (Dec 4): For messenger campaigns, prospects are 'approved' (1st connections), not 'pending'
+      const isMessengerCampaign = campaign.campaign_type === 'messenger';
+      const targetStatuses = isMessengerCampaign
+        ? ['approved', 'pending']  // Messenger: queue approved/pending 1st connections
+        : ['pending'];             // Connector: queue pending prospects for connection requests
+
       const { data: pendingProspects, error: prospError } = await supabase
         .from('campaign_prospects')
         .select('id, first_name, last_name, linkedin_url, linkedin_user_id, company_name, title')
         .eq('campaign_id', campaign.id)
-        .eq('status', 'pending')
+        .in('status', targetStatuses)
         .not('linkedin_url', 'is', null);
 
       if (prospError) {
@@ -107,15 +114,29 @@ export async function POST(req: NextRequest) {
 
       // 4. Queue them with 2-minute spacing
       // CRITICAL FIX (Dec 4): Check multiple sources for connection message
+      // FIX (Dec 4): Handle messenger campaigns - use direct_message_1 instead of connection_request
       const linkedinConfig = campaign.linkedin_config as { connection_message?: string } | null;
-      const connectionMessage =
-        campaign.message_templates?.connection_request ||
-        campaign.connection_message ||
-        linkedinConfig?.connection_message ||
-        null;
+      const isMessenger = campaign.campaign_type === 'messenger';
 
-      if (!connectionMessage) {
-        console.error(`⚠️ Campaign "${campaign.campaign_name}" has NO connection message - skipping`);
+      let messageTemplate: string | null = null;
+      let messageType: string;
+
+      if (isMessenger) {
+        // Messenger campaigns send direct messages to 1st connections
+        messageTemplate = campaign.message_templates?.direct_message_1 || null;
+        messageType = 'direct_message_1';
+      } else {
+        // Connector campaigns send connection requests
+        messageTemplate =
+          campaign.message_templates?.connection_request ||
+          campaign.connection_message ||
+          linkedinConfig?.connection_message ||
+          null;
+        messageType = 'connection_request';
+      }
+
+      if (!messageTemplate) {
+        console.error(`⚠️ Campaign "${campaign.campaign_name}" (${campaign.campaign_type}) has NO ${isMessenger ? 'direct_message_1' : 'connection message'} - skipping`);
         continue;
       }
 
@@ -135,12 +156,12 @@ export async function POST(req: NextRequest) {
 
         // Log original template for debugging
         if (i === 0) {
-          console.log(`  📝 Original template: "${connectionMessage.substring(0, 80)}..."`);
+          console.log(`  📝 Original template (${messageType}): "${messageTemplate.substring(0, 80)}..."`);
         }
 
         // CRITICAL: Process double-brace {{var}} BEFORE single-brace {var}
         // Otherwise {firstName} matches inside {{firstName}} leaving {value}
-        const personalizedMessage = connectionMessage
+        const personalizedMessage = messageTemplate
           // Double-brace patterns FIRST (most specific)
           .replace(/\{\{firstName\}\}/g, firstName)
           .replace(/\{\{lastName\}\}/g, lastName)
@@ -171,7 +192,7 @@ export async function POST(req: NextRequest) {
           message: personalizedMessage,
           scheduled_for: scheduledTime.toISOString(),
           status: 'pending',
-          message_type: 'connection_request'
+          message_type: messageType  // 'connection_request' for connector, 'direct_message_1' for messenger
         });
       }
 

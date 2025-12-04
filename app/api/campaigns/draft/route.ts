@@ -358,18 +358,19 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ drafts: [] });
       }
 
-      // Enrich drafts with prospect count from campaign_prospects table
+      // Enrich drafts with prospect count AND prospects from campaign_prospects table
       // (CSV uploads put prospects there, not in draft_data.csvData)
       const enrichedDrafts = await Promise.all(
         (drafts || []).map(async (draft) => {
-          const { count } = await supabase
+          const { data: prospects, count } = await supabase
             .from('campaign_prospects')
-            .select('*', { count: 'exact', head: true })
+            .select('*', { count: 'exact' })
             .eq('campaign_id', draft.id);
 
           return {
             ...draft,
-            prospect_count: count || draft.draft_data?.csvData?.length || 0
+            prospect_count: count || draft.draft_data?.csvData?.length || 0,
+            prospects: prospects || [] // Include full prospect data for loading
           };
         })
       );

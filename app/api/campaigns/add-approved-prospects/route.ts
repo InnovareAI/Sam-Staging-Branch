@@ -59,6 +59,31 @@ export async function POST(request: NextRequest) {
       }, { status: 403 })
     }
 
+    // CRITICAL FIX (Dec 4): approval_status is in prospect_approval_decisions, NOT prospect_approval_data
+    // First get approved decisions, then fetch the prospect data
+    const { data: approvedDecisions, error: decisionsError } = await supabase
+      .from('prospect_approval_decisions')
+      .select('prospect_id, session_id')
+      .in('prospect_id', prospect_ids)
+      .eq('decision', 'approved')
+
+    if (decisionsError) {
+      console.error('Error fetching approved decisions:', decisionsError)
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to fetch approved decisions'
+      }, { status: 500 })
+    }
+
+    const approvedProspectIds = (approvedDecisions || []).map(d => d.prospect_id)
+
+    if (approvedProspectIds.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'No approved prospects found with provided IDs'
+      }, { status: 404 })
+    }
+
     // Get approved prospect data (with session info for workspace validation)
     const { data: prospects, error: prospectError } = await supabase
       .from('prospect_approval_data')
@@ -70,8 +95,7 @@ export async function POST(request: NextRequest) {
           campaign_tag
         )
       `)
-      .in('prospect_id', prospect_ids)
-      .eq('approval_status', 'approved')
+      .in('prospect_id', approvedProspectIds)
 
     // Filter prospects that match workspace_id
     const validProspects = (prospects || []).filter(

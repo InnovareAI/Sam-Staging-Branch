@@ -5149,15 +5149,25 @@ Would you like me to adjust these or create more variations?`
               <button
                 type="button"
                 onClick={() => {
+                  console.log('🔘 Continue button clicked', {
+                    currentStep,
+                    campaignType,
+                    hasConnectionDegreeData,
+                    csvDataLength: csvData.length,
+                    initialProspectsLength: initialProspects?.length || 0
+                  });
+
                   // Validate connection degree for LinkedIn campaigns before proceeding
                   if (currentStep === 1 && (campaignType === 'connector' || campaignType === 'messenger')) {
                     // Check if we have connection degree data
                     if (!hasConnectionDegreeData && csvData.length > 0) {
+                      console.log('❌ Blocked by connection degree validation');
                       toastError('LinkedIn campaigns require connection degree data. Please add a "Connection Degree" column to your CSV with values like "1st", "2nd", or "3rd", then re-upload.');
                       return;
                     }
                   }
 
+                  console.log('✅ Moving to Step 2');
                   // Go to Step 2 (Message Templates)
                   setCurrentStep(2);
                 }}
@@ -8073,7 +8083,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       prospectCount: draft.prospect_count || draft.draft_data?.csvData?.length || 0,
                       date: draft.updated_at,
                       draft,
-                      prospects: null,
+                      // CRITICAL FIX (Dec 4): Use prospects from API (now includes campaign_prospects data)
+                      prospects: draft.prospects || null,
                     })),
                     ...filteredPending.map((pending: any) => ({
                       type: 'pending',
@@ -8105,6 +8116,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             onClick={() => {
                               if (item.type === 'draft') {
                                 setSelectedDraft(item.draft);
+                                // CRITICAL FIX (Dec 4): Also pass prospects from draft
+                                setSelectedCampaignProspects(item.prospects || []);
                               } else {
                                 setSelectedCampaignProspects(item.prospects);
                               }
