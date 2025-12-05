@@ -95,13 +95,37 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
 
   try {
     // Get the LinkedIn account for this campaign
+    // Try campaign_linkedin_accounts first (legacy), then campaigns.linkedin_account_id
+    let unipileAccountId: string | null = null;
+
     const { data: linkedinAccount } = await supabase
       .from('campaign_linkedin_accounts')
       .select('unipile_account_id')
       .eq('campaign_id', draft.campaign_id)
       .single();
 
-    if (!linkedinAccount?.unipile_account_id) {
+    if (linkedinAccount?.unipile_account_id) {
+      unipileAccountId = linkedinAccount.unipile_account_id;
+    } else {
+      // Fallback: Get from campaigns.linkedin_account_id -> workspace_accounts
+      const { data: campaign } = await supabase
+        .from('campaigns')
+        .select('linkedin_account_id')
+        .eq('id', draft.campaign_id)
+        .single();
+
+      if (campaign?.linkedin_account_id) {
+        const { data: workspaceAccount } = await supabase
+          .from('workspace_accounts')
+          .select('unipile_account_id')
+          .eq('id', campaign.linkedin_account_id)
+          .single();
+
+        unipileAccountId = workspaceAccount?.unipile_account_id;
+      }
+    }
+
+    if (!unipileAccountId) {
       return { success: false, error: 'No LinkedIn account found' };
     }
 
@@ -119,7 +143,7 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
         'Accept': 'application/json'
       },
       body: JSON.stringify({
-        account_id: linkedinAccount.unipile_account_id,
+        account_id: unipileAccountId,
         attendee_id: recipientId,
         text: draft.edited_text || draft.draft_text
       })
