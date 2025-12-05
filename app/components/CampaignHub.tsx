@@ -56,6 +56,7 @@ function getCampaignTypeLabel(type: string): string {
   const typeLabels: Record<string, string> = {
     'connector': 'Connector',
     'messenger': 'Messenger',
+    'linkedin': 'Connector',  // Legacy: "linkedin" maps to Connector
     'builder': 'Builder',
     'inbound': 'Inbound',
     'company_follow': 'Company Follow',
@@ -6156,17 +6157,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Also fetch legacy data for backwards compatibility
       const legacyResponse = await fetch(`/api/prospect-approval/approved?workspace_id=${actualWorkspaceId}`);
 
-      // DEBUG: Log responses to understand why Drafts tab is empty
-      console.log('📊 [DRAFTS DEBUG] workspace:', actualWorkspaceId);
-      console.log('📊 [DRAFTS DEBUG] newArch response ok:', newArchResponse.ok, 'status:', newArchResponse.status);
-      console.log('📊 [DRAFTS DEBUG] legacy response ok:', legacyResponse.ok, 'status:', legacyResponse.status);
-
       const campaignGroups: Record<string, any> = {};
 
       // Process NEW architecture data (workspace_prospects)
       if (newArchResponse.ok) {
         const newData = await newArchResponse.json();
-        console.log('📊 [DRAFTS DEBUG] newArch data:', { success: newData.success, count: newData.prospects?.length || 0 });
         if (newData.success && newData.prospects?.length > 0) {
           // Group by batch_id (replaces session concept)
           for (const prospect of newData.prospects) {
@@ -6208,7 +6203,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Process LEGACY data (prospect_approval_data) - for backwards compat
       if (legacyResponse.ok) {
         const legacyData = await legacyResponse.json();
-        console.log('📊 [DRAFTS DEBUG] legacy data:', { success: legacyData.success, count: legacyData.prospects?.length || 0, error: legacyData.error });
         if (legacyData.success && legacyData.prospects?.length > 0) {
           for (const prospect of legacyData.prospects) {
             const campaignName = prospect.prospect_approval_sessions?.campaign_name || `Session-${prospect.session_id?.slice(0, 8)}`;
@@ -6257,42 +6251,45 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               isNewArchitecture: false
             });
           }
-          console.log('📊 [DRAFTS DEBUG] After legacy loop, groups:', Object.keys(campaignGroups).length);
         }
       }
 
-      console.log('📊 [DRAFTS DEBUG] Total groups before mapping:', Object.keys(campaignGroups).length, Object.keys(campaignGroups));
-
       // Convert to array, add campaignType based on linked campaign or connection_degree, and sort by creation date
-      const campaigns = Object.values(campaignGroups).map((group: any) => {
-        // Dec 5 fix: Use campaign_type from linked campaigns table if available
-        // This handles email campaigns correctly (CSV uploads set campaign_type: 'email')
-        if (group.linkedCampaignType) {
+      let campaigns: any[] = [];
+      try {
+        campaigns = Object.values(campaignGroups).map((group: any) => {
+          // Dec 5 fix: Use campaign_type from linked campaigns table if available
+          // This handles email campaigns correctly (CSV uploads set campaign_type: 'email')
+          if (group.linkedCampaignType) {
+            return {
+              ...group,
+              campaignType: group.linkedCampaignType
+            };
+          }
+
+          // Fallback: Determine campaignType from prospects' connection_degree
+          // 1st degree → messenger, 2nd/3rd degree → connector
+          // CRITICAL FIX (Dec 5): connection_degree can be number or string, convert to string first
+          const firstDegreeCount = group.prospects.filter((p: any) => {
+            const degree = String(p.connection_degree || '').toLowerCase();
+            return degree === '1st' || degree === '1' || degree.includes('1st');
+          }).length;
+          const totalCount = group.prospects.length;
+
+          // If majority (>50%) are 1st degree → messenger, else connector
+          const campaignType = totalCount > 0 && (firstDegreeCount / totalCount) > 0.5 ? 'messenger' : 'connector';
+
           return {
             ...group,
-            campaignType: group.linkedCampaignType
+            campaignType
           };
-        }
+        }).sort((a: any, b: any) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      } catch (mapError) {
+        console.error('[Drafts] Error mapping campaigns:', mapError);
+      }
 
-        // Fallback: Determine campaignType from prospects' connection_degree
-        // 1st degree → messenger, 2nd/3rd degree → connector
-        const firstDegreeCount = group.prospects.filter((p: any) =>
-          p.connection_degree === '1st' || p.connection_degree === '1' || p.connection_degree?.toLowerCase()?.includes('1st')
-        ).length;
-        const totalCount = group.prospects.length;
-
-        // If majority (>50%) are 1st degree → messenger, else connector
-        const campaignType = totalCount > 0 && (firstDegreeCount / totalCount) > 0.5 ? 'messenger' : 'connector';
-
-        return {
-          ...group,
-          campaignType
-        };
-      }).sort((a: any, b: any) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-
-      console.log('📊 [DRAFTS DEBUG] Final campaigns:', campaigns.length, campaigns.map((c: any) => ({ name: c.campaignName, prospects: c.prospects?.length || 0 })));
       return campaigns;
     },
     enabled: campaignFilter === 'pending' && !!workspaceId, // Only fetch when Pending tab is active
@@ -8101,11 +8098,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     }
                   });
 
-                  // SIMPLIFIED (Dec 4): Only check pending campaigns (no drafts)
+                  // Dec 5: Include BOTH pending campaigns AND draft campaigns from builder
                   const hasPending = pendingCampaigns.length > 0;
-                  const isLoading = loadingPendingFromDB;
+                  const hasDrafts = draftCampaigns.length > 0;
+                  const isLoading = loadingPendingFromDB || loadingDrafts;
 
-                  if (isLoading && !hasPending) {
+                  if (isLoading && !hasPending && !hasDrafts) {
                     return (
                       <div className="text-center py-12">
                         <div className="text-gray-400">Loading...</div>
@@ -8113,7 +8111,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     );
                   }
 
-                  if (!hasPending) {
+                  if (!hasPending && !hasDrafts) {
                     return (
                       <div className="text-center py-12">
                         <CheckCircle className="mx-auto text-green-400 mb-4" size={48} />
@@ -8123,17 +8121,31 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     );
                   }
 
-                  // SIMPLIFIED (Dec 4): ONLY show pending campaigns from prospect_approval_sessions
-                  // No drafts - single source of truth
-                  const allItems: any[] = pendingCampaigns.map((pending: any) => ({
-                    type: 'pending',
-                    name: pending.campaignName,
-                    campaignType: pending.campaignType || 'connector',
-                    prospectCount: pending.prospects?.length || 0,
-                    date: pending.createdAt,
-                    draft: null,
-                    prospects: pending.prospects,
-                  }));
+                  // Dec 5: Combine pending campaigns AND draft campaigns
+                  const allItems: any[] = [
+                    // Pending campaigns from prospect_approval_sessions
+                    ...pendingCampaigns.map((pending: any) => ({
+                      type: 'pending',
+                      name: pending.campaignName,
+                      campaignType: pending.campaignType || 'connector',
+                      prospectCount: pending.prospects?.length || 0,
+                      date: pending.createdAt,
+                      draft: null,
+                      prospects: pending.prospects,
+                      status: 'ready'
+                    })),
+                    // Draft campaigns from builder (status='draft' in campaigns table)
+                    ...draftCampaigns.map((draft: any) => ({
+                      type: 'draft',
+                      name: draft.campaign_name || draft.name || 'Untitled Draft',
+                      campaignType: draft.campaign_type || draft.type || 'connector',
+                      prospectCount: draft.prospect_count || 0,
+                      date: draft.created_at,
+                      draft: draft,  // Keep full draft object for actions
+                      prospects: null,
+                      status: 'draft'
+                    }))
+                  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
                   return (
                     <table className="w-full">
@@ -8152,18 +8164,23 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           <tr
                             key={`pending-${item.name}-${idx}`}
                             onClick={() => {
-                              // SIMPLIFIED (Dec 4): Only pending campaigns from prospect_approval_sessions
-                              setSelectedCampaignProspects(item.prospects);
-                              // Set campaign type from item
-                              const itemType = item.campaignType as 'connector' | 'messenger' | 'email';
-                              setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType : 'connector');
-                              setShowBuilder(true);
+                              if (item.type === 'draft' && item.draft) {
+                                // Dec 5: For draft campaigns, open edit modal
+                                setCampaignToEdit(item.draft);
+                                setShowEditModal(true);
+                              } else {
+                                // For pending campaigns, open builder
+                                setSelectedCampaignProspects(item.prospects);
+                                const itemType = item.campaignType === 'linkedin' ? 'connector' : item.campaignType;
+                                setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType as 'connector' | 'messenger' | 'email' : 'connector');
+                                setShowBuilder(true);
+                              }
                             }}
                             className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
                           >
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                <div className={`w-2 h-2 rounded-full ${item.status === 'draft' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
                                 <span className="text-white font-medium">{item.name}</span>
                               </div>
                             </td>
@@ -8171,9 +8188,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               <span className="text-gray-300">{getCampaignTypeLabel(item.campaignType)}</span>
                             </td>
                             <td className="px-6 py-4">
-                              <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs rounded-full border border-green-500/40">
-                                Ready
-                              </span>
+                              {item.status === 'draft' ? (
+                                <span className="px-2 py-1 bg-yellow-600/20 text-yellow-400 text-xs rounded-full border border-yellow-500/40">
+                                  Draft
+                                </span>
+                              ) : (
+                                <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs rounded-full border border-green-500/40">
+                                  Ready
+                                </span>
+                              )}
                             </td>
                             <td className="px-6 py-4">
                               <div className="text-white">{item.prospectCount}</div>
@@ -8184,19 +8207,47 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // SIMPLIFIED (Dec 4): Only pending campaigns
-                                  setSelectedCampaignProspects(item.prospects);
-                                  const itemType = item.campaignType as 'connector' | 'messenger' | 'email';
-                                  setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType : 'connector');
-                                  setShowBuilder(true);
-                                }}
-                                className="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors bg-purple-600 hover:bg-purple-700"
-                              >
-                                Create Campaign
-                              </button>
+                              {item.type === 'draft' ? (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    // Activate draft campaign
+                                    if (item.draft?.id) {
+                                      try {
+                                        const response = await fetch(`/api/campaigns/${item.draft.id}/status`, {
+                                          method: 'PUT',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ status: 'active' })
+                                        });
+                                        if (response.ok) {
+                                          queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+                                          queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                                          setCampaignFilter('active');
+                                        }
+                                      } catch (error) {
+                                        console.error('Failed to activate campaign:', error);
+                                      }
+                                    }
+                                  }}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors bg-green-600 hover:bg-green-700"
+                                >
+                                  Activate
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedCampaignProspects(item.prospects);
+                                    // Map 'linkedin' → 'connector'
+                                    const itemType = item.campaignType === 'linkedin' ? 'connector' : item.campaignType;
+                                    setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType as 'connector' | 'messenger' | 'email' : 'connector');
+                                    setShowBuilder(true);
+                                  }}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors bg-purple-600 hover:bg-purple-700"
+                                >
+                                  Create Campaign
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
