@@ -6207,8 +6207,10 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             const campaignName = prospect.prospect_approval_sessions?.campaign_name || `Session-${prospect.session_id?.slice(0, 8)}`;
             const groupKey = `legacy_${campaignName}`;
 
-            // Skip if already in new architecture
-            if (campaignGroups[groupKey]) continue;
+            // Skip if this groupKey already exists from new architecture (avoid duplicates)
+            // CRITICAL FIX (Dec 5): Only skip if isNewArchitecture, NOT for legacy groups
+            // Bug was: second prospect in same campaign was skipped because group already existed
+            if (campaignGroups[groupKey]?.isNewArchitecture) continue;
 
             // Dec 5 fix: Get campaign_type from linked campaigns table
             const linkedCampaignType = prospect.prospect_approval_sessions?.campaigns?.campaign_type;
