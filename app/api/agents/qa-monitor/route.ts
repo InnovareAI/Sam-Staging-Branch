@@ -1254,7 +1254,7 @@ async function checkStuckUploadSessions(supabase: any): Promise<QACheck> {
 async function autoFixStuckUploadSessions(supabase: any): Promise<AutoFixResult> {
   try {
     let fixedCount = 0;
-    let transferredCount = 0;
+    // transferredCount removed - auto-transfer disabled Dec 5, 2025
 
     // Find active/pending sessions
     const { data: sessions } = await supabase
@@ -1293,58 +1293,12 @@ async function autoFixStuckUploadSessions(supabase: any): Promise<AutoFixResult>
 
       fixedCount++;
 
-      // Transfer approved prospects if campaign exists and they're missing
-      if (session.campaign_id && (actualApproved || 0) > 0) {
-        // Get approved prospects not yet in campaign
-        const { data: approvedProspects } = await supabase
-          .from('prospect_approval_data')
-          .select('*')
-          .eq('session_id', session.id)
-          .eq('approval_status', 'approved');
-
-        // Check which are already in campaign
-        const { data: existingInCampaign } = await supabase
-          .from('campaign_prospects')
-          .select('linkedin_url')
-          .eq('campaign_id', session.campaign_id);
-
-        const existingUrls = new Set((existingInCampaign || []).map((p: any) => p.linkedin_url));
-
-        // Filter to only those not already transferred
-        const toTransfer = (approvedProspects || []).filter((p: any) =>
-          !existingUrls.has(p.contact?.linkedin_url)
-        );
-
-        if (toTransfer.length > 0) {
-          const campaignProspects = toTransfer.map((p: any) => {
-            const nameParts = p.name?.split(' ') || ['Unknown'];
-            return {
-              campaign_id: session.campaign_id,
-              workspace_id: session.workspace_id,
-              first_name: nameParts[0] || 'Unknown',
-              last_name: nameParts.slice(1).join(' ') || '',
-              email: p.contact?.email || null,
-              company_name: p.company?.name || '',
-              title: p.title || '',
-              location: p.location || null,
-              linkedin_url: p.contact?.linkedin_url || null,
-              status: 'pending',
-              personalization_data: {
-                source: 'qa_monitor_recovery',
-                session_id: session.id,
-                recovered_at: new Date().toISOString()
-              }
-            };
-          });
-
-          const { data: inserted } = await supabase
-            .from('campaign_prospects')
-            .insert(campaignProspects)
-            .select('id');
-
-          transferredCount += inserted?.length || 0;
-        }
-      }
+      // DISABLED (Dec 5, 2025): Auto-transfer caused prospects to be assigned to campaigns
+      // before user completed the modal flow. Prospects should only be assigned when
+      // user explicitly completes CampaignTypeModal → PreflightModal → handleProceedToCampaignHub
+      //
+      // Old logic was: if session has campaign_id, auto-insert approved prospects to campaign_prospects
+      // This bypassed the user's ability to choose campaign type and finalize the flow.
     }
 
     return {
@@ -1352,7 +1306,7 @@ async function autoFixStuckUploadSessions(supabase: any): Promise<AutoFixResult>
       attempted: true,
       success: true,
       count: fixedCount,
-      details: `Fixed ${fixedCount} session counters, transferred ${transferredCount} prospects to campaigns`
+      details: `Fixed ${fixedCount} session counters (auto-transfer disabled - prospects stay in approval flow)`
     };
   } catch (error) {
     return {

@@ -147,48 +147,12 @@ export async function POST(request: NextRequest) {
       role: memberCheck.role
     });
 
-    // AUTO-CREATE CAMPAIGN IF NONE PROVIDED
-    // This prevents prospects from being orphaned in prospect_approval_data
+    // IMPORTANT: Do NOT auto-create campaign here
+    // Prospects stay in prospect_approval_data until user completes the modal flow
+    // Campaign is created only when user proceeds from CampaignTypeModal → PreflightModal → handleProceedToCampaignHub
+    // This prevents prospects from being prematurely assigned to campaigns
     if (!campaignId) {
-      console.log('CSV Upload - No campaign_id provided, auto-creating campaign...');
-
-      // Generate a campaign name based on date if not provided
-      const today = new Date().toISOString().split('T')[0];
-      const autoCampaignName = campaignName || `${today} CSV Upload`;
-
-      const { data: newCampaign, error: campaignError } = await supabase
-        .from('campaigns')
-        .insert({
-          workspace_id: workspaceId,
-          created_by: user.id,  // Column is 'created_by', not 'user_id'
-          name: autoCampaignName,
-          campaign_type: 'email',  // CSV uploads are typically email campaigns
-          status: 'draft',
-          message_templates: {
-            connection_request: '',
-            follow_ups: []
-          },
-          metadata: {
-            auto_created: true,
-            source: 'csv-upload'
-          }
-        })
-        .select()
-        .single();
-
-      if (campaignError) {
-        console.error('CSV Upload - Failed to auto-create campaign:', campaignError);
-        return NextResponse.json({
-          success: false,
-          error: 'Failed to create campaign for prospects'
-        }, { status: 500 });
-      }
-
-      campaignId = newCampaign.id;
-      console.log('CSV Upload - Auto-created campaign:', {
-        campaignId: newCampaign.id,
-        campaignName: autoCampaignName
-      });
+      console.log('CSV Upload - No campaign_id, prospects will remain in approval flow until user creates campaign');
     }
 
     if (!file) {
