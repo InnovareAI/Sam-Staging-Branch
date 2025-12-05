@@ -16,7 +16,7 @@ import { createClient } from '@supabase/supabase-js';
  * Header: x-cron-secret (for security)
  */
 
-export const maxDuration = 60; // 60 seconds max
+export const maxDuration = 300; // 5 minutes max - need time for profile lookups
 
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       .in('status', ['connected', 'connection_request_sent'])
       .is('responded_at', null)
       .not('linkedin_user_id', 'is', null)
-      .limit(50);
+      .limit(15); // Dec 5: Reduced from 50 to avoid timeouts with profile lookups
 
     if (prospectsError) {
       console.error('❌ Error fetching prospects:', prospectsError);
@@ -103,9 +103,9 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`\n🔍 Checking account ${accountId} (${accountProspects.length} prospects)`);
 
-        // Fetch recent chats for this account
+        // Fetch recent chats for this account (limit to 30 most recent)
         const chatsResponse = await fetch(
-          `${UNIPILE_BASE_URL}/api/v1/chats?account_id=${accountId}&limit=100`,
+          `${UNIPILE_BASE_URL}/api/v1/chats?account_id=${accountId}&limit=30`,
           {
             method: 'GET',
             headers: {
@@ -124,18 +124,77 @@ export async function POST(request: NextRequest) {
         const chatsData = await chatsResponse.json();
         const chats = chatsData.items || [];
 
-        // For each prospect, check if they have any messages TO us (they replied)
+        // Dec 5 OPTIMIZATION: Instead of looking up ALL prospects' provider_ids,
+        // only look up the attendees from chats that exist, then match back to prospects.
+        // This is O(chats) instead of O(prospects) - much faster!
+
+        // Build a map of vanity -> prospect for matching
+        const vanityToProspect = new Map<string, typeof accountProspects[0]>();
+        for (const prospect of accountProspects) {
+          const vanity = extractVanity(prospect.linkedin_user_id);
+          if (vanity) {
+            vanityToProspect.set(vanity.toLowerCase(), prospect);
+          }
+        }
+
+        // Build a map of chat.attendee_provider_id -> vanity by looking up only chat attendees
+        const providerIdToVanity = new Map<string, string>();
+        const uniqueAttendeeIds = [...new Set(chats.map((c: any) => c.attendee_provider_id).filter(Boolean))];
+
+        console.log(`   📊 Looking up ${uniqueAttendeeIds.length} chat attendees (not ${accountProspects.length} prospects)`);
+
+        for (const attendeeProviderId of uniqueAttendeeIds) {
+          try {
+            // Look up the attendee's profile by provider_id to get their vanity
+            const profileResponse = await fetch(
+              `${UNIPILE_BASE_URL}/api/v1/users/profile?provider_id=${attendeeProviderId}&account_id=${accountId}`,
+              {
+                method: 'GET',
+                headers: {
+                  'X-API-KEY': UNIPILE_API_KEY,
+                  'Accept': 'application/json'
+                }
+              }
+            );
+
+            if (profileResponse.ok) {
+              const profile = await profileResponse.json();
+              if (profile.public_identifier) {
+                providerIdToVanity.set(attendeeProviderId, profile.public_identifier.toLowerCase());
+                console.log(`   ✓ ${profile.first_name}: ${profile.public_identifier}`);
+              }
+            }
+          } catch (err) {
+            // Continue with other attendees
+          }
+
+          // Small delay between lookups
+          await new Promise(resolve => setTimeout(resolve, 30));
+        }
+
+        console.log(`   📊 Mapped ${providerIdToVanity.size} attendees to vanities`);
+
+        // For each prospect, check if they have a chat (using vanity matching)
         for (const prospect of accountProspects) {
           results.checked++;
 
-          // Find chat with this prospect
+          const prospectVanity = extractVanity(prospect.linkedin_user_id)?.toLowerCase();
+          if (!prospectVanity) continue;
+
+          // Find chat where attendee's vanity matches prospect's vanity
           const prospectChat = chats.find((chat: any) => {
-            const participants = chat.attendees || [];
-            return participants.some((p: any) =>
-              p.provider_id === prospect.linkedin_user_id ||
-              p.public_identifier === extractVanity(prospect.linkedin_user_id)
-            );
+            const attendeeVanity = providerIdToVanity.get(chat.attendee_provider_id);
+            return attendeeVanity === prospectVanity;
           });
+
+          // Also store the provider_id for message matching
+          let prospectProviderId: string | null = null;
+          for (const [providerId, vanity] of providerIdToVanity.entries()) {
+            if (vanity === prospectVanity) {
+              prospectProviderId = providerId;
+              break;
+            }
+          }
 
           if (!prospectChat) {
             continue; // No chat found, prospect hasn't replied
@@ -161,13 +220,12 @@ export async function POST(request: NextRequest) {
           const messages = messagesData.items || [];
 
           // Check if any message is FROM the prospect (not from us)
-          // Dec 5 FIX: Compare by vanity/public_identifier since linkedin_user_id is stored as URL
-          const prospectVanity = extractVanity(prospect.linkedin_user_id);
+          // Dec 5 FIX: Compare by provider_id or vanity/public_identifier
           const prospectReply = messages.find((msg: any) => {
             const senderId = msg.sender?.provider_id || msg.sender_id;
             const senderVanity = msg.sender?.public_identifier;
-            // Match by provider_id OR public_identifier (vanity)
-            return senderId === prospect.linkedin_user_id ||
+            // Match by provider_id (most reliable) OR public_identifier (vanity)
+            return (prospectProviderId && senderId === prospectProviderId) ||
                    (prospectVanity && senderVanity === prospectVanity);
           });
 
