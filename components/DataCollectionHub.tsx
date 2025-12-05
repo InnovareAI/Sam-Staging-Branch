@@ -1836,8 +1836,11 @@ export default function DataCollectionHub({
     // Helper to check LinkedIn URL
     const hasLinkedIn = (p: any) => p.contact?.linkedin_url || p.linkedin_url || p.linkedinUrl
 
-    // Helper to check if email exists
-    const hasEmail = (p: any) => p.contact?.email || p.email || p.email_address
+    // Helper to check if email exists (must be non-empty string)
+    const hasEmail = (p: any) => {
+      const email = p.contact?.email || p.email || p.email_address;
+      return email && typeof email === 'string' && email.trim().length > 0;
+    }
 
     // Count eligible prospects for each type
     // MESSENGER: Must be 1st degree connection
@@ -2976,10 +2979,14 @@ export default function DataCollectionHub({
             : approvedProspects;
 
           // Filter prospects based on campaign type selection
+          // Helper to check if email exists (must be non-empty string)
+          const hasValidEmail = (p: any) => {
+            const email = p.contact?.email || p.email || p.email_address;
+            return email && typeof email === 'string' && email.trim().length > 0;
+          };
+
           if (type === 'email') {
-            prospectsToSend = prospectsToSend.filter(p =>
-              p.contact?.email || p.email || p.email_address
-            );
+            prospectsToSend = prospectsToSend.filter(p => hasValidEmail(p));
           } else if (type === 'connector') {
             prospectsToSend = prospectsToSend.filter(p => {
               const hasLinkedIn = p.contact?.linkedin_url || p.linkedin_url || p.linkedinUrl;
@@ -3171,9 +3178,12 @@ function CampaignTypeModal({
   if (!isOpen) return null;
 
   // Count prospects by campaign type eligibility
-  const emailCount = prospects.filter(p =>
-    p.contact?.email || p.email || p.email_address
-  ).length;
+  // Helper to check if email exists (must be non-empty string)
+  const hasValidEmail = (p: any) => {
+    const email = p.contact?.email || p.email || p.email_address;
+    return email && typeof email === 'string' && email.trim().length > 0;
+  };
+  const emailCount = prospects.filter(p => hasValidEmail(p)).length;
 
   const hasLinkedIn = (p: any) =>
     p.contact?.linkedin_url || p.linkedin_url || p.linkedinUrl;
