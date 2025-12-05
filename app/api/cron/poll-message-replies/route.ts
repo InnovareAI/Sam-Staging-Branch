@@ -161,9 +161,14 @@ export async function POST(request: NextRequest) {
           const messages = messagesData.items || [];
 
           // Check if any message is FROM the prospect (not from us)
+          // Dec 5 FIX: Compare by vanity/public_identifier since linkedin_user_id is stored as URL
+          const prospectVanity = extractVanity(prospect.linkedin_user_id);
           const prospectReply = messages.find((msg: any) => {
             const senderId = msg.sender?.provider_id || msg.sender_id;
-            return senderId === prospect.linkedin_user_id;
+            const senderVanity = msg.sender?.public_identifier;
+            // Match by provider_id OR public_identifier (vanity)
+            return senderId === prospect.linkedin_user_id ||
+                   (prospectVanity && senderVanity === prospectVanity);
           });
 
           if (prospectReply) {
