@@ -13,90 +13,197 @@
 // COMPANY NAME NORMALIZATION
 // ============================================
 
-const COMPANY_SUFFIXES = [
-  'International',
-  'Technologies',
+// Multi-word suffixes (must match first - order matters!)
+const MULTI_WORD_SUFFIXES = [
+  'SAB de CV',
+  'SA de CV',
+  'S de RL',
+  'Sp. z o.o.',
+  'z o.o.',
+  'Pty Ltd',
+  'Pvt Ltd',
+  'Pte Ltd',
+  'Godo Kaisha',
+  'Co., Ltd',
+  'Co. Ltd',
+  'Co.,Ltd',
+  'FZ-LLC',
+  // Compound Tech patterns
+  'Tech Solutions',
+  'Tech Services',
+  'Tech Group',
+  'Tech Systems',
+  'Tech Consulting',
+];
+
+// Legal suffixes (international)
+const LEGAL_SUFFIXES = [
+  // English
+  'Incorporated',
   'Corporation',
-  'Consulting',
-  'Solutions',
-  'Holdings',
-  'Services',
-  'Partners',
-  'Company',
   'Limited',
-  'Global',
-  'Agency',
-  'Group',
   'Corp',
-  'Tech',
   'Inc',
   'LLC',
   'LLP',
   'Ltd',
-  'plc',
   'PLC',
   'Co',
-  'AG',
-  'SA',
-  'S.A.',
-  'S.L.',
-  'GmbH',
-  'B.V.',
-  'N.V.',
+  // Australia
   'Pty',
+  // Germany/Austria/Switzerland
+  'GmbH',
+  'KGaA',
+  'OHG',
+  'eG',
+  'e.V.',
+  'AG',
+  'KG',
+  'SE',  // European Company (Societas Europaea)
+  // France
+  'SAS',
+  'SARL',
+  'EURL',
+  'SCA',
+  'SA',
+  // Netherlands/Belgium
+  'BVBA',
+  'B.V.',
+  'B.V',
+  'BV',
+  'N.V.',
+  'N.V',
+  'NV',
+  'CV',
+  // Spain
+  'SLU',
+  'SL',
+  // Italy
+  'SpA',
+  'Srl',
+  'SaS',
+  // Scandinavia
+  'AB',   // Sweden
+  'ASA',  // Norway (public)
+  'AS',   // Norway
+  'A/S',  // Denmark
+  'ApS',  // Denmark
+  'Oyj',  // Finland (public)
+  'Oy',   // Finland
+  // Japan
+  'K.K.',
+  'KK',
+  'Y.K.',
+  // India/Singapore
   'Pvt',
+  'Pte',
+  // Brazil
+  'Ltda',
+  'EIRELI',
+  // Mexico
+  'SAPI',
+  // UAE
+  'PJSC',
+  'FZE',
+  'FZC',
+  // Ireland
+  'DAC',
+  'CLG',
+];
+
+// Business descriptors (strip from end)
+const BUSINESS_DESCRIPTORS = [
+  'International',
+  'Technologies',
+  'Technology',
+  'Consulting',
+  'Consultants',
+  'Solutions',
+  'Holdings',
+  'Services',
+  'Partners',
+  'Partnership',
+  'Company',
+  'Global',
+  'Worldwide',
+  'Agency',
+  'Group',
+  'Enterprises',
+  'Ventures',
+  'Studios',
+  'Studio',
+  'Labs',
+  'Lab',
+  'Digital',
+  'Media',
+  'Software',
+  'Systems',
 ];
 
 /**
  * Normalize company name by removing legal suffixes and common business descriptors
+ * PRESERVES ORIGINAL CASING (does not lowercase)
  *
  * Examples:
  * - "ACA Tech Solutions" → "ACA"
  * - "ACA Tech Solutions Ltd." → "ACA"
- * - "BrightSpark Creative Agency" → "BrightSpark Creative"
- * - "The Smith Consulting Group" → "Smith"
- * - "DataPulse Analytics Inc." → "DataPulse Analytics"
+ * - "PostPilot AI Technologies Inc." → "PostPilot AI"
+ * - "Virginia Tech" → "Virginia Tech" (preserved - Tech is part of brand)
+ * - "Tech Mahindra" → "Tech Mahindra" (preserved - Tech is at start)
+ * - "Goldman Sachs Group, Inc." → "Goldman Sachs"
+ * - "McKinsey & Company" → "McKinsey"
  * - "IBM" → "IBM"
  * - "Stripe" → "Stripe"
- * - "Goldman Sachs Group, Inc." → "Goldman Sachs"
  */
 export function normalizeCompanyName(name: string): string {
   if (!name || name.trim() === '') return '';
 
-  let normalized = name.trim();
+  let result = name.trim();
 
   // Strip "The" from start
-  normalized = normalized.replace(/^The\s+/i, '');
+  result = result.replace(/^The\s+/i, '');
 
   // Remove content in parentheses (often parent company names)
-  normalized = normalized.replace(/\([^)]*\)/g, '').trim();
+  result = result.replace(/\s*\([^)]*\)/g, '').trim();
 
-  // Strip suffixes iteratively (keep going until none left)
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const suffix of COMPANY_SUFFIXES) {
-      const regex = new RegExp(`[\\s,]+${suffix.replace(/\./g, '\\.')}\\.?$`, 'i');
-      if (regex.test(normalized)) {
-        normalized = normalized.replace(regex, '').trim();
-        changed = true;
-      }
+  // Iterate: strip suffixes until no more changes
+  let prevResult = '';
+  while (result !== prevResult && result.length >= 2) {
+    prevResult = result;
+
+    // 1. Legal suffixes (always strip first)
+    for (const suffix of LEGAL_SUFFIXES) {
+      const regex = new RegExp(`[,\\s]*${suffix.replace(/\./g, '\\.')}\\.?$`, 'i');
+      result = result.replace(regex, '').trim();
     }
+
+    // 2. Multi-word suffixes FIRST (before individual words)
+    // Includes international suffixes like "Pty Ltd", "SA de CV", "Co., Ltd"
+    for (const multiWord of MULTI_WORD_SUFFIXES) {
+      const escaped = multiWord.replace(/\./g, '\\.').replace(/\s+/g, '\\s+');
+      const regex = new RegExp(`[,\\s]*${escaped}\\.?$`, 'i');
+      result = result.replace(regex, '').trim();
+    }
+
+    // 3. Then individual business descriptors
+    for (const descriptor of BUSINESS_DESCRIPTORS) {
+      const regex = new RegExp(`[,\\s]+${descriptor}$`, 'i');
+      result = result.replace(regex, '').trim();
+    }
+
+    // Strip trailing punctuation
+    result = result.replace(/[,.\s&]+$/, '').trim();
   }
 
-  // Strip trailing punctuation
-  normalized = normalized.replace(/[.,&]+$/, '').trim();
-
-  // Safety: if result is too short (< 3 chars), be more conservative
-  if (normalized.length < 3) {
-    // Fall back to just removing legal suffixes
-    normalized = name
+  // Safety: if result is too short (< 2 chars), be more conservative
+  if (result.length < 2) {
+    result = name
       .replace(/^The\s+/i, '')
       .replace(/[,\s]+(Inc\.?|LLC|Ltd\.?|Corp\.?|plc)$/i, '')
       .trim();
   }
 
-  return normalized || name;
+  return result || name;
 }
 
 /**
@@ -473,32 +580,21 @@ export interface BatchNormalizationResult {
 
 /**
  * Generate SQL to normalize existing company names in campaign_prospects
+ * Uses the normalize_company_display_name() function defined in migration 032
  */
 export function generateCompanyNormalizationSQL(): string {
   return `
--- Add normalized company name column if not exists
-ALTER TABLE campaign_prospects
-ADD COLUMN IF NOT EXISTS company_name_normalized TEXT;
-
--- Create index for faster lookups
-CREATE INDEX IF NOT EXISTS idx_campaign_prospects_company_normalized
-ON campaign_prospects(company_name_normalized);
-
--- Update with normalized values
--- NOTE: Run this in batches for large tables
+-- Update campaign_prospects with normalized values
+-- Uses normalize_company_display_name() function from migration 032
 UPDATE campaign_prospects
-SET company_name_normalized =
-  LOWER(TRIM(
-    REGEXP_REPLACE(
-      REGEXP_REPLACE(
-        REGEXP_REPLACE(company_name, '\\s*(Inc\\.?|Corp\\.?|LLC|Ltd\\.?|GmbH|S\\.A\\.|Co\\.|Company|Group|Holdings|Solutions|Technologies|International)$', '', 'i'),
-        '^The\\s+', '', 'i'
-      ),
-      '[,.]$', ''
-    )
-  ))
+SET company_name_normalized = normalize_company_display_name(company_name)
 WHERE company_name IS NOT NULL
-  AND company_name != ''
-  AND company_name_normalized IS NULL;
+  AND company_name != '';
+
+-- Update workspace_prospects with normalized values
+UPDATE workspace_prospects
+SET company_name_normalized = normalize_company_display_name(company_name)
+WHERE company_name IS NOT NULL
+  AND company_name != '';
 `;
 }
