@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { normalizeFullName, normalizeCompanyName } from '@/lib/enrich-prospect-name';
+import { normalizeFullName } from '@/lib/enrich-prospect-name';
+import {
+  normalizeCompanyName,
+  normalizeJobTitle,
+  normalizeLocation,
+  normalizeIndustry
+} from '@/lib/prospect-normalization';
 
 // Allow up to 60 seconds for CSV uploads (Netlify Pro limit)
 // This is needed for large CSV files with 50+ prospects
@@ -358,15 +364,21 @@ export async function POST(request: NextRequest) {
         continue;  // Skip this prospect
       }
 
+      // Normalize all fields using the new normalization library
+      const normalizedTitle = normalizeJobTitle(prospect.title || '');
+      const normalizedLocation = normalizeLocation(prospect.location || '');
+      const normalizedIndustry = normalizeIndustry(prospect.industry || '');
+
       prospects.push({
         name: fullName,
-        title: prospect.title || '',
-        company: { name: cleanCompanyName, industry: prospect.industry || '' },
-        location: prospect.location || '',
+        title: normalizedTitle,
+        company: { name: cleanCompanyName, industry: normalizedIndustry },
+        location: normalizedLocation,
         contact: {
           email: prospect.email || '',
           linkedin_url: linkedinUrl,
-          phone: prospect.phone || ''
+          phone: prospect.phone || '',
+          website: prospect.companyWebsite || null  // Include website in contact for downstream
         },
         connectionDegree: connectionDegree,  // Add connection degree
         companyWebsite: prospect.companyWebsite || null,  // Optional company website
