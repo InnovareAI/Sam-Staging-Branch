@@ -283,8 +283,40 @@ Respond with just the intent category (e.g., "INTERESTED").`;
 
     // Build context for reply generation
     const prospectName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim();
-    const prospectCompany = prospect.company || 'Unknown';
+    const prospectCompany = prospect.company_name || prospect.company || 'Unknown';
     const prospectTitle = prospect.title || 'Unknown';
+
+    // Fetch research data if we have LinkedIn URL
+    let research: { linkedin?: any; company?: any } | null = null;
+    if (prospect.linkedin_url) {
+      try {
+        const researchResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/api/sam/prospect-intelligence`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'linkedin_url_research',
+              data: { url: prospect.linkedin_url },
+              user_id: 'system' // Server-to-server auth
+            })
+          }
+        );
+        if (researchResponse.ok) {
+          const researchData = await researchResponse.json();
+          if (researchData.success && researchData.data) {
+            research = {
+              linkedin: researchData.data.prospect,
+              company: researchData.data.insights?.company
+            };
+            console.log(`   📊 Research fetched for ${prospectName}`);
+          }
+        }
+      } catch (researchError) {
+        console.log(`   ⚠️ Research fetch failed for ${prospectName}:`, researchError);
+        // Continue without research - it's optional
+      }
+    }
 
     // Get contextual greeting (Happy Friday, Hope you had a great Thanksgiving, etc.)
     const contextGreeting = getContextualGreeting();
@@ -354,18 +386,34 @@ SAM AI automates personalized LinkedIn outreach:
 
 **SME:** "${prospect.first_name} - wondering if growing your sales pipeline is on the radar. SAM automates LinkedIn outreach so you reach more prospects without adding staff. Happy to show you."`;
 
+    // Build research context if available
+    let researchContext = '';
+    if (research?.linkedin) {
+      researchContext += `\n## LINKEDIN RESEARCH:
+- Headline: ${research.linkedin.headline || 'N/A'}
+- Summary: ${research.linkedin.summary || 'N/A'}
+- Recent Activity: ${research.linkedin.recentPosts?.slice(0, 2).join(', ') || 'N/A'}`;
+    }
+    if (research?.company) {
+      researchContext += `\n## COMPANY RESEARCH:
+- Industry: ${research.company.industry || 'N/A'}
+- Size: ${research.company.size || 'N/A'}
+- Description: ${research.company.description || 'N/A'}`;
+    }
+
     const userPrompt = `Generate a highly personalized reply to this prospect.
 
 PROSPECT:
 - Name: ${prospectName}
 - Title: ${prospectTitle}
 - Company: ${prospectCompany}
+${researchContext}
 
 THEIR MESSAGE: "${inboundMessage.text}"
 
 DETECTED INTENT: ${intent}
 
-IMPORTANT: Sound human and conversational. Mention their company/role. No generic responses.
+IMPORTANT: Sound human and conversational. Reference specific details from their profile/company if research is available. No generic responses.
 
 Reply:`;
 
@@ -378,7 +426,7 @@ Reply:`;
     return {
       text: replyResponse.trim(),
       intent,
-      research: null // TODO: Add research fetching
+      research
     };
 
   } catch (error) {
