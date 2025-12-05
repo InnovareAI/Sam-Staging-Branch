@@ -2566,7 +2566,7 @@ function CampaignBuilder({
         }
         setLastSavedAt(new Date());
         if (force) {
-          toastSuccess('Campaign draft saved! Find it in "In Progress" tab.');
+          toastSuccess('Campaign draft saved! Find it in "Drafts" tab.');
           queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
         }
       } else {
@@ -6133,8 +6133,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     }
   }, [autoOpenApprovals]);
 
-  // Campaign filter state ('pending' is now 'In Progress' - merged drafts + approved prospects)
-  const [campaignFilter, setCampaignFilter] = useState<'active' | 'paused' | 'archived' | 'completed' | 'pending'>('active');
+  // Campaign filter state ('pending' is now 'Drafts' tab - approved prospects waiting for campaign creation)
+  // Default to 'pending' (Drafts) when coming from prospect approval page with initialProspects
+  const getDefaultCampaignFilter = () => {
+    if (initialProspects && initialProspects.length > 0) {
+      return 'pending'; // Show Drafts tab when coming from prospect page
+    }
+    return 'active';
+  };
+  const [campaignFilter, setCampaignFilter] = useState<'active' | 'paused' | 'archived' | 'completed' | 'pending'>(getDefaultCampaignFilter());
 
   // REACT QUERY: Fetch pending campaigns with caching - LAZY LOAD when tab is active
   // NEW ARCHITECTURE: Uses workspace_prospects table (database-driven)
@@ -7970,8 +7977,37 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         {/* Campaign List with Tabs */}
         {!showBuilder && !showApprovalScreen && (!isAutoCreateMode || showFullFeatures) && (
           <div>
-            {/* Status Tabs */}
+            {/* Status Tabs - In Progress FIRST (users land here from prospect approval) */}
             <div className="flex border-b border-gray-700">
+              {/* Drafts Tab - FIRST - Shows approved prospects waiting for campaign creation */}
+              <button
+                onClick={() => setCampaignFilter('pending')}
+                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
+                  campaignFilter === 'pending'
+                    ? 'text-white border-b-2 border-yellow-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <FileText size={16} />
+                Drafts
+                {/* Count CAMPAIGNS not prospects (Dec 5 fix: match actual table rows shown) */}
+                {(() => {
+                  // Count campaigns from initialProspects (grouped by campaignName)
+                  let tempCampaignCount = 0;
+                  if (initialProspects && initialProspects.length > 0 && !campaignCreatedFromInitial) {
+                    const approvedProspects = initialProspects.filter(p => p.approvalStatus === 'approved');
+                    const campaignNames = new Set(approvedProspects.map(p => p.campaignName || p.campaignTag || 'Unnamed Campaign'));
+                    tempCampaignCount = campaignNames.size;
+                  }
+                  // Add DB campaigns (each is already a campaign)
+                  const pendingCount = tempCampaignCount + pendingCampaignsFromDB.length;
+                  return pendingCount > 0 ? (
+                    <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
+                      {pendingCount}
+                    </span>
+                  ) : null;
+                })()}
+              </button>
               <button
                 onClick={() => setCampaignFilter('active')}
                 className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
@@ -8016,35 +8052,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     {completedCampaignsCount}
                   </span>
                 )}
-              </button>
-              {/* In Progress Tab - Merged: Shows both drafts and approved prospects waiting for campaign creation */}
-              <button
-                onClick={() => setCampaignFilter('pending')}
-                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
-                  campaignFilter === 'pending'
-                    ? 'text-white border-b-2 border-yellow-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <FileText size={16} />
-                In Progress
-                {/* Count CAMPAIGNS not prospects (Dec 5 fix: match actual table rows shown) */}
-                {(() => {
-                  // Count campaigns from initialProspects (grouped by campaignName)
-                  let tempCampaignCount = 0;
-                  if (initialProspects && initialProspects.length > 0 && !campaignCreatedFromInitial) {
-                    const approvedProspects = initialProspects.filter(p => p.approvalStatus === 'approved');
-                    const campaignNames = new Set(approvedProspects.map(p => p.campaignName || p.campaignTag || 'Unnamed Campaign'));
-                    tempCampaignCount = campaignNames.size;
-                  }
-                  // Add DB campaigns (each is already a campaign)
-                  const pendingCount = tempCampaignCount + pendingCampaignsFromDB.length;
-                  return pendingCount > 0 ? (
-                    <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
-                      {pendingCount}
-                    </span>
-                  ) : null;
-                })()}
               </button>
 
               {/* Spacer */}
