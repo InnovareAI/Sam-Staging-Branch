@@ -299,7 +299,11 @@ Respond with just the intent category (e.g., "INTERESTED").`;
       .limit(1);
     const unipileAccountId = workspaceAccounts?.[0]?.unipile_account_id;
 
-    // 1. PERSONAL LINKEDIN PROFILE
+    // 1. PERSONAL LINKEDIN PROFILE - ONLY for location, connection degree, and company URL
+    // NOTE: Do NOT use headline or job title - they are marketing fluff, not facts
+    let companyLinkedInUrl: string | null = null;
+    let companyWebsiteFromLinkedIn: string | null = null;
+
     if (prospect.linkedin_url && UNIPILE_API_KEY && unipileAccountId) {
       try {
         const vanityMatch = prospect.linkedin_url.match(/linkedin\.com\/in\/([^\/\?#]+)/);
@@ -315,25 +319,24 @@ Respond with just the intent category (e.g., "INTERESTED").`;
 
           if (profileResponse.ok) {
             const profile = await profileResponse.json();
+            // Extract company LinkedIn URL from current position for direct lookup
+            companyLinkedInUrl = profile.positions?.[0]?.company_linkedin_url || null;
+
             research = {
               linkedin: {
-                headline: profile.headline,
-                summary: profile.summary || profile.about,
+                // ONLY factual data - NOT headline/title (marketing fluff)
                 location: profile.location,
-                industry: profile.industry,
                 connectionDegree: profile.network_distance,
-                currentPositions: profile.positions?.slice(0, 3).map((p: any) =>
-                  `${p.title} at ${p.company_name}${p.description ? ` - ${p.description.slice(0, 100)}` : ''}`
-                ),
+                // Keep education as factual
                 education: profile.education?.slice(0, 2).map((e: any) =>
                   `${e.degree || ''} ${e.field || ''} at ${e.school_name || ''}`
                 ),
-                skills: profile.skills?.slice(0, 8),
-                // Extract company LinkedIn URL if available for company lookup
-                companyLinkedInUrl: profile.positions?.[0]?.company_linkedin_url
               }
             };
-            console.log(`   📊 Personal LinkedIn: ${profile.headline?.slice(0, 50)}...`);
+            console.log(`   📊 Personal LinkedIn: ${profile.location || 'Unknown location'}`);
+            if (companyLinkedInUrl) {
+              console.log(`   🔗 Company URL from profile: ${companyLinkedInUrl}`);
+            }
           }
         }
       } catch (err) {
@@ -341,33 +344,62 @@ Respond with just the intent category (e.g., "INTERESTED").`;
       }
     }
 
-    // 2. COMPANY LINKEDIN PROFILE (if we have company name or URL)
-    if (UNIPILE_API_KEY && unipileAccountId && prospectCompany && prospectCompany !== 'Unknown') {
+    // 2. COMPANY LINKEDIN PAGE - Get DIRECTLY from URL (not search by name)
+    // This is accurate company info: about section, description, industry, website
+    if (UNIPILE_API_KEY && unipileAccountId) {
       try {
-        // Try to find company on LinkedIn by name
-        const companySearchUrl = `https://${UNIPILE_DSN}/api/v1/linkedin/search/companies?account_id=${unipileAccountId}&keywords=${encodeURIComponent(prospectCompany)}&limit=1`;
-        const companySearchResponse = await fetch(companySearchUrl, {
-          method: 'GET',
-          headers: { 'X-API-KEY': UNIPILE_API_KEY, 'Accept': 'application/json' }
-        });
+        let companyData: any = null;
 
-        if (companySearchResponse.ok) {
-          const searchData = await companySearchResponse.json();
-          const companyResult = searchData.items?.[0];
-          if (companyResult) {
-            research = research || {};
-            research.company = {
-              name: companyResult.name,
-              industry: companyResult.industry,
-              size: companyResult.staff_count_range || companyResult.company_size,
-              description: companyResult.description?.slice(0, 500),
-              tagline: companyResult.tagline,
-              specialties: companyResult.specialties?.slice(0, 5),
-              headquarters: companyResult.headquarters,
-              founded: companyResult.founded_year,
-              linkedInUrl: companyResult.linkedin_url
-            };
-            console.log(`   📊 Company LinkedIn: ${companyResult.name} - ${companyResult.industry || 'N/A'}`);
+        // Priority 1: Use company URL from their profile (most accurate)
+        if (companyLinkedInUrl) {
+          const companyVanityMatch = companyLinkedInUrl.match(/linkedin\.com\/company\/([^\/\?#]+)/);
+          if (companyVanityMatch) {
+            const companyVanity = companyVanityMatch[1];
+            const companyResponse = await fetch(
+              `https://${UNIPILE_DSN}/api/v1/linkedin/company/${companyVanity}?account_id=${unipileAccountId}`,
+              {
+                method: 'GET',
+                headers: { 'X-API-KEY': UNIPILE_API_KEY, 'Accept': 'application/json' }
+              }
+            );
+            if (companyResponse.ok) {
+              companyData = await companyResponse.json();
+            }
+          }
+        }
+
+        // Fallback: Search by company name (less accurate)
+        if (!companyData && prospectCompany && prospectCompany !== 'Unknown') {
+          const searchUrl = `https://${UNIPILE_DSN}/api/v1/linkedin/search/companies?account_id=${unipileAccountId}&keywords=${encodeURIComponent(prospectCompany)}&limit=1`;
+          const searchResponse = await fetch(searchUrl, {
+            method: 'GET',
+            headers: { 'X-API-KEY': UNIPILE_API_KEY, 'Accept': 'application/json' }
+          });
+          if (searchResponse.ok) {
+            const searchData = await searchResponse.json();
+            companyData = searchData.items?.[0];
+          }
+        }
+
+        if (companyData) {
+          research = research || {};
+          research.company = {
+            name: companyData.name,
+            industry: companyData.industry,
+            size: companyData.staff_count_range || companyData.company_size,
+            // IMPORTANT: Company description is factual (not marketing like personal headline)
+            description: companyData.description?.slice(0, 500),
+            about: companyData.about?.slice(0, 500),
+            specialties: companyData.specialties?.slice(0, 5),
+            headquarters: companyData.headquarters,
+            founded: companyData.founded_year,
+            // Get website URL from company page for scraping
+            website: companyData.website
+          };
+          companyWebsiteFromLinkedIn = companyData.website || null;
+          console.log(`   📊 Company LinkedIn: ${companyData.name} - ${companyData.industry || 'N/A'}`);
+          if (companyData.website) {
+            console.log(`   🌐 Website from company: ${companyData.website}`);
           }
         }
       } catch (err) {
@@ -375,20 +407,28 @@ Respond with just the intent category (e.g., "INTERESTED").`;
       }
     }
 
-    // 3. COMPANY WEBSITE (if stored in prospect data)
-    const companyWebsite = prospect.company_website;
+    // 3. COMPANY WEBSITE - COMPREHENSIVE SCRAPING (SOURCE OF TRUTH)
+    // Extract: SEO keywords, products/services, FAQ, blog posts
+    // Priority: stored company_website > website from LinkedIn company page
+    const companyWebsite = prospect.company_website || companyWebsiteFromLinkedIn;
     if (companyWebsite) {
+      console.log(`   🌐 Scraping website: ${companyWebsite}`);
       try {
-        // Fetch and extract key info from company website
-        const websiteResponse = await fetch(companyWebsite, {
-          method: 'GET',
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SAM-AI/1.0)' },
-          signal: AbortSignal.timeout(5000) // 5 second timeout
-        });
+        const baseUrl = new URL(companyWebsite).origin;
+        const fetchPage = async (url: string) => {
+          try {
+            const resp = await fetch(url, {
+              method: 'GET',
+              headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SAM-AI/1.0)' },
+              signal: AbortSignal.timeout(5000)
+            });
+            return resp.ok ? await resp.text() : null;
+          } catch { return null; }
+        };
 
-        if (websiteResponse.ok) {
-          const html = await websiteResponse.text();
-
+        // Fetch homepage
+        const html = await fetchPage(companyWebsite);
+        if (html) {
           // Extract SEO metadata
           const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
           const descMatch = html.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i) ||
@@ -401,8 +441,74 @@ Respond with just the intent category (e.g., "INTERESTED").`;
 
           // Extract h1/h2 taglines
           const h1Match = html.match(/<h1[^>]*>([^<]{10,150})<\/h1>/i);
-          const h2Matches = html.match(/<h2[^>]*>([^<]{10,100})<\/h2>/gi)?.slice(0, 3)
+          const h2Matches = html.match(/<h2[^>]*>([^<]{10,100})<\/h2>/gi)?.slice(0, 5)
             ?.map(h => h.replace(/<[^>]+>/g, '').trim());
+
+          // Find internal links for products, services, FAQ, blog
+          const linkMatches = html.match(/<a[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/gi) || [];
+          const productLinks: string[] = [];
+          const faqLink: string | null = null;
+          const blogLink: string | null = null;
+
+          for (const link of linkMatches.slice(0, 50)) {
+            const hrefMatch = link.match(/href="([^"]+)"/i);
+            const textMatch = link.match(/>([^<]+)</);
+            if (hrefMatch && textMatch) {
+              const href = hrefMatch[1];
+              const text = textMatch[1].toLowerCase();
+              if (text.includes('product') || text.includes('service') || text.includes('solution') || text.includes('feature')) {
+                if (href.startsWith('/') || href.startsWith(baseUrl)) {
+                  productLinks.push(href.startsWith('/') ? baseUrl + href : href);
+                }
+              }
+            }
+          }
+
+          // Extract products/services from homepage sections
+          const productsFromPage: string[] = [];
+          const servicePatterns = [
+            /<li[^>]*>([^<]{10,80})<\/li>/gi,
+            /<h3[^>]*>([^<]{10,60})<\/h3>/gi,
+            /<strong[^>]*>([^<]{10,60})<\/strong>/gi
+          ];
+          for (const pattern of servicePatterns) {
+            const matches = html.match(pattern)?.slice(0, 8) || [];
+            for (const m of matches) {
+              const clean = m.replace(/<[^>]+>/g, '').trim();
+              if (clean.length > 10 && clean.length < 80 && !clean.includes('©')) {
+                productsFromPage.push(clean);
+              }
+            }
+          }
+
+          // Look for FAQ schema or FAQ section
+          let faqItems: string[] = [];
+          const faqSchemaMatch = html.match(/"@type"\s*:\s*"FAQPage"[^}]*"mainEntity"\s*:\s*\[([\s\S]*?)\]/i);
+          if (faqSchemaMatch) {
+            const questionMatches = faqSchemaMatch[1].match(/"name"\s*:\s*"([^"]+)"/gi) || [];
+            faqItems = questionMatches.slice(0, 5).map(q => q.replace(/"name"\s*:\s*"/i, '').replace(/"$/, ''));
+          }
+
+          // Look for FAQ section by heading
+          const faqSectionMatch = html.match(/(?:FAQ|Frequently Asked|Questions)[^<]*<[\s\S]{0,2000}?(?:<\/(?:section|div)>)/i);
+          if (faqSectionMatch && faqItems.length === 0) {
+            const questionMatches = faqSectionMatch[0].match(/<(?:h[2-4]|summary|strong)[^>]*>([^<]{15,100})\?<\//gi) || [];
+            faqItems = questionMatches.slice(0, 5).map(q => q.replace(/<[^>]+>/g, '').trim());
+          }
+
+          // Look for blog posts (recent article titles)
+          let blogPosts: string[] = [];
+          const blogPatterns = [
+            /class="[^"]*(?:blog|article|post)[^"]*"[^>]*>[\s\S]{0,500}?<(?:h[2-4]|a)[^>]*>([^<]{15,80})<\//gi,
+            /<article[^>]*>[\s\S]{0,500}?<(?:h[2-4]|a)[^>]*>([^<]{15,80})<\//gi
+          ];
+          for (const pattern of blogPatterns) {
+            const matches = html.match(pattern)?.slice(0, 5) || [];
+            for (const m of matches) {
+              const titleMatch = m.match(/<(?:h[2-4]|a)[^>]*>([^<]{15,80})<\//i);
+              if (titleMatch) blogPosts.push(titleMatch[1].trim());
+            }
+          }
 
           research = research || {};
           research.website = {
@@ -411,9 +517,21 @@ Respond with just the intent category (e.g., "INTERESTED").`;
             description: descMatch?.[1]?.trim() || ogDescMatch?.[1]?.trim(),
             keywords: keywordsMatch?.[1]?.trim(),
             tagline: h1Match?.[1]?.trim(),
-            subheadings: h2Matches
+            subheadings: h2Matches,
+            productsServices: productsFromPage.slice(0, 8),
+            faq: faqItems.slice(0, 5),
+            blogPosts: blogPosts.slice(0, 5)
           };
           console.log(`   📊 Website: ${research.website.title?.slice(0, 50) || companyWebsite}`);
+          if (research.website.productsServices?.length) {
+            console.log(`   📦 Products/Services: ${research.website.productsServices.length} found`);
+          }
+          if (research.website.faq?.length) {
+            console.log(`   ❓ FAQ: ${research.website.faq.length} questions found`);
+          }
+          if (research.website.blogPosts?.length) {
+            console.log(`   📝 Blog: ${research.website.blogPosts.length} posts found`);
+          }
         }
       } catch (err) {
         console.log(`   ⚠️ Website fetch failed for ${companyWebsite}`);
@@ -465,24 +583,22 @@ Price: $199/month. Replaces hiring someone.
 - Just answer the question`;
 
     // Build comprehensive research context
+    // IMPORTANT: Do NOT include LinkedIn headline/title - they are marketing fluff, not facts
     let researchContext = '';
 
-    // Personal LinkedIn
+    // Personal LinkedIn - ONLY FACTUAL DATA (location, education, connection degree)
     if (research?.linkedin) {
-      const positions = research.linkedin.currentPositions?.join('\n  - ') || 'N/A';
-      const education = research.linkedin.education?.join('\n  - ') || 'N/A';
-      const skills = research.linkedin.skills?.join(', ') || 'N/A';
+      const education = research.linkedin.education?.join('\n  - ') || '';
       researchContext += `
 
-## THEIR LINKEDIN PROFILE:
-**Headline:** ${research.linkedin.headline || 'N/A'}
-**About:** ${research.linkedin.summary || 'N/A'}
+## THEIR LINKEDIN (factual data only):
 **Location:** ${research.linkedin.location || 'N/A'}
-**Experience:**
-  - ${positions}
+**Connection:** ${research.linkedin.connectionDegree || 'N/A'}`;
+      if (education && education !== 'N/A') {
+        researchContext += `
 **Education:**
-  - ${education}
-**Skills:** ${skills}`;
+  - ${education}`;
+      }
     }
 
     // Company LinkedIn
@@ -501,27 +617,55 @@ Price: $199/month. Replaces hiring someone.
 **Specialties:** ${specialties}`;
     }
 
-    // Company Website
+    // Company Website - COMPREHENSIVE
     if (research?.website) {
-      const subheadings = research.website.subheadings?.join('\n  - ') || 'N/A';
+      const subheadings = research.website.subheadings?.join('\n  - ') || '';
+      const products = research.website.productsServices?.join('\n  - ') || '';
+      const faq = research.website.faq?.join('\n  - ') || '';
+      const blogs = research.website.blogPosts?.join('\n  - ') || '';
+
       researchContext += `
 
 ## THEIR WEBSITE (${research.website.url}):
 **Title:** ${research.website.title || 'N/A'}
 **Tagline:** ${research.website.tagline || 'N/A'}
 **Description:** ${research.website.description || 'N/A'}
-**SEO Keywords:** ${research.website.keywords || 'N/A'}
+**SEO Keywords:** ${research.website.keywords || 'N/A'}`;
+
+      if (subheadings) {
+        researchContext += `
 **Key Messages:**
   - ${subheadings}`;
+      }
+
+      if (products) {
+        researchContext += `
+**Products/Services:**
+  - ${products}`;
+      }
+
+      if (faq) {
+        researchContext += `
+**FAQ Questions (what their customers ask):**
+  - ${faq}`;
+      }
+
+      if (blogs) {
+        researchContext += `
+**Recent Blog Posts:**
+  - ${blogs}`;
+      }
     }
 
     const userPrompt = `Reply to this prospect's message.
 
 ## WHO THEY ARE:
 - **Name:** ${prospectName}
-- **Title:** ${prospectTitle}
 - **Company:** ${prospectCompany}
 ${researchContext}
+
+## IMPORTANT: ONLY USE FACTS FROM RESEARCH ABOVE
+Never guess what their company does based on their job title. Use ONLY the verified information from their company LinkedIn page or website.
 
 ## THEIR MESSAGE:
 "${inboundMessage.text}"
