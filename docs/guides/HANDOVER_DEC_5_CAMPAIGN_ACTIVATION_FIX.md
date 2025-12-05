@@ -53,6 +53,27 @@ Added deduplication to prevent "Should delay", "Cannot resend yet" errors:
 - Activate button now disabled for campaigns with 0 prospects
 - Shows tooltip explaining why
 
+### 6. Reply Detection Not Working (CRITICAL)
+- **Problem**: `poll-message-replies` cron never detected prospect replies
+- **Root Cause**: Comparing `msg.sender.provider_id` (like `ACoAAB...`) directly to `prospect.linkedin_user_id` which is stored as a URL (`http://linkedin.com/in/vanity`)
+- **Fix**: Extract vanity from prospect and also compare to `sender.public_identifier`
+- **File**: `app/api/cron/poll-message-replies/route.ts` (lines 163-172)
+- **Example**: Alfred Collins Ayamba replied but wasn't detected. Manually updated his status.
+
+**Before (broken)**:
+```javascript
+const senderId = msg.sender?.provider_id || msg.sender_id;
+return senderId === prospect.linkedin_user_id;  // Never matches!
+```
+
+**After (fixed)**:
+```javascript
+const prospectVanity = extractVanity(prospect.linkedin_user_id);
+const senderVanity = msg.sender?.public_identifier;
+return senderId === prospect.linkedin_user_id ||
+       (prospectVanity && senderVanity === prospectVanity);
+```
+
 ## Code References
 
 ### Campaign Activation Flow
@@ -121,13 +142,17 @@ Campaign `51493910-28f0-4cb0-9e5c-531f1efbaa70` successfully activated:
 
 ## Files Modified
 
-1. `app/api/campaigns/activate/route.ts` - Main fixes
+1. `app/api/campaigns/activate/route.ts` - Main activation fixes
 2. `app/api/campaigns/direct/send-connection-requests-fast/route.ts` - Accept activation trigger
 3. `app/components/CampaignHub.tsx` - Frontend endpoint fix, disabled button for 0 prospects
 4. `app/api/cron/queue-pending-prospects/route.ts` - Cross-campaign deduplication
+5. `app/api/cron/poll-message-replies/route.ts` - **CRITICAL** reply detection fix
 
 ## Deployment
 
 - Deployed to production: https://app.meet-sam.com
-- Commit: `e0f6ba9c`
-- Deploy URL: `https://6932e9b3328b107162eae840--devin-next-gen-prod.netlify.app`
+- Final commit: `da375e35`
+
+## Impact
+
+The reply detection fix means all future prospect replies will now be properly detected by the 15-minute polling cron. Before this fix, NO replies were being detected because the matching logic was fundamentally broken.
