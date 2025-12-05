@@ -8005,13 +8005,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               >
                 <FileText size={16} />
                 In Progress
-                {/* Count drafts + pending prospects (without duplicates) */}
+                {/* Count pending prospects only (Dec 5 fix: removed drafts to match content) */}
                 {(() => {
                   const pendingCount = (!campaignCreatedFromInitial ? (initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) : 0) + pendingCampaignsFromDB.length;
-                  const totalCount = draftCampaigns.length + pendingCount;
-                  return totalCount > 0 ? (
+                  return pendingCount > 0 ? (
                     <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
-                      {totalCount}
+                      {pendingCount}
                     </span>
                   ) : null;
                 })()}
