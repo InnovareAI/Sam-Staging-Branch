@@ -301,14 +301,18 @@ export default function DataCollectionHub({
   const [pageSize] = useState(50)
   const [filterStatus, setFilterStatus] = useState<string>('pending') // Only show pending prospects by default
 
+  // Modal states (defined early so useQuery can reference them for refetch control)
+  const [showCampaignTypeModal, setShowCampaignTypeModal] = useState(false)
+  const [showPreflightModal, setShowPreflightModal] = useState(false)
+
   // REACT QUERY: Fetch and cache approval sessions with pagination
   const queryClient = useQueryClient()
   const { data, isLoading: isLoadingSessions, refetch } = useQuery({
     queryKey: ['approval-sessions', currentPage, pageSize, filterStatus, actualWorkspaceId],
     queryFn: () => fetchApprovalSessions(currentPage, pageSize, filterStatus, actualWorkspaceId),
     staleTime: 10000, // Cache for 10 seconds (faster page loads)
-    refetchInterval: 30000, // Auto-refresh every 30 seconds (was 5, too aggressive)
-    refetchOnWindowFocus: true, // Auto-refresh when tab becomes visible
+    refetchInterval: showCampaignTypeModal || showPreflightModal ? false : 30000, // Pause refetch when modals open
+    refetchOnWindowFocus: !showCampaignTypeModal && !showPreflightModal, // Don't refetch when modals open
     keepPreviousData: true, // Smooth page transitions
     enabled: !!actualWorkspaceId && !workspacesLoading && userVerified, // Only fetch after user verified AND workspace validated
   })
@@ -380,14 +384,12 @@ export default function DataCollectionHub({
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('')
   const [loadingCampaigns, setLoadingCampaigns] = useState(false)
 
-  // Campaign type selection modal
-  const [showCampaignTypeModal, setShowCampaignTypeModal] = useState(false)
+  // Campaign type selection modal (showCampaignTypeModal defined earlier for useQuery)
   const [selectedCampaignType, setSelectedCampaignType] = useState<'email' | 'linkedin' | 'connector' | 'messenger' | null>(null)
 
-  // Pre-flight verification state
+  // Pre-flight verification state (showPreflightModal defined earlier for useQuery)
   const [isRunningPreflight, setIsRunningPreflight] = useState(false)
   const [preflightResults, setPreflightResults] = useState<any>(null)
-  const [showPreflightModal, setShowPreflightModal] = useState(false)
   const [pendingCampaignType, setPendingCampaignType] = useState<'email' | 'linkedin' | 'connector' | 'messenger' | null>(null)
   const [pendingProspects, setPendingProspects] = useState<any[]>([])
 
@@ -689,11 +691,12 @@ export default function DataCollectionHub({
   }
 
   // Sync React Query data to local state
+  // DON'T sync when campaign type modal is open (prevents data clearing mid-selection)
   useEffect(() => {
-    if (serverProspects.length > 0) {
+    if (serverProspects.length > 0 && !showCampaignTypeModal && !showPreflightModal) {
       setProspectData(serverProspects)
     }
-  }, [serverProspects])
+  }, [serverProspects, showCampaignTypeModal, showPreflightModal])
 
   // Fetch workspace information to generate code
   useEffect(() => {
