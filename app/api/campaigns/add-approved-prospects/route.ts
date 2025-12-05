@@ -254,6 +254,8 @@ export async function POST(request: NextRequest) {
       const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
       const email = prospect.contact?.email || null;
       const emailHash = email ? email.toLowerCase().trim() : null;
+      // Dec 5: Extract company website (optional field from CSV upload)
+      const companyWebsite = prospect.contact?.website || null;
 
       return {
         // Data for workspace_prospects
@@ -272,6 +274,7 @@ export async function POST(request: NextRequest) {
         location: prospect.location || null,
         linkedin_provider_id: linkedinUserId,
         connection_degree: prospect.connection_degree,
+        company_website: companyWebsite, // Dec 5: Optional company website from CSV
         source: 'approval_workflow',
         approval_status: 'approved',
         approved_at: new Date().toISOString(),
@@ -320,6 +323,7 @@ export async function POST(request: NextRequest) {
         location: prospect.location,
         linkedin_provider_id: prospect.linkedin_provider_id,
         connection_degree: prospect.connection_degree,
+        company_website: prospect.company_website, // Dec 5: Optional company website
         source: prospect.source,
         approval_status: prospect.approval_status,
         approved_at: prospect.approved_at,
@@ -378,6 +382,7 @@ export async function POST(request: NextRequest) {
       title: prospect.title,
       location: prospect.location,
       industry: prospect._campaign_data.industry,
+      company_website: prospect.company_website, // Dec 5: Optional company website
       status: 'approved',
       notes: null,
       added_by_unipile_account: prospect._campaign_data.unipile_account_id,

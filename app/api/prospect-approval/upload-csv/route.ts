@@ -246,7 +246,12 @@ export async function POST(request: NextRequest) {
       'degree': 'connectionDegree',           // Connection degree column
       'connection degree': 'connectionDegree',
       'connection': 'connectionDegree',
-      'linkedin degree': 'connectionDegree'
+      'linkedin degree': 'connectionDegree',
+      'website': 'companyWebsite',             // Company website (optional)
+      'company website': 'companyWebsite',
+      'company_website': 'companyWebsite',
+      'company url': 'companyWebsite',
+      'url': 'companyWebsite'
     };
 
     // Parse prospects
@@ -364,6 +369,7 @@ export async function POST(request: NextRequest) {
           phone: prospect.phone || ''
         },
         connectionDegree: connectionDegree,  // Add connection degree
+        companyWebsite: prospect.companyWebsite || null,  // Optional company website
         source: source,
         enrichment_score: 70,
         approval_status: 'pending'
@@ -467,7 +473,10 @@ export async function POST(request: NextRequest) {
       name: p.name || 'Unknown',
       title: p.title || '',
       company: p.company || { name: '' },
-      contact: p.contact || {},
+      contact: {
+        ...p.contact,
+        website: p.companyWebsite || null  // Include company website in contact JSON
+      },
       location: p.location || '',
       profile_image: null,
       recent_activity: null,

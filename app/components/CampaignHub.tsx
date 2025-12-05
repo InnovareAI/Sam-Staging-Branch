@@ -1883,6 +1883,7 @@ function CampaignBuilder({
       const newType = initialCampaignType === 'linkedin' ? 'connector' : initialCampaignType;
       console.log('🔄 Syncing campaignType from initialCampaignType:', initialCampaignType, '→', newType);
       setCampaignType(newType);
+      setUserSelectedCampaignType(true); // Dec 5: Treat initial type as user-selected to prevent auto-override
     }
   }, [initialCampaignType]);
 
@@ -2596,6 +2597,7 @@ function CampaignBuilder({
     setCurrentDraftId(draftToLoad.id);
     setName(draftToLoad.name);
     setCampaignType(draftToLoad.type);
+    setUserSelectedCampaignType(true); // Dec 5: Treat draft type as user-selected to prevent auto-override
     setCurrentStep(draftToLoad.current_step || 1);
     setConnectionMessage(draftToLoad.connection_message || '');
     setAlternativeMessage(draftToLoad.alternative_message || '');
