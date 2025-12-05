@@ -54,11 +54,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Update campaign status to active
+    // Dec 5 FIX: Use launched_at instead of activated_at (column doesn't exist)
     const { error: updateError } = await supabase
       .from('campaigns')
       .update({
         status: 'active',
-        activated_at: new Date().toISOString()
+        launched_at: new Date().toISOString()
       })
       .eq('id', campaignId)
 
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
           .from('campaigns')
           .update({
             status: 'inactive',
-            activated_at: null
+            launched_at: null
           })
           .eq('id', campaignId)
 
