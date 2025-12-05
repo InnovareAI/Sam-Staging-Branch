@@ -207,3 +207,24 @@ Campaign `51493910-28f0-4cb0-9e5c-531f1efbaa70` successfully activated:
   - Check if `linkedin_user_id` starts with 'ACo' (already provider_id) - use directly
   - Otherwise extract vanity and call `/api/v1/users/{vanity}?account_id=` to get provider_id
 - **File**: `app/api/cron/poll-message-replies/route.ts` (lines 141-173)
+
+### 11. Reply Agent Research Not Working (CRITICAL)
+- **Problem**: AI replies weren't personalized - `research_linkedin_profile` was always null
+- **Root Cause**: MCP-based `/api/sam/prospect-intelligence` doesn't work in production
+- **Fix**: Use Unipile API directly in `reply-agent-process`:
+  - Extract vanity from LinkedIn URL
+  - Call `/api/v1/users/{vanity}?account_id={workspaceAccountId}` directly
+  - Return headline, summary, location, industry, positions, skills
+- **Additional Fixes**:
+  - Column name: `account_type` not `platform` in workspace_accounts query
+  - Query: Use `limit(1)` instead of `.single()` (workspace may have multiple LinkedIn accounts)
+- **File**: `app/api/cron/reply-agent-process/route.ts` (lines 289-346)
+- **Verified**: Alfred's draft now has research populated:
+  ```json
+  {
+    "headline": "Founder & CEO | Building PostPilot AI — Autonomous AI Social Media Engine...",
+    "location": "Retford, England, United Kingdom",
+    "connectionDegree": "FIRST_DEGREE"
+  }
+  ```
+- **AI Output**: Now references PostPilot specifically - "Since you're building PostPilot for social media automation, you'll get how this works"
