@@ -259,11 +259,12 @@ async function generateAIReply(
     // Detect intent first
     const intentPrompt = `Classify this prospect reply into one of these intents:
 - INTERESTED: They want to learn more, book a call, or try the product
-- QUESTION: They're asking about features, pricing, integrations, etc.
-- OBJECTION: They have concerns or pushback
-- TIMING: Not now, maybe later
-- NOT_INTERESTED: Clear rejection
-- VAGUE_POSITIVE: Thumbs up, thanks, etc.
+- QUESTION: They're asking about features, pricing, integrations, how it works
+- OBJECTION: They have concerns, pushback, or price objections
+- TIMING: Not now, maybe later, bad timing
+- WRONG_PERSON: They're not the right person, suggesting someone else
+- NOT_INTERESTED: Clear rejection, don't contact again
+- VAGUE_POSITIVE: Thumbs up, thanks, looks cool, emoji only
 - UNCLEAR: Can't determine intent
 
 Prospect reply: "${inboundMessage.text}"
@@ -275,11 +276,6 @@ Respond with just the intent category (e.g., "INTERESTED").`;
       temperature: 0
     });
     const intent = intentResponse.trim().toUpperCase().replace(/[^A-Z_]/g, '');
-
-    // If not interested, don't generate a reply
-    if (intent === 'NOT_INTERESTED') {
-      return { text: '', intent, research: null };
-    }
 
     // Build context for reply generation
     const prospectName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim();
@@ -541,49 +537,27 @@ Respond with just the intent category (e.g., "INTERESTED").`;
     // Get contextual greeting (Happy Friday, Hope you had a great Thanksgiving, etc.)
     const contextGreeting = getContextualGreeting();
 
-    // RAG TEMPLATES: Fixed second paragraph based on intent
-    // These are proven, consistent messages that convert
-    const RAG_TEMPLATES: Record<string, string> = {
-      QUESTION: `You connect your LinkedIn. Tell SAM who you want to reach. SAM researches each person, writes a message that references their background, sends it. When they reply, you take over.
+    // Get day of week for natural conversation timing
+    const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
-$199/month. Does that answer it?`,
+    // Sender name (the person using SAM - workspace owner)
+    const senderName = config.sender_name || 'Pete'; // Default fallback
 
-      INTERESTED: `Happy to show you how it works. Takes about 10 minutes to set up - you just connect LinkedIn and tell SAM who to target.
+    // Get original outreach message from campaign if available
+    let originalOutreachMessage = '';
+    if (prospect.campaign_id) {
+      const { data: campaignData } = await supabase
+        .from('campaigns')
+        .select('connection_message, message_templates')
+        .eq('id', prospect.campaign_id)
+        .single();
 
-Want me to send you a link?`,
+      originalOutreachMessage = campaignData?.connection_message ||
+        campaignData?.message_templates?.connectionRequest ||
+        'I noticed your background and thought you might be interested in SAM, an AI-powered LinkedIn outreach tool.';
+    }
 
-      OBJECTION: `Fair point. SAM isn't for everyone - works best for founders/consultants doing their own outreach who want to stop copying and pasting messages.
-
-If that's not you, no worries.`,
-
-      TIMING: `No problem at all. If timing changes, just reply to this thread.`,
-
-      VAGUE_POSITIVE: `Want me to show you how it works? Takes 10 minutes to set up.`,
-
-      UNCLEAR: `Let me know if you have any questions about how it works.`,
-
-      NOT_INTERESTED: `` // Don't send anything
-    };
-
-    // System prompt for generating ONLY the personalized opener
-    // CRITICAL: This MUST be SHORT - the template handles the rest
-    const openerSystemPrompt = `You are writing ONLY ONE LINE - a personalized greeting.
-
-OUTPUT FORMAT: Just one short line (under 15 words). Nothing else.
-
-EXAMPLES OF CORRECT OUTPUT:
-"Alfred - running things from Retford, respect."
-"Sarah - KPMG to startup, that's a move."
-"Tech consulting in Berlin - competitive space."
-
-WHAT NOT TO DO:
-- DO NOT explain what SAM does
-- DO NOT say "Fair question" or "No buzzwords"
-- DO NOT write multiple sentences
-- DO NOT answer their question
-- Just write ONE SHORT greeting line that shows you looked them up`;
-
-    // Build comprehensive research context
+    // Build comprehensive research context FIRST (before using in prompt)
     // IMPORTANT: Do NOT include LinkedIn headline/title - they are marketing fluff, not facts
     let researchContext = '';
 
@@ -591,7 +565,6 @@ WHAT NOT TO DO:
     if (research?.linkedin) {
       const education = research.linkedin.education?.join('\n  - ') || '';
       researchContext += `
-
 ## THEIR LINKEDIN (factual data only):
 **Location:** ${research.linkedin.location || 'N/A'}
 **Connection:** ${research.linkedin.connectionDegree || 'N/A'}`;
@@ -613,7 +586,6 @@ WHAT NOT TO DO:
 **Size:** ${research.company.size || 'N/A'}
 **Founded:** ${research.company.founded || 'N/A'}
 **HQ:** ${research.company.headquarters || 'N/A'}
-**Tagline:** ${research.company.tagline || 'N/A'}
 **What they do:** ${research.company.description || 'N/A'}
 **Specialties:** ${specialties}`;
     }
@@ -658,44 +630,149 @@ WHAT NOT TO DO:
       }
     }
 
-    // Build the personalized opener prompt
-    const openerPrompt = `Person: ${prospectName} from ${prospectCompany}
-Location: ${research?.linkedin?.location || 'Unknown'}
-Industry: ${research?.company?.industry || 'Unknown'}
+    // ===========================================
+    // NEW UNIFIED REPLY AGENT PROMPT (Option C: Hybrid)
+    // Full AI generation with intent-specific guardrails
+    // ===========================================
 
-Write ONE SHORT LINE (under 15 words) that greets them personally.
-Example: "Alfred - running things from Retford, respect."
+    const UNIFIED_PROMPT = `You are ${senderName}, founder of SAM AI. You're replying to a LinkedIn message from someone who responded to your outreach.
 
-Your one line:`;
+## CONTEXT
+- Prospect: ${prospectName}
+- Company: ${prospectCompany}
+- Their reply: "${inboundMessage.text}"
+- Intent detected: ${intent}
+- Day: ${dayOfWeek}
+${contextGreeting ? `- Greeting context: ${contextGreeting}` : ''}
 
-    // Generate personalized opener
-    const openerResponse = await claude.complete(openerPrompt, {
-      system: openerSystemPrompt,
-      maxTokens: 100,
+## ORIGINAL OUTREACH MESSAGE THEY RECEIVED:
+"${originalOutreachMessage}"
+
+## RESEARCH ON THIS PERSON:
+${researchContext || 'No additional research available.'}
+
+## WHAT SAM ACTUALLY IS (use ONLY these facts):
+- SAM is an AI agent that handles LinkedIn outreach
+- You connect your LinkedIn account to SAM
+- You tell SAM who you want to reach (job titles, industries, etc.)
+- SAM researches each person and writes personalized messages
+- SAM sends messages from your account
+- When someone replies, you get notified and take over the conversation
+- $199/month flat fee
+- No contracts, cancel anytime
+
+## INTENT-SPECIFIC INSTRUCTIONS:
+
+${intent === 'QUESTION' ? `### QUESTION INTENT
+They asked a specific question. Answer it directly and briefly.
+- If they ask "how does it work?" → Explain the 3-step process simply
+- If they ask about pricing → "$199/month, no contracts"
+- If they ask about integrations → "Just LinkedIn for now, email coming soon"
+- If they ask about results → "Depends on your targeting and message. Most users see replies within the first week"
+- End with a soft check-in: "Does that answer it?" or "Want me to show you?"` : ''}
+
+${intent === 'INTERESTED' ? `### INTERESTED INTENT
+They're warm! Don't oversell. Keep momentum.
+- Acknowledge their interest briefly
+- Offer ONE clear next step: "Want me to send you a link to try it?" or "I can show you how it works in 10 min if you want"
+- Don't explain features they didn't ask about` : ''}
+
+${intent === 'OBJECTION' ? `### OBJECTION INTENT
+They have concerns. Validate, don't argue.
+- Acknowledge their concern: "Fair point" or "I get that"
+- Provide ONE counter-point if relevant (factual, not pushy)
+- Give them an easy out: "If it's not for you, no worries"
+- Don't pressure or list benefits` : ''}
+
+${intent === 'TIMING' ? `### TIMING INTENT
+Not now. Respect it.
+- Be brief and gracious: "No problem" or "Totally understand"
+- Leave the door open: "Just reply here when timing's better"
+- Don't offer alternatives or push` : ''}
+
+${intent === 'WRONG_PERSON' ? `### WRONG_PERSON INTENT
+They're not the right contact.
+- Thank them for letting you know
+- Ask if there's someone else you should reach out to (optional)
+- Keep it brief and professional` : ''}
+
+${intent === 'VAGUE_POSITIVE' ? `### VAGUE_POSITIVE INTENT
+Low-effort reply (thumbs up, emoji, "looks cool")
+- Don't over-interpret as strong interest
+- Ask ONE simple question to gauge real interest: "Want me to show you how it works?" or "Curious what caught your eye?"
+- Keep it casual` : ''}
+
+${intent === 'NOT_INTERESTED' ? `### NOT_INTERESTED INTENT
+Clear rejection. Respect it completely.
+- Very brief acknowledgment: "Got it, appreciate you letting me know"
+- No pitch, no follow-up offer, no "keep in touch"
+- Just close gracefully` : ''}
+
+${intent === 'UNCLEAR' ? `### UNCLEAR INTENT
+Can't tell what they mean.
+- Ask a clarifying question
+- Keep it simple and direct
+- Don't assume positive or negative intent` : ''}
+
+## CRITICAL RULES:
+
+### BANNED PHRASES (never use):
+- "SDR" or "sales development"
+- "24/7" or "around the clock"
+- "quick call" or "15-min demo" or "walkthrough"
+- "happy to show you" or "happy to help"
+- "leveraging AI" or "AI-powered" (say "AI" if needed, but sparingly)
+- "pipeline" or "prospects" (say "people" or "leads")
+- "Cheers" sign-off
+- "No worries at all!" (too eager)
+- Multiple exclamation points!!
+- Emojis (unless they used them first, then max 1)
+
+### TONE:
+- Sound like a busy founder, not a sales rep
+- Direct, slightly casual, confident
+- If they're skeptical, match their energy (explain plainly, no hype)
+- Short sentences. No fluff.
+
+### LENGTH:
+- QUESTION: 2-4 sentences max
+- INTERESTED: 1-3 sentences max
+- OBJECTION: 2-3 sentences max
+- TIMING: 1-2 sentences max
+- WRONG_PERSON: 1-2 sentences max
+- VAGUE_POSITIVE: 1-2 sentences max
+- NOT_INTERESTED: 1 sentence
+- UNCLEAR: 1-2 sentences max
+
+### CTA OPTIONS (pick ONE or none):
+- "Does that answer it?"
+- "Want to see how it works?"
+- "Make sense?"
+- "Questions?"
+- "Want me to send you a link?"
+- (For timing/not interested: no CTA)
+
+## YOUR REPLY:
+Write ONLY the reply message. No subject line, no signature, no "Here's my reply:".
+${contextGreeting ? `Start with: "${contextGreeting}" then continue naturally.` : ''}`;
+
+    // Generate full reply using unified prompt with Claude Opus
+    console.log(`   🤖 Generating reply with unified prompt (intent: ${intent})`);
+
+    const fullReply = await claude.complete(UNIFIED_PROMPT, {
+      maxTokens: 500,
       temperature: 0.7
     });
 
-    const personalizedOpener = openerResponse.trim();
+    // Clean up any accidental prefixes like "Here's my reply:" etc.
+    let cleanedReply = fullReply.trim();
+    cleanedReply = cleanedReply.replace(/^(?:Here['']s my reply:?\s*|Reply:?\s*)/i, '').trim();
 
-    // Get the RAG template for this intent
-    const template = RAG_TEMPLATES[intent] || RAG_TEMPLATES['UNCLEAR'];
-
-    // If NOT_INTERESTED, return empty (don't send)
-    if (intent === 'NOT_INTERESTED' || !template) {
-      return { text: '', intent, research };
-    }
-
-    // Combine: Opener + Template
-    // Add contextual greeting if applicable (Happy Friday, etc.)
-    let fullReply = '';
-    if (contextGreeting) {
-      fullReply = `${contextGreeting}\n\n${personalizedOpener}\n\n${template}`;
-    } else {
-      fullReply = `${personalizedOpener}\n\n${template}`;
-    }
+    // For NOT_INTERESTED, we still generate but it should be brief
+    // The prompt handles keeping it respectful and short
 
     return {
-      text: fullReply.trim(),
+      text: cleanedReply,
       intent,
       research
     };
