@@ -361,3 +361,64 @@ Use ONLY the verified information from their company LinkedIn page or website.
 - **File**: `app/api/cron/reply-agent-process/route.ts`
 - **Commit**: `71f66b1f`
 - **Impact**: AI no longer makes false assumptions about companies based on marketing-speak headlines
+
+### 15. Unified Reply Agent Prompt (Option C: Hybrid)
+- **Problem**: RAG templates were too rigid and didn't handle all scenarios well
+- **Solution**: Replaced RAG template system with full AI generation + intent-specific guardrails
+
+**Key Features:**
+1. **Intent Classification**: INTERESTED, QUESTION, OBJECTION, TIMING, WRONG_PERSON, NOT_INTERESTED, VAGUE_POSITIVE, UNCLEAR
+2. **Context Variables**: `senderName`, `originalOutreachMessage`, `dayOfWeek`, `contextGreeting`
+3. **Intent-Specific Instructions**: Different rules for each intent type
+4. **Banned Phrases**: "SDR", "24/7", "quick call", "happy to show you", "Cheers", etc.
+5. **Length Limits**: Per-intent max sentences (QUESTION: 2-4, INTERESTED: 1-3, etc.)
+6. **CTA Options**: "Does that answer it?", "Want to see how it works?", "Make sense?", etc.
+
+**Example Output (QUESTION intent):**
+```
+Input: "How does this actually work, I hope you're not buzz-wording me."
+
+Output:
+Happy Friday!
+
+No buzzwords, I promise. Here's how it actually works:
+
+1. You connect your LinkedIn account to SAM
+2. You tell it who you want to reach (job titles, industries, etc.)
+3. SAM researches each person, writes a personalized message, and sends it from your account
+
+When someone replies, you get notified and take over the conversation yourself.
+
+Does that answer it?
+```
+
+**Code Structure** (`app/api/cron/reply-agent-process/route.ts`):
+```typescript
+const UNIFIED_PROMPT = `You are ${senderName}, founder of SAM AI...
+
+## CONTEXT
+- Prospect: ${prospectName}
+- Their reply: "${inboundMessage.text}"
+- Intent detected: ${intent}
+- Day: ${dayOfWeek}
+
+## ORIGINAL OUTREACH MESSAGE THEY RECEIVED:
+"${originalOutreachMessage}"
+
+## RESEARCH ON THIS PERSON:
+${researchContext}
+
+## INTENT-SPECIFIC INSTRUCTIONS:
+${intent === 'QUESTION' ? `### QUESTION INTENT
+They asked a specific question. Answer it directly...` : ''}
+...
+
+## CRITICAL RULES:
+### BANNED PHRASES (never use):
+- "SDR" or "sales development"
+- "24/7" or "around the clock"
+...
+```
+
+- **Commit**: `f093718b`
+- **Impact**: More natural, context-aware responses with consistent quality
