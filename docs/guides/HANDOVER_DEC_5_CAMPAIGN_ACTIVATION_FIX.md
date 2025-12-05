@@ -148,11 +148,43 @@ Campaign `51493910-28f0-4cb0-9e5c-531f1efbaa70` successfully activated:
 4. `app/api/cron/queue-pending-prospects/route.ts` - Cross-campaign deduplication
 5. `app/api/cron/poll-message-replies/route.ts` - **CRITICAL** reply detection fix
 
+### 7. Campaign Type Auto-Override Bug
+- **Problem**: When user selected "Messenger" campaign type, it auto-changed to "Connector"
+- **Root Cause**: `userSelectedCampaignType` wasn't being set to `true` in certain scenarios:
+  - When loading a saved draft
+  - When syncing from `initialCampaignType` prop
+- **Fix**: Added `setUserSelectedCampaignType(true)` to both:
+  - Draft loading effect (line 2599)
+  - Initial campaign type sync effect (line 1886)
+- **File**: `app/components/CampaignHub.tsx`
+
+### 8. Company Website Field Support
+- **Problem**: CSV uploads couldn't capture company website URLs
+- **Fix**: Added `company_website` column to prospect tables and full pipeline support
+- **Migration**: `sql/migrations/030-add-company-website-to-prospects.sql`
+- **Files modified**:
+  - `app/api/prospect-approval/upload-csv/route.ts` - Header mappings for website fields
+  - `app/api/campaigns/add-approved-prospects/route.ts` - Extract and store company_website
+- **Column is optional**: Works gracefully when not provided in CSV
+
+**CSV Header mappings added**:
+```javascript
+'website': 'companyWebsite',
+'company website': 'companyWebsite',
+'company_website': 'companyWebsite',
+'company url': 'companyWebsite',
+'url': 'companyWebsite'
+```
+
 ## Deployment
 
 - Deployed to production: https://app.meet-sam.com
-- Final commit: `da375e35`
+- Latest commit: `d10af1e5`
 
 ## Impact
 
-The reply detection fix means all future prospect replies will now be properly detected by the 15-minute polling cron. Before this fix, NO replies were being detected because the matching logic was fundamentally broken.
+1. **Reply Detection**: All future prospect replies will now be properly detected by the polling cron. Before this fix, NO replies were being detected.
+
+2. **Campaign Type Selection**: Users can now reliably select "Messenger" campaign type without it being auto-overridden to "Connector".
+
+3. **Company Website**: CSV uploads can now include company website URLs which will be stored and available for personalization.
