@@ -975,40 +975,23 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Step 3: Start new run if no completed run exists
-        // SAFE: Custom actor HTdyczuehykuGguHO has built-in result limits
-        // Previous sasky actor issue ($4.68) was fixed by switching to custom actor
-        // Additional safeguards: MAX_ITEMS=5, 2-hour cooldown, abort on >= 5 results
+        // Step 3: DISABLED - Do NOT auto-start Apify runs
+        // CRITICAL (Dec 5): Both sasky AND custom actor HTdyczuehykuGguHO ignore ALL limits
+        // - maxResults: IGNORED
+        // - maxItems: IGNORED
+        // - Actor runs until completion, scraping 4000+ results at $0.001 each
+        //
+        // Dec 4 evidence:
+        // - Run at 20:00: 4,681 results = $4.68
+        // - Run at 17:30: 897 results = $0.90
+        // - Run at 15:00: 390 results = $0.39
+        //
+        // Until we build our own actor with REAL limits, do NOT auto-start runs.
+        // Only process existing completed/aborted runs that users start manually.
         if (!datasetId) {
-          console.log(`🚀 No completed run found for #${keyword}. Starting new Apify run...`);
-
-          try {
-            const startRunUrl = `https://api.apify.com/v2/acts/${HASHTAG_ACTOR}/runs?token=${APIFY_API_TOKEN}`;
-
-            const startResponse = await fetch(startRunUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                hashtags: [hashtagWithPrefix],
-                maxResults: 5,  // Hard limit in actor input
-              })
-            });
-
-            if (startResponse.ok) {
-              const runData = await startResponse.json();
-              console.log(`✅ Started Apify run ${runData.data?.id} for #${keyword}`);
-              console.log(`   Results will be processed in next cron run (2hr cooldown enforced)`);
-            } else {
-              console.error(`❌ Failed to start Apify run: ${startResponse.status}`);
-              const errorText = await startResponse.text();
-              console.error(`   Error: ${errorText}`);
-            }
-          } catch (startError) {
-            console.error(`❌ Error starting Apify run:`, startError);
-          }
-
-          // Update last_scraped_at to prevent immediate retry
-          await supabase.from('linkedin_post_monitors').update({ last_scraped_at: new Date().toISOString() }).eq('id', monitor.id);
+          console.log(`⛔ No completed run found for #${keyword}. Auto-start DISABLED to prevent $4+ costs`);
+          console.log(`   → Start runs manually from Apify console with maxResults=5`);
+          console.log(`   → Or wait for existing run to complete and be aborted`);
           continue;
         }
 
