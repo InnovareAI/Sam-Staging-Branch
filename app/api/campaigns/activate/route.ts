@@ -4,7 +4,7 @@ import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -69,11 +69,15 @@ export async function POST(request: NextRequest) {
     // Execute the campaign based on campaign type
     try {
       // Determine execution endpoint based on campaign type
-      let executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast' // Queue-based Unipile for all LinkedIn campaigns (30 min spacing)
+      // Dec 5 FIX: connector = LinkedIn connection requests, NOT email!
+      let executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast' // Queue-based Unipile for LinkedIn campaigns
 
-      if (campaign.campaign_type === 'email' || campaign.campaign_type === 'connector') {
+      if (campaign.campaign_type === 'email') {
         // Queue-based email sending with compliance (40/day, 8-5, no weekends/holidays)
         executeEndpoint = '/api/campaigns/email/send-emails-queued'
+      } else if (campaign.campaign_type === 'connector' || campaign.campaign_type === 'linkedin' || campaign.campaign_type === 'messenger') {
+        // LinkedIn campaigns: connector, messenger, linkedin (legacy)
+        executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast'
       }
 
       console.log(`Executing ${campaign.campaign_type || 'messenger'} campaign via ${executeEndpoint}`)

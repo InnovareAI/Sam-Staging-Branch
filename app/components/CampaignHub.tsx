@@ -8211,18 +8211,25 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                 <button
                                   onClick={async (e) => {
                                     e.stopPropagation();
-                                    // Activate draft campaign
-                                    if (item.draft?.id) {
+                                    // Activate draft campaign using /api/campaigns/activate
+                                    if (item.draft?.id && actualWorkspaceId) {
                                       try {
-                                        const response = await fetch(`/api/campaigns/${item.draft.id}/status`, {
-                                          method: 'PUT',
+                                        const response = await fetch('/api/campaigns/activate', {
+                                          method: 'POST',
                                           headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ status: 'active' })
+                                          body: JSON.stringify({
+                                            campaignId: item.draft.id,
+                                            workspaceId: actualWorkspaceId
+                                          })
                                         });
                                         if (response.ok) {
                                           queryClient.invalidateQueries({ queryKey: ['campaigns'] });
                                           queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
                                           setCampaignFilter('active');
+                                        } else {
+                                          const error = await response.json();
+                                          console.error('Failed to activate campaign:', error);
+                                          alert(error.message || 'Failed to activate campaign');
                                         }
                                       } catch (error) {
                                         console.error('Failed to activate campaign:', error);
