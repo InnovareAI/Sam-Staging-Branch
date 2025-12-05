@@ -215,9 +215,19 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          // 8. Send HITL email via Postmark (if manual approval mode)
+          // 8. Send HITL notification to Google Chat (if manual approval mode)
           if (config.approval_mode === 'manual') {
-            await sendHITLEmail(savedDraft, config, prospect, latestInbound.text, supabase);
+            await sendReplyAgentHITLNotification({
+              draftId: savedDraft.id,
+              approvalToken: savedDraft.approval_token,
+              prospectName: savedDraft.prospect_name || 'Unknown',
+              prospectTitle: prospect.title,
+              prospectCompany: savedDraft.prospect_company,
+              inboundMessage: latestInbound.text,
+              draftReply: savedDraft.draft_text,
+              intent: savedDraft.intent_detected || 'UNCLEAR',
+              appUrl: APP_URL,
+            });
           } else {
             // Auto-approve mode - send immediately
             await autoSendReply(savedDraft, linkedinAccount.unipile_account_id, supabase);
@@ -1087,10 +1097,20 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
           .eq('id', draft.id)
           .single();
 
-        // Send HITL notification
+        // Send HITL notification to Google Chat
         if (config.approval_mode === 'manual') {
-          await sendHITLEmail(updatedDraft, config, prospect, draft.inbound_message_text, supabase);
-          console.log(`✅ Draft ${draft.id} processed - HITL notification sent`);
+          await sendReplyAgentHITLNotification({
+            draftId: updatedDraft.id,
+            approvalToken: updatedDraft.approval_token,
+            prospectName: updatedDraft.prospect_name || 'Unknown',
+            prospectTitle: prospect.title,
+            prospectCompany: updatedDraft.prospect_company,
+            inboundMessage: draft.inbound_message_text,
+            draftReply: updatedDraft.draft_text,
+            intent: updatedDraft.intent_detected || 'UNCLEAR',
+            appUrl: APP_URL,
+          });
+          console.log(`✅ Draft ${draft.id} processed - Google Chat HITL notification sent`);
         } else {
           // Get LinkedIn account for auto-send
           const { data: linkedinAccount } = await supabase
