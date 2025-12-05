@@ -113,9 +113,11 @@ export async function GET(request: NextRequest) {
         *,
         prospect_approval_sessions(
           workspace_id,
+          campaign_id,
           campaign_name,
           campaign_tag,
-          prospect_source
+          prospect_source,
+          campaigns(campaign_type)
         )
       `)
       .in('session_id', sessionIds)

@@ -6193,6 +6193,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             // Skip if already in new architecture
             if (campaignGroups[groupKey]) continue;
 
+            // Dec 5 fix: Get campaign_type from linked campaigns table
+            const linkedCampaignType = prospect.prospect_approval_sessions?.campaigns?.campaign_type;
+
             if (!campaignGroups[groupKey]) {
               campaignGroups[groupKey] = {
                 campaignName,
@@ -6200,7 +6203,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 sessionId: prospect.session_id,
                 prospects: [],
                 createdAt: prospect.created_at,
-                isNewArchitecture: false
+                isNewArchitecture: false,
+                linkedCampaignType  // Store the campaign_type from campaigns table
               };
             }
 
@@ -6230,9 +6234,18 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         }
       }
 
-      // Convert to array, add campaignType based on connection_degree, and sort by creation date
+      // Convert to array, add campaignType based on linked campaign or connection_degree, and sort by creation date
       const campaigns = Object.values(campaignGroups).map((group: any) => {
-        // Determine campaignType from prospects' connection_degree
+        // Dec 5 fix: Use campaign_type from linked campaigns table if available
+        // This handles email campaigns correctly (CSV uploads set campaign_type: 'email')
+        if (group.linkedCampaignType) {
+          return {
+            ...group,
+            campaignType: group.linkedCampaignType
+          };
+        }
+
+        // Fallback: Determine campaignType from prospects' connection_degree
         // 1st degree → messenger, 2nd/3rd degree → connector
         const firstDegreeCount = group.prospects.filter((p: any) =>
           p.connection_degree === '1st' || p.connection_degree === '1' || p.connection_degree?.toLowerCase()?.includes('1st')
