@@ -367,6 +367,7 @@ async function triggerReplyAgent(
         prospect_linkedin_url: prospect.linkedin_url,
         prospect_company: prospect.company_name || prospect.company,
         prospect_title: prospect.title,
+        draft_text: '[Pending AI generation]', // Required field - will be replaced by reply-agent-process cron
         approval_token: approvalToken,
         expires_at: expiresAt.toISOString(),
         status: 'pending_generation', // Will be processed by reply-agent-process cron
