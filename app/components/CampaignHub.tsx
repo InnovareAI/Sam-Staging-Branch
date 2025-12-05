@@ -1875,6 +1875,16 @@ function CampaignBuilder({
   const [currentStep, setCurrentStep] = useState(getInitialStep());
   const [uploadedSessionId, setUploadedSessionId] = useState<string | null>(null); // CRITICAL FIX: Track session_id from CSV uploads
 
+  // CRITICAL FIX: Sync campaignType when initialCampaignType changes (e.g., Email selected in approval modal)
+  // useState only runs once on mount, so we need useEffect to handle updates
+  useEffect(() => {
+    if (initialCampaignType) {
+      const newType = initialCampaignType === 'linkedin' ? 'connector' : initialCampaignType;
+      console.log('🔄 Syncing campaignType from initialCampaignType:', initialCampaignType, '→', newType);
+      setCampaignType(newType);
+    }
+  }, [initialCampaignType]);
+
   // Auto-populate CSV data when initialProspects are provided
   useEffect(() => {
     console.log('🔍 CampaignBuilder initialProspects check:', {
@@ -8018,9 +8028,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               >
                 <FileText size={16} />
                 In Progress
-                {/* Count pending prospects only (Dec 5 fix: removed drafts to match content) */}
+                {/* Count CAMPAIGNS not prospects (Dec 5 fix: match actual table rows shown) */}
                 {(() => {
-                  const pendingCount = (!campaignCreatedFromInitial ? (initialProspects?.filter(p => p.approvalStatus === 'approved').length || 0) : 0) + pendingCampaignsFromDB.length;
+                  // Count campaigns from initialProspects (grouped by campaignName)
+                  let tempCampaignCount = 0;
+                  if (initialProspects && initialProspects.length > 0 && !campaignCreatedFromInitial) {
+                    const approvedProspects = initialProspects.filter(p => p.approvalStatus === 'approved');
+                    const campaignNames = new Set(approvedProspects.map(p => p.campaignName || p.campaignTag || 'Unnamed Campaign'));
+                    tempCampaignCount = campaignNames.size;
+                  }
+                  // Add DB campaigns (each is already a campaign)
+                  const pendingCount = tempCampaignCount + pendingCampaignsFromDB.length;
                   return pendingCount > 0 ? (
                     <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
                       {pendingCount}
