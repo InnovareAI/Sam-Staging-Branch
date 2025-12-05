@@ -188,3 +188,22 @@ Campaign `51493910-28f0-4cb0-9e5c-531f1efbaa70` successfully activated:
 2. **Campaign Type Selection**: Users can now reliably select "Messenger" campaign type without it being auto-overridden to "Connector".
 
 3. **Company Website**: CSV uploads can now include company website URLs which will be stored and available for personalization.
+
+### 9. Reply Agent Draft Creation Bug (CRITICAL)
+- **Problem**: When prospect replied, `triggerReplyAgent` silently failed to create draft
+- **Root Causes**:
+  1. `prospect.company` field doesn't exist - actual field is `company_name`
+  2. `draft_text` column has NOT NULL constraint but code didn't set it
+- **Fixes**:
+  - Changed `prospect.company` to `prospect.company_name || prospect.company` (line 368)
+  - Added placeholder `draft_text: '[Pending AI generation]'` (line 370)
+- **File**: `app/api/cron/poll-message-replies/route.ts`
+- **Verified**: Alfred Collins Ayamba's reply now creates draft, AI generates response, status = `pending_approval`
+
+### 10. Reply Detection Provider ID vs URL Format
+- **Problem**: `poll-message-replies` compared URL-format `linkedin_user_id` to provider_id format from Unipile
+- **Root Cause**: `prospect.linkedin_user_id` stored as URL but `chat.attendee_provider_id` uses Unipile format (`ACoAADB...`)
+- **Fix**:
+  - Check if `linkedin_user_id` starts with 'ACo' (already provider_id) - use directly
+  - Otherwise extract vanity and call `/api/v1/users/{vanity}?account_id=` to get provider_id
+- **File**: `app/api/cron/poll-message-replies/route.ts` (lines 141-173)
