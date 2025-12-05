@@ -120,9 +120,16 @@
 # LINKEDIN COMMENTING AGENT (Dec 1, 2025)
 # ============================================
 
-# Discover Posts: Find new posts from monitored profiles/companies every 2 hours
-# Uses Apify to scrape LinkedIn posts for commenting agent
-[functions."discover-posts"]
+# Discover Posts (Apify): DISABLED - Costs $4+ per run, ignores all limits
+# Was: Uses Apify to scrape LinkedIn posts
+# Replaced by Google Custom Search version below
+# [functions."discover-posts"]
+#   schedule = "0 */2 * * *"
+
+# Discover Posts (Google): Find new posts via Google Custom Search every 2 hours
+# Cost: ~$0.015 per hashtag ($2/month vs Apify's $100+/month)
+# Returns 10-30 posts per hashtag (plenty for commenting)
+[functions."discover-posts-google"]
   schedule = "0 */2 * * *"
 
 # Auto-Generate Comments: Create AI comments every 30 minutes
