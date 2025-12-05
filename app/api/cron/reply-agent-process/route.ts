@@ -286,30 +286,58 @@ Respond with just the intent category (e.g., "INTERESTED").`;
     const prospectCompany = prospect.company_name || prospect.company || 'Unknown';
     const prospectTitle = prospect.title || 'Unknown';
 
-    // Fetch research data if we have LinkedIn URL
+    // Fetch research data directly from Unipile (MCP doesn't work in production)
     let research: { linkedin?: any; company?: any } | null = null;
-    if (prospect.linkedin_url) {
+    if (prospect.linkedin_url && UNIPILE_API_KEY) {
       try {
-        const researchResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/api/sam/prospect-intelligence`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'linkedin_url_research',
-              data: { url: prospect.linkedin_url },
-              user_id: 'system' // Server-to-server auth
-            })
-          }
-        );
-        if (researchResponse.ok) {
-          const researchData = await researchResponse.json();
-          if (researchData.success && researchData.data) {
-            research = {
-              linkedin: researchData.data.prospect,
-              company: researchData.data.insights?.company
-            };
-            console.log(`   📊 Research fetched for ${prospectName}`);
+        // Extract vanity from LinkedIn URL
+        const vanityMatch = prospect.linkedin_url.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+        if (vanityMatch) {
+          const vanityId = vanityMatch[1];
+
+          // Get Unipile account ID for this workspace (use first connected LinkedIn account)
+          const { data: workspaceAccounts } = await supabase
+            .from('workspace_accounts')
+            .select('unipile_account_id')
+            .eq('workspace_id', config.workspace_id)
+            .eq('account_type', 'linkedin')
+            .eq('connection_status', 'connected')
+            .limit(1);
+          const workspaceAccount = workspaceAccounts?.[0];
+
+          if (workspaceAccount?.unipile_account_id) {
+            // Fetch profile from Unipile directly (the reliable endpoint)
+            const profileResponse = await fetch(
+              `https://${UNIPILE_DSN}/api/v1/users/${vanityId}?account_id=${workspaceAccount.unipile_account_id}`,
+              {
+                method: 'GET',
+                headers: {
+                  'X-API-KEY': UNIPILE_API_KEY,
+                  'Accept': 'application/json'
+                }
+              }
+            );
+
+            if (profileResponse.ok) {
+              const profile = await profileResponse.json();
+              research = {
+                linkedin: {
+                  headline: profile.headline,
+                  summary: profile.summary || profile.about,
+                  location: profile.location,
+                  industry: profile.industry,
+                  connectionDegree: profile.network_distance,
+                  currentPositions: profile.positions?.slice(0, 2).map((p: any) =>
+                    `${p.title} at ${p.company_name}`
+                  ),
+                  skills: profile.skills?.slice(0, 5),
+                  recentActivity: profile.recent_activity?.slice(0, 2)
+                }
+              };
+              console.log(`   📊 Unipile research fetched for ${prospectName}: ${profile.headline?.slice(0, 50)}...`);
+            } else {
+              console.log(`   ⚠️ Unipile profile lookup failed for ${vanityId}: ${profileResponse.status}`);
+            }
           }
         }
       } catch (researchError) {
@@ -389,10 +417,16 @@ SAM AI automates personalized LinkedIn outreach:
     // Build research context if available
     let researchContext = '';
     if (research?.linkedin) {
-      researchContext += `\n## LINKEDIN RESEARCH:
+      const positions = research.linkedin.currentPositions?.join(', ') || 'N/A';
+      const skills = research.linkedin.skills?.join(', ') || 'N/A';
+      researchContext += `\n## LINKEDIN RESEARCH (USE THIS FOR PERSONALIZATION):
 - Headline: ${research.linkedin.headline || 'N/A'}
-- Summary: ${research.linkedin.summary || 'N/A'}
-- Recent Activity: ${research.linkedin.recentPosts?.slice(0, 2).join(', ') || 'N/A'}`;
+- Summary/About: ${research.linkedin.summary || 'N/A'}
+- Location: ${research.linkedin.location || 'N/A'}
+- Industry: ${research.linkedin.industry || 'N/A'}
+- Current Positions: ${positions}
+- Skills: ${skills}
+- Connection: ${research.linkedin.connectionDegree || 'N/A'}`;
     }
     if (research?.company) {
       researchContext += `\n## COMPANY RESEARCH:
@@ -663,13 +697,15 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
           continue;
         }
 
-        // Update draft with AI reply
+        // Update draft with AI reply and research
         const { error: updateError } = await supabase
           .from('reply_agent_drafts')
           .update({
             draft_text: aiReply.text,
             intent_detected: aiReply.intent,
             ai_model: config.ai_model || 'claude-opus-4-5-20251101',
+            research_linkedin_profile: aiReply.research?.linkedin || null,
+            research_company_profile: aiReply.research?.company || null,
             status: 'pending_approval',
             updated_at: new Date().toISOString()
           })
