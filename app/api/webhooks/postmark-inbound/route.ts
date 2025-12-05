@@ -69,8 +69,12 @@ export async function POST(request: NextRequest) {
     // Extract the action context from To address
     // Format: sam+action-sessionid@meet-sam.com
     // Or: reply+sessionid@meet-sam.com
+    if (!email.ToFull || email.ToFull.length === 0) {
+      console.error('❌ No recipients in ToFull array');
+      return NextResponse.json({ error: 'No recipient found' }, { status: 400 });
+    }
     const recipient = email.ToFull[0]
-    const mailboxHash = recipient.MailboxHash // The part after "+"
+    const mailboxHash = recipient?.MailboxHash || '' // The part after "+"
 
     // Parse the context
     const context = parseEmailContext(mailboxHash, email.Subject, email.TextBody)
