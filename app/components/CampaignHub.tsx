@@ -6257,8 +6257,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               isNewArchitecture: false
             });
           }
+          console.log('📊 [DRAFTS DEBUG] After legacy loop, groups:', Object.keys(campaignGroups).length);
         }
       }
+
+      console.log('📊 [DRAFTS DEBUG] Total groups before mapping:', Object.keys(campaignGroups).length, Object.keys(campaignGroups));
 
       // Convert to array, add campaignType based on linked campaign or connection_degree, and sort by creation date
       const campaigns = Object.values(campaignGroups).map((group: any) => {
