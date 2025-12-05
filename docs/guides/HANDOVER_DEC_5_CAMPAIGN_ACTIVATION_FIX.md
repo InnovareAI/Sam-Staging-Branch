@@ -267,3 +267,97 @@ Campaign `51493910-28f0-4cb0-9e5c-531f1efbaa70` successfully activated:
 - **Fix**: Updated `CLAUDE_MODELS.OPUS` to `claude-opus-4-5-20251101`
 - **File**: `lib/llm/claude-client.ts` (line 51)
 - **Strategy**: Haiku for chat (fast/cheap), Opus for Reply Agent (best quality)
+
+### 14. Reply Agent FACTS ONLY - No LinkedIn Headline/Title (CRITICAL)
+- **Problem**: AI said "You're building PostPilot for social content automation" - WRONG! PostPilot is NOT for social content
+- **Root Cause**: AI used LinkedIn headline ("Autonomous AI Social Media Engine") to guess what the company does
+- **User Feedback**: "never use linkedin profile title or jobs. they are misleading because these are there to catch eyeballs"
+
+**Solution Architecture:**
+1. **Personal LinkedIn Profile** - ONLY extract factual data:
+   - ✅ Location (factual)
+   - ✅ Connection degree (factual)
+   - ✅ Education (factual)
+   - ❌ Headline (marketing fluff - REMOVED)
+   - ❌ Job title (marketing fluff - REMOVED)
+   - ❌ Summary (self-promotion - REMOVED)
+
+2. **Company LinkedIn Page** - Fetch directly by URL (not search):
+   - Extract company URL from profile's current position
+   - Call `/api/v1/linkedin/company/{vanity}?account_id=` directly
+   - Get: name, industry, description, about, specialties, website
+   - Company description IS factual (unlike personal headline)
+
+3. **Company Website** - SOURCE OF TRUTH:
+   - Use `prospect.company_website` OR website from LinkedIn company page
+   - Comprehensive scraping: SEO keywords, products/services, FAQ, blog posts
+   - This is where accurate company information lives
+
+**Before (wrong)**:
+```json
+{
+  "linkedin": {
+    "headline": "Founder & CEO | Building PostPilot AI — Autonomous AI Social Media Engine",
+    "summary": "...",
+    "currentPositions": ["Founder at PostPilot"]
+  }
+}
+```
+AI output: "Since you're building PostPilot for social media automation..."
+
+**After (correct)**:
+```json
+{
+  "linkedin": {
+    "location": "Retford, England, United Kingdom",
+    "connectionDegree": "FIRST_DEGREE"
+  }
+}
+```
+AI output:
+```
+Alfred - fair question, no buzzwords:
+
+You connect your LinkedIn to SAM. Tell it who you want to reach (job titles, industries,
+whatever). SAM researches each person individually, writes a personalized message based
+on what it finds about them, and sends it from your account.
+
+When someone replies interested, you get notified and take over the conversation yourself.
+SAM handles the outreach grunt work, you handle the actual selling.
+
+$199/month. That's it.
+
+Does that answer it?
+```
+
+**Key Code Changes** (`app/api/cron/reply-agent-process/route.ts`):
+
+```typescript
+// 1. PERSONAL LINKEDIN - ONLY factual data
+research = {
+  linkedin: {
+    // ONLY factual data - NOT headline/title (marketing fluff)
+    location: profile.location,
+    connectionDegree: profile.network_distance,
+    education: profile.education?.slice(0, 2).map(...)
+  }
+};
+
+// 2. COMPANY LINKEDIN - Fetch by URL (not search)
+companyLinkedInUrl = profile.positions?.[0]?.company_linkedin_url;
+// ... fetch company page directly
+
+// 3. WEBSITE - Source of truth
+const companyWebsite = prospect.company_website || companyWebsiteFromLinkedIn;
+```
+
+**User Prompt Change**:
+```
+## IMPORTANT: ONLY USE FACTS FROM RESEARCH ABOVE
+Never guess what their company does based on their job title.
+Use ONLY the verified information from their company LinkedIn page or website.
+```
+
+- **File**: `app/api/cron/reply-agent-process/route.ts`
+- **Commit**: `71f66b1f`
+- **Impact**: AI no longer makes false assumptions about companies based on marketing-speak headlines
