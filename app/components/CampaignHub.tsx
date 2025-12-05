@@ -8211,6 +8211,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                 <button
                                   onClick={async (e) => {
                                     e.stopPropagation();
+                                    // Check for prospects first
+                                    if (item.prospectCount === 0) {
+                                      alert('Cannot activate campaign with 0 prospects. Add prospects first.');
+                                      return;
+                                    }
                                     // Activate draft campaign using /api/campaigns/activate
                                     if (item.draft?.id && actualWorkspaceId) {
                                       try {
@@ -8227,16 +8232,23 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                           queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
                                           setCampaignFilter('active');
                                         } else {
-                                          const error = await response.json();
-                                          console.error('Failed to activate campaign:', error);
-                                          alert(error.message || 'Failed to activate campaign');
+                                          const errorData = await response.json();
+                                          console.error('Failed to activate campaign:', errorData);
+                                          // API returns {success, error, error_type, ...}
+                                          alert(errorData.error || errorData.message || 'Failed to activate campaign');
                                         }
                                       } catch (error) {
                                         console.error('Failed to activate campaign:', error);
                                       }
                                     }
                                   }}
-                                  className="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors bg-green-600 hover:bg-green-700"
+                                  disabled={item.prospectCount === 0}
+                                  className={`flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors ${
+                                    item.prospectCount === 0
+                                      ? 'bg-gray-400 cursor-not-allowed'
+                                      : 'bg-green-600 hover:bg-green-700'
+                                  }`}
+                                  title={item.prospectCount === 0 ? 'Add prospects to activate' : 'Activate campaign'}
                                 >
                                   Activate
                                 </button>

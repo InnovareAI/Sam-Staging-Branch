@@ -86,7 +86,12 @@ export async function POST(request: NextRequest) {
         `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${executeEndpoint}`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            // Dec 5 FIX: Pass internal trigger to bypass auth in execution endpoint
+            // User is already authenticated above, so we can trust this internal call
+            'x-internal-trigger': 'campaign-activation'
+          },
           body: JSON.stringify({
             campaignId
           })

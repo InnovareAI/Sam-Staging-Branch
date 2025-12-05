@@ -40,13 +40,15 @@ function isPublicHoliday(date: Date): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    // Check if this is an internal cron trigger
+    // Check if this is an internal trigger (cron or activation)
     const internalTrigger = req.headers.get('x-internal-trigger');
     const isCronTrigger = internalTrigger === 'cron-pending-prospects';
+    const isActivationTrigger = internalTrigger === 'campaign-activation';
+    const isInternalCall = isCronTrigger || isActivationTrigger;
 
     let user = null;
 
-    if (!isCronTrigger) {
+    if (!isInternalCall) {
       // User-initiated request: require authentication
       const supabase = await createSupabaseRouteClient();
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
       }
       user = authUser;
     } else {
-      console.log('🤖 Internal cron trigger - bypassing user auth');
+      console.log(`🤖 Internal trigger (${internalTrigger}) - bypassing user auth`);
     }
 
     const { campaignId } = await req.json();
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
     }
 
-    console.log(`🚀 FAST queue creation for campaign: ${campaignId} (${isCronTrigger ? 'cron' : `user: ${user?.email}`})`);
+    console.log(`🚀 FAST queue creation for campaign: ${campaignId} (${isInternalCall ? internalTrigger : `user: ${user?.email}`})`);
 
     // 1. Fetch campaign - use admin client for cron, or user client for RLS check
     // CRITICAL FIX (Dec 4): Also fetch connection_message column AND linkedin_config
