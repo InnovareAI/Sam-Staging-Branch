@@ -541,46 +541,47 @@ Respond with just the intent category (e.g., "INTERESTED").`;
     // Get contextual greeting (Happy Friday, Hope you had a great Thanksgiving, etc.)
     const contextGreeting = getContextualGreeting();
 
-    // Use custom guidelines if set, otherwise use founder-to-founder authentic prompt
-    const systemPrompt = config.reply_guidelines || `You're Irish, founder of SAM AI. Replying to a LinkedIn message.
+    // RAG TEMPLATES: Fixed second paragraph based on intent
+    // These are proven, consistent messages that convert
+    const RAG_TEMPLATES: Record<string, string> = {
+      QUESTION: `You connect your LinkedIn. Tell SAM who you want to reach. SAM researches each person, writes a message that references their background, sends it. When they reply, you take over.
 
-## CRITICAL: BANNED PHRASES (DO NOT USE)
-These will make you sound like every other sales tool. NEVER use:
-- "SDR" or "sales development"
-- "24/7" or "around the clock"
-- "quick call" or "15-min demo" or "walkthrough"
-- "happy to show you" or "happy to help"
-- "free trial" or "poke around"
-- "leveraging AI" or "AI-powered"
-- "pipeline" or "prospects"
-- "Cheers" sign-off (too generic)
+$199/month. Does that answer it?`,
 
-## HOW TO ACTUALLY REPLY
+      INTERESTED: `Happy to show you how it works. Takes about 10 minutes to set up - you just connect LinkedIn and tell SAM who to target.
 
-1. **If they're skeptical (like asking "how does this actually work"):**
-   - Don't defend. Just explain the mechanics plainly.
-   - "You connect your LinkedIn. Pick who you want to reach. SAM writes and sends personalized messages. When they reply, you see it and respond yourself."
-   - That's it. No hype.
+Want me to send you a link?`,
 
-2. **If they build something similar:**
-   - Acknowledge it: "You're building PostPilot for social content automation - same concept, different channel."
-   - Don't explain SAM like they don't understand software.
+      OBJECTION: `Fair point. SAM isn't for everyone - works best for founders/consultants doing their own outreach who want to stop copying and pasting messages.
 
-3. **Ending the message:**
-   - If THEY asked a question, end with "Does that answer it?" or similar
-   - If they seem interested, just say "Want to see it?" - nothing more
-   - No sign-off needed. Just end naturally.
+If that's not you, no worries.`,
 
-## WHAT SAM IS (only if they asked)
-You connect your LinkedIn account. Tell SAM what kind of people you want to reach. SAM researches each person, writes a personalized message, sends it. Handles follow-ups if they don't reply. When someone responds, you take over.
+      TIMING: `No problem at all. If timing changes, just reply to this thread.`,
 
-Price: $199/month. Replaces hiring someone.
+      VAGUE_POSITIVE: `Want me to show you how it works? Takes 10 minutes to set up.`,
 
-## TONE
-- Text message brevity
-- No formalities
-- No enthusiasm
-- Just answer the question`;
+      UNCLEAR: `Let me know if you have any questions about how it works.`,
+
+      NOT_INTERESTED: `` // Don't send anything
+    };
+
+    // System prompt for generating ONLY the personalized opener
+    // CRITICAL: This MUST be SHORT - the template handles the rest
+    const openerSystemPrompt = `You are writing ONLY ONE LINE - a personalized greeting.
+
+OUTPUT FORMAT: Just one short line (under 15 words). Nothing else.
+
+EXAMPLES OF CORRECT OUTPUT:
+"Alfred - running things from Retford, respect."
+"Sarah - KPMG to startup, that's a move."
+"Tech consulting in Berlin - competitive space."
+
+WHAT NOT TO DO:
+- DO NOT explain what SAM does
+- DO NOT say "Fair question" or "No buzzwords"
+- DO NOT write multiple sentences
+- DO NOT answer their question
+- Just write ONE SHORT greeting line that shows you looked them up`;
 
     // Build comprehensive research context
     // IMPORTANT: Do NOT include LinkedIn headline/title - they are marketing fluff, not facts
@@ -657,37 +658,44 @@ Price: $199/month. Replaces hiring someone.
       }
     }
 
-    const userPrompt = `Reply to this prospect's message.
+    // Build the personalized opener prompt
+    const openerPrompt = `Person: ${prospectName} from ${prospectCompany}
+Location: ${research?.linkedin?.location || 'Unknown'}
+Industry: ${research?.company?.industry || 'Unknown'}
 
-## WHO THEY ARE:
-- **Name:** ${prospectName}
-- **Company:** ${prospectCompany}
-${researchContext}
+Write ONE SHORT LINE (under 15 words) that greets them personally.
+Example: "Alfred - running things from Retford, respect."
 
-## IMPORTANT: ONLY USE FACTS FROM RESEARCH ABOVE
-Never guess what their company does based on their job title. Use ONLY the verified information from their company LinkedIn page or website.
+Your one line:`;
 
-## THEIR MESSAGE:
-"${inboundMessage.text}"
-
-## WHAT THEY'RE ASKING (${intent}):
-${intent === 'QUESTION' ? 'They want to understand how this works - give them a straight answer.' : ''}
-${intent === 'INTERESTED' ? 'They seem interested - keep it brief, offer next step.' : ''}
-${intent === 'OBJECTION' ? 'They have concerns - acknowledge and address honestly.' : ''}
-${intent === 'TIMING' ? 'Bad timing for them - respect that, leave door open.' : ''}
-${intent === 'VAGUE_POSITIVE' ? 'Positive but vague - clarify what they need.' : ''}
-
-## YOUR REPLY:
-Use the research above to make this personal. Reference specific things about THEM, not generic stuff.`;
-
-    const replyResponse = await claude.complete(userPrompt, {
-      system: systemPrompt,
-      maxTokens: 300,
+    // Generate personalized opener
+    const openerResponse = await claude.complete(openerPrompt, {
+      system: openerSystemPrompt,
+      maxTokens: 100,
       temperature: 0.7
     });
 
+    const personalizedOpener = openerResponse.trim();
+
+    // Get the RAG template for this intent
+    const template = RAG_TEMPLATES[intent] || RAG_TEMPLATES['UNCLEAR'];
+
+    // If NOT_INTERESTED, return empty (don't send)
+    if (intent === 'NOT_INTERESTED' || !template) {
+      return { text: '', intent, research };
+    }
+
+    // Combine: Opener + Template
+    // Add contextual greeting if applicable (Happy Friday, etc.)
+    let fullReply = '';
+    if (contextGreeting) {
+      fullReply = `${contextGreeting}\n\n${personalizedOpener}\n\n${template}`;
+    } else {
+      fullReply = `${personalizedOpener}\n\n${template}`;
+    }
+
     return {
-      text: replyResponse.trim(),
+      text: fullReply.trim(),
       intent,
       research
     };
