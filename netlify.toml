@@ -72,6 +72,15 @@
 [functions."poll-message-replies"]
   schedule = "*/15 * * * *"
 
+# Scheduled function: Reply Agent - Generate AI drafts every 5 minutes
+# Processes drafts in pending_generation status:
+# 1. Fetches LinkedIn profile + company research
+# 2. Generates AI reply using Claude Opus 4.5
+# 3. Sends HITL notification to Google Chat with Approve/Reject buttons
+# 4. Updates status to pending_approval
+[functions."reply-agent-process"]
+  schedule = "*/5 * * * *"
+
 # ============================================
 # AI AGENT SCHEDULED FUNCTIONS (Nov 29, 2025)
 # ============================================
