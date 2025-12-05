@@ -43,12 +43,12 @@ interface VisionRequest {
   maxTokens?: number;
 }
 
-// Available Claude models (Nov 2025)
-// Strategy: Haiku for chat interface, Sonnet for processing
+// Available Claude models (Dec 2025)
+// Strategy: Haiku for chat, Sonnet for general, OPUS 4.5 for critical tasks
 export const CLAUDE_MODELS = {
   HAIKU: 'claude-3-5-haiku-20241022',      // For chat interface (fast, cheap)
-  SONNET: 'claude-sonnet-4-20250514',      // Primary processing model
-  OPUS: 'claude-sonnet-4-20250514',        // Use Sonnet (Opus may not be available)
+  SONNET: 'claude-sonnet-4-20250514',      // General processing model
+  OPUS: 'claude-opus-4-5-20251101',        // OPUS 4.5 - best model for critical tasks (Reply Agent)
 } as const;
 
 // Default model for different use cases

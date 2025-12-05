@@ -228,3 +228,42 @@ Campaign `51493910-28f0-4cb0-9e5c-531f1efbaa70` successfully activated:
   }
   ```
 - **AI Output**: Now references PostPilot specifically - "Since you're building PostPilot for social media automation, you'll get how this works"
+
+### 12. Reply Agent Prompt Quality (CRITICAL)
+- **Problem**: AI replies contained banned sales phrases: "SDR", "24/7", "15-min demo", "free trial", "Cheers"
+- **Root Cause**: `workspace_reply_agent_config.reply_guidelines` in database had old salesy prompt
+- **Code Path**: `config.reply_guidelines || defaultPrompt` means database config overrides code defaults
+- **Fix**: Updated database `reply_guidelines` with explicit BANNED PHRASES section:
+  ```
+  ## CRITICAL: BANNED PHRASES (DO NOT USE)
+  - "SDR" or "sales development"
+  - "24/7" or "around the clock"
+  - "quick call" or "15-min demo" or "walkthrough"
+  - "happy to show you" or "happy to help"
+  - "free trial" or "poke around"
+  - "leveraging AI" or "AI-powered"
+  - "pipeline" or "prospects"
+  - "Cheers" sign-off (too generic)
+  ```
+- **Additional Prompt Rules**:
+  - For skeptical prospects: explain mechanics plainly, no hype
+  - If they build similar software: acknowledge it, don't over-explain
+  - Ending: "Does that answer it?" or "Want to see it?" - no pushy CTAs
+- **Table**: `workspace_reply_agent_config` (column: `reply_guidelines`)
+- **Before**:
+  ```
+  "Most coaches see 3-4x more qualified conversations... Worth a 15-minute demo?"
+  ```
+- **After**:
+  ```
+  "You connect your LinkedIn. Tell SAM who you want to reach. SAM researches each person,
+   writes a message that references their background, sends it. You're building PostPilot
+   for social content - same principle, different use case. You get it. Does that answer it?"
+  ```
+- **Model**: Confirmed using Claude Opus 4.5 (`claude-opus-4-5-20251101`) in `lib/llm/claude-client.ts`
+
+### 13. Claude Model Configuration
+- **Change**: Opus was mistakenly mapped to Sonnet
+- **Fix**: Updated `CLAUDE_MODELS.OPUS` to `claude-opus-4-5-20251101`
+- **File**: `lib/llm/claude-client.ts` (line 51)
+- **Strategy**: Haiku for chat (fast/cheap), Opus for Reply Agent (best quality)

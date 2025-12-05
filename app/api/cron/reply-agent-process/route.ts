@@ -286,170 +286,255 @@ Respond with just the intent category (e.g., "INTERESTED").`;
     const prospectCompany = prospect.company_name || prospect.company || 'Unknown';
     const prospectTitle = prospect.title || 'Unknown';
 
-    // Fetch research data directly from Unipile (MCP doesn't work in production)
-    let research: { linkedin?: any; company?: any } | null = null;
-    if (prospect.linkedin_url && UNIPILE_API_KEY) {
+    // COMPREHENSIVE RESEARCH: LinkedIn personal + company + website
+    let research: { linkedin?: any; company?: any; website?: any } | null = null;
+
+    // Get Unipile account ID for this workspace (needed for all LinkedIn lookups)
+    const { data: workspaceAccounts } = await supabase
+      .from('workspace_accounts')
+      .select('unipile_account_id')
+      .eq('workspace_id', config.workspace_id)
+      .eq('account_type', 'linkedin')
+      .eq('connection_status', 'connected')
+      .limit(1);
+    const unipileAccountId = workspaceAccounts?.[0]?.unipile_account_id;
+
+    // 1. PERSONAL LINKEDIN PROFILE
+    if (prospect.linkedin_url && UNIPILE_API_KEY && unipileAccountId) {
       try {
-        // Extract vanity from LinkedIn URL
         const vanityMatch = prospect.linkedin_url.match(/linkedin\.com\/in\/([^\/\?#]+)/);
         if (vanityMatch) {
           const vanityId = vanityMatch[1];
-
-          // Get Unipile account ID for this workspace (use first connected LinkedIn account)
-          const { data: workspaceAccounts } = await supabase
-            .from('workspace_accounts')
-            .select('unipile_account_id')
-            .eq('workspace_id', config.workspace_id)
-            .eq('account_type', 'linkedin')
-            .eq('connection_status', 'connected')
-            .limit(1);
-          const workspaceAccount = workspaceAccounts?.[0];
-
-          if (workspaceAccount?.unipile_account_id) {
-            // Fetch profile from Unipile directly (the reliable endpoint)
-            const profileResponse = await fetch(
-              `https://${UNIPILE_DSN}/api/v1/users/${vanityId}?account_id=${workspaceAccount.unipile_account_id}`,
-              {
-                method: 'GET',
-                headers: {
-                  'X-API-KEY': UNIPILE_API_KEY,
-                  'Accept': 'application/json'
-                }
-              }
-            );
-
-            if (profileResponse.ok) {
-              const profile = await profileResponse.json();
-              research = {
-                linkedin: {
-                  headline: profile.headline,
-                  summary: profile.summary || profile.about,
-                  location: profile.location,
-                  industry: profile.industry,
-                  connectionDegree: profile.network_distance,
-                  currentPositions: profile.positions?.slice(0, 2).map((p: any) =>
-                    `${p.title} at ${p.company_name}`
-                  ),
-                  skills: profile.skills?.slice(0, 5),
-                  recentActivity: profile.recent_activity?.slice(0, 2)
-                }
-              };
-              console.log(`   📊 Unipile research fetched for ${prospectName}: ${profile.headline?.slice(0, 50)}...`);
-            } else {
-              console.log(`   ⚠️ Unipile profile lookup failed for ${vanityId}: ${profileResponse.status}`);
+          const profileResponse = await fetch(
+            `https://${UNIPILE_DSN}/api/v1/users/${vanityId}?account_id=${unipileAccountId}`,
+            {
+              method: 'GET',
+              headers: { 'X-API-KEY': UNIPILE_API_KEY, 'Accept': 'application/json' }
             }
+          );
+
+          if (profileResponse.ok) {
+            const profile = await profileResponse.json();
+            research = {
+              linkedin: {
+                headline: profile.headline,
+                summary: profile.summary || profile.about,
+                location: profile.location,
+                industry: profile.industry,
+                connectionDegree: profile.network_distance,
+                currentPositions: profile.positions?.slice(0, 3).map((p: any) =>
+                  `${p.title} at ${p.company_name}${p.description ? ` - ${p.description.slice(0, 100)}` : ''}`
+                ),
+                education: profile.education?.slice(0, 2).map((e: any) =>
+                  `${e.degree || ''} ${e.field || ''} at ${e.school_name || ''}`
+                ),
+                skills: profile.skills?.slice(0, 8),
+                // Extract company LinkedIn URL if available for company lookup
+                companyLinkedInUrl: profile.positions?.[0]?.company_linkedin_url
+              }
+            };
+            console.log(`   📊 Personal LinkedIn: ${profile.headline?.slice(0, 50)}...`);
           }
         }
-      } catch (researchError) {
-        console.log(`   ⚠️ Research fetch failed for ${prospectName}:`, researchError);
-        // Continue without research - it's optional
+      } catch (err) {
+        console.log(`   ⚠️ Personal LinkedIn lookup failed:`, err);
+      }
+    }
+
+    // 2. COMPANY LINKEDIN PROFILE (if we have company name or URL)
+    if (UNIPILE_API_KEY && unipileAccountId && prospectCompany && prospectCompany !== 'Unknown') {
+      try {
+        // Try to find company on LinkedIn by name
+        const companySearchUrl = `https://${UNIPILE_DSN}/api/v1/linkedin/search/companies?account_id=${unipileAccountId}&keywords=${encodeURIComponent(prospectCompany)}&limit=1`;
+        const companySearchResponse = await fetch(companySearchUrl, {
+          method: 'GET',
+          headers: { 'X-API-KEY': UNIPILE_API_KEY, 'Accept': 'application/json' }
+        });
+
+        if (companySearchResponse.ok) {
+          const searchData = await companySearchResponse.json();
+          const companyResult = searchData.items?.[0];
+          if (companyResult) {
+            research = research || {};
+            research.company = {
+              name: companyResult.name,
+              industry: companyResult.industry,
+              size: companyResult.staff_count_range || companyResult.company_size,
+              description: companyResult.description?.slice(0, 500),
+              tagline: companyResult.tagline,
+              specialties: companyResult.specialties?.slice(0, 5),
+              headquarters: companyResult.headquarters,
+              founded: companyResult.founded_year,
+              linkedInUrl: companyResult.linkedin_url
+            };
+            console.log(`   📊 Company LinkedIn: ${companyResult.name} - ${companyResult.industry || 'N/A'}`);
+          }
+        }
+      } catch (err) {
+        console.log(`   ⚠️ Company LinkedIn lookup failed:`, err);
+      }
+    }
+
+    // 3. COMPANY WEBSITE (if stored in prospect data)
+    const companyWebsite = prospect.company_website;
+    if (companyWebsite) {
+      try {
+        // Fetch and extract key info from company website
+        const websiteResponse = await fetch(companyWebsite, {
+          method: 'GET',
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SAM-AI/1.0)' },
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+
+        if (websiteResponse.ok) {
+          const html = await websiteResponse.text();
+
+          // Extract SEO metadata
+          const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          const descMatch = html.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i) ||
+                           html.match(/<meta[^>]*content="([^"]+)"[^>]*name="description"/i);
+          const ogDescMatch = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i);
+
+          // Extract SEO keywords
+          const keywordsMatch = html.match(/<meta[^>]*name="keywords"[^>]*content="([^"]+)"/i) ||
+                               html.match(/<meta[^>]*content="([^"]+)"[^>]*name="keywords"/i);
+
+          // Extract h1/h2 taglines
+          const h1Match = html.match(/<h1[^>]*>([^<]{10,150})<\/h1>/i);
+          const h2Matches = html.match(/<h2[^>]*>([^<]{10,100})<\/h2>/gi)?.slice(0, 3)
+            ?.map(h => h.replace(/<[^>]+>/g, '').trim());
+
+          research = research || {};
+          research.website = {
+            url: companyWebsite,
+            title: titleMatch?.[1]?.trim(),
+            description: descMatch?.[1]?.trim() || ogDescMatch?.[1]?.trim(),
+            keywords: keywordsMatch?.[1]?.trim(),
+            tagline: h1Match?.[1]?.trim(),
+            subheadings: h2Matches
+          };
+          console.log(`   📊 Website: ${research.website.title?.slice(0, 50) || companyWebsite}`);
+        }
+      } catch (err) {
+        console.log(`   ⚠️ Website fetch failed for ${companyWebsite}`);
       }
     }
 
     // Get contextual greeting (Happy Friday, Hope you had a great Thanksgiving, etc.)
     const contextGreeting = getContextualGreeting();
 
-    // Use custom guidelines if set, otherwise use default industry-adaptive prompt
-    const systemPrompt = config.reply_guidelines || `You are a sales rep for SAM AI, an AI-powered LinkedIn outreach automation platform.
+    // Use custom guidelines if set, otherwise use founder-to-founder authentic prompt
+    const systemPrompt = config.reply_guidelines || `You're Irish, founder of SAM AI. Replying to a LinkedIn message.
 
-## ADD A HUMAN TOUCH (IF APPROPRIATE)
-${contextGreeting ? `
-Today's contextual greeting: "${contextGreeting}"
+## CRITICAL: BANNED PHRASES (DO NOT USE)
+These will make you sound like every other sales tool. NEVER use:
+- "SDR" or "sales development"
+- "24/7" or "around the clock"
+- "quick call" or "15-min demo" or "walkthrough"
+- "happy to show you" or "happy to help"
+- "free trial" or "poke around"
+- "leveraging AI" or "AI-powered"
+- "pipeline" or "prospects"
+- "Cheers" sign-off (too generic)
 
-You may optionally START your reply with this greeting if it feels natural. Don't force it if the prospect's message is urgent or business-focused. Use your judgment.
-` : `
-No special greeting needed today - just dive into your response naturally.
-`}
+## HOW TO ACTUALLY REPLY
 
-## WHO YOU'RE TALKING TO
+1. **If they're skeptical (like asking "how does this actually work"):**
+   - Don't defend. Just explain the mechanics plainly.
+   - "You connect your LinkedIn. Pick who you want to reach. SAM writes and sends personalized messages. When they reply, you see it and respond yourself."
+   - That's it. No hype.
 
-**Name:** ${prospectName}
-**Title:** ${prospectTitle}
-**Company:** ${prospectCompany}
+2. **If they build something similar:**
+   - Acknowledge it: "You're building PostPilot for social content automation - same concept, different channel."
+   - Don't explain SAM like they don't understand software.
 
-## ADAPT YOUR TONE TO THEIR WORLD
+3. **Ending the message:**
+   - If THEY asked a question, end with "Does that answer it?" or similar
+   - If they seem interested, just say "Want to see it?" - nothing more
+   - No sign-off needed. Just end naturally.
 
-Match your language to their industry and company type:
+## WHAT SAM IS (only if they asked)
+You connect your LinkedIn account. Tell SAM what kind of people you want to reach. SAM researches each person, writes a personalized message, sends it. Handles follow-ups if they don't reply. When someone responds, you take over.
 
-| Industry/Type | Tone | Language Style |
-|---------------|------|----------------|
-| **Tech/SaaS Startup** | Casual, direct | "Hey", short sentences, no fluff |
-| **Consulting/Advisory** | Professional, peer-level | Speak as equals, reference methodology |
-| **Coaching/Training** | Warm, outcomes-focused | Focus on client transformation |
-| **SME/Traditional** | Respectful, clear value | No jargon, concrete benefits |
-| **Enterprise** | Polished, strategic | Business impact, ROI language |
-| **Solo/Founder** | Personal, time-aware | Respect their bandwidth |
-| **Agency** | Creative, results-driven | Portfolio thinking, client wins |
+Price: $199/month. Replaces hiring someone.
 
-## WHAT SAM DOES FOR THEM
+## TONE
+- Text message brevity
+- No formalities
+- No enthusiasm
+- Just answer the question`;
 
-SAM AI automates personalized LinkedIn outreach:
-- Reach more prospects without additional staff
-- AI writes personalized messages based on research
-- Handles follow-ups automatically
-- Tracks engagement and replies
-
-## RESPONSE RULES
-
-1. Reference something SPECIFIC about their business/role
-2. Connect to a SAM benefit that makes sense for THEIR world
-3. Keep it SHORT (3-4 sentences max)
-4. End with simple CTA
-
-## UNIVERSAL TONE RULES
-
-- Sound human, not templated
-- NO corporate buzzwords (leverage, synergy, robust)
-- NO fake enthusiasm ("Thanks so much!", "Love what you're doing!")
-- NO "bodies" or "headcount" language for professional services
-- Match their level of formality
-
-## EXAMPLES BY TYPE:
-
-**Startup:** "Hey ${prospect.first_name} - scaling outbound at ${prospectCompany}? That's what we built SAM for. Quick 15 min to show you how?"
-
-**Consultant:** "${prospect.first_name} - curious how you're currently reaching new clients. SAM helps consultants maintain consistent outreach without eating billable hours. Worth a conversation?"
-
-**Coach:** "${prospect.first_name} - many coaches we work with struggle to find time for business development. SAM keeps the pipeline warm so you can focus on clients. Interested?"
-
-**SME:** "${prospect.first_name} - wondering if growing your sales pipeline is on the radar. SAM automates LinkedIn outreach so you reach more prospects without adding staff. Happy to show you."`;
-
-    // Build research context if available
+    // Build comprehensive research context
     let researchContext = '';
+
+    // Personal LinkedIn
     if (research?.linkedin) {
-      const positions = research.linkedin.currentPositions?.join(', ') || 'N/A';
+      const positions = research.linkedin.currentPositions?.join('\n  - ') || 'N/A';
+      const education = research.linkedin.education?.join('\n  - ') || 'N/A';
       const skills = research.linkedin.skills?.join(', ') || 'N/A';
-      researchContext += `\n## LINKEDIN RESEARCH (USE THIS FOR PERSONALIZATION):
-- Headline: ${research.linkedin.headline || 'N/A'}
-- Summary/About: ${research.linkedin.summary || 'N/A'}
-- Location: ${research.linkedin.location || 'N/A'}
-- Industry: ${research.linkedin.industry || 'N/A'}
-- Current Positions: ${positions}
-- Skills: ${skills}
-- Connection: ${research.linkedin.connectionDegree || 'N/A'}`;
+      researchContext += `
+
+## THEIR LINKEDIN PROFILE:
+**Headline:** ${research.linkedin.headline || 'N/A'}
+**About:** ${research.linkedin.summary || 'N/A'}
+**Location:** ${research.linkedin.location || 'N/A'}
+**Experience:**
+  - ${positions}
+**Education:**
+  - ${education}
+**Skills:** ${skills}`;
     }
+
+    // Company LinkedIn
     if (research?.company) {
-      researchContext += `\n## COMPANY RESEARCH:
-- Industry: ${research.company.industry || 'N/A'}
-- Size: ${research.company.size || 'N/A'}
-- Description: ${research.company.description || 'N/A'}`;
+      const specialties = research?.company.specialties?.join(', ') || 'N/A';
+      researchContext += `
+
+## THEIR COMPANY (LinkedIn):
+**Name:** ${research.company.name || prospectCompany}
+**Industry:** ${research.company.industry || 'N/A'}
+**Size:** ${research.company.size || 'N/A'}
+**Founded:** ${research.company.founded || 'N/A'}
+**HQ:** ${research.company.headquarters || 'N/A'}
+**Tagline:** ${research.company.tagline || 'N/A'}
+**What they do:** ${research.company.description || 'N/A'}
+**Specialties:** ${specialties}`;
     }
 
-    const userPrompt = `Generate a highly personalized reply to this prospect.
+    // Company Website
+    if (research?.website) {
+      const subheadings = research.website.subheadings?.join('\n  - ') || 'N/A';
+      researchContext += `
 
-PROSPECT:
-- Name: ${prospectName}
-- Title: ${prospectTitle}
-- Company: ${prospectCompany}
+## THEIR WEBSITE (${research.website.url}):
+**Title:** ${research.website.title || 'N/A'}
+**Tagline:** ${research.website.tagline || 'N/A'}
+**Description:** ${research.website.description || 'N/A'}
+**SEO Keywords:** ${research.website.keywords || 'N/A'}
+**Key Messages:**
+  - ${subheadings}`;
+    }
+
+    const userPrompt = `Reply to this prospect's message.
+
+## WHO THEY ARE:
+- **Name:** ${prospectName}
+- **Title:** ${prospectTitle}
+- **Company:** ${prospectCompany}
 ${researchContext}
 
-THEIR MESSAGE: "${inboundMessage.text}"
+## THEIR MESSAGE:
+"${inboundMessage.text}"
 
-DETECTED INTENT: ${intent}
+## WHAT THEY'RE ASKING (${intent}):
+${intent === 'QUESTION' ? 'They want to understand how this works - give them a straight answer.' : ''}
+${intent === 'INTERESTED' ? 'They seem interested - keep it brief, offer next step.' : ''}
+${intent === 'OBJECTION' ? 'They have concerns - acknowledge and address honestly.' : ''}
+${intent === 'TIMING' ? 'Bad timing for them - respect that, leave door open.' : ''}
+${intent === 'VAGUE_POSITIVE' ? 'Positive but vague - clarify what they need.' : ''}
 
-IMPORTANT: Sound human and conversational. Reference specific details from their profile/company if research is available. No generic responses.
-
-Reply:`;
+## YOUR REPLY:
+Use the research above to make this personal. Reference specific things about THEM, not generic stuff.`;
 
     const replyResponse = await claude.complete(userPrompt, {
       system: systemPrompt,
@@ -697,7 +782,7 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
           continue;
         }
 
-        // Update draft with AI reply and research
+        // Update draft with AI reply and all research (personal LinkedIn + company LinkedIn + website)
         const { error: updateError } = await supabase
           .from('reply_agent_drafts')
           .update({
@@ -706,6 +791,7 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
             ai_model: config.ai_model || 'claude-opus-4-5-20251101',
             research_linkedin_profile: aiReply.research?.linkedin || null,
             research_company_profile: aiReply.research?.company || null,
+            research_website: aiReply.research?.website || null,
             status: 'pending_approval',
             updated_at: new Date().toISOString()
           })
