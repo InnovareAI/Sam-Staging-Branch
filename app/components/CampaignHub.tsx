@@ -6156,11 +6156,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Also fetch legacy data for backwards compatibility
       const legacyResponse = await fetch(`/api/prospect-approval/approved?workspace_id=${actualWorkspaceId}`);
 
+      // DEBUG: Log responses to understand why Drafts tab is empty
+      console.log('📊 [DRAFTS DEBUG] workspace:', actualWorkspaceId);
+      console.log('📊 [DRAFTS DEBUG] newArch response ok:', newArchResponse.ok, 'status:', newArchResponse.status);
+      console.log('📊 [DRAFTS DEBUG] legacy response ok:', legacyResponse.ok, 'status:', legacyResponse.status);
+
       const campaignGroups: Record<string, any> = {};
 
       // Process NEW architecture data (workspace_prospects)
       if (newArchResponse.ok) {
         const newData = await newArchResponse.json();
+        console.log('📊 [DRAFTS DEBUG] newArch data:', { success: newData.success, count: newData.prospects?.length || 0 });
         if (newData.success && newData.prospects?.length > 0) {
           // Group by batch_id (replaces session concept)
           for (const prospect of newData.prospects) {
@@ -6202,6 +6208,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Process LEGACY data (prospect_approval_data) - for backwards compat
       if (legacyResponse.ok) {
         const legacyData = await legacyResponse.json();
+        console.log('📊 [DRAFTS DEBUG] legacy data:', { success: legacyData.success, count: legacyData.prospects?.length || 0, error: legacyData.error });
         if (legacyData.success && legacyData.prospects?.length > 0) {
           for (const prospect of legacyData.prospects) {
             const campaignName = prospect.prospect_approval_sessions?.campaign_name || `Session-${prospect.session_id?.slice(0, 8)}`;
@@ -6282,6 +6289,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
+      console.log('📊 [DRAFTS DEBUG] Final campaigns:', campaigns.length, campaigns.map((c: any) => ({ name: c.campaignName, prospects: c.prospects?.length || 0 })));
       return campaigns;
     },
     enabled: campaignFilter === 'pending' && !!workspaceId, // Only fetch when Pending tab is active
