@@ -194,12 +194,26 @@ export async function POST(request: NextRequest) {
         // Build workspace context (shared between both paths)
         // Note: expertise_areas, products, value_props are stored in brand_guidelines or monitor.metadata
         const monitorMetadata = monitor?.metadata as Record<string, any> || {};
+
+        // Ensure expertise_areas is always an array (industry_talking_points is a string)
+        let expertiseAreas: string[] = ['B2B Sales', 'Lead Generation'];
+        if (Array.isArray(monitorMetadata.expertise_areas)) {
+          expertiseAreas = monitorMetadata.expertise_areas;
+        } else if (brandGuideline?.industry_talking_points) {
+          // Split string by periods or commas to create array
+          expertiseAreas = brandGuideline.industry_talking_points
+            .split(/[.,]/)
+            .map((s: string) => s.trim())
+            .filter((s: string) => s.length > 0)
+            .slice(0, 5); // Limit to 5 items
+        }
+
         const workspaceContext = {
           workspace_id: post.workspace_id,
           company_name: workspaceNames[post.workspace_id] || 'Your Company',
-          expertise_areas: monitorMetadata.expertise_areas || brandGuideline?.industry_talking_points || ['B2B Sales', 'Lead Generation'],
-          products: monitorMetadata.products || [],
-          value_props: monitorMetadata.value_props || [],
+          expertise_areas: expertiseAreas,
+          products: Array.isArray(monitorMetadata.products) ? monitorMetadata.products : [],
+          value_props: Array.isArray(monitorMetadata.value_props) ? monitorMetadata.value_props : [],
           tone_of_voice: brandGuideline?.tone_of_voice || monitorMetadata.tone_of_voice || 'Professional and helpful',
           knowledge_base_snippets: [],
           brand_guidelines: brandGuideline || undefined
