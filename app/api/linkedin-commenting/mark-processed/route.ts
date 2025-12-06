@@ -22,10 +22,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Update post status
+    // Update post status to 'commented' (final state after comment is posted)
+    // NOTE: Do NOT set to 'processing' - that breaks the auto-generate flow
+    // If you need an intermediate state, use 'comment_pending' (set by auto-generate-comments)
     const { data, error } = await supabase
       .from('linkedin_posts_discovered')
-      .update({ status: 'processing' })
+      .update({
+        status: 'commented',
+        comment_generated_at: new Date().toISOString()
+      })
       .eq('id', post_id)
       .select()
       .single();
@@ -38,7 +43,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       post_id: data.id,
-      status: 'processing'
+      status: 'commented'
     });
 
   } catch (error) {
