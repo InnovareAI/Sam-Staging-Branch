@@ -1,11 +1,15 @@
 /**
- * LinkedIn Post Discovery via Google Custom Search
+ * LinkedIn Post Discovery via Google Custom Search + Unipile API
  *
  * Replaces Apify for hashtag-based post discovery.
- * Uses Google Custom Search API with site:linkedin.com filter.
  *
- * Cost: $0.005 per query (vs Apify's $4+ per run)
- * Results: ~10 posts per query, max 30 per hashtag (3 queries)
+ * Search Types:
+ * - HASHTAG: Google Custom Search (site:linkedin.com/posts "#term")
+ * - KEYWORD: Google Custom Search (site:linkedin.com/posts "term")
+ * - PROFILE: Unipile API (guaranteed results from public profiles)
+ *
+ * Cost: $0.005 per Google query (vs Apify's $4+ per run)
+ * Unipile: Free (uses existing account)
  *
  * Google Custom Search API:
  * - Free: 100 queries/day
@@ -22,6 +26,11 @@ export const maxDuration = 60;
 const GOOGLE_API_KEY = process.env.GOOGLE_CUSTOM_SEARCH_API_KEY;
 const GOOGLE_CX = process.env.GOOGLE_CUSTOM_SEARCH_CX; // Custom Search Engine ID
 const CRON_SECRET = process.env.CRON_SECRET;
+
+// Unipile credentials for profile-based discovery
+const UNIPILE_DSN = process.env.UNIPILE_DSN;
+const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
+const UNIPILE_ACCOUNT_ID = 'ymtTx4xVQ6OVUFk83ctwtA'; // Irish LinkedIn account
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -50,9 +59,116 @@ interface GoogleSearchResponse {
   };
 }
 
+// Unipile post structure
+interface UnipilePost {
+  id: string;
+  text?: string;
+  share_url?: string;
+  created_at?: string;
+  author?: {
+    name?: string;
+    public_identifier?: string;
+  };
+}
+
+/**
+ * Discover posts from a LinkedIn profile using Unipile API
+ *
+ * Two-step process:
+ * 1. Look up profile to get provider_id: GET /api/v1/users/{vanity}?account_id=...
+ * 2. Fetch posts: GET /api/v1/users/{provider_id}/posts?account_id=...
+ *
+ * NO connection required - can fetch public posts from any profile
+ */
+async function discoverProfilePostsViaUnipile(vanity: string): Promise<{
+  success: boolean;
+  posts: Array<{
+    share_url: string;
+    author_name: string;
+    social_id: string;
+    title: string;
+    snippet: string;
+  }>;
+  error?: string;
+}> {
+  if (!UNIPILE_DSN || !UNIPILE_API_KEY) {
+    return { success: false, posts: [], error: 'Unipile not configured' };
+  }
+
+  const baseUrl = `https://${UNIPILE_DSN}`;
+  const headers = {
+    'X-API-KEY': UNIPILE_API_KEY,
+    'Content-Type': 'application/json'
+  };
+
+  try {
+    // Step 1: Look up profile to get provider_id
+    console.log(`   🔍 Unipile: Looking up profile for ${vanity}...`);
+    const profileUrl = `${baseUrl}/api/v1/users/${vanity}?account_id=${UNIPILE_ACCOUNT_ID}`;
+
+    const profileResponse = await fetch(profileUrl, { headers });
+
+    if (!profileResponse.ok) {
+      const errorText = await profileResponse.text();
+      console.error(`   ❌ Unipile profile lookup failed:`, profileResponse.status, errorText.substring(0, 200));
+      return { success: false, posts: [], error: `Profile lookup failed: ${profileResponse.status}` };
+    }
+
+    const profileData = await profileResponse.json();
+    const providerId = profileData.provider_id || profileData.id;
+    const authorName = profileData.first_name && profileData.last_name
+      ? `${profileData.first_name} ${profileData.last_name}`
+      : profileData.name || vanity;
+
+    if (!providerId) {
+      console.error(`   ❌ No provider_id in profile response:`, Object.keys(profileData));
+      return { success: false, posts: [], error: 'No provider_id in profile' };
+    }
+
+    console.log(`   ✅ Got provider_id: ${providerId}, name: ${authorName}`);
+
+    // Step 2: Fetch posts using provider_id
+    console.log(`   📬 Unipile: Fetching posts for ${authorName}...`);
+    const postsUrl = `${baseUrl}/api/v1/users/${providerId}/posts?account_id=${UNIPILE_ACCOUNT_ID}&limit=10`;
+
+    const postsResponse = await fetch(postsUrl, { headers });
+
+    if (!postsResponse.ok) {
+      const errorText = await postsResponse.text();
+      console.error(`   ❌ Unipile posts fetch failed:`, postsResponse.status, errorText.substring(0, 200));
+      return { success: false, posts: [], error: `Posts fetch failed: ${postsResponse.status}` };
+    }
+
+    const postsData = await postsResponse.json();
+    const items: UnipilePost[] = postsData.items || postsData || [];
+
+    console.log(`   ✅ Got ${items.length} posts from Unipile`);
+
+    // Transform to our format
+    const posts = items.map((post: UnipilePost) => ({
+      share_url: post.share_url || `https://www.linkedin.com/feed/update/urn:li:activity:${post.id}`,
+      author_name: authorName,
+      social_id: post.id,
+      title: `Post by ${authorName}`,
+      snippet: (post.text || '').substring(0, 200)
+    }));
+
+    return { success: true, posts };
+
+  } catch (error) {
+    console.error(`   ❌ Unipile error:`, error);
+    return {
+      success: false,
+      posts: [],
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
 export async function POST(request: NextRequest) {
-  console.log('🔍 LinkedIn Post Discovery via Google Custom Search');
+  console.log('🔍 LinkedIn Post Discovery (Google + Unipile)');
   console.log(`   Time: ${new Date().toISOString()}`);
+  console.log(`   Google: Hashtags & Keywords | Unipile: Profile posts`);
 
   // Verify cron secret
   const cronSecret = request.headers.get('x-cron-secret');
@@ -187,113 +303,143 @@ export async function POST(request: NextRequest) {
         let debugInfo: {
           google_items_count?: number;
           google_error?: string;
+          unipile_posts_count?: number;
+          unipile_error?: string;
           first_link?: string;
           insert_errors?: string[];
           insert_attempts?: number;
           skipped_existing?: number;
         } = { insert_errors: [], insert_attempts: 0, skipped_existing: 0 };
 
-        // Run up to MAX_QUERIES_PER_HASHTAG queries (pagination)
-        for (let queryNum = 0; queryNum < MAX_QUERIES_PER_HASHTAG; queryNum++) {
-          const startIndex = queryNum * RESULTS_PER_QUERY + 1;
+        // PROFILE searches use Unipile API (guaranteed results from public profiles)
+        // HASHTAG and KEYWORD searches use Google Custom Search
+        if (type === 'profile') {
+          // Use Unipile API for profile-based discovery
+          console.log(`   🔗 Using Unipile API for profile discovery (guaranteed results)`);
 
-          // Build Google Custom Search URL
-          // KEY DIFFERENCE:
-          // - hashtags: site:linkedin.com/posts "#Bitcoin"
-          // - keywords: site:linkedin.com/posts "Bitcoin" (in post text)
-          // - profiles: site:linkedin.com/posts/john-doe (posts from that person)
-          let searchQuery: string;
-          if (type === 'hashtag') {
-            searchQuery = `site:linkedin.com/posts "#${term}"`;
-          } else if (type === 'keyword') {
-            searchQuery = `site:linkedin.com/posts "${term}"`;
+          const unipileResult = await discoverProfilePostsViaUnipile(term);
+
+          if (!unipileResult.success) {
+            console.error(`   ❌ Unipile failed: ${unipileResult.error}`);
+            debugInfo.unipile_error = unipileResult.error;
           } else {
-            // Profile: search for all posts from this LinkedIn vanity URL
-            searchQuery = `site:linkedin.com/posts/${term}`;
-          }
-          const googleUrl = new URL('https://www.googleapis.com/customsearch/v1');
-          googleUrl.searchParams.set('key', GOOGLE_API_KEY);
-          googleUrl.searchParams.set('cx', GOOGLE_CX);
-          googleUrl.searchParams.set('q', searchQuery);
-          googleUrl.searchParams.set('start', startIndex.toString());
-          googleUrl.searchParams.set('num', RESULTS_PER_QUERY.toString());
+            debugInfo.unipile_posts_count = unipileResult.posts.length;
 
-          console.log(`   Query ${queryNum + 1}: start=${startIndex}`);
-          console.log(`   URL: ${googleUrl.toString().substring(0, 150)}...`);
-
-          try {
-            const response = await fetch(googleUrl.toString());
-            const responseText = await response.text();
-
-            let data: GoogleSearchResponse;
-            try {
-              data = JSON.parse(responseText);
-            } catch (parseError) {
-              console.error(`   ❌ JSON parse error:`, responseText.substring(0, 200));
-              break;
-            }
-
-            totalQueriesUsed++;
-
-            if (data.error) {
-              console.error(`   ❌ Google API error: ${data.error.message}`);
-              console.error(`   Error details:`, JSON.stringify(data.error).substring(0, 300));
-              debugInfo.google_error = data.error.message;
-              break;
-            }
-
-            if (!data.items || data.items.length === 0) {
-              console.log(`   📭 No items in response. Keys: ${Object.keys(data).join(', ')}`);
-              debugInfo.google_items_count = 0;
-              break;
-            }
-
-            console.log(`   ✅ Got ${data.items.length} results`);
-            console.log(`   First item link: ${data.items[0]?.link?.substring(0, 80)}`);
-            debugInfo.google_items_count = data.items.length;
-            debugInfo.first_link = data.items[0]?.link?.substring(0, 100);
-
-            // Parse results
-            for (const item of data.items) {
-              // Only process LinkedIn post URLs
-              if (!item.link.includes('linkedin.com/posts/')) {
-                continue;
-              }
-
-              // Skip if already exists in database
-              if (existingUrls.has(item.link)) {
+            // Filter out existing posts
+            for (const post of unipileResult.posts) {
+              if (existingUrls.has(post.share_url)) {
                 debugInfo.skipped_existing = (debugInfo.skipped_existing || 0) + 1;
                 continue;
               }
-
-              // Extract author name from URL or title
-              // URL format: linkedin.com/posts/firstname-lastname_hashtag-activity-1234567890-xyz
-              const urlMatch = item.link.match(/linkedin\.com\/posts\/([^_]+)/);
-              const authorFromUrl = urlMatch ? urlMatch[1].replace(/-/g, ' ') : 'Unknown';
-
-              // Extract social_id (activity ID) from URL
-              // Format: activity-1234567890 at the end before the hash
-              const activityMatch = item.link.match(/activity-(\d+)/);
-              const socialId = activityMatch ? activityMatch[1] : `google-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-              posts.push({
-                share_url: item.link,
-                author_name: authorFromUrl,
-                social_id: socialId,
-                title: item.title,
-                snippet: item.snippet
-              });
+              posts.push(post);
+              if (posts.length >= MAX_RESULTS_PER_HASHTAG) break;
             }
 
-            // Stop if we have enough results
-            if (posts.length >= MAX_RESULTS_PER_HASHTAG) {
-              console.log(`   ✓ Reached ${MAX_RESULTS_PER_HASHTAG} results limit`);
+            if (posts.length > 0) {
+              debugInfo.first_link = posts[0].share_url.substring(0, 100);
+            }
+          }
+
+        } else {
+          // Use Google Custom Search for hashtag/keyword searches
+          // Run up to MAX_QUERIES_PER_HASHTAG queries (pagination)
+          for (let queryNum = 0; queryNum < MAX_QUERIES_PER_HASHTAG; queryNum++) {
+            const startIndex = queryNum * RESULTS_PER_QUERY + 1;
+
+            // Build Google Custom Search URL
+            // KEY DIFFERENCE:
+            // - hashtags: site:linkedin.com/posts "#Bitcoin"
+            // - keywords: site:linkedin.com/posts "Bitcoin" (in post text)
+            let searchQuery: string;
+            if (type === 'hashtag') {
+              searchQuery = `site:linkedin.com/posts "#${term}"`;
+            } else {
+              searchQuery = `site:linkedin.com/posts "${term}"`;
+            }
+            const googleUrl = new URL('https://www.googleapis.com/customsearch/v1');
+            googleUrl.searchParams.set('key', GOOGLE_API_KEY!);
+            googleUrl.searchParams.set('cx', GOOGLE_CX!);
+            googleUrl.searchParams.set('q', searchQuery);
+            googleUrl.searchParams.set('start', startIndex.toString());
+            googleUrl.searchParams.set('num', RESULTS_PER_QUERY.toString());
+
+            console.log(`   Query ${queryNum + 1}: start=${startIndex}`);
+            console.log(`   URL: ${googleUrl.toString().substring(0, 150)}...`);
+
+            try {
+              const response = await fetch(googleUrl.toString());
+              const responseText = await response.text();
+
+              let data: GoogleSearchResponse;
+              try {
+                data = JSON.parse(responseText);
+              } catch (parseError) {
+                console.error(`   ❌ JSON parse error:`, responseText.substring(0, 200));
+                break;
+              }
+
+              totalQueriesUsed++;
+
+              if (data.error) {
+                console.error(`   ❌ Google API error: ${data.error.message}`);
+                console.error(`   Error details:`, JSON.stringify(data.error).substring(0, 300));
+                debugInfo.google_error = data.error.message;
+                break;
+              }
+
+              if (!data.items || data.items.length === 0) {
+                console.log(`   📭 No items in response. Keys: ${Object.keys(data).join(', ')}`);
+                debugInfo.google_items_count = 0;
+                break;
+              }
+
+              console.log(`   ✅ Got ${data.items.length} results`);
+              console.log(`   First item link: ${data.items[0]?.link?.substring(0, 80)}`);
+              debugInfo.google_items_count = data.items.length;
+              debugInfo.first_link = data.items[0]?.link?.substring(0, 100);
+
+              // Parse results
+              for (const item of data.items) {
+                // Only process LinkedIn post URLs
+                if (!item.link.includes('linkedin.com/posts/')) {
+                  continue;
+                }
+
+                // Skip if already exists in database
+                if (existingUrls.has(item.link)) {
+                  debugInfo.skipped_existing = (debugInfo.skipped_existing || 0) + 1;
+                  continue;
+                }
+
+                // Extract author name from URL or title
+                // URL format: linkedin.com/posts/firstname-lastname_hashtag-activity-1234567890-xyz
+                const urlMatch = item.link.match(/linkedin\.com\/posts\/([^_]+)/);
+                const authorFromUrl = urlMatch ? urlMatch[1].replace(/-/g, ' ') : 'Unknown';
+
+                // Extract social_id (activity ID) from URL
+                // Format: activity-1234567890 at the end before the hash
+                const activityMatch = item.link.match(/activity-(\d+)/);
+                const socialId = activityMatch ? activityMatch[1] : `google-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+                posts.push({
+                  share_url: item.link,
+                  author_name: authorFromUrl,
+                  social_id: socialId,
+                  title: item.title,
+                  snippet: item.snippet
+                });
+              }
+
+              // Stop if we have enough results
+              if (posts.length >= MAX_RESULTS_PER_HASHTAG) {
+                console.log(`   ✓ Reached ${MAX_RESULTS_PER_HASHTAG} results limit`);
+                break;
+              }
+
+            } catch (fetchError) {
+              console.error(`   ❌ Fetch error:`, fetchError);
               break;
             }
-
-          } catch (fetchError) {
-            console.error(`   ❌ Fetch error:`, fetchError);
-            break;
           }
         }
 
@@ -360,7 +506,7 @@ export async function POST(request: NextRequest) {
       queries_used: totalQueriesUsed,
       estimated_cost_usd: estimatedCost,
       results,
-      note: `Google Custom Search: $0.005/query vs Apify's $4+/run`
+      note: `Hashtags/Keywords: Google ($0.005/query) | Profiles: Unipile (free)`
     });
 
   } catch (error) {
@@ -405,16 +551,29 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    service: 'LinkedIn Post Discovery via Google Custom Search',
+    service: 'LinkedIn Post Discovery (Google + Unipile)',
     status: 'ready',
+    search_types: {
+      'HASHTAG:term': 'Google Custom Search (site:linkedin.com/posts "#term")',
+      'KEYWORD:term': 'Google Custom Search (site:linkedin.com/posts "term")',
+      'PROFILE:vanity': 'Unipile API (guaranteed results from public profiles)'
+    },
     config: {
-      api_key_configured: !!GOOGLE_API_KEY,
-      cx_configured: !!GOOGLE_CX,
-      api_key_preview: GOOGLE_API_KEY?.substring(0, 10) + '...',
-      cx_preview: GOOGLE_CX?.substring(0, 10) + '...',
-      max_results_per_hashtag: MAX_RESULTS_PER_HASHTAG,
-      cooldown_hours: COOLDOWN_HOURS,
-      cost_per_query: '$0.005'
+      google: {
+        api_key_configured: !!GOOGLE_API_KEY,
+        cx_configured: !!GOOGLE_CX,
+        api_key_preview: GOOGLE_API_KEY?.substring(0, 10) + '...',
+        cx_preview: GOOGLE_CX?.substring(0, 10) + '...',
+        cost_per_query: '$0.005'
+      },
+      unipile: {
+        dsn_configured: !!UNIPILE_DSN,
+        api_key_configured: !!UNIPILE_API_KEY,
+        account_id: UNIPILE_ACCOUNT_ID,
+        cost_per_query: 'free'
+      },
+      max_results_per_term: MAX_RESULTS_PER_HASHTAG,
+      cooldown_hours: COOLDOWN_HOURS
     },
     test_url: '?test=1',
     setup: !GOOGLE_API_KEY || !GOOGLE_CX ? {
