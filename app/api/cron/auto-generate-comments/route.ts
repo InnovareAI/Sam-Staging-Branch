@@ -273,6 +273,99 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
+        // ============================================
+        // LEADERSHIP FILTER: Skip non-thought-leadership posts
+        // Focus on high-value content, skip noise
+        // ============================================
+        const contentLower = post.post_content.toLowerCase();
+
+        // Job posts - recruiting content, not leadership
+        const jobPatterns = [
+          "we're hiring", "we are hiring", "open role", "open position",
+          "join our team", "apply now", "looking for a", "job opening",
+          "career opportunity", "now hiring", "hiring for", "apply today",
+          "join us as", "seeking a", "looking to hire"
+        ];
+
+        // Event promos - marketing, not insights
+        const eventPatterns = [
+          "register now", "webinar", "join us live", "live event",
+          "conference", "summit", "sign up now", "rsvp", "register today",
+          "save your spot", "grab your seat", "limited seats"
+        ];
+
+        // Anniversary/milestone posts - personal updates
+        const milestonePatterns = [
+          "work anniversary", "celebrating my", "years at",
+          "thrilled to join", "excited to announce i've joined",
+          "excited to share that i've joined", "new role", "new chapter",
+          "thrilled to announce", "excited to start", "first day at",
+          "officially joined", "joining the team"
+        ];
+
+        // Giveaways/contests - spam
+        const giveawayPatterns = [
+          "giveaway", "win a", "enter to win", "contest", "raffle",
+          "free tickets", "giving away"
+        ];
+
+        // Engagement farming - low value
+        const engagementFarmPatterns = [
+          "like if you agree", "comment below if", "drop a", "tag someone",
+          "share this with", "repost if", "agree or disagree", "thoughts?",
+          "who else", "am i right"
+        ];
+
+        // Certification flex - personal achievement, not leadership
+        const certPatterns = [
+          "just passed", "newly certified", "badge earned", "completed course",
+          "certification", "certified in", "earned my", "passed my exam"
+        ];
+
+        // Holiday/birthday - social pleasantries
+        const holidayPatterns = [
+          "happy birthday", "happy holidays", "happy new year", "merry christmas",
+          "happy thanksgiving", "season's greetings", "happy monday", "tgif"
+        ];
+
+        // Connection begging
+        const connectionPatterns = [
+          "let's connect", "grow my network", "looking to connect",
+          "send me a connection", "connect with me", "add me"
+        ];
+
+        // Check all patterns
+        const isJobPost = jobPatterns.some(p => contentLower.includes(p));
+        const isEventPromo = eventPatterns.some(p => contentLower.includes(p));
+        const isMilestonePost = milestonePatterns.some(p => contentLower.includes(p));
+        const isGiveaway = giveawayPatterns.some(p => contentLower.includes(p));
+        const isEngagementFarm = engagementFarmPatterns.some(p => contentLower.includes(p));
+        const isCertPost = certPatterns.some(p => contentLower.includes(p));
+        const isHolidayPost = holidayPatterns.some(p => contentLower.includes(p));
+        const isConnectionBegging = connectionPatterns.some(p => contentLower.includes(p));
+
+        // Determine skip reason
+        let skipReason = '';
+        if (isJobPost) skipReason = 'job_post';
+        else if (isEventPromo) skipReason = 'event_promo';
+        else if (isMilestonePost) skipReason = 'milestone_post';
+        else if (isGiveaway) skipReason = 'giveaway';
+        else if (isEngagementFarm) skipReason = 'engagement_farm';
+        else if (isCertPost) skipReason = 'certification_post';
+        else if (isHolidayPost) skipReason = 'holiday_post';
+        else if (isConnectionBegging) skipReason = 'connection_begging';
+
+        if (skipReason) {
+          console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - NOT LEADERSHIP (${skipReason}): ${post.author_name}`);
+          skipCount++;
+          results.push({ post_id: post.id, status: `skipped_${skipReason}` });
+          await supabase
+            .from('linkedin_posts_discovered')
+            .update({ status: 'skipped', comment_generated_at: new Date().toISOString() })
+            .eq('id', post.id);
+          continue;
+        }
+
         console.log(`\n💬 Processing post ${post.id.substring(0, 8)}...`);
         console.log(`   Author: ${post.author_name}`);
 
