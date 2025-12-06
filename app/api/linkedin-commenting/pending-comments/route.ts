@@ -46,7 +46,9 @@ export async function GET(request: NextRequest) {
 
     const supabase = supabaseAdmin();
 
-    // Fetch comments with status = 'pending_approval'
+    // Fetch comments that need review:
+    // - pending_approval: awaiting manual approval
+    // - scheduled: auto-approved, but can still be reviewed/edited before posting
     // Join with posts and monitors to get full context
     const { data: comments, error } = await supabase
       .from('linkedin_post_comments')
@@ -73,7 +75,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('workspace_id', workspaceId)
-      .eq('status', 'pending_approval')
+      .in('status', ['pending_approval', 'scheduled'])
       .order('generated_at', { ascending: false });
 
     if (error) {
