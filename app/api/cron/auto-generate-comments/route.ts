@@ -147,12 +147,40 @@ export async function POST(request: NextRequest) {
 
     console.log(`📋 ${authorsWithPendingComments.size} authors already have pending comments`);
 
+    // CRITICAL: Get post IDs that already have ANY comment (prevents duplicates)
+    // This catches race conditions where multiple cron runs process same post
+    const postIds = posts.map(p => p.id);
+    const { data: existingPostComments } = await supabase
+      .from('linkedin_post_comments')
+      .select('post_id')
+      .in('post_id', postIds);
+
+    const postsWithComments = new Set<string>();
+    for (const comment of existingPostComments || []) {
+      postsWithComments.add(comment.post_id);
+    }
+    console.log(`📋 ${postsWithComments.size} posts already have comments (will skip)`);
+
     // Generate comments for each post
     for (const post of posts) {
       try {
         const monitor = post.linkedin_post_monitors;
         const brandGuideline = guidelinesByWorkspace[post.workspace_id];
         const authorId = post.author_profile_id || post.author_name || 'unknown';
+
+        // CRITICAL DEDUPLICATION: Skip if post already has a comment (any status)
+        // This prevents duplicate comments from race conditions between cron runs
+        if (postsWithComments.has(post.id)) {
+          console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - ALREADY HAS COMMENT`);
+          skipCount++;
+          results.push({ post_id: post.id, status: 'skipped_already_has_comment' });
+          // Mark post so query doesn't pick it up again
+          await supabase
+            .from('linkedin_posts_discovered')
+            .update({ comment_generated_at: new Date().toISOString(), status: 'comment_pending' })
+            .eq('id', post.id);
+          continue;
+        }
 
         // DEDUPLICATION: Skip if we already commented on this author in this run
         if (authorsCommentedThisRun.has(authorId)) {
