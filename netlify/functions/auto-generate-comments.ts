@@ -25,9 +25,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       };
     }
 
-    console.log(`📨 Calling: ${apiUrl}/api/linkedin-commenting/auto-generate-comments`);
+    console.log(`📨 Calling: ${apiUrl}/api/cron/auto-generate-comments`);
 
-    const response = await fetch(`${apiUrl}/api/linkedin-commenting/auto-generate-comments`, {
+    const response = await fetch(`${apiUrl}/api/cron/auto-generate-comments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

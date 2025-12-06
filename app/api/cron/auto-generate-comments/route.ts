@@ -1,0 +1,329 @@
+/**
+ * Auto-Generate Comments Cron Job
+ * POST /api/cron/auto-generate-comments
+ *
+ * Runs every 30 minutes via Netlify scheduled function
+ * Finds discovered posts without comments and generates AI comments
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { generateLinkedInComment } from '@/lib/services/linkedin-commenting-agent';
+import type { CommentGenerationContext } from '@/lib/services/linkedin-commenting-agent';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 minutes for batch generation
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const CRON_SECRET = process.env.CRON_SECRET;
+
+// Limit posts per run to avoid timeout
+const MAX_POSTS_PER_RUN = 10;
+
+export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
+  // Verify cron secret
+  const cronSecret = request.headers.get('x-cron-secret');
+  if (cronSecret !== CRON_SECRET) {
+    console.error('❌ Invalid cron secret');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  console.log('🤖 Auto-Generate Comments Cron Starting...');
+  console.log(`   Time: ${new Date().toISOString()}`);
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+  try {
+    // Find discovered posts that don't have comments yet
+    // Join with monitors to get generation settings
+    const { data: posts, error: postsError } = await supabase
+      .from('linkedin_posts_discovered')
+      .select(`
+        id,
+        workspace_id,
+        monitor_id,
+        social_id,
+        share_url,
+        author_name,
+        author_profile_id,
+        author_title,
+        author_company,
+        post_content,
+        post_date,
+        hashtags,
+        engagement_metrics,
+        status,
+        linkedin_post_monitors!inner (
+          id,
+          auto_approve_enabled,
+          expertise_areas,
+          products,
+          value_props,
+          tone_of_voice
+        )
+      `)
+      .eq('status', 'discovered')
+      .is('comment_generated_at', null)
+      .order('created_at', { ascending: false })
+      .limit(MAX_POSTS_PER_RUN);
+
+    if (postsError) {
+      console.error('❌ Error fetching posts:', postsError);
+      return NextResponse.json({ error: postsError.message }, { status: 500 });
+    }
+
+    if (!posts || posts.length === 0) {
+      console.log('📭 No posts need comments');
+      return NextResponse.json({
+        success: true,
+        message: 'No posts need comments',
+        posts_processed: 0,
+        comments_generated: 0,
+        duration_ms: Date.now() - startTime
+      });
+    }
+
+    console.log(`📋 Found ${posts.length} posts needing comments`);
+
+    // Get unique workspace IDs for brand guidelines
+    const workspaceIds = [...new Set(posts.map(p => p.workspace_id))];
+
+    // Fetch brand guidelines for all workspaces
+    const { data: brandGuidelines } = await supabase
+      .from('linkedin_brand_guidelines')
+      .select('*')
+      .in('workspace_id', workspaceIds);
+
+    const guidelinesByWorkspace: Record<string, any> = {};
+    for (const bg of brandGuidelines || []) {
+      guidelinesByWorkspace[bg.workspace_id] = bg;
+    }
+
+    // Fetch workspace names
+    const { data: workspaces } = await supabase
+      .from('workspaces')
+      .select('id, name')
+      .in('id', workspaceIds);
+
+    const workspaceNames: Record<string, string> = {};
+    for (const ws of workspaces || []) {
+      workspaceNames[ws.id] = ws.name;
+    }
+
+    let successCount = 0;
+    let skipCount = 0;
+    let errorCount = 0;
+    const results: Array<{ post_id: string; status: string; comment_id?: string; error?: string }> = [];
+
+    // Generate comments for each post
+    for (const post of posts) {
+      try {
+        const monitor = post.linkedin_post_monitors;
+        const brandGuideline = guidelinesByWorkspace[post.workspace_id];
+
+        console.log(`\n💬 Generating comment for post ${post.id.substring(0, 8)}...`);
+        console.log(`   Author: ${post.author_name}`);
+
+        // Build context for AI
+        const context: CommentGenerationContext = {
+          post: {
+            id: post.id,
+            post_linkedin_id: post.social_id || '',
+            post_social_id: post.social_id || '',
+            post_text: post.post_content || '',
+            post_type: 'article',
+            author: {
+              linkedin_id: post.author_profile_id || '',
+              name: post.author_name || 'Unknown Author',
+              title: post.author_title || undefined,
+              company: post.author_company || undefined,
+              profile_url: post.share_url ? post.share_url.split('/posts/')[0] : undefined
+            },
+            engagement: {
+              likes_count: post.engagement_metrics?.reactions || 0,
+              comments_count: post.engagement_metrics?.comments || 0,
+              shares_count: post.engagement_metrics?.reposts || 0
+            },
+            posted_at: post.post_date ? new Date(post.post_date) : new Date(),
+            discovered_via_monitor_type: 'profile',
+            matched_keywords: post.hashtags || []
+          },
+          workspace: {
+            workspace_id: post.workspace_id,
+            company_name: workspaceNames[post.workspace_id] || 'Your Company',
+            expertise_areas: monitor?.expertise_areas || ['B2B Sales', 'Lead Generation'],
+            products: monitor?.products || [],
+            value_props: monitor?.value_props || [],
+            tone_of_voice: brandGuideline?.tone_of_voice || monitor?.tone_of_voice || 'Professional and helpful',
+            knowledge_base_snippets: [],
+            brand_guidelines: brandGuideline || undefined
+          }
+        };
+
+        // Generate comment with retry logic
+        let generatedComment;
+        let retries = 0;
+        const maxRetries = 3;
+
+        while (retries < maxRetries) {
+          try {
+            generatedComment = await generateLinkedInComment(context);
+            break;
+          } catch (error: any) {
+            retries++;
+            if (error.message?.includes('Too Many Requests') && retries < maxRetries) {
+              const waitTime = Math.pow(2, retries) * 1000;
+              console.log(`   ⏳ Rate limited, waiting ${waitTime/1000}s before retry ${retries}/${maxRetries}...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+              continue;
+            }
+            throw error;
+          }
+        }
+
+        // Check if AI decided to skip
+        if (!generatedComment || generatedComment.confidence_score === 0.0) {
+          console.log(`   ⏭️ AI decided not to comment: ${generatedComment?.reasoning || 'No reason'}`);
+          skipCount++;
+
+          // Mark post so we don't try again
+          await supabase
+            .from('linkedin_posts_discovered')
+            .update({
+              comment_generated_at: new Date().toISOString(),
+              status: 'skipped'
+            })
+            .eq('id', post.id);
+
+          results.push({ post_id: post.id, status: 'skipped' });
+          continue;
+        }
+
+        // Determine status based on auto_approve setting
+        let commentStatus = 'pending_approval';
+        let scheduledPostTime: string | null = null;
+
+        if (monitor?.auto_approve_enabled) {
+          commentStatus = 'scheduled';
+
+          // Calculate scheduled time (spread throughout business hours)
+          const now = new Date();
+          const tz = brandGuideline?.timezone || 'America/Los_Angeles';
+
+          // Count already scheduled comments today
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const { count: scheduledToday } = await supabase
+            .from('linkedin_post_comments')
+            .select('id', { count: 'exact', head: true })
+            .eq('workspace_id', post.workspace_id)
+            .eq('status', 'scheduled')
+            .gte('scheduled_post_time', today.toISOString());
+
+          // 36 minutes between posts (fills 6 AM - 6 PM with 20 posts)
+          const minutesBetween = 36;
+          const scheduled = new Date(now.getTime() + (scheduledToday || 0) * minutesBetween * 60 * 1000);
+          scheduledPostTime = scheduled.toISOString();
+
+          console.log(`   🤖 Auto-approved, scheduled for ${scheduledPostTime}`);
+        }
+
+        // Save comment to database
+        const { data: savedComment, error: saveError } = await supabase
+          .from('linkedin_post_comments')
+          .insert({
+            workspace_id: post.workspace_id,
+            monitor_id: post.monitor_id,
+            post_id: post.id,
+            comment_text: generatedComment.comment_text,
+            status: commentStatus,
+            scheduled_post_time: scheduledPostTime,
+            approved_at: monitor?.auto_approve_enabled ? new Date().toISOString() : null,
+            generated_at: new Date().toISOString(),
+            generation_metadata: {
+              model: generatedComment.generation_metadata?.model || 'claude-3-5-sonnet',
+              tokens_used: generatedComment.generation_metadata?.tokens_used || 0,
+              generation_time_ms: generatedComment.generation_metadata?.generation_time_ms || 0,
+              confidence_score: generatedComment.confidence_score,
+              quality_indicators: generatedComment.quality_indicators,
+              reasoning: generatedComment.reasoning
+            }
+          })
+          .select()
+          .single();
+
+        if (saveError) {
+          console.error(`   ❌ Error saving comment:`, saveError);
+          errorCount++;
+          results.push({ post_id: post.id, status: 'error', error: saveError.message });
+          continue;
+        }
+
+        // Update post to mark comment generated
+        await supabase
+          .from('linkedin_posts_discovered')
+          .update({
+            comment_generated_at: new Date().toISOString(),
+            status: 'comment_pending'
+          })
+          .eq('id', post.id);
+
+        console.log(`   ✅ Comment saved: ${savedComment.id.substring(0, 8)}`);
+        successCount++;
+        results.push({
+          post_id: post.id,
+          status: 'success',
+          comment_id: savedComment.id
+        });
+
+        // Rate limiting: 5 seconds between AI calls
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+      } catch (error) {
+        console.error(`   ❌ Error generating comment for ${post.id}:`, error);
+        errorCount++;
+        results.push({
+          post_id: post.id,
+          status: 'error',
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`\n✅ Auto-generate complete:`);
+    console.log(`   Success: ${successCount}, Skipped: ${skipCount}, Errors: ${errorCount}`);
+    console.log(`   Duration: ${duration}ms`);
+
+    return NextResponse.json({
+      success: true,
+      posts_processed: posts.length,
+      comments_generated: successCount,
+      skipped: skipCount,
+      errors: errorCount,
+      results,
+      duration_ms: duration
+    });
+
+  } catch (error) {
+    console.error('❌ Unexpected error:', error);
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
+  }
+}
+
+// GET for manual testing
+export async function GET(req: NextRequest) {
+  return NextResponse.json({
+    service: 'Auto-Generate Comments Cron',
+    status: 'ready',
+    description: 'Generates AI comments for discovered LinkedIn posts',
+    schedule: 'Every 30 minutes',
+    max_posts_per_run: MAX_POSTS_PER_RUN
+  });
+}

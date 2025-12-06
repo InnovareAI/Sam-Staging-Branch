@@ -7,14 +7,16 @@ export const maxDuration = 60;
 const CRON_SECRET = process.env.CRON_SECRET || '792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com';
 
-interface DiscoveredPost {
+interface PendingComment {
   id: string;
-  post_url: string;
-  post_text: string;
-  author_name: string;
-  ai_comment: string;
-  approval_token: string;
+  comment_text: string;
   created_at: string;
+  post: {
+    id: string;
+    share_url: string;
+    post_content: string;
+    author_name: string;
+  };
 }
 
 /**
@@ -66,73 +68,62 @@ export async function POST(request: NextRequest) {
 
     for (const ws of workspaces || []) {
       try {
-        // Get pending posts for this workspace
-        const { data: posts, error: postsError } = await supabase
-          .from('linkedin_posts_discovered')
-          .select('id, post_url, post_text, author_name, ai_comment, approval_token, created_at')
+        // Get pending comments for this workspace (from linkedin_post_comments table)
+        // Note: We filter by status only. digest_sent_at column may not exist yet.
+        const { data: comments, error: commentsError } = await supabase
+          .from('linkedin_post_comments')
+          .select(`
+            id,
+            comment_text,
+            created_at,
+            post:linkedin_posts_discovered!inner (
+              id,
+              share_url,
+              post_content,
+              author_name
+            )
+          `)
           .eq('workspace_id', ws.workspace_id)
-          .not('ai_comment', 'is', null)
-          .eq('approval_status', 'pending')
-          .is('digest_sent_at', null)
+          .eq('status', 'pending_approval')
           .order('created_at', { ascending: false })
           .limit(25);
 
-        if (postsError) {
-          console.error(`Error fetching posts for ${ws.workspace_id}:`, postsError);
-          results.push({ workspace_id: ws.workspace_id, email: ws.digest_email, posts_count: 0, success: false, error: postsError.message });
+        if (commentsError) {
+          console.error(`Error fetching comments for ${ws.workspace_id}:`, commentsError);
+          results.push({ workspace_id: ws.workspace_id, email: ws.digest_email, posts_count: 0, success: false, error: commentsError.message });
           continue;
         }
 
-        if (!posts || posts.length === 0) {
-          console.log(`📭 No pending posts for workspace ${ws.workspace_id}`);
+        if (!comments || comments.length === 0) {
+          console.log(`📭 No pending comments for workspace ${ws.workspace_id}`);
           continue;
         }
 
-        console.log(`📝 Found ${posts.length} pending posts for workspace ${ws.workspace_id}`);
-
-        // Generate approval tokens for posts that don't have them
-        for (const post of posts) {
-          if (!post.approval_token) {
-            const { data: token } = await supabase.rpc('generate_approval_token');
-            if (token) {
-              await supabase
-                .from('linkedin_posts_discovered')
-                .update({ approval_token: token })
-                .eq('id', post.id);
-              post.approval_token = token;
-            }
-          }
-        }
+        console.log(`📝 Found ${comments.length} pending comments for workspace ${ws.workspace_id}`);
 
         // Build and send email
         const recipientEmail = testEmail || ws.digest_email;
-        const emailHtml = buildDigestEmail(posts as DiscoveredPost[], ws.workspace_id);
+        const emailHtml = buildDigestEmail(comments as PendingComment[], ws.workspace_id);
 
         const sendResult = await sendPostmarkEmail(
           recipientEmail,
-          `🗨️ ${posts.length} LinkedIn Comment${posts.length > 1 ? 's' : ''} Ready for Review`,
+          `🗨️ ${comments.length} LinkedIn Comment${comments.length > 1 ? 's' : ''} Ready for Review`,
           emailHtml
         );
 
         if (sendResult.success) {
-          // Mark posts as digest sent
-          const postIds = posts.map(p => p.id);
-          await supabase
-            .from('linkedin_posts_discovered')
-            .update({ digest_sent_at: new Date().toISOString() })
-            .in('id', postIds);
-
-          // Update last_digest_sent_at
+          // Update last_digest_sent_at on workspace settings
+          // Comments stay as 'pending_approval' so user can still approve/reject from email
           await supabase
             .from('linkedin_brand_guidelines')
             .update({ last_digest_sent_at: new Date().toISOString() })
             .eq('workspace_id', ws.workspace_id);
 
           totalSent++;
-          results.push({ workspace_id: ws.workspace_id, email: recipientEmail, posts_count: posts.length, success: true });
-          console.log(`✅ Sent digest to ${recipientEmail} with ${posts.length} posts`);
+          results.push({ workspace_id: ws.workspace_id, email: recipientEmail, posts_count: comments.length, success: true });
+          console.log(`✅ Sent digest to ${recipientEmail} with ${comments.length} comments`);
         } else {
-          results.push({ workspace_id: ws.workspace_id, email: recipientEmail, posts_count: posts.length, success: false, error: sendResult.error });
+          results.push({ workspace_id: ws.workspace_id, email: recipientEmail, posts_count: comments.length, success: false, error: sendResult.error });
           console.error(`❌ Failed to send digest to ${recipientEmail}:`, sendResult.error);
         }
 
@@ -163,15 +154,18 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function buildDigestEmail(posts: DiscoveredPost[], workspaceId: string): string {
-  const postsHtml = posts.map((post, index) => {
+function buildDigestEmail(comments: PendingComment[], workspaceId: string): string {
+  const commentsHtml = comments.map((comment, index) => {
     // Truncate post text for preview
-    const postPreview = post.post_text.length > 200
-      ? post.post_text.substring(0, 200) + '...'
-      : post.post_text;
+    const postContent = comment.post?.post_content || '';
+    const postPreview = postContent.length > 200
+      ? postContent.substring(0, 200) + '...'
+      : postContent;
 
-    const approveUrl = `${APP_URL}/api/linkedin-commenting/approve?token=${post.approval_token}`;
-    const rejectUrl = `${APP_URL}/api/linkedin-commenting/reject?token=${post.approval_token}`;
+    const approveUrl = `${APP_URL}/api/linkedin-commenting/comments/${comment.id}/approve`;
+    const rejectUrl = `${APP_URL}/api/linkedin-commenting/comments/${comment.id}/reject`;
+    const feedbackGoodUrl = `${APP_URL}/api/linkedin-commenting/comments/${comment.id}/feedback?rating=good`;
+    const feedbackBadUrl = `${APP_URL}/api/linkedin-commenting/comments/${comment.id}/feedback?rating=bad`;
 
     return `
       <tr>
@@ -180,17 +174,17 @@ function buildDigestEmail(posts: DiscoveredPost[], workspaceId: string): string 
           <table width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td>
-                <span style="color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Post ${index + 1} of ${posts.length}</span>
+                <span style="color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Comment ${index + 1} of ${comments.length}</span>
               </td>
               <td align="right">
-                <a href="${post.post_url}" style="color: #ec4899; text-decoration: none; font-size: 12px;">View on LinkedIn →</a>
+                <a href="${comment.post?.share_url || '#'}" style="color: #ec4899; text-decoration: none; font-size: 12px;">View on LinkedIn →</a>
               </td>
             </tr>
           </table>
 
           <!-- Author -->
           <p style="margin: 12px 0 8px; color: #f3f4f6; font-weight: 600; font-size: 16px;">
-            ${post.author_name || 'LinkedIn User'}
+            ${comment.post?.author_name || 'LinkedIn User'}
           </p>
 
           <!-- Post Preview -->
@@ -206,7 +200,7 @@ function buildDigestEmail(posts: DiscoveredPost[], workspaceId: string): string 
           </p>
           <div style="background: linear-gradient(135deg, #831843 0%, #6b21a8 100%); border-radius: 8px; padding: 16px; margin: 0 0 16px;">
             <p style="margin: 0; color: #fce7f3; font-size: 14px; line-height: 1.6; font-style: italic;">
-              "${post.ai_comment}"
+              "${comment.comment_text}"
             </p>
           </div>
 
@@ -223,6 +217,18 @@ function buildDigestEmail(posts: DiscoveredPost[], workspaceId: string): string 
                 <a href="${rejectUrl}" style="display: inline-block; width: 100%; padding: 14px 24px; background: #374151; color: #9ca3af; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; box-sizing: border-box; border: 1px solid #4b5563;">
                   ✗ Skip
                 </a>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Feedback Buttons (Help SAM Learn) -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 12px;">
+            <tr>
+              <td align="center">
+                <span style="color: #6b7280; font-size: 11px;">Help SAM improve: </span>
+                <a href="${feedbackGoodUrl}" style="color: #10b981; text-decoration: none; font-size: 11px; margin-left: 8px;">👍 Good comment</a>
+                <span style="color: #4b5563; margin: 0 8px;">|</span>
+                <a href="${feedbackBadUrl}" style="color: #ef4444; text-decoration: none; font-size: 11px;">👎 Needs improvement</a>
               </td>
             </tr>
           </table>
@@ -250,13 +256,13 @@ function buildDigestEmail(posts: DiscoveredPost[], workspaceId: string): string 
                 🗨️ Comments Ready for Review
               </h1>
               <p style="margin: 8px 0 0; color: rgba(255,255,255,0.8); font-size: 14px;">
-                ${posts.length} AI-generated comment${posts.length > 1 ? 's' : ''} awaiting your approval
+                ${comments.length} AI-generated comment${comments.length > 1 ? 's' : ''} awaiting your approval
               </p>
             </td>
           </tr>
 
-          <!-- Posts -->
-          ${postsHtml}
+          <!-- Comments -->
+          ${commentsHtml}
 
           <!-- Footer -->
           <tr>
