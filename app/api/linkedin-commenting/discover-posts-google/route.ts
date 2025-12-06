@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
         first_link?: string;
         insert_errors?: string[];
         insert_attempts?: number;
+        skipped_existing?: number;
       };
     }> = [];
 
@@ -138,6 +139,16 @@ export async function POST(request: NextRequest) {
         .filter((h: string) => h.startsWith('HASHTAG:'))
         .map((h: string) => h.replace('HASHTAG:', ''));
 
+      // Fetch ALL existing share_urls for this workspace to avoid duplicates
+      // This is more efficient than checking each post individually
+      const { data: existingPosts } = await supabase
+        .from('linkedin_posts_discovered')
+        .select('share_url')
+        .eq('workspace_id', monitor.workspace_id);
+
+      const existingUrls = new Set(existingPosts?.map(p => p.share_url) || []);
+      console.log(`   📋 ${existingUrls.size} existing posts in workspace (will skip these)`);
+
       for (const hashtag of hashtags) {
         console.log(`\n🔍 Searching for #${hashtag}...`);
 
@@ -156,7 +167,8 @@ export async function POST(request: NextRequest) {
           first_link?: string;
           insert_errors?: string[];
           insert_attempts?: number;
-        } = { insert_errors: [], insert_attempts: 0 };
+          skipped_existing?: number;
+        } = { insert_errors: [], insert_attempts: 0, skipped_existing: 0 };
 
         // Run up to MAX_QUERIES_PER_HASHTAG queries (pagination)
         for (let queryNum = 0; queryNum < MAX_QUERIES_PER_HASHTAG; queryNum++) {
@@ -214,6 +226,12 @@ export async function POST(request: NextRequest) {
                 continue;
               }
 
+              // Skip if already exists in database
+              if (existingUrls.has(item.link)) {
+                debugInfo.skipped_existing = (debugInfo.skipped_existing || 0) + 1;
+                continue;
+              }
+
               // Extract author name from URL or title
               // URL format: linkedin.com/posts/firstname-lastname_hashtag-activity-1234567890-xyz
               const urlMatch = item.link.match(/linkedin\.com\/posts\/([^_]+)/);
@@ -245,25 +263,12 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        console.log(`   📊 Total posts found for #${hashtag}: ${posts.length}`);
+        console.log(`   📊 New posts found for #${hashtag}: ${posts.length} (skipped ${debugInfo.skipped_existing || 0} existing)`);
 
-        // Save posts to database
+        // Save posts to database (all posts in the array are new - already filtered)
         let savedCount = 0;
         for (const post of posts.slice(0, MAX_RESULTS_PER_HASHTAG)) {
-          // Check if post already exists
-          const { data: existing } = await supabase
-            .from('linkedin_posts_discovered')
-            .select('id')
-            .eq('share_url', post.share_url)
-            .single();
-
-          if (existing) {
-            console.log(`   ⏭️ Post already exists: ${post.share_url.substring(0, 60)}...`);
-            continue;
-          }
-
-          // Insert new post
-          // Table columns: share_url, author_name, hashtags, status, monitor_id, workspace_id, social_id
+          // Insert new post (no need to check existence - already filtered during parsing)
           debugInfo.insert_attempts = (debugInfo.insert_attempts || 0) + 1;
           const { error: insertError } = await supabase
             .from('linkedin_posts_discovered')
@@ -275,7 +280,6 @@ export async function POST(request: NextRequest) {
               social_id: post.social_id,
               hashtags: [hashtag],
               status: 'discovered'
-              // created_at is automatic
             });
 
           if (insertError) {
@@ -283,6 +287,8 @@ export async function POST(request: NextRequest) {
             debugInfo.insert_errors?.push(insertError.message);
           } else {
             savedCount++;
+            // Add to existingUrls to prevent duplicates within same run
+            existingUrls.add(post.share_url);
             console.log(`   ✅ Saved: ${post.author_name} - ${post.share_url.substring(0, 50)}...`);
           }
         }
