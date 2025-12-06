@@ -236,6 +236,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Insert new post
+          // Note: metadata column doesn't exist in table, store title in author_name temporarily
           const { error: insertError } = await supabase
             .from('linkedin_posts_discovered')
             .insert({
@@ -245,12 +246,8 @@ export async function POST(request: NextRequest) {
               author_name: post.author_name,
               hashtags: [hashtag],
               status: 'discovered',
-              discovered_at: new Date().toISOString(),
-              metadata: {
-                source: 'google_custom_search',
-                title: post.title,
-                snippet: post.snippet
-              }
+              discovered_at: new Date().toISOString()
+              // Note: title and snippet from Google search not stored (no metadata column)
             });
 
           if (insertError) {
