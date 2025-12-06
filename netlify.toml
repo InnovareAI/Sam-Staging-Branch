@@ -149,10 +149,10 @@
 # [functions."daily-repost"]
 #   schedule = "0 18 * * *"
 
-# Commenting Digest: Weekly email with pending comments for approval - Monday 5:00 AM PT (13:00 UTC)
+# Commenting Digest: Workday email with pending comments for approval - Mon-Fri 5:00 AM PT (13:00 UTC)
 # Users can approve/reject comments directly from email links
 [functions."commenting-digest"]
-  schedule = "0 13 * * 1"
+  schedule = "0 13 * * 1-5"
 
 # ============================================
 # CRM BI-DIRECTIONAL SYNC (Dec 2, 2025)
