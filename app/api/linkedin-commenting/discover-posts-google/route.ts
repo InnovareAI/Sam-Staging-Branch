@@ -303,16 +303,49 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint for testing/status
 export async function GET(request: NextRequest) {
+  // If ?test=1, do a live test
+  const testMode = request.nextUrl.searchParams.get('test') === '1';
+
+  if (testMode && GOOGLE_API_KEY && GOOGLE_CX) {
+    try {
+      const searchQuery = 'site:linkedin.com/posts "#GenAI"';
+      const googleUrl = new URL('https://www.googleapis.com/customsearch/v1');
+      googleUrl.searchParams.set('key', GOOGLE_API_KEY);
+      googleUrl.searchParams.set('cx', GOOGLE_CX);
+      googleUrl.searchParams.set('q', searchQuery);
+      googleUrl.searchParams.set('num', '3');
+
+      const response = await fetch(googleUrl.toString());
+      const data = await response.json();
+
+      return NextResponse.json({
+        test: 'live',
+        url_preview: googleUrl.toString().substring(0, 100) + '...',
+        response_keys: Object.keys(data),
+        has_error: !!data.error,
+        error_message: data.error?.message,
+        items_count: data.items?.length || 0,
+        first_item_link: data.items?.[0]?.link?.substring(0, 80),
+        has_posts_path: data.items?.[0]?.link?.includes('linkedin.com/posts/') || false
+      });
+    } catch (e) {
+      return NextResponse.json({ test: 'error', error: String(e) });
+    }
+  }
+
   return NextResponse.json({
     service: 'LinkedIn Post Discovery via Google Custom Search',
     status: 'ready',
     config: {
       api_key_configured: !!GOOGLE_API_KEY,
       cx_configured: !!GOOGLE_CX,
+      api_key_preview: GOOGLE_API_KEY?.substring(0, 10) + '...',
+      cx_preview: GOOGLE_CX?.substring(0, 10) + '...',
       max_results_per_hashtag: MAX_RESULTS_PER_HASHTAG,
       cooldown_hours: COOLDOWN_HOURS,
       cost_per_query: '$0.005'
     },
+    test_url: '?test=1',
     setup: !GOOGLE_API_KEY || !GOOGLE_CX ? {
       step1: 'Create Custom Search Engine at https://programmablesearchengine.google.com/',
       step2: 'Enable "Search the entire web" in settings',
