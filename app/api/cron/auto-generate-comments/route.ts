@@ -313,7 +313,10 @@ export async function POST(request: NextRequest) {
         const eventPatterns = [
           "register now", "webinar", "join us live", "live event",
           "conference", "summit", "sign up now", "rsvp", "register today",
-          "save your spot", "grab your seat", "limited seats"
+          "save your spot", "grab your seat", "limited seats",
+          // Speaker/panel announcements (added Dec 6, 2025)
+          "panel", "panelist", "keynote", "speaker at", "speaking at",
+          "will be joining the", "moderating", "presenting at", "fireside chat"
         ];
 
         // Anniversary/milestone posts - personal updates
