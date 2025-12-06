@@ -334,6 +334,15 @@ export async function POST(request: NextRequest) {
           "send me a connection", "connect with me", "add me"
         ];
 
+        // Video posts - AI can't watch videos, comments would be nonsensical
+        const videoPatterns = [
+          "watch the video", "in this video", "check out my video",
+          "video below", "watch this", "in my latest video", "video link",
+          "watch my video", "see the video", "full video", "video here",
+          "linked video", "watch the full", "video in comments",
+          "🎥", "📹", "▶️"  // Common video emojis
+        ];
+
         // Check all patterns
         const isJobPost = jobPatterns.some(p => contentLower.includes(p));
         const isEventPromo = eventPatterns.some(p => contentLower.includes(p));
@@ -343,6 +352,7 @@ export async function POST(request: NextRequest) {
         const isCertPost = certPatterns.some(p => contentLower.includes(p));
         const isHolidayPost = holidayPatterns.some(p => contentLower.includes(p));
         const isConnectionBegging = connectionPatterns.some(p => contentLower.includes(p));
+        const isVideoPost = videoPatterns.some(p => contentLower.includes(p));
 
         // Determine skip reason
         let skipReason = '';
@@ -354,6 +364,7 @@ export async function POST(request: NextRequest) {
         else if (isCertPost) skipReason = 'certification_post';
         else if (isHolidayPost) skipReason = 'holiday_post';
         else if (isConnectionBegging) skipReason = 'connection_begging';
+        else if (isVideoPost) skipReason = 'video_post';
 
         if (skipReason) {
           console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - NOT LEADERSHIP (${skipReason}): ${post.author_name}`);
