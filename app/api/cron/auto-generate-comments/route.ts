@@ -64,10 +64,7 @@ export async function POST(request: NextRequest) {
         linkedin_post_monitors!inner (
           id,
           auto_approve_enabled,
-          expertise_areas,
-          products,
-          value_props,
-          tone_of_voice
+          metadata
         )
       `)
       .eq('status', 'discovered')
@@ -195,13 +192,15 @@ export async function POST(request: NextRequest) {
         }
 
         // Build workspace context (shared between both paths)
+        // Note: expertise_areas, products, value_props are stored in brand_guidelines or monitor.metadata
+        const monitorMetadata = monitor?.metadata as Record<string, any> || {};
         const workspaceContext = {
           workspace_id: post.workspace_id,
           company_name: workspaceNames[post.workspace_id] || 'Your Company',
-          expertise_areas: monitor?.expertise_areas || ['B2B Sales', 'Lead Generation'],
-          products: monitor?.products || [],
-          value_props: monitor?.value_props || [],
-          tone_of_voice: brandGuideline?.tone_of_voice || monitor?.tone_of_voice || 'Professional and helpful',
+          expertise_areas: monitorMetadata.expertise_areas || brandGuideline?.industry_talking_points || ['B2B Sales', 'Lead Generation'],
+          products: monitorMetadata.products || [],
+          value_props: monitorMetadata.value_props || [],
+          tone_of_voice: brandGuideline?.tone_of_voice || monitorMetadata.tone_of_voice || 'Professional and helpful',
           knowledge_base_snippets: [],
           brand_guidelines: brandGuideline || undefined
         };
