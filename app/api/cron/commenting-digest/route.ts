@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/app/lib/supabase';
+import { supabaseAdmin } from '@/app/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     console.log('📧 Starting commenting digest cron...');
     console.log(`🧪 Test mode: ${testEmail ? `sending to ${testEmail}` : 'OFF'}`);
 
-    const supabase = await createServerSupabaseClient();
+    const supabase = supabaseAdmin();
 
     // Get workspaces with digest enabled (include auto_approve_enabled for mode detection)
     let workspacesQuery = supabase
