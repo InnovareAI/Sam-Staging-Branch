@@ -126,11 +126,12 @@
 # [functions."discover-posts"]
 #   schedule = "0 */2 * * *"
 
-# Discover Posts (Google): Find new posts via Google Custom Search every 4 hours
-# Cost: ~$0.005 per term, 1 query per term (was 3), 4hr cooldown (was 2)
-# 17 terms × 1 query × 6 runs/day = 102 queries/day = $0.51/day
+# Discover Posts (Google): Find new posts via Google Custom Search daily at 8 AM PT
+# Cost: ~$0.005 per term, runs once daily when Western professionals are active
+# 17 terms × 1 query × 1 run/day = 17 queries/day = $0.085/day
+# Schedule: 8:00 AM PT = 16:00 UTC
 [functions."discover-posts-google"]
-  schedule = "0 */4 * * *"
+  schedule = "0 16 * * *"
 
 # Auto-Generate Comments: Create AI comments every 30 minutes
 # Generates thoughtful comments for discovered posts (pending approval)
