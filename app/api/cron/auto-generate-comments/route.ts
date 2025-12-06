@@ -147,6 +147,25 @@ export async function POST(request: NextRequest) {
 
     console.log(`📋 ${authorsWithPendingComments.size} authors already have pending comments`);
 
+    // 10-DAY RULE: Get authors we've commented on in the last 10 days
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    const { data: recentAuthorComments } = await supabase
+      .from('linkedin_post_comments')
+      .select('post:linkedin_posts_discovered!inner(author_profile_id, author_name)')
+      .in('workspace_id', workspaceIds)
+      .gte('generated_at', tenDaysAgo.toISOString());
+
+    const authorsCommentedRecently = new Set<string>();
+    for (const comment of recentAuthorComments || []) {
+      const authorId = (comment.post as any)?.author_profile_id;
+      const authorName = (comment.post as any)?.author_name;
+      if (authorId) authorsCommentedRecently.add(authorId);
+      if (authorName) authorsCommentedRecently.add(authorName); // Fallback to name
+    }
+
+    console.log(`📋 ${authorsCommentedRecently.size} authors commented on in last 10 days`);
+
     // CRITICAL: Get post IDs that already have ANY comment (prevents duplicates)
     // This catches race conditions where multiple cron runs process same post
     const postIds = posts.map(p => p.id);
@@ -160,6 +179,21 @@ export async function POST(request: NextRequest) {
       postsWithComments.add(comment.post_id);
     }
     console.log(`📋 ${postsWithComments.size} posts already have comments (will skip)`);
+
+    // CRITICAL FIX: Also check by social_id (LinkedIn post ID) - same post may have different UUIDs
+    // This prevents commenting twice on the same LinkedIn post discovered via different monitors
+    const socialIds = posts.map(p => p.social_id).filter(Boolean);
+    const { data: existingSocialIdComments } = await supabase
+      .from('linkedin_post_comments')
+      .select('post:linkedin_posts_discovered!inner(social_id)')
+      .in('workspace_id', workspaceIds);
+
+    const socialIdsWithComments = new Set<string>();
+    for (const comment of existingSocialIdComments || []) {
+      const socialId = (comment.post as any)?.social_id;
+      if (socialId) socialIdsWithComments.add(socialId);
+    }
+    console.log(`📋 ${socialIdsWithComments.size} social_ids already have comments (will skip)`);
 
     // Generate comments for each post
     for (const post of posts) {
@@ -182,6 +216,20 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
+        // CRITICAL DEDUPLICATION: Skip if this LinkedIn post (social_id) already has a comment
+        // Same LinkedIn post may be discovered multiple times with different UUIDs
+        if (post.social_id && socialIdsWithComments.has(post.social_id)) {
+          console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - SAME LINKEDIN POST already has comment (social_id: ${post.social_id})`);
+          skipCount++;
+          results.push({ post_id: post.id, status: 'skipped_duplicate_social_id' });
+          // Mark post so query doesn't pick it up again
+          await supabase
+            .from('linkedin_posts_discovered')
+            .update({ comment_generated_at: new Date().toISOString(), status: 'skipped' })
+            .eq('id', post.id);
+          continue;
+        }
+
         // DEDUPLICATION: Skip if we already commented on this author in this run
         if (authorsCommentedThisRun.has(authorId)) {
           console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - already commented on ${post.author_name} this run`);
@@ -195,6 +243,20 @@ export async function POST(request: NextRequest) {
           console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - ${post.author_name} already has pending comment`);
           skipCount++;
           results.push({ post_id: post.id, status: 'skipped_author_has_pending' });
+          continue;
+        }
+
+        // 10-DAY RULE: Skip if we've commented on this author in the last 10 days
+        const authorNameKey = post.author_name || authorId;
+        if (authorsCommentedRecently.has(authorId) || authorsCommentedRecently.has(authorNameKey)) {
+          console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - ${post.author_name} was commented on within 10 days`);
+          skipCount++;
+          results.push({ post_id: post.id, status: 'skipped_10_day_rule' });
+          // Mark as skipped so we don't keep trying
+          await supabase
+            .from('linkedin_posts_discovered')
+            .update({ comment_generated_at: new Date().toISOString(), status: 'skipped' })
+            .eq('id', post.id);
           continue;
         }
 
@@ -463,6 +525,11 @@ export async function POST(request: NextRequest) {
         // Track this author so we don't comment on their other posts in this run
         authorsCommentedThisRun.add(authorId);
         authorsWithPendingComments.add(authorId); // Also prevent future runs from double-commenting
+
+        // Track social_id to prevent duplicates from same LinkedIn post
+        if (post.social_id) {
+          socialIdsWithComments.add(post.social_id);
+        }
 
         // Rate limiting: 5 seconds between AI calls
         await new Promise(resolve => setTimeout(resolve, 5000));
