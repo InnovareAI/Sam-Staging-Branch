@@ -183,7 +183,32 @@ export async function POST(req: NextRequest) {
         }
 
         // Post comment to LinkedIn via Unipile
-        const postSocialId = comment.post.social_id;
+        // CRITICAL: social_id must be in URN format for Unipile API
+        // Legacy posts may have raw numeric IDs - extract activity ID from share_url
+        let postSocialId = comment.post.social_id;
+
+        if (!postSocialId?.startsWith('urn:li:')) {
+          // Legacy format - extract activity ID from share_url
+          const activityMatch = comment.post.share_url?.match(/activity-(\d+)/);
+          if (activityMatch) {
+            postSocialId = `urn:li:activity:${activityMatch[1]}`;
+            console.log(`   🔄 Converted legacy social_id to URN: ${postSocialId}`);
+          } else {
+            console.error(`   ❌ Cannot determine activity ID from share_url: ${comment.post.share_url}`);
+            await supabase
+              .from('linkedin_post_comments')
+              .update({
+                status: 'failed',
+                failure_reason: 'Cannot determine LinkedIn post ID',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', comment.id);
+            failed++;
+            errors.push(`Comment ${comment.id}: Cannot determine LinkedIn post ID`);
+            continue;
+          }
+        }
+
         console.log(`   Posting to LinkedIn post: ${postSocialId}`);
 
         const unipileResponse = await fetch(

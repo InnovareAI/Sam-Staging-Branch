@@ -161,13 +161,23 @@ async function discoverProfilePostsViaUnipile(vanity: string): Promise<{
     console.log(`   ✅ Got ${items.length} posts from Unipile`);
 
     // Transform to our format
-    const posts = items.map((post: UnipilePost) => ({
-      share_url: post.share_url || `https://www.linkedin.com/feed/update/urn:li:activity:${post.id}`,
-      author_name: authorName,
-      social_id: post.id,
-      title: `Post by ${authorName}`,
-      snippet: (post.text || '').substring(0, 200)
-    }));
+    // CRITICAL: Extract activity ID from share_url and format as URN for Unipile commenting API
+    // post.id is the ugcPost ID, but Unipile commenting needs urn:li:activity:{activityId}
+    const posts = items.map((post: UnipilePost) => {
+      // Extract activity ID from share_url: activity-1234567890
+      const activityMatch = post.share_url?.match(/activity-(\d+)/);
+      const socialId = activityMatch
+        ? `urn:li:activity:${activityMatch[1]}`
+        : `urn:li:ugcPost:${post.id}`; // Fallback to ugcPost URN
+
+      return {
+        share_url: post.share_url || `https://www.linkedin.com/feed/update/urn:li:activity:${post.id}`,
+        author_name: authorName,
+        social_id: socialId,
+        title: `Post by ${authorName}`,
+        snippet: (post.text || '').substring(0, 200)
+      };
+    });
 
     return { success: true, posts };
 
@@ -432,10 +442,12 @@ export async function POST(request: NextRequest) {
                 const urlMatch = item.link.match(/linkedin\.com\/posts\/([^_]+)/);
                 const authorFromUrl = urlMatch ? urlMatch[1].replace(/-/g, ' ') : 'Unknown';
 
-                // Extract social_id (activity ID) from URL
-                // Format: activity-1234567890 at the end before the hash
+                // Extract social_id (activity ID) from URL and format as URN for Unipile
+                // Format: activity-1234567890 in URL -> urn:li:activity:1234567890 for Unipile API
                 const activityMatch = item.link.match(/activity-(\d+)/);
-                const socialId = activityMatch ? activityMatch[1] : `google-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+                const socialId = activityMatch
+                  ? `urn:li:activity:${activityMatch[1]}`
+                  : `google-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
                 posts.push({
                   share_url: item.link,
