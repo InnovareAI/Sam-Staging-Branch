@@ -782,3 +782,171 @@ export function shouldSkipPost(post: LinkedInPost, workspace: WorkspaceContext):
 
   return { should_skip: false };
 }
+
+/**
+ * Context for generating a reply to an existing comment
+ */
+export interface CommentReplyGenerationContext {
+  originalPost: {
+    text: string;
+    author_name: string;
+  };
+  targetComment: {
+    id: string;
+    text: string;
+    author_name: string;
+    reactions_count: number;
+  };
+  workspace: WorkspaceContext;
+}
+
+/**
+ * Generate a reply to an existing LinkedIn comment
+ *
+ * This creates a reply to someone else's comment on a post,
+ * rather than a direct comment on the post itself.
+ */
+export async function generateCommentReply(
+  context: CommentReplyGenerationContext
+): Promise<GeneratedComment> {
+  const startTime = Date.now();
+
+  console.log('💬 Generating reply to comment:', {
+    post_author: context.originalPost.author_name,
+    comment_author: context.targetComment.author_name,
+    comment_reactions: context.targetComment.reactions_count
+  });
+
+  // Build specialized prompt for replying to comments
+  const systemPrompt = buildCommentReplySystemPrompt(context);
+  const userPrompt = buildCommentReplyUserPrompt(context);
+
+  // Generate via Claude Direct API
+  const response = await claudeClient.chat({
+    system: systemPrompt,
+    messages: [
+      { role: 'user', content: userPrompt }
+    ],
+    max_tokens: 250,
+    temperature: 0.7
+  });
+
+  const aiResponse = response.content;
+
+  // Parse AI response
+  let parsedResponse: any;
+  try {
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      parsedResponse = JSON.parse(jsonMatch[0]);
+    } else {
+      throw new Error('No JSON found in AI response');
+    }
+  } catch (error) {
+    console.error('❌ Failed to parse reply AI response:', aiResponse);
+    throw new Error('Invalid AI response format for reply');
+  }
+
+  const generationTime = Date.now() - startTime;
+
+  // Calculate confidence (replies generally need review)
+  const confidenceScore = parsedResponse.skip ? 0.0 : 0.75;
+
+  const generatedReply: GeneratedComment = {
+    comment_text: parsedResponse.comment_text || parsedResponse.reply || '',
+    confidence_score: confidenceScore,
+    reasoning: parsedResponse.reasoning || 'Reply to quality comment',
+    quality_indicators: {
+      adds_value: parsedResponse.adds_value !== false,
+      on_topic: parsedResponse.on_topic !== false,
+      appropriate_tone: true,
+      avoids_sales_pitch: true,
+      references_post_specifically: true
+    },
+    should_auto_post: false, // Always review replies
+    generation_metadata: {
+      model: response.model,
+      tokens_used: response.usage.totalTokens,
+      generation_time_ms: generationTime
+    }
+  };
+
+  console.log('✅ Reply generated:', {
+    to_author: context.targetComment.author_name,
+    length: generatedReply.comment_text.length
+  });
+
+  return generatedReply;
+}
+
+/**
+ * Build system prompt for comment reply generation
+ */
+function buildCommentReplySystemPrompt(context: CommentReplyGenerationContext): string {
+  const { workspace, targetComment } = context;
+  const bg = workspace.brand_guidelines;
+
+  return `You are replying to a LinkedIn comment. You represent ${workspace.company_name}.
+
+## Your Goal
+Create a thoughtful, conversational reply to ${targetComment.author_name}'s comment.
+Their comment has ${targetComment.reactions_count} reactions, indicating it's well-received.
+
+## Communication Style
+- Tone: ${bg?.tone_of_voice || 'Professional but friendly'}
+- Length: 1-2 sentences (under 150 characters ideally)
+- Be conversational, not formal
+
+## Your Expertise
+${workspace.expertise_areas.join(', ')}
+
+## Reply Guidelines
+1. Acknowledge their point briefly
+2. Add a small insight or perspective from your experience
+3. Keep it SHORT - this is a reply, not a comment
+4. Sound like a real conversation
+5. DO NOT pitch anything or be salesy
+6. DO NOT use generic phrases like "great point" or "agree"
+
+## Output Format (JSON ONLY)
+{
+  "comment_text": "Your reply here...",
+  "reasoning": "Why this reply adds value",
+  "adds_value": true,
+  "on_topic": true,
+  "skip": false
+}
+
+OR if you can't add value:
+{
+  "skip": true,
+  "reason": "Why we shouldn't reply"
+}`;
+}
+
+/**
+ * Build user prompt for comment reply
+ */
+function buildCommentReplyUserPrompt(context: CommentReplyGenerationContext): string {
+  return `Generate a brief reply to this comment.
+
+ORIGINAL POST by ${context.originalPost.author_name}:
+"${context.originalPost.text.substring(0, 200)}${context.originalPost.text.length > 200 ? '...' : ''}"
+
+COMMENT by ${context.targetComment.author_name} (${context.targetComment.reactions_count} reactions):
+"${context.targetComment.text}"
+
+YOUR TASK:
+Write a 1-2 sentence reply that:
+- Acknowledges their point naturally (not "great point!")
+- Adds YOUR perspective or experience briefly
+- Continues the conversation
+- Sounds human and conversational
+
+EXAMPLES OF GOOD REPLIES:
+- "The bit about X is exactly what I've seen too - though I'd add that Y makes a big difference"
+- "Ha, been there. The trick that worked for us was..."
+- "Curious if you've tried X - we found it changed the game for Y"
+
+Return JSON with comment_text.`;
+}

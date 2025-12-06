@@ -8,8 +8,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { generateLinkedInComment } from '@/lib/services/linkedin-commenting-agent';
-import type { CommentGenerationContext } from '@/lib/services/linkedin-commenting-agent';
+import { generateLinkedInComment, generateCommentReply } from '@/lib/services/linkedin-commenting-agent';
+import type { CommentGenerationContext, CommentReplyGenerationContext } from '@/lib/services/linkedin-commenting-agent';
+import { fetchPostComments, shouldReplyToComment } from '@/lib/services/linkedin-comment-replies';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for batch generation
@@ -172,43 +173,37 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        console.log(`\n💬 Generating comment for post ${post.id.substring(0, 8)}...`);
+        console.log(`\n💬 Processing post ${post.id.substring(0, 8)}...`);
         console.log(`   Author: ${post.author_name}`);
 
-        // Build context for AI
-        const context: CommentGenerationContext = {
-          post: {
-            id: post.id,
-            post_linkedin_id: post.social_id || '',
-            post_social_id: post.social_id || '',
-            post_text: post.post_content || '',
-            post_type: 'article',
-            author: {
-              linkedin_id: post.author_profile_id || '',
-              name: post.author_name || 'Unknown Author',
-              title: post.author_title || undefined,
-              company: post.author_company || undefined,
-              profile_url: post.share_url ? post.share_url.split('/posts/')[0] : undefined
-            },
-            engagement: {
-              likes_count: post.engagement_metrics?.reactions || 0,
-              comments_count: post.engagement_metrics?.comments || 0,
-              shares_count: post.engagement_metrics?.reposts || 0
-            },
-            posted_at: post.post_date ? new Date(post.post_date) : new Date(),
-            discovered_via_monitor_type: 'profile',
-            matched_keywords: post.hashtags || []
-          },
-          workspace: {
-            workspace_id: post.workspace_id,
-            company_name: workspaceNames[post.workspace_id] || 'Your Company',
-            expertise_areas: monitor?.expertise_areas || ['B2B Sales', 'Lead Generation'],
-            products: monitor?.products || [],
-            value_props: monitor?.value_props || [],
-            tone_of_voice: brandGuideline?.tone_of_voice || monitor?.tone_of_voice || 'Professional and helpful',
-            knowledge_base_snippets: [],
-            brand_guidelines: brandGuideline || undefined
-          }
+        // === 70/30 RULE: Check if we should reply to a comment ===
+        // Fetch existing comments on the post
+        const existingComments = await fetchPostComments(post.social_id);
+        const replyDecision = shouldReplyToComment(existingComments);
+
+        let isReplyToComment = false;
+        let replyToCommentId: string | null = null;
+        let replyToAuthorName: string | null = null;
+
+        if (replyDecision.shouldReply && replyDecision.targetComment) {
+          console.log(`   🎯 Will REPLY to comment (30% path): ${replyDecision.reason}`);
+          isReplyToComment = true;
+          replyToCommentId = replyDecision.targetComment.id;
+          replyToAuthorName = replyDecision.targetComment.author_name;
+        } else {
+          console.log(`   📝 Will comment on POST (70% path): ${replyDecision.reason}`);
+        }
+
+        // Build workspace context (shared between both paths)
+        const workspaceContext = {
+          workspace_id: post.workspace_id,
+          company_name: workspaceNames[post.workspace_id] || 'Your Company',
+          expertise_areas: monitor?.expertise_areas || ['B2B Sales', 'Lead Generation'],
+          products: monitor?.products || [],
+          value_props: monitor?.value_props || [],
+          tone_of_voice: brandGuideline?.tone_of_voice || monitor?.tone_of_voice || 'Professional and helpful',
+          knowledge_base_snippets: [],
+          brand_guidelines: brandGuideline || undefined
         };
 
         // Generate comment with retry logic
@@ -218,7 +213,51 @@ export async function POST(request: NextRequest) {
 
         while (retries < maxRetries) {
           try {
-            generatedComment = await generateLinkedInComment(context);
+            if (isReplyToComment && replyDecision.targetComment) {
+              // Generate reply to comment (30% path)
+              const replyContext: CommentReplyGenerationContext = {
+                originalPost: {
+                  text: post.post_content || '',
+                  author_name: post.author_name || 'Unknown'
+                },
+                targetComment: {
+                  id: replyDecision.targetComment.id,
+                  text: replyDecision.targetComment.text,
+                  author_name: replyDecision.targetComment.author_name,
+                  reactions_count: replyDecision.targetComment.reactions_count
+                },
+                workspace: workspaceContext
+              };
+              generatedComment = await generateCommentReply(replyContext);
+            } else {
+              // Generate direct post comment (70% path)
+              const context: CommentGenerationContext = {
+                post: {
+                  id: post.id,
+                  post_linkedin_id: post.social_id || '',
+                  post_social_id: post.social_id || '',
+                  post_text: post.post_content || '',
+                  post_type: 'article',
+                  author: {
+                    linkedin_id: post.author_profile_id || '',
+                    name: post.author_name || 'Unknown Author',
+                    title: post.author_title || undefined,
+                    company: post.author_company || undefined,
+                    profile_url: post.share_url ? post.share_url.split('/posts/')[0] : undefined
+                  },
+                  engagement: {
+                    likes_count: post.engagement_metrics?.reactions || 0,
+                    comments_count: post.engagement_metrics?.comments || 0,
+                    shares_count: post.engagement_metrics?.reposts || 0
+                  },
+                  posted_at: post.post_date ? new Date(post.post_date) : new Date(),
+                  discovered_via_monitor_type: 'profile',
+                  matched_keywords: post.hashtags || []
+                },
+                workspace: workspaceContext
+              };
+              generatedComment = await generateLinkedInComment(context);
+            }
             break;
           } catch (error: any) {
             retries++;
@@ -291,6 +330,10 @@ export async function POST(request: NextRequest) {
             scheduled_post_time: scheduledPostTime,
             approved_at: monitor?.auto_approve_enabled ? new Date().toISOString() : null,
             generated_at: new Date().toISOString(),
+            // Reply tracking (70/30 rule)
+            is_reply_to_comment: isReplyToComment,
+            reply_to_comment_id: replyToCommentId,
+            reply_to_author_name: replyToAuthorName,
             generation_metadata: {
               model: generatedComment.generation_metadata?.model || 'claude-3-5-sonnet',
               tokens_used: generatedComment.generation_metadata?.tokens_used || 0,
