@@ -147,14 +147,15 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`\n📤 Posting comment ${comment.id}...`);
 
-        // Check workspace timezone/business hours
-        const settings = workspaceSettings[comment.workspace_id] || { timezone: 'America/Los_Angeles', country_code: 'US' };
-        const { canPost, reason } = canPostCommentNow(settings.timezone, settings.country_code);
-
-        if (!canPost) {
-          console.log(`   ⏸️ Skipping - ${reason}`);
-          continue; // Will be picked up next time when business hours are active
-        }
+        // DISABLED FOR TESTING: Business hours/weekend check removed
+        // Posts will be sent immediately regardless of time/day
+        // TODO: Re-enable after testing if needed
+        // const settings = workspaceSettings[comment.workspace_id] || { timezone: 'America/Los_Angeles', country_code: 'US' };
+        // const { canPost, reason } = canPostCommentNow(settings.timezone, settings.country_code);
+        // if (!canPost) {
+        //   console.log(`   ⏸️ Skipping - ${reason}`);
+        //   continue;
+        // }
 
         // Get LinkedIn account for this workspace
         const { data: linkedinAccount } = await supabase
