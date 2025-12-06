@@ -78,35 +78,17 @@ const COUNTRY_TIMEZONES: Record<string, string> = {
 
 /**
  * Check if we can post a comment now based on workspace settings
+ * WEEKENDS ALLOWED - only respects business hours (9 AM - 6 PM)
  */
 function canPostCommentNow(timezone: string, countryCode: string): { canPost: boolean; reason?: string } {
   const localTime = moment().tz(timezone);
-  const day = localTime.day();
   const hour = localTime.hour();
-  const dateStr = localTime.format('YYYY-MM-DD');
 
-  // Check weekend (country-specific)
-  if (FRIDAY_SATURDAY_WEEKEND_COUNTRIES.includes(countryCode)) {
-    if (day === 5 || day === 6) { // Friday or Saturday
-      return { canPost: false, reason: `Weekend (Fri-Sat) in ${countryCode}` };
-    }
-  } else {
-    if (day === 0 || day === 6) { // Sunday or Saturday
-      return { canPost: false, reason: 'Weekend' };
-    }
-  }
-
-  // Check business hours (6 AM - 6 PM)
-  const startHour = BUSINESS_HOURS.start;
-  const endHour = 18; // 6 PM
+  // Business hours: 9 AM - 6 PM (weekends allowed)
+  const startHour = 9;  // 9 AM
+  const endHour = 18;   // 6 PM
   if (hour < startHour || hour >= endHour) {
-    return { canPost: false, reason: `Outside business hours (${hour}:00 in ${timezone})` };
-  }
-
-  // Check holidays
-  const holidays = getHolidaysForCountry(countryCode);
-  if (holidays.includes(dateStr)) {
-    return { canPost: false, reason: `Holiday in ${countryCode} (${dateStr})` };
+    return { canPost: false, reason: `Outside business hours (${hour}:00 in ${timezone}, allowed 9-18)` };
   }
 
   return { canPost: true };
@@ -192,15 +174,13 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`\n📤 Posting comment ${comment.id}...`);
 
-        // DISABLED FOR TESTING: Business hours/weekend check removed
-        // Posts will be sent immediately regardless of time/day
-        // TODO: Re-enable after testing if needed
-        // const settings = workspaceSettings[comment.workspace_id] || { timezone: 'America/Los_Angeles', country_code: 'US' };
-        // const { canPost, reason } = canPostCommentNow(settings.timezone, settings.country_code);
-        // if (!canPost) {
-        //   console.log(`   ⏸️ Skipping - ${reason}`);
-        //   continue;
-        // }
+        // Business hours check: 9 AM - 6 PM (weekends allowed)
+        const settings = workspaceSettings[comment.workspace_id] || { timezone: 'America/Los_Angeles', country_code: 'US' };
+        const { canPost, reason } = canPostCommentNow(settings.timezone, settings.country_code);
+        if (!canPost) {
+          console.log(`   ⏸️ Skipping - ${reason}`);
+          continue;
+        }
 
         // Get LinkedIn account for this workspace
         const { data: linkedinAccount } = await supabase
