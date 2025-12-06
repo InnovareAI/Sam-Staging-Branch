@@ -123,7 +123,7 @@
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
     "ignore-loader": "^0.1.2",
-    "next": "^15.5.2",
+    "next": "^15.5.7",
     "playwright": "^1.55.1",
     "puppeteer": "^24.23.0",
     "shadcn": "^3.2.1",
