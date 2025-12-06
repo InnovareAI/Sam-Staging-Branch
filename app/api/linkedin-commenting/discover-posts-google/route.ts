@@ -46,6 +46,39 @@ const MIN_WAIT_HOURS = 1;
 const MAX_WAIT_HOURS = 4;
 
 /**
+ * Extract country from LinkedIn location string
+ * Examples:
+ * - "San Francisco, California, United States" -> "United States"
+ * - "London, England, United Kingdom" -> "United Kingdom"
+ * - "Sydney, New South Wales, Australia" -> "Australia"
+ * - "Berlin, Germany" -> "Germany"
+ */
+function extractCountryFromLocation(location: string | null | undefined): string | null {
+  if (!location) return null;
+
+  // Common country mappings (LinkedIn sometimes uses abbreviations or variations)
+  const countryMappings: Record<string, string> = {
+    'usa': 'United States',
+    'us': 'United States',
+    'uk': 'United Kingdom',
+    'gb': 'United Kingdom',
+    'uae': 'United Arab Emirates',
+  };
+
+  // Split by comma and get the last part (usually the country)
+  const parts = location.split(',').map(p => p.trim());
+  const lastPart = parts[parts.length - 1].toLowerCase();
+
+  // Check if it's a known abbreviation
+  if (countryMappings[lastPart]) {
+    return countryMappings[lastPart];
+  }
+
+  // Return the last part with proper casing
+  return parts[parts.length - 1];
+}
+
+/**
  * Fetch full post content from Unipile API
  * Uses the URN format social_id to get the actual post text
  */
@@ -53,10 +86,12 @@ async function fetchPostContentFromUnipile(socialId: string): Promise<{
   text: string | null;
   author_name: string | null;
   author_headline: string | null;
+  author_location: string | null;
+  author_country: string | null;
   engagement: { likes: number; comments: number; shares: number } | null;
 }> {
   if (!UNIPILE_DSN || !UNIPILE_API_KEY) {
-    return { text: null, author_name: null, author_headline: null, engagement: null };
+    return { text: null, author_name: null, author_headline: null, author_location: null, author_country: null, engagement: null };
   }
 
   try {
@@ -72,15 +107,21 @@ async function fetchPostContentFromUnipile(socialId: string): Promise<{
 
     if (!response.ok) {
       console.log(`   ⚠️ Could not fetch post content: ${response.status}`);
-      return { text: null, author_name: null, author_headline: null, engagement: null };
+      return { text: null, author_name: null, author_headline: null, author_location: null, author_country: null, engagement: null };
     }
 
     const data = await response.json();
+
+    // Extract location from author data (may be in different fields)
+    const authorLocation = data.author?.location || data.author?.geo_location || null;
+    const authorCountry = extractCountryFromLocation(authorLocation);
 
     return {
       text: data.text || null,
       author_name: data.author?.name || null,
       author_headline: data.author?.headline || null,
+      author_location: authorLocation,
+      author_country: authorCountry,
       engagement: {
         likes: data.reaction_counter || 0,
         comments: data.comment_counter || 0,
@@ -89,7 +130,7 @@ async function fetchPostContentFromUnipile(socialId: string): Promise<{
     };
   } catch (error) {
     console.log(`   ⚠️ Error fetching post content:`, error);
-    return { text: null, author_name: null, author_headline: null, engagement: null };
+    return { text: null, author_name: null, author_headline: null, author_location: null, author_country: null, engagement: null };
   }
 }
 
@@ -524,7 +565,22 @@ export async function POST(request: NextRequest) {
         console.log(`   📊 New posts found for ${termDisplay}: ${posts.length} (skipped ${debugInfo.skipped_existing || 0} existing)`);
 
         // Save posts to database (all posts in the array are new - already filtered)
+        // Get target countries from workspace's brand guidelines (workspace-level setting)
+        const { data: brandGuidelines } = await supabase
+          .from('linkedin_brand_guidelines')
+          .select('target_countries')
+          .eq('workspace_id', monitor.workspace_id)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        const targetCountries: string[] | null = brandGuidelines?.target_countries || null;
+        if (targetCountries && targetCountries.length > 0) {
+          console.log(`   🌍 Country filter enabled (workspace settings): ${targetCountries.join(', ')}`);
+        }
+
         let savedCount = 0;
+        let skippedCountryCount = 0;
+
         for (const post of posts.slice(0, MAX_RESULTS_PER_HASHTAG)) {
           // Insert new post (no need to check existence - already filtered during parsing)
           // Set random comment_eligible_at (1-4 hours from now) to enforce waiting period
@@ -542,6 +598,29 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
+          // COUNTRY FILTER: Skip posts from authors not in target countries (if filter is set)
+          if (targetCountries && targetCountries.length > 0) {
+            const authorCountry = postContent.author_country;
+            if (!authorCountry) {
+              console.log(`   ⏭️ Skipping ${postContent.author_name} - no country info available`);
+              skippedCountryCount++;
+              continue;
+            }
+
+            // Case-insensitive country matching
+            const countryMatch = targetCountries.some(tc =>
+              tc.toLowerCase() === authorCountry.toLowerCase()
+            );
+
+            if (!countryMatch) {
+              console.log(`   🚫 Skipping ${postContent.author_name} from "${authorCountry}" - not in target countries`);
+              skippedCountryCount++;
+              continue;
+            }
+
+            console.log(`   ✅ ${postContent.author_name} is from "${authorCountry}" - matches filter`);
+          }
+
           const { error: insertError } = await supabase
             .from('linkedin_posts_discovered')
             .insert({
@@ -550,6 +629,8 @@ export async function POST(request: NextRequest) {
               share_url: post.share_url,
               author_name: postContent.author_name || post.author_name,
               author_headline: postContent.author_headline,
+              // Store author country for filtering/display
+              author_country: postContent.author_country,
               social_id: post.social_id,
               // Store the actual post content from Unipile
               post_content: postContent.text,
@@ -573,8 +654,13 @@ export async function POST(request: NextRequest) {
             savedCount++;
             // Add to existingUrls to prevent duplicates within same run
             existingUrls.add(post.share_url);
-            console.log(`   ✅ Saved: ${postContent.author_name || post.author_name} - "${postContent.text?.substring(0, 50)}..."`);
+            console.log(`   ✅ Saved: ${postContent.author_name || post.author_name} (${postContent.author_country || 'unknown location'}) - "${postContent.text?.substring(0, 50)}..."`);
           }
+        }
+
+        // Log country filter stats if applicable
+        if (skippedCountryCount > 0) {
+          console.log(`   🌍 Country filter: skipped ${skippedCountryCount} posts from non-target countries`);
         }
 
         results.push({

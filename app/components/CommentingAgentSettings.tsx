@@ -100,6 +100,9 @@ interface Settings {
   digest_email: string;
   digest_enabled: boolean;
   digest_timezone: string;
+
+  // Section 14: Target Countries Filter
+  target_countries: string[];
 }
 
 const defaultSettings: Settings = {
@@ -170,6 +173,9 @@ const defaultSettings: Settings = {
   digest_email: '',
   digest_enabled: false,
   digest_timezone: 'America/New_York',
+
+  // Section 14: Target Countries Filter
+  target_countries: [],
 };
 
 const frameworkDescriptions: Record<string, string> = {
@@ -198,6 +204,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     scheduling: false,
     automation: false,
     blocklist: false,
+    countries: false,
     digest: false,
     advanced: false,
   });
@@ -292,6 +299,8 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
           digest_email: data.digest_email || '',
           digest_enabled: data.digest_enabled ?? false,
           digest_timezone: data.digest_timezone || defaultSettings.digest_timezone,
+          // Section 14: Target Countries Filter
+          target_countries: data.target_countries || [],
         });
       }
     } catch (error) {
@@ -382,6 +391,8 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
         digest_email: settings.digest_email || null,
         digest_enabled: settings.digest_enabled,
         digest_timezone: settings.digest_timezone,
+        // Section 14: Target Countries Filter
+        target_countries: settings.target_countries.length > 0 ? settings.target_countries : null,
         is_active: true,
         updated_at: new Date().toISOString(),
       };
@@ -498,7 +509,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     </button>
   );
 
-  const addArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention' | 'blacklisted_profiles' | 'custom_blocked_keywords', value: string, setter: (v: string) => void) => {
+  const addArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention' | 'blacklisted_profiles' | 'custom_blocked_keywords' | 'target_countries', value: string, setter: (v: string) => void) => {
     if (value.trim()) {
       setSettings(prev => ({
         ...prev,
@@ -508,7 +519,7 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     }
   };
 
-  const removeArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention' | 'blacklisted_profiles' | 'custom_blocked_keywords', index: number) => {
+  const removeArrayItem = (field: 'example_comments' | 'admired_comments' | 'competitors_never_mention' | 'blacklisted_profiles' | 'custom_blocked_keywords' | 'target_countries', index: number) => {
     setSettings(prev => ({
       ...prev,
       [field]: (prev[field] || []).filter((_, i) => i !== index)
@@ -1495,6 +1506,94 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
                   <Plus size={16} />
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Section: Target Countries Filter */}
+      <div className="border border-gray-600 rounded-lg overflow-hidden">
+        <SectionHeader title="Target Countries" section="countries" description="Filter posts by author's country/region" />
+        {expandedSections.countries && (
+          <div className="p-4 bg-gray-800 space-y-5">
+            <div className="p-3 bg-green-900/20 border border-green-700/50 rounded-lg mb-4">
+              <p className="text-green-200 text-xs">Only discover posts from authors located in these countries. Leave empty to discover posts from all countries.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Selected Countries</label>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {(settings.target_countries || []).map((country, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-900/30 border border-green-700/50 rounded-full text-sm text-green-200">
+                    {country}
+                    <button
+                      onClick={() => removeArrayItem('target_countries', idx)}
+                      className="text-green-300 hover:text-green-100 ml-1"
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+                {(settings.target_countries || []).length === 0 && (
+                  <span className="text-gray-500 text-sm italic">No countries selected - posts from all countries will be discovered</span>
+                )}
+              </div>
+
+              <label className="block text-sm font-medium text-gray-300 mb-2">Add Countries</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {[
+                  { code: 'United States', label: '🇺🇸 United States' },
+                  { code: 'Canada', label: '🇨🇦 Canada' },
+                  { code: 'United Kingdom', label: '🇬🇧 United Kingdom' },
+                  { code: 'Germany', label: '🇩🇪 Germany' },
+                  { code: 'France', label: '🇫🇷 France' },
+                  { code: 'Netherlands', label: '🇳🇱 Netherlands' },
+                  { code: 'Australia', label: '🇦🇺 Australia' },
+                  { code: 'Singapore', label: '🇸🇬 Singapore' },
+                  { code: 'India', label: '🇮🇳 India' },
+                  { code: 'Ireland', label: '🇮🇪 Ireland' },
+                  { code: 'Switzerland', label: '🇨🇭 Switzerland' },
+                  { code: 'Spain', label: '🇪🇸 Spain' },
+                  { code: 'Italy', label: '🇮🇹 Italy' },
+                  { code: 'Sweden', label: '🇸🇪 Sweden' },
+                  { code: 'Norway', label: '🇳🇴 Norway' },
+                  { code: 'Denmark', label: '🇩🇰 Denmark' },
+                  { code: 'Belgium', label: '🇧🇪 Belgium' },
+                  { code: 'Austria', label: '🇦🇹 Austria' },
+                  { code: 'New Zealand', label: '🇳🇿 New Zealand' },
+                  { code: 'Japan', label: '🇯🇵 Japan' },
+                  { code: 'South Africa', label: '🇿🇦 South Africa' },
+                  { code: 'United Arab Emirates', label: '🇦🇪 UAE' },
+                  { code: 'Israel', label: '🇮🇱 Israel' },
+                  { code: 'Brazil', label: '🇧🇷 Brazil' },
+                ].map((country) => {
+                  const isSelected = (settings.target_countries || []).includes(country.code);
+                  return (
+                    <button
+                      key={country.code}
+                      onClick={() => {
+                        if (isSelected) {
+                          const idx = settings.target_countries.indexOf(country.code);
+                          if (idx > -1) removeArrayItem('target_countries', idx);
+                        } else {
+                          setSettings(prev => ({
+                            ...prev,
+                            target_countries: [...(prev.target_countries || []), country.code]
+                          }));
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        isSelected
+                          ? 'bg-green-600 text-white border border-green-500'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600 border border-gray-600'
+                      }`}
+                    >
+                      {country.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-500 mt-3">Click countries to add or remove them from your filter. Country matching is based on the author's LinkedIn location.</p>
             </div>
           </div>
         )}
