@@ -168,6 +168,14 @@ export async function generateLinkedInComment(
     is_prospect: context.prospect?.is_prospect || false
   });
 
+  // CRITICAL SAFETY CHECK: Never generate comment for posts without content
+  // This prevents garbage "couldn't see your post" comments
+  const postContent = context.post.post_text?.trim();
+  if (!postContent || postContent.length < 20) {
+    console.error('❌ REFUSED: Cannot generate comment - post has no content or too short');
+    throw new Error('POST_CONTENT_MISSING: Cannot generate comment for post without content. This prevents garbage comments.');
+  }
+
   // Build AI prompt
   const systemPrompt = buildCommentSystemPrompt(context);
   const userPrompt = buildCommentUserPrompt(context.post);
@@ -209,8 +217,24 @@ export async function generateLinkedInComment(
     context.prospect
   );
 
+  // Extract comment text
+  const commentText = parsedResponse.comment_text || parsedResponse.comment || '';
+
+  // CRITICAL: Validate no garbage/fallback content was generated
+  const garbagePhrases = [
+    'came through empty', 'content didn\'t load', 'mind reposting',
+    'dropping it in the comments', 'post might have come through',
+    'couldn\'t see', 'unable to see', 'can\'t see', 'not showing up',
+    'not loading', 'post is blank', 'empty post', 'didn\'t load', 'couldn\'t load'
+  ];
+  const commentLower = commentText.toLowerCase();
+  if (garbagePhrases.some(phrase => commentLower.includes(phrase))) {
+    console.error('❌ REJECTED: AI generated garbage/fallback comment');
+    throw new Error('GARBAGE_COMMENT: AI generated placeholder content. Post may have been missing content.');
+  }
+
   const generatedComment: GeneratedComment = {
-    comment_text: parsedResponse.comment_text || parsedResponse.comment || '',
+    comment_text: commentText,
     confidence_score: confidenceScore,
     reasoning: parsedResponse.reasoning || 'Generated with high quality',
     quality_indicators: {
@@ -473,6 +497,12 @@ ${bg.competitors_never_mention.join(', ')}`;
 **Quality Standards**:
 - If you can't add genuine value, return: { "skip": true, "reason": "Cannot add authentic value" }
 - Only generate comments you'd be proud to post yourself
+
+**🚨 CRITICAL - NEVER DO THIS**:
+- NEVER generate placeholder/fallback content like "post didn't load", "couldn't see content", "mind reposting"
+- NEVER ask the author to repost or share content again
+- NEVER reference technical issues with viewing the post
+- If you don't have the post content to work with, return { "skip": true } - DO NOT MAKE SOMETHING UP
 
 ## Output Format (JSON ONLY)
 
@@ -740,7 +770,23 @@ export function validateCommentQuality(comment: GeneratedComment): {
     'contact us',
     'book a demo',
     'resonate with me',
-    'resonates with what'
+    'resonates with what',
+    // CRITICAL: Garbage/placeholder phrases - AI didn't have proper content
+    'came through empty',
+    'content didn\'t load',
+    'mind reposting',
+    'dropping it in the comments',
+    'post might have come through',
+    'couldn\'t see the content',
+    'unable to see',
+    'can\'t see your post',
+    'not showing up',
+    'not loading',
+    'post is blank',
+    'empty post',
+    'didn\'t load',
+    'couldn\'t load',
+    'can\'t load'
   ];
 
   const commentLower = comment.comment_text.toLowerCase();
@@ -816,6 +862,18 @@ export async function generateCommentReply(
     comment_author: context.targetComment.author_name,
     comment_reactions: context.targetComment.reactions_count
   });
+
+  // CRITICAL SAFETY CHECK: Never generate reply without proper context
+  const postContent = context.originalPost.text?.trim();
+  const commentContent = context.targetComment.text?.trim();
+  if (!postContent || postContent.length < 20) {
+    console.error('❌ REFUSED: Cannot generate reply - original post has no content');
+    throw new Error('POST_CONTENT_MISSING: Cannot generate reply for post without content.');
+  }
+  if (!commentContent || commentContent.length < 5) {
+    console.error('❌ REFUSED: Cannot generate reply - target comment has no content');
+    throw new Error('COMMENT_CONTENT_MISSING: Cannot generate reply for comment without content.');
+  }
 
   // Build specialized prompt for replying to comments
   const systemPrompt = buildCommentReplySystemPrompt(context);
