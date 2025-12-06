@@ -144,6 +144,7 @@ export async function POST(request: NextRequest) {
         const posts: Array<{
           share_url: string;
           author_name: string;
+          social_id: string;
           title: string;
           snippet: string;
         }> = [];
@@ -214,13 +215,19 @@ export async function POST(request: NextRequest) {
               }
 
               // Extract author name from URL or title
-              // URL format: linkedin.com/posts/firstname-lastname_hashtag-...
+              // URL format: linkedin.com/posts/firstname-lastname_hashtag-activity-1234567890-xyz
               const urlMatch = item.link.match(/linkedin\.com\/posts\/([^_]+)/);
               const authorFromUrl = urlMatch ? urlMatch[1].replace(/-/g, ' ') : 'Unknown';
+
+              // Extract social_id (activity ID) from URL
+              // Format: activity-1234567890 at the end before the hash
+              const activityMatch = item.link.match(/activity-(\d+)/);
+              const socialId = activityMatch ? activityMatch[1] : `google-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
               posts.push({
                 share_url: item.link,
                 author_name: authorFromUrl,
+                social_id: socialId,
                 title: item.title,
                 snippet: item.snippet
               });
@@ -256,7 +263,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Insert new post
-          // Table columns: share_url, author_name, hashtags, status, monitor_id, workspace_id
+          // Table columns: share_url, author_name, hashtags, status, monitor_id, workspace_id, social_id
           debugInfo.insert_attempts = (debugInfo.insert_attempts || 0) + 1;
           const { error: insertError } = await supabase
             .from('linkedin_posts_discovered')
@@ -265,6 +272,7 @@ export async function POST(request: NextRequest) {
               workspace_id: monitor.workspace_id,
               share_url: post.share_url,
               author_name: post.author_name,
+              social_id: post.social_id,
               hashtags: [hashtag],
               status: 'discovered'
               // created_at is automatic
