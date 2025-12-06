@@ -111,6 +111,11 @@ export async function POST(request: NextRequest) {
       hashtag: string;
       posts_found: number;
       posts_saved: number;
+      debug?: {
+        google_items_count?: number;
+        google_error?: string;
+        first_link?: string;
+      };
     }> = [];
 
     let totalQueriesUsed = 0;
@@ -140,6 +145,13 @@ export async function POST(request: NextRequest) {
           title: string;
           snippet: string;
         }> = [];
+
+        // Debug info for this hashtag
+        let debugInfo: {
+          google_items_count?: number;
+          google_error?: string;
+          first_link?: string;
+        } = {};
 
         // Run up to MAX_QUERIES_PER_HASHTAG queries (pagination)
         for (let queryNum = 0; queryNum < MAX_QUERIES_PER_HASHTAG; queryNum++) {
@@ -175,16 +187,20 @@ export async function POST(request: NextRequest) {
             if (data.error) {
               console.error(`   ❌ Google API error: ${data.error.message}`);
               console.error(`   Error details:`, JSON.stringify(data.error).substring(0, 300));
+              debugInfo.google_error = data.error.message;
               break;
             }
 
             if (!data.items || data.items.length === 0) {
               console.log(`   📭 No items in response. Keys: ${Object.keys(data).join(', ')}`);
+              debugInfo.google_items_count = 0;
               break;
             }
 
             console.log(`   ✅ Got ${data.items.length} results`);
             console.log(`   First item link: ${data.items[0]?.link?.substring(0, 80)}`);
+            debugInfo.google_items_count = data.items.length;
+            debugInfo.first_link = data.items[0]?.link?.substring(0, 100);
 
             // Parse results
             for (const item of data.items) {
@@ -262,7 +278,8 @@ export async function POST(request: NextRequest) {
           monitor_id: monitor.id,
           hashtag,
           posts_found: posts.length,
-          posts_saved: savedCount
+          posts_saved: savedCount,
+          debug: debugInfo
         });
       }
 
