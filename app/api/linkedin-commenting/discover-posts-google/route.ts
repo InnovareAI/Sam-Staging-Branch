@@ -99,9 +99,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Found ${monitors.length} active monitors`);
 
-    // Filter to monitors with hashtags OR keywords
+    // Filter to monitors with hashtags, keywords, OR profiles
     const searchMonitors = monitors.filter(m =>
-      m.hashtags?.some((h: string) => h.startsWith('HASHTAG:') || h.startsWith('KEYWORD:'))
+      m.hashtags?.some((h: string) => h.startsWith('HASHTAG:') || h.startsWith('KEYWORD:') || h.startsWith('PROFILE:'))
     );
 
     console.log(`🏷️ ${searchMonitors.length} monitors have hashtags or keywords`);
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     const results: Array<{
       monitor_id: string;
       term: string;
-      type: 'hashtag' | 'keyword';
+      type: 'hashtag' | 'keyword' | 'profile';
       posts_found: number;
       posts_saved: number;
       debug?: {
@@ -145,9 +145,15 @@ export async function POST(request: NextRequest) {
         .filter((h: string) => h.startsWith('KEYWORD:'))
         .map((h: string) => ({ term: h.replace('KEYWORD:', ''), type: 'keyword' as const }));
 
+      // Extract profiles (prefixed with PROFILE:) - searches posts from specific LinkedIn profiles
+      // Use LinkedIn vanity URL: PROFILE:john-doe → site:linkedin.com/posts/john-doe
+      const profiles = monitor.hashtags
+        .filter((h: string) => h.startsWith('PROFILE:'))
+        .map((h: string) => ({ term: h.replace('PROFILE:', ''), type: 'profile' as const }));
+
       // Combine all search terms
-      const searchTerms = [...hashtags, ...keywords];
-      console.log(`   🔍 Monitor has ${hashtags.length} hashtags and ${keywords.length} keywords`);
+      const searchTerms = [...hashtags, ...keywords, ...profiles];
+      console.log(`   🔍 Monitor has ${hashtags.length} hashtags, ${keywords.length} keywords, ${profiles.length} profiles`);
 
       // Fetch ALL existing share_urls for this workspace to avoid duplicates
       // This is more efficient than checking each post individually
@@ -163,8 +169,10 @@ export async function POST(request: NextRequest) {
         // Log differently based on type
         if (type === 'hashtag') {
           console.log(`\n🔍 Searching for #${term} (hashtag)...`);
-        } else {
+        } else if (type === 'keyword') {
           console.log(`\n🔍 Searching for "${term}" (keyword in post text)...`);
+        } else {
+          console.log(`\n🔍 Searching for posts by ${term} (profile)...`);
         }
 
         const posts: Array<{
@@ -190,10 +198,19 @@ export async function POST(request: NextRequest) {
           const startIndex = queryNum * RESULTS_PER_QUERY + 1;
 
           // Build Google Custom Search URL
-          // KEY DIFFERENCE: hashtags use "#term", keywords use just "term"
-          const searchQuery = type === 'hashtag'
-            ? `site:linkedin.com/posts "#${term}"`      // Hashtag: search for #Bitcoin
-            : `site:linkedin.com/posts "${term}"`;      // Keyword: search for Bitcoin (in post text)
+          // KEY DIFFERENCE:
+          // - hashtags: site:linkedin.com/posts "#Bitcoin"
+          // - keywords: site:linkedin.com/posts "Bitcoin" (in post text)
+          // - profiles: site:linkedin.com/posts/john-doe (posts from that person)
+          let searchQuery: string;
+          if (type === 'hashtag') {
+            searchQuery = `site:linkedin.com/posts "#${term}"`;
+          } else if (type === 'keyword') {
+            searchQuery = `site:linkedin.com/posts "${term}"`;
+          } else {
+            // Profile: search for all posts from this LinkedIn vanity URL
+            searchQuery = `site:linkedin.com/posts/${term}`;
+          }
           const googleUrl = new URL('https://www.googleapis.com/customsearch/v1');
           googleUrl.searchParams.set('key', GOOGLE_API_KEY);
           googleUrl.searchParams.set('cx', GOOGLE_CX);
@@ -281,7 +298,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Log with proper formatting based on type
-        const termDisplay = type === 'hashtag' ? `#${term}` : `"${term}"`;
+        const termDisplay = type === 'hashtag' ? `#${term}` : type === 'keyword' ? `"${term}"` : `@${term}`;
         console.log(`   📊 New posts found for ${termDisplay}: ${posts.length} (skipped ${debugInfo.skipped_existing || 0} existing)`);
 
         // Save posts to database (all posts in the array are new - already filtered)
@@ -297,8 +314,8 @@ export async function POST(request: NextRequest) {
               share_url: post.share_url,
               author_name: post.author_name,
               social_id: post.social_id,
-              // Store the search term - for hashtags include #, for keywords just the term
-              hashtags: type === 'hashtag' ? [`#${term}`] : [term],
+              // Store the search term - hashtags get #, profiles get @, keywords just the term
+              hashtags: type === 'hashtag' ? [`#${term}`] : type === 'profile' ? [`@${term}`] : [term],
               status: 'discovered'
             });
 
