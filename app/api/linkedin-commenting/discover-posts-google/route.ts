@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         console.log(`\n🔍 Searching for #${hashtag}...`);
 
         const posts: Array<{
-          post_url: string;
+          share_url: string;
           author_name: string;
           title: string;
           snippet: string;
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
               const authorFromUrl = urlMatch ? urlMatch[1].replace(/-/g, ' ') : 'Unknown';
 
               posts.push({
-                post_url: item.link,
+                share_url: item.link,
                 author_name: authorFromUrl,
                 title: item.title,
                 snippet: item.snippet
@@ -243,34 +243,33 @@ export async function POST(request: NextRequest) {
           const { data: existing } = await supabase
             .from('linkedin_posts_discovered')
             .select('id')
-            .eq('post_url', post.post_url)
+            .eq('share_url', post.share_url)
             .single();
 
           if (existing) {
-            console.log(`   ⏭️ Post already exists: ${post.post_url.substring(0, 60)}...`);
+            console.log(`   ⏭️ Post already exists: ${post.share_url.substring(0, 60)}...`);
             continue;
           }
 
           // Insert new post
-          // Note: metadata column doesn't exist in table, store title in author_name temporarily
+          // Table columns: share_url, author_name, hashtags, status, monitor_id, workspace_id
           const { error: insertError } = await supabase
             .from('linkedin_posts_discovered')
             .insert({
               monitor_id: monitor.id,
               workspace_id: monitor.workspace_id,
-              post_url: post.post_url,
+              share_url: post.share_url,
               author_name: post.author_name,
               hashtags: [hashtag],
-              status: 'discovered',
-              discovered_at: new Date().toISOString()
-              // Note: title and snippet from Google search not stored (no metadata column)
+              status: 'discovered'
+              // created_at is automatic
             });
 
           if (insertError) {
             console.error(`   ❌ Insert error:`, insertError.message);
           } else {
             savedCount++;
-            console.log(`   ✅ Saved: ${post.author_name} - ${post.post_url.substring(0, 50)}...`);
+            console.log(`   ✅ Saved: ${post.author_name} - ${post.share_url.substring(0, 50)}...`);
           }
         }
 
