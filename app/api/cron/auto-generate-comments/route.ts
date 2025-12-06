@@ -118,11 +118,46 @@ export async function POST(request: NextRequest) {
     let errorCount = 0;
     const results: Array<{ post_id: string; status: string; comment_id?: string; error?: string }> = [];
 
+    // Track authors we've already commented on in THIS RUN (one comment per author per run)
+    const authorsCommentedThisRun = new Set<string>();
+
+    // Get authors who already have pending/scheduled comments (avoid double-commenting)
+    const { data: existingComments } = await supabase
+      .from('linkedin_post_comments')
+      .select('post:linkedin_posts_discovered!inner(author_profile_id, author_name)')
+      .in('status', ['pending_approval', 'scheduled'])
+      .in('workspace_id', workspaceIds);
+
+    const authorsWithPendingComments = new Set<string>();
+    for (const comment of existingComments || []) {
+      const authorId = (comment.post as any)?.author_profile_id;
+      if (authorId) authorsWithPendingComments.add(authorId);
+    }
+
+    console.log(`📋 ${authorsWithPendingComments.size} authors already have pending comments`);
+
     // Generate comments for each post
     for (const post of posts) {
       try {
         const monitor = post.linkedin_post_monitors;
         const brandGuideline = guidelinesByWorkspace[post.workspace_id];
+        const authorId = post.author_profile_id || post.author_name || 'unknown';
+
+        // DEDUPLICATION: Skip if we already commented on this author in this run
+        if (authorsCommentedThisRun.has(authorId)) {
+          console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - already commented on ${post.author_name} this run`);
+          skipCount++;
+          results.push({ post_id: post.id, status: 'skipped_duplicate_author_this_run' });
+          continue;
+        }
+
+        // DEDUPLICATION: Skip if author already has a pending/scheduled comment
+        if (authorsWithPendingComments.has(authorId)) {
+          console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - ${post.author_name} already has pending comment`);
+          skipCount++;
+          results.push({ post_id: post.id, status: 'skipped_author_has_pending' });
+          continue;
+        }
 
         console.log(`\n💬 Generating comment for post ${post.id.substring(0, 8)}...`);
         console.log(`   Author: ${post.author_name}`);
