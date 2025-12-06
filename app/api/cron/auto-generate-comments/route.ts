@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         author_name,
         author_profile_id,
         author_title,
-        author_company,
+        author_headline,
         post_content,
         post_date,
         hashtags,
@@ -240,8 +240,8 @@ export async function POST(request: NextRequest) {
                   author: {
                     linkedin_id: post.author_profile_id || '',
                     name: post.author_name || 'Unknown Author',
-                    title: post.author_title || undefined,
-                    company: post.author_company || undefined,
+                    title: post.author_title || post.author_headline || undefined,
+                    company: undefined, // Not stored separately - headline contains this
                     profile_url: post.share_url ? post.share_url.split('/posts/')[0] : undefined
                   },
                   engagement: {
