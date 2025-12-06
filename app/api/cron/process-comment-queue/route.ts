@@ -17,6 +17,51 @@ export const dynamic = 'force-dynamic';
 
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
+const UNIPILE_ACCOUNT_ID = process.env.UNIPILE_ACCOUNT_ID || 'ymtTx4xVQ6OVUFk83ctwtA';
+
+/**
+ * CRITICAL: Resolve the correct social_id for posting comments
+ *
+ * LinkedIn has TWO different IDs:
+ * 1. Activity ID (from URL): urn:li:activity:7401968594147758080
+ * 2. UgcPost ID (for API): urn:li:ugcPost:7401174173764722688
+ *
+ * These are DIFFERENT! We store activity ID from URLs, but Unipile's
+ * comment endpoint requires the ugcPost ID.
+ *
+ * Solution: Fetch post via activity ID → get ugcPost ID from response
+ */
+async function resolvePostSocialId(activitySocialId: string, accountId: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `${UNIPILE_BASE_URL}/api/v1/posts/${encodeURIComponent(activitySocialId)}?account_id=${accountId}`,
+      {
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.log(`   ⚠️ Could not resolve post ID: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    // Unipile returns the correct social_id (ugcPost format) in the response
+    if (data.social_id && data.social_id.startsWith('urn:li:ugcPost:')) {
+      console.log(`   🔄 Resolved activity ID to ugcPost: ${data.social_id}`);
+      return data.social_id;
+    }
+
+    // If no ugcPost, return original
+    return activitySocialId;
+  } catch (error) {
+    console.log(`   ⚠️ Error resolving post ID:`, error);
+    return null;
+  }
+}
 
 // Countries with Friday-Saturday weekends (Middle East)
 const FRIDAY_SATURDAY_WEEKEND_COUNTRIES = ['AE', 'SA', 'KW', 'QA', 'BH', 'OM', 'JO', 'EG'];
@@ -183,16 +228,20 @@ export async function POST(req: NextRequest) {
         }
 
         // Post comment to LinkedIn via Unipile
-        // CRITICAL: social_id must be in URN format for Unipile API
-        // Legacy posts may have raw numeric IDs - extract activity ID from share_url
-        let postSocialId = comment.post.social_id;
+        // CRITICAL: LinkedIn has TWO different ID formats:
+        // - Activity ID (from URLs): urn:li:activity:xxx
+        // - UgcPost ID (for API): urn:li:ugcPost:xxx
+        // We need to resolve the ugcPost ID from the activity ID
 
-        if (!postSocialId?.startsWith('urn:li:')) {
+        let activitySocialId = comment.post.social_id;
+
+        // First, ensure we have a proper URN format for the activity
+        if (!activitySocialId?.startsWith('urn:li:')) {
           // Legacy format - extract activity ID from share_url
           const activityMatch = comment.post.share_url?.match(/activity-(\d+)/);
           if (activityMatch) {
-            postSocialId = `urn:li:activity:${activityMatch[1]}`;
-            console.log(`   🔄 Converted legacy social_id to URN: ${postSocialId}`);
+            activitySocialId = `urn:li:activity:${activityMatch[1]}`;
+            console.log(`   🔄 Converted legacy social_id to URN: ${activitySocialId}`);
           } else {
             console.error(`   ❌ Cannot determine activity ID from share_url: ${comment.post.share_url}`);
             await supabase
@@ -209,7 +258,26 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        console.log(`   Posting to LinkedIn post: ${postSocialId}`);
+        // CRITICAL: Resolve activity ID to ugcPost ID (required for comment API)
+        console.log(`   🔍 Resolving post ID: ${activitySocialId}`);
+        const postSocialId = await resolvePostSocialId(activitySocialId, linkedinAccount.unipile_account_id);
+
+        if (!postSocialId) {
+          console.error(`   ❌ Could not resolve post social_id`);
+          await supabase
+            .from('linkedin_post_comments')
+            .update({
+              status: 'failed',
+              failure_reason: 'Could not resolve LinkedIn post ID - post may be deleted or inaccessible',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', comment.id);
+          failed++;
+          errors.push(`Comment ${comment.id}: Could not resolve post ID`);
+          continue;
+        }
+
+        console.log(`   📤 Posting to LinkedIn post: ${postSocialId}`);
 
         const unipileResponse = await fetch(
           `${UNIPILE_BASE_URL}/api/v1/posts/${encodeURIComponent(postSocialId)}/comments`,
