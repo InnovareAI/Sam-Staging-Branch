@@ -156,24 +156,35 @@ export async function POST(request: NextRequest) {
           googleUrl.searchParams.set('num', RESULTS_PER_QUERY.toString());
 
           console.log(`   Query ${queryNum + 1}: start=${startIndex}`);
+          console.log(`   URL: ${googleUrl.toString().substring(0, 150)}...`);
 
           try {
             const response = await fetch(googleUrl.toString());
-            const data: GoogleSearchResponse = await response.json();
+            const responseText = await response.text();
+
+            let data: GoogleSearchResponse;
+            try {
+              data = JSON.parse(responseText);
+            } catch (parseError) {
+              console.error(`   ❌ JSON parse error:`, responseText.substring(0, 200));
+              break;
+            }
 
             totalQueriesUsed++;
 
             if (data.error) {
               console.error(`   ❌ Google API error: ${data.error.message}`);
+              console.error(`   Error details:`, JSON.stringify(data.error).substring(0, 300));
               break;
             }
 
             if (!data.items || data.items.length === 0) {
-              console.log(`   📭 No more results`);
+              console.log(`   📭 No items in response. Keys: ${Object.keys(data).join(', ')}`);
               break;
             }
 
             console.log(`   ✅ Got ${data.items.length} results`);
+            console.log(`   First item link: ${data.items[0]?.link?.substring(0, 80)}`);
 
             // Parse results
             for (const item of data.items) {
