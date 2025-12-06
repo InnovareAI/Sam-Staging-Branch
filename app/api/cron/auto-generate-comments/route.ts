@@ -170,6 +170,19 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
+        // SAFETY: Skip posts without content - we can't generate good comments
+        if (!post.post_content || post.post_content.trim().length === 0) {
+          console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - NO CONTENT (would generate garbage comment)`);
+          skipCount++;
+          results.push({ post_id: post.id, status: 'skipped_no_content' });
+          // Mark as skipped so we don't try again
+          await supabase
+            .from('linkedin_posts_discovered')
+            .update({ status: 'skipped', comment_generated_at: new Date().toISOString() })
+            .eq('id', post.id);
+          continue;
+        }
+
         console.log(`\n💬 Processing post ${post.id.substring(0, 8)}...`);
         console.log(`   Author: ${post.author_name}`);
 
@@ -299,6 +312,42 @@ export async function POST(request: NextRequest) {
             .eq('id', post.id);
 
           results.push({ post_id: post.id, status: 'skipped' });
+          continue;
+        }
+
+        // SAFETY: Reject garbage/placeholder comments
+        // These indicate the AI didn't have proper context or post content
+        const garbagePhrases = [
+          'came through empty',
+          'content didn\'t load',
+          'mind reposting',
+          'dropping it in the comments',
+          'post might have come through',
+          'couldn\'t see the content',
+          'unable to see',
+          'can\'t see your post',
+          'not showing up',
+          'not loading',
+          'post is blank',
+          'empty post'
+        ];
+        const commentLower = generatedComment.comment_text.toLowerCase();
+        const isGarbageComment = garbagePhrases.some(phrase => commentLower.includes(phrase));
+
+        if (isGarbageComment) {
+          console.log(`   🚫 REJECTED GARBAGE COMMENT: "${generatedComment.comment_text.substring(0, 100)}..."`);
+          errorCount++;
+
+          // Mark post as skipped
+          await supabase
+            .from('linkedin_posts_discovered')
+            .update({
+              comment_generated_at: new Date().toISOString(),
+              status: 'skipped'
+            })
+            .eq('id', post.id);
+
+          results.push({ post_id: post.id, status: 'rejected_garbage_comment' });
           continue;
         }
 
