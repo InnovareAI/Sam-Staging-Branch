@@ -147,23 +147,25 @@ export async function GET(
     // Log feedback for analytics (can be used for training later)
     console.log(`📊 Feedback recorded: ${rating} for comment ${commentId.substring(0, 8)}`);
 
-    // Also insert into a feedback analytics table if we want detailed tracking
-    // This can be used for ML training later
-    await supabase
-      .from('comment_feedback_log')
-      .insert({
-        comment_id: commentId,
-        workspace_id: comment.workspace_id,
-        rating: rating,
-        comment_text: comment.comment_text,
-        generation_metadata: comment.generation_metadata
-      })
-      .then(({ error }) => {
+    // Try to insert into feedback analytics table (may not exist yet)
+    try {
+      const { error: logError } = await supabase
+        .from('comment_feedback_log')
+        .insert({
+          comment_id: commentId,
+          workspace_id: comment.workspace_id,
+          rating: rating,
+          comment_text: comment.comment_text,
+          generation_metadata: comment.generation_metadata
+        });
+
+      if (logError) {
         // Don't fail if this table doesn't exist yet
-        if (error && !error.message.includes('does not exist')) {
-          console.error('Error logging feedback:', error);
-        }
-      });
+        console.log('Note: Could not log to comment_feedback_log:', logError.message);
+      }
+    } catch (logError) {
+      console.log('Note: comment_feedback_log table may not exist');
+    }
 
     if (rating === 'good') {
       return htmlResponse(
