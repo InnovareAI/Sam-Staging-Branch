@@ -115,6 +115,8 @@ export async function POST(request: NextRequest) {
         google_items_count?: number;
         google_error?: string;
         first_link?: string;
+        insert_errors?: string[];
+        insert_attempts?: number;
       };
     }> = [];
 
@@ -151,7 +153,9 @@ export async function POST(request: NextRequest) {
           google_items_count?: number;
           google_error?: string;
           first_link?: string;
-        } = {};
+          insert_errors?: string[];
+          insert_attempts?: number;
+        } = { insert_errors: [], insert_attempts: 0 };
 
         // Run up to MAX_QUERIES_PER_HASHTAG queries (pagination)
         for (let queryNum = 0; queryNum < MAX_QUERIES_PER_HASHTAG; queryNum++) {
@@ -253,6 +257,7 @@ export async function POST(request: NextRequest) {
 
           // Insert new post
           // Table columns: share_url, author_name, hashtags, status, monitor_id, workspace_id
+          debugInfo.insert_attempts = (debugInfo.insert_attempts || 0) + 1;
           const { error: insertError } = await supabase
             .from('linkedin_posts_discovered')
             .insert({
@@ -267,6 +272,7 @@ export async function POST(request: NextRequest) {
 
           if (insertError) {
             console.error(`   ❌ Insert error:`, insertError.message);
+            debugInfo.insert_errors?.push(insertError.message);
           } else {
             savedCount++;
             console.log(`   ✅ Saved: ${post.author_name} - ${post.share_url.substring(0, 50)}...`);
