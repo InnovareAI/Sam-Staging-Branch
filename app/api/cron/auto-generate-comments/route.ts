@@ -274,6 +274,28 @@ export async function POST(request: NextRequest) {
         }
 
         // ============================================
+        // BLACKLIST FILTER: Skip posts from blacklisted profiles
+        // Prevents commenting on your own posts or competitor posts
+        // ============================================
+        const blacklistedProfiles: string[] = brandGuideline?.blacklisted_profiles || [];
+        if (blacklistedProfiles.length > 0 && post.author_name) {
+          const authorLower = post.author_name.toLowerCase();
+          const isBlacklisted = blacklistedProfiles.some(
+            (name: string) => authorLower.includes(name.toLowerCase())
+          );
+          if (isBlacklisted) {
+            console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - BLACKLISTED AUTHOR: ${post.author_name}`);
+            skipCount++;
+            results.push({ post_id: post.id, status: 'skipped_blacklisted_author' });
+            await supabase
+              .from('linkedin_posts_discovered')
+              .update({ status: 'skipped', comment_generated_at: new Date().toISOString() })
+              .eq('id', post.id);
+            continue;
+          }
+        }
+
+        // ============================================
         // LEADERSHIP FILTER: Skip non-thought-leadership posts
         // Focus on high-value content, skip noise
         // ============================================
