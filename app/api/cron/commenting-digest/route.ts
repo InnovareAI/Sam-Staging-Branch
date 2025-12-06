@@ -19,6 +19,11 @@ interface DigestComment {
     post_content: string;
     author_name: string;
   };
+  monitor?: {
+    id: string;
+    name: string;
+    hashtags: string[];
+  };
 }
 
 interface WorkspaceSettings {
@@ -109,6 +114,11 @@ export async function POST(request: NextRequest) {
                 share_url,
                 post_content,
                 author_name
+              ),
+              monitor:linkedin_post_monitors (
+                id,
+                name,
+                hashtags
               )
             `)
             .eq('workspace_id', ws.workspace_id)
@@ -138,6 +148,11 @@ export async function POST(request: NextRequest) {
                 share_url,
                 post_content,
                 author_name
+              ),
+              monitor:linkedin_post_monitors (
+                id,
+                name,
+                hashtags
               )
             `)
             .eq('workspace_id', ws.workspace_id)
@@ -162,9 +177,13 @@ export async function POST(request: NextRequest) {
 
         // Build and send email based on mode
         const recipientEmail = testEmail || ws.digest_email;
+        // Try to extract first name from email (e.g., "pete@example.com" -> "Pete")
+        const emailName = recipientEmail.split('@')[0];
+        const recipientName = emailName.charAt(0).toUpperCase() + emailName.slice(1).replace(/[._-]/g, ' ').split(' ')[0];
+
         const emailHtml = isAutoApprove
-          ? buildPreviewDigestEmail(comments, ws.workspace_id, ws.digest_timezone)
-          : buildApprovalDigestEmail(comments, ws.workspace_id);
+          ? buildPreviewDigestEmail(comments, ws.workspace_id, ws.digest_timezone, recipientName)
+          : buildApprovalDigestEmail(comments, ws.workspace_id, recipientName);
 
         const subject = isAutoApprove
           ? `📅 ${comments.length} LinkedIn Comment${comments.length > 1 ? 's' : ''} Scheduled for Today`
@@ -217,13 +236,18 @@ export async function POST(request: NextRequest) {
 /**
  * Build APPROVAL digest email - for users who need to approve/reject comments
  */
-function buildApprovalDigestEmail(comments: DigestComment[], workspaceId: string): string {
+function buildApprovalDigestEmail(comments: DigestComment[], workspaceId: string, recipientName?: string): string {
   const commentsHtml = comments.map((comment, index) => {
     // Truncate post text for preview
     const postContent = comment.post?.post_content || '';
     const postPreview = postContent.length > 200
       ? postContent.substring(0, 200) + '...'
       : postContent;
+
+    // Get keyword/hashtag from monitor name (format: "HASHTAG: xyz" or "KEYWORD: xyz")
+    const monitorName = comment.monitor?.name || '';
+    const searchTerm = monitorName.replace(/^(HASHTAG:|KEYWORD:)\s*/i, '').trim();
+    const isHashtag = monitorName.toLowerCase().startsWith('hashtag:');
 
     const approveUrl = `${APP_URL}/api/linkedin-commenting/comments/${comment.id}/approve`;
     const rejectUrl = `${APP_URL}/api/linkedin-commenting/comments/${comment.id}/reject`;
@@ -256,6 +280,15 @@ function buildApprovalDigestEmail(comments: DigestComment[], workspaceId: string
               "${postPreview}"
             </p>
           </div>
+
+          <!-- Keyword/Hashtag Badge -->
+          ${searchTerm ? `
+          <p style="margin: 0 0 12px;">
+            <span style="display: inline-block; background: ${isHashtag ? '#1e3a5f' : '#3d1f5f'}; color: ${isHashtag ? '#60a5fa' : '#c084fc'}; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">
+              ${isHashtag ? '#' : '🔍'} ${searchTerm}
+            </span>
+          </p>
+          ` : ''}
 
           <!-- AI Comment -->
           <p style="margin: 16px 0 8px; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -300,6 +333,9 @@ function buildApprovalDigestEmail(comments: DigestComment[], workspaceId: string
     `;
   }).join('');
 
+  // Personalized greeting
+  const greeting = recipientName ? `Hi ${recipientName}!` : 'Good morning!';
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -320,6 +356,16 @@ function buildApprovalDigestEmail(comments: DigestComment[], workspaceId: string
               </h1>
               <p style="margin: 8px 0 0; color: rgba(255,255,255,0.8); font-size: 14px;">
                 ${comments.length} AI-generated comment${comments.length > 1 ? 's' : ''} awaiting your approval
+              </p>
+            </td>
+          </tr>
+
+          <!-- Personalized Intro -->
+          <tr>
+            <td style="padding: 24px 24px 0; text-align: left;">
+              <p style="margin: 0; color: #f3f4f6; font-size: 16px; line-height: 1.6;">
+                ${greeting} I found ${comments.length} relevant post${comments.length > 1 ? 's' : ''} for you to engage with today.
+                Review each comment below and click <strong style="color: #10b981;">Approve</strong> to post, or <strong style="color: #9ca3af;">Skip</strong> to pass.
               </p>
             </td>
           </tr>
@@ -350,13 +396,18 @@ function buildApprovalDigestEmail(comments: DigestComment[], workspaceId: string
  * Build PREVIEW digest email - for auto-approve users to see what will post today
  * No action buttons needed, just informational with optional cancel links
  */
-function buildPreviewDigestEmail(comments: DigestComment[], workspaceId: string, timezone: string): string {
+function buildPreviewDigestEmail(comments: DigestComment[], workspaceId: string, timezone: string, recipientName?: string): string {
   const commentsHtml = comments.map((comment, index) => {
     // Truncate post text for preview
     const postContent = comment.post?.post_content || '';
     const postPreview = postContent.length > 200
       ? postContent.substring(0, 200) + '...'
       : postContent;
+
+    // Get keyword/hashtag from monitor name (format: "HASHTAG: xyz" or "KEYWORD: xyz")
+    const monitorName = comment.monitor?.name || '';
+    const searchTerm = monitorName.replace(/^(HASHTAG:|KEYWORD:)\s*/i, '').trim();
+    const isHashtag = monitorName.toLowerCase().startsWith('hashtag:');
 
     // Format scheduled time
     const scheduledTime = comment.scheduled_post_time
@@ -401,6 +452,15 @@ function buildPreviewDigestEmail(comments: DigestComment[], workspaceId: string,
             </p>
           </div>
 
+          <!-- Keyword/Hashtag Badge -->
+          ${searchTerm ? `
+          <p style="margin: 0 0 12px;">
+            <span style="display: inline-block; background: ${isHashtag ? '#1e3a5f' : '#3d1f5f'}; color: ${isHashtag ? '#60a5fa' : '#c084fc'}; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">
+              ${isHashtag ? '#' : '🔍'} ${searchTerm}
+            </span>
+          </p>
+          ` : ''}
+
           <!-- AI Comment -->
           <p style="margin: 16px 0 8px; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
             Comment to be posted:
@@ -429,6 +489,9 @@ function buildPreviewDigestEmail(comments: DigestComment[], workspaceId: string,
     `;
   }).join('');
 
+  // Personalized greeting
+  const greeting = recipientName ? `Hi ${recipientName}!` : 'Good morning!';
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -453,12 +516,24 @@ function buildPreviewDigestEmail(comments: DigestComment[], workspaceId: string,
             </td>
           </tr>
 
+          <!-- Personalized Intro -->
+          <tr>
+            <td style="padding: 24px 24px 0; text-align: left;">
+              <p style="margin: 0; color: #f3f4f6; font-size: 16px; line-height: 1.6;">
+                ${greeting} Here's a preview of your scheduled comments for today.
+                They'll post automatically throughout business hours. Click <strong style="color: #ef4444;">Cancel</strong> on any you'd like to skip.
+              </p>
+            </td>
+          </tr>
+
           <!-- Info Banner -->
           <tr>
-            <td style="background: #065f46; padding: 16px 24px;">
-              <p style="margin: 0; color: #d1fae5; font-size: 13px; text-align: center;">
-                ✅ Auto-approve is ON — these comments will post automatically between 9 AM and 6 PM
-              </p>
+            <td style="padding: 16px 24px;">
+              <div style="background: #065f46; border-radius: 8px; padding: 12px 16px;">
+                <p style="margin: 0; color: #d1fae5; font-size: 13px; text-align: center;">
+                  ✅ Auto-approve is ON — comments post automatically between 9 AM and 6 PM
+                </p>
+              </div>
             </td>
           </tr>
 
