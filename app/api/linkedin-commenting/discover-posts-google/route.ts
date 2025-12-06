@@ -46,6 +46,54 @@ const MIN_WAIT_HOURS = 1;
 const MAX_WAIT_HOURS = 4;
 
 /**
+ * Fetch full post content from Unipile API
+ * Uses the URN format social_id to get the actual post text
+ */
+async function fetchPostContentFromUnipile(socialId: string): Promise<{
+  text: string | null;
+  author_name: string | null;
+  author_headline: string | null;
+  engagement: { likes: number; comments: number; shares: number } | null;
+}> {
+  if (!UNIPILE_DSN || !UNIPILE_API_KEY) {
+    return { text: null, author_name: null, author_headline: null, engagement: null };
+  }
+
+  try {
+    const baseUrl = `https://${UNIPILE_DSN}`;
+    const postUrl = `${baseUrl}/api/v1/posts/${encodeURIComponent(socialId)}?account_id=${UNIPILE_ACCOUNT_ID}`;
+
+    const response = await fetch(postUrl, {
+      headers: {
+        'X-API-KEY': UNIPILE_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      console.log(`   ⚠️ Could not fetch post content: ${response.status}`);
+      return { text: null, author_name: null, author_headline: null, engagement: null };
+    }
+
+    const data = await response.json();
+
+    return {
+      text: data.text || null,
+      author_name: data.author?.name || null,
+      author_headline: data.author?.headline || null,
+      engagement: {
+        likes: data.reaction_counter || 0,
+        comments: data.comment_counter || 0,
+        shares: data.repost_counter || 0
+      }
+    };
+  } catch (error) {
+    console.log(`   ⚠️ Error fetching post content:`, error);
+    return { text: null, author_name: null, author_headline: null, engagement: null };
+  }
+}
+
+/**
  * Generate a random comment_eligible_at timestamp
  * This creates a random delay between MIN_WAIT_HOURS and MAX_WAIT_HOURS
  * Purpose: Never comment immediately - wait for engagement from other users
@@ -482,14 +530,35 @@ export async function POST(request: NextRequest) {
           // Set random comment_eligible_at (1-4 hours from now) to enforce waiting period
           debugInfo.insert_attempts = (debugInfo.insert_attempts || 0) + 1;
           const eligibleAt = getRandomEligibleTime();
+
+          // CRITICAL: Fetch actual post content from Unipile
+          // Google discovery only gives us URLs - we need the actual text to generate good comments
+          console.log(`   📥 Fetching content for: ${post.social_id}`);
+          const postContent = await fetchPostContentFromUnipile(post.social_id);
+
+          // Skip posts where we couldn't get content - we can't generate good comments without it
+          if (!postContent.text) {
+            console.log(`   ⏭️ Skipping post - no content available`);
+            continue;
+          }
+
           const { error: insertError } = await supabase
             .from('linkedin_posts_discovered')
             .insert({
               monitor_id: monitor.id,
               workspace_id: monitor.workspace_id,
               share_url: post.share_url,
-              author_name: post.author_name,
+              author_name: postContent.author_name || post.author_name,
+              author_headline: postContent.author_headline,
               social_id: post.social_id,
+              // Store the actual post content from Unipile
+              post_content: postContent.text,
+              // Store engagement metrics
+              engagement_metrics: postContent.engagement ? {
+                reactions: postContent.engagement.likes,
+                comments: postContent.engagement.comments,
+                reposts: postContent.engagement.shares
+              } : null,
               // Store the search term - hashtags get #, profiles get @, keywords just the term
               hashtags: type === 'hashtag' ? [`#${term}`] : type === 'profile' ? [`@${term}`] : [term],
               status: 'discovered',
@@ -504,7 +573,7 @@ export async function POST(request: NextRequest) {
             savedCount++;
             // Add to existingUrls to prevent duplicates within same run
             existingUrls.add(post.share_url);
-            console.log(`   ✅ Saved: ${post.author_name} - ${post.share_url.substring(0, 50)}...`);
+            console.log(`   ✅ Saved: ${postContent.author_name || post.author_name} - "${postContent.text?.substring(0, 50)}..."`);
           }
         }
 
