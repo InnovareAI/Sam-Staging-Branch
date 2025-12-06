@@ -99,16 +99,17 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Found ${monitors.length} active monitors`);
 
-    // Filter to hashtag monitors only
-    const hashtagMonitors = monitors.filter(m =>
-      m.hashtags?.some((h: string) => h.startsWith('HASHTAG:'))
+    // Filter to monitors with hashtags OR keywords
+    const searchMonitors = monitors.filter(m =>
+      m.hashtags?.some((h: string) => h.startsWith('HASHTAG:') || h.startsWith('KEYWORD:'))
     );
 
-    console.log(`🏷️ ${hashtagMonitors.length} monitors have hashtags`);
+    console.log(`🏷️ ${searchMonitors.length} monitors have hashtags or keywords`);
 
     const results: Array<{
       monitor_id: string;
-      hashtag: string;
+      term: string;
+      type: 'hashtag' | 'keyword';
       posts_found: number;
       posts_saved: number;
       debug?: {
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
 
     let totalQueriesUsed = 0;
 
-    for (const monitor of hashtagMonitors) {
+    for (const monitor of searchMonitors) {
       // Check cooldown
       if (monitor.last_scraped_at) {
         const lastScraped = new Date(monitor.last_scraped_at);
@@ -134,10 +135,19 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Extract hashtags
+      // Extract hashtags (prefixed with HASHTAG:)
       const hashtags = monitor.hashtags
         .filter((h: string) => h.startsWith('HASHTAG:'))
-        .map((h: string) => h.replace('HASHTAG:', ''));
+        .map((h: string) => ({ term: h.replace('HASHTAG:', ''), type: 'hashtag' as const }));
+
+      // Extract keywords (prefixed with KEYWORD:) - searches post text without #
+      const keywords = monitor.hashtags
+        .filter((h: string) => h.startsWith('KEYWORD:'))
+        .map((h: string) => ({ term: h.replace('KEYWORD:', ''), type: 'keyword' as const }));
+
+      // Combine all search terms
+      const searchTerms = [...hashtags, ...keywords];
+      console.log(`   🔍 Monitor has ${hashtags.length} hashtags and ${keywords.length} keywords`);
 
       // Fetch ALL existing share_urls for this workspace to avoid duplicates
       // This is more efficient than checking each post individually
@@ -149,8 +159,13 @@ export async function POST(request: NextRequest) {
       const existingUrls = new Set(existingPosts?.map(p => p.share_url) || []);
       console.log(`   📋 ${existingUrls.size} existing posts in workspace (will skip these)`);
 
-      for (const hashtag of hashtags) {
-        console.log(`\n🔍 Searching for #${hashtag}...`);
+      for (const { term, type } of searchTerms) {
+        // Log differently based on type
+        if (type === 'hashtag') {
+          console.log(`\n🔍 Searching for #${term} (hashtag)...`);
+        } else {
+          console.log(`\n🔍 Searching for "${term}" (keyword in post text)...`);
+        }
 
         const posts: Array<{
           share_url: string;
@@ -160,7 +175,7 @@ export async function POST(request: NextRequest) {
           snippet: string;
         }> = [];
 
-        // Debug info for this hashtag
+        // Debug info for this search term
         let debugInfo: {
           google_items_count?: number;
           google_error?: string;
@@ -175,8 +190,10 @@ export async function POST(request: NextRequest) {
           const startIndex = queryNum * RESULTS_PER_QUERY + 1;
 
           // Build Google Custom Search URL
-          // Search for LinkedIn posts with the hashtag
-          const searchQuery = `site:linkedin.com/posts "#${hashtag}"`;
+          // KEY DIFFERENCE: hashtags use "#term", keywords use just "term"
+          const searchQuery = type === 'hashtag'
+            ? `site:linkedin.com/posts "#${term}"`      // Hashtag: search for #Bitcoin
+            : `site:linkedin.com/posts "${term}"`;      // Keyword: search for Bitcoin (in post text)
           const googleUrl = new URL('https://www.googleapis.com/customsearch/v1');
           googleUrl.searchParams.set('key', GOOGLE_API_KEY);
           googleUrl.searchParams.set('cx', GOOGLE_CX);
@@ -263,7 +280,9 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        console.log(`   📊 New posts found for #${hashtag}: ${posts.length} (skipped ${debugInfo.skipped_existing || 0} existing)`);
+        // Log with proper formatting based on type
+        const termDisplay = type === 'hashtag' ? `#${term}` : `"${term}"`;
+        console.log(`   📊 New posts found for ${termDisplay}: ${posts.length} (skipped ${debugInfo.skipped_existing || 0} existing)`);
 
         // Save posts to database (all posts in the array are new - already filtered)
         let savedCount = 0;
@@ -278,7 +297,8 @@ export async function POST(request: NextRequest) {
               share_url: post.share_url,
               author_name: post.author_name,
               social_id: post.social_id,
-              hashtags: [hashtag],
+              // Store the search term - for hashtags include #, for keywords just the term
+              hashtags: type === 'hashtag' ? [`#${term}`] : [term],
               status: 'discovered'
             });
 
@@ -295,7 +315,8 @@ export async function POST(request: NextRequest) {
 
         results.push({
           monitor_id: monitor.id,
-          hashtag,
+          term,
+          type,
           posts_found: posts.length,
           posts_saved: savedCount,
           debug: debugInfo
