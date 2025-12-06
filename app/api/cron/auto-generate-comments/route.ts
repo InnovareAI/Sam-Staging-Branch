@@ -314,6 +314,10 @@ export async function POST(request: NextRequest) {
           comment_id: savedComment.id
         });
 
+        // Track this author so we don't comment on their other posts in this run
+        authorsCommentedThisRun.add(authorId);
+        authorsWithPendingComments.add(authorId); // Also prevent future runs from double-commenting
+
         // Rate limiting: 5 seconds between AI calls
         await new Promise(resolve => setTimeout(resolve, 5000));
 
