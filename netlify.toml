@@ -126,11 +126,11 @@
 # [functions."discover-posts"]
 #   schedule = "0 */2 * * *"
 
-# Discover Posts (Google): Find new posts via Google Custom Search every 2 hours
-# Cost: ~$0.015 per hashtag ($2/month vs Apify's $100+/month)
-# Returns 10-30 posts per hashtag (plenty for commenting)
+# Discover Posts (Google): Find new posts via Google Custom Search every 4 hours
+# Cost: ~$0.005 per term, 1 query per term (was 3), 4hr cooldown (was 2)
+# 17 terms × 1 query × 6 runs/day = 102 queries/day = $0.51/day
 [functions."discover-posts-google"]
-  schedule = "0 */2 * * *"
+  schedule = "0 */4 * * *"
 
 # Auto-Generate Comments: Create AI comments every 30 minutes
 # Generates thoughtful comments for discovered posts (pending approval)

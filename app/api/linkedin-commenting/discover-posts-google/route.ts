@@ -27,10 +27,10 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // Limits
-const MAX_RESULTS_PER_HASHTAG = 25;
+const MAX_RESULTS_PER_HASHTAG = 10;  // 10 results per term is plenty for commenting
 const RESULTS_PER_QUERY = 10; // Google returns max 10 per query
-const MAX_QUERIES_PER_HASHTAG = 3; // 3 queries × 10 = 30 results max
-const COOLDOWN_HOURS = 2; // Don't re-scrape same hashtag within 2 hours
+const MAX_QUERIES_PER_HASHTAG = 1; // 1 query per term = 10 results (was 3 = 30)
+const COOLDOWN_HOURS = 4; // Don't re-scrape same hashtag within 4 hours (was 2)
 
 interface GoogleSearchResult {
   title: string;
