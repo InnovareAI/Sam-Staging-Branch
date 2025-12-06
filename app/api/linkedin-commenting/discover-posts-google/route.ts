@@ -41,6 +41,22 @@ const RESULTS_PER_QUERY = 10; // Google returns max 10 per query
 const MAX_QUERIES_PER_HASHTAG = 1; // 1 query per term = 10 results (was 3 = 30)
 const COOLDOWN_HOURS = 4; // Don't re-scrape same hashtag within 4 hours (was 2)
 
+// Engagement waiting period: random delay before we can comment (1-4 hours)
+const MIN_WAIT_HOURS = 1;
+const MAX_WAIT_HOURS = 4;
+
+/**
+ * Generate a random comment_eligible_at timestamp
+ * This creates a random delay between MIN_WAIT_HOURS and MAX_WAIT_HOURS
+ * Purpose: Never comment immediately - wait for engagement from other users
+ */
+function getRandomEligibleTime(): string {
+  const minMs = MIN_WAIT_HOURS * 60 * 60 * 1000;
+  const maxMs = MAX_WAIT_HOURS * 60 * 60 * 1000;
+  const randomDelayMs = minMs + Math.random() * (maxMs - minMs);
+  return new Date(Date.now() + randomDelayMs).toISOString();
+}
+
 interface GoogleSearchResult {
   title: string;
   link: string;
@@ -451,7 +467,9 @@ export async function POST(request: NextRequest) {
         let savedCount = 0;
         for (const post of posts.slice(0, MAX_RESULTS_PER_HASHTAG)) {
           // Insert new post (no need to check existence - already filtered during parsing)
+          // Set random comment_eligible_at (1-4 hours from now) to enforce waiting period
           debugInfo.insert_attempts = (debugInfo.insert_attempts || 0) + 1;
+          const eligibleAt = getRandomEligibleTime();
           const { error: insertError } = await supabase
             .from('linkedin_posts_discovered')
             .insert({
@@ -462,7 +480,9 @@ export async function POST(request: NextRequest) {
               social_id: post.social_id,
               // Store the search term - hashtags get #, profiles get @, keywords just the term
               hashtags: type === 'hashtag' ? [`#${term}`] : type === 'profile' ? [`@${term}`] : [term],
-              status: 'discovered'
+              status: 'discovered',
+              // RANDOMIZER: Wait 1-4 hours before allowing comments (never comment immediately)
+              comment_eligible_at: eligibleAt
             });
 
           if (insertError) {

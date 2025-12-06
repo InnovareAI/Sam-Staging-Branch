@@ -39,6 +39,9 @@ export async function POST(request: NextRequest) {
   try {
     // Find discovered posts that don't have comments yet
     // Join with monitors to get generation settings
+    // IMPORTANT: Only process posts that have passed their comment_eligible_at time (randomizer)
+    // This ensures we never comment immediately - posts must "age" 1-4 hours first
+    const now = new Date().toISOString();
     const { data: posts, error: postsError } = await supabase
       .from('linkedin_posts_discovered')
       .select(`
@@ -56,6 +59,7 @@ export async function POST(request: NextRequest) {
         hashtags,
         engagement_metrics,
         status,
+        comment_eligible_at,
         linkedin_post_monitors!inner (
           id,
           auto_approve_enabled,
@@ -67,6 +71,9 @@ export async function POST(request: NextRequest) {
       `)
       .eq('status', 'discovered')
       .is('comment_generated_at', null)
+      // RANDOMIZER: Only process posts that have passed their eligible time
+      // Posts without comment_eligible_at (legacy) are immediately eligible
+      .or(`comment_eligible_at.is.null,comment_eligible_at.lte.${now}`)
       .order('created_at', { ascending: false })
       .limit(MAX_POSTS_PER_RUN);
 
@@ -76,17 +83,23 @@ export async function POST(request: NextRequest) {
     }
 
     if (!posts || posts.length === 0) {
-      console.log('📭 No posts need comments');
+      console.log('📭 No posts eligible for comments (may still be in waiting period)');
       return NextResponse.json({
         success: true,
-        message: 'No posts need comments',
+        message: 'No posts eligible for comments (may still be in waiting period)',
         posts_processed: 0,
         comments_generated: 0,
         duration_ms: Date.now() - startTime
       });
     }
 
-    console.log(`📋 Found ${posts.length} posts needing comments`);
+    // Log eligible posts with their wait times
+    console.log(`📋 Found ${posts.length} posts eligible for comments`);
+    for (const post of posts) {
+      const eligibleAt = post.comment_eligible_at ? new Date(post.comment_eligible_at) : null;
+      const waitedHours = eligibleAt ? ((Date.now() - eligibleAt.getTime()) / (1000 * 60 * 60)).toFixed(1) : 'N/A';
+      console.log(`   - ${post.author_name}: waited ${waitedHours}h past eligible time`);
+    }
 
     // Get unique workspace IDs for brand guidelines
     const workspaceIds = [...new Set(posts.map(p => p.workspace_id))];
