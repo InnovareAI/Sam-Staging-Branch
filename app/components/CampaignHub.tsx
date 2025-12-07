@@ -1881,27 +1881,22 @@ function CampaignBuilder({
       const headers = ['name', 'title', 'company', 'email', 'linkedin_url', 'connection_degree'];
       setCsvHeaders(headers);
       setCsvData(initialProspects);
-      setDataSource('approved'); // Set to approved mode for validation
+      setDataSource('approved');
       setShowPreview(true);
 
-      // CRITICAL FIX: Extract and store session_id from initialProspects
-      const sessionId = initialProspects[0]?.sessionId || initialProspects[0]?.session_id;
-      if (sessionId) {
-        console.log('✅ Extracted session_id from initialProspects:', sessionId);
-        setUploadedSessionId(sessionId);
-      } else {
-        console.warn('⚠️ No session_id found in initialProspects - prospects may not transfer to campaign');
+      // CRITICAL FIX (Dec 7): Set campaign name from prospects
+      if (initialProspects[0]?.campaignName) {
+        setName(initialProspects[0].campaignName);
+        console.log('✅ Set campaign name:', initialProspects[0].campaignName);
       }
 
-      // CRITICAL FIX (Dec 7): Pass initialProspects directly to bypass React state timing issue
-      // Don't rely on csvData state - it won't be updated yet!
-      console.log('💾 Scheduling immediate draft save with', initialProspects.length, 'prospects');
-      setTimeout(() => {
-        console.log('💾 Executing forced draft save NOW with initialProspects');
-        saveDraft(true, initialProspects); // Pass prospects directly to bypass state timing
-      }, 500); // Small delay to ensure campaignType is set
+      // Extract session_id
+      const sessionId = initialProspects[0]?.sessionId || initialProspects[0]?.session_id;
+      if (sessionId) {
+        console.log('✅ Extracted session_id:', sessionId);
+        setUploadedSessionId(sessionId);
+      }
 
-      // Stay on step 1 to let user select campaign type
       toastSuccess(`Loaded ${initialProspects.length} approved prospects - select campaign type`);
     } else {
       console.log('⚠️ No initialProspects provided to CampaignBuilder');
