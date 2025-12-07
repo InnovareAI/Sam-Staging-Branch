@@ -2499,18 +2499,43 @@ export default function DataCollectionHub({
                   {/* Create New Campaign - Shows campaign type selection modal */}
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       // Validate before showing modal
                       if (!actualWorkspaceId) {
                         toastError('No workspace selected. Please select a workspace from the sidebar.')
                         return
                       }
-                      const approvedCount = prospectData.filter(p => p.approvalStatus === 'approved').length
-                      if (approvedCount === 0) {
-                        toastError('No approved prospects. Please approve some prospects first.')
-                        return
+
+                      // CRITICAL FIX (Dec 7): Fetch ALL approved prospects from API
+                      // prospectData only contains prospects matching current filterStatus (pending by default)
+                      // So approved prospects are not in prospectData - we must fetch them separately
+                      try {
+                        const approvedResponse = await fetch(`/api/prospect-approval/approved?workspace_id=${actualWorkspaceId}`)
+                        if (!approvedResponse.ok) {
+                          toastError('Failed to load approved prospects')
+                          return
+                        }
+                        const approvedData = await approvedResponse.json()
+                        const approvedProspects = approvedData.prospects || []
+
+                        if (approvedProspects.length === 0) {
+                          toastError('No approved prospects. Please approve some prospects first.')
+                          return
+                        }
+
+                        // Temporarily add approved prospects to prospectData so modal can see them
+                        setProspectData(prev => {
+                          // Merge approved prospects with existing data, avoiding duplicates
+                          const existingIds = new Set(prev.map(p => p.id))
+                          const newProspects = approvedProspects.filter((p: any) => !existingIds.has(p.id))
+                          return [...prev, ...newProspects]
+                        })
+
+                        setShowCampaignTypeModal(true)
+                      } catch (error) {
+                        console.error('Error fetching approved prospects:', error)
+                        toastError('Failed to load approved prospects')
                       }
-                      setShowCampaignTypeModal(true)
                     }}
                     className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-colors font-medium"
                   >
