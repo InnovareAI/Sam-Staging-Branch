@@ -152,6 +152,10 @@ export async function GET(request: NextRequest) {
           ...prospect,
           // CRITICAL FIX: Flatten linkedin_url to top level for campaign creation
           linkedin_url: linkedinUrl,
+          // CRITICAL FIX (Dec 7): Flatten campaign_name from session to top level for CampaignHub
+          campaignName: prospect.prospect_approval_sessions?.campaign_name || 'Approved Prospects',
+          campaignTag: prospect.prospect_approval_sessions?.campaign_tag || 'approved',
+          sessionId: prospect.session_id,
           in_campaign: !!campaignProspect,
           campaign_id: campaignProspect?.campaign_id,
           campaign_name: campaignProspect?.campaigns?.name
