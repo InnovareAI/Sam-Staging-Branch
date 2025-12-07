@@ -2636,12 +2636,19 @@ function CampaignBuilder({
   }, [draftToLoad]);
 
   // Auto-save on changes (debounced)
-  // CRITICAL (Dec 7): campaignType in deps ensures timeout is cancelled/recreated when type changes
+  // CRITICAL (Dec 7): Don't auto-save if draft was just created (currentDraftId exists but user hasn't made edits)
   useEffect(() => {
     if (!name.trim()) return;
 
+    // CRITICAL FIX (Dec 7): Skip auto-save if we just loaded initialProspects with a draftId
+    // The draft already exists - only save when user makes actual changes
+    if (currentDraftId && csvData.length > 0 && !lastSavedAt) {
+      console.log('⏭️  Skipping auto-save - draft already exists and no user edits yet');
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
-      console.log('💾 Auto-saving draft with campaignType:', campaignType);
+      console.log('💾 Auto-saving draft with campaignType:', campaignType, 'currentDraftId:', currentDraftId);
       saveDraft();
     }, 2000); // Save 2 seconds after last change
 
@@ -2649,7 +2656,7 @@ function CampaignBuilder({
       console.log('🚫 Cancelling auto-save timeout (campaignType or other deps changed)');
       clearTimeout(timeoutId);
     };
-  }, [name, campaignType, currentStep, connectionMessage, alternativeMessage, followUpMessages, csvData]);
+  }, [name, campaignType, currentStep, connectionMessage, alternativeMessage, followUpMessages, csvData, currentDraftId]);
 
   // Auto-scroll SAM chat to bottom when messages change
   useEffect(() => {
