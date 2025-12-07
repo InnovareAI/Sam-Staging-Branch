@@ -3296,6 +3296,7 @@ export default function DataCollectionHub({
       <CampaignTypeModal
         isOpen={campaignModal.isOpen}
         onClose={() => setCampaignModal({ isOpen: false, approvedProspects: [] })}
+        prospects={campaignModal.approvedProspects}
         onSelectType={async (type, campaignName) => {
           setCampaignModal({ ...campaignModal, isOpen: false });
           setSelectedCampaignType(type); // Keep exact type (connector/messenger/email)
@@ -3521,7 +3522,19 @@ function CampaignTypeModal({
   prospects?: any[];
   hasEmailAccount?: boolean;
 }) {
-  const [campaignName, setCampaignName] = React.useState(`Campaign-${new Date().toISOString().split('T')[0]}`);
+  // Use lead search name from prospects as default, fallback to date-based name
+  const defaultCampaignName = prospects.length > 0 && prospects[0]?.campaignName
+    ? prospects[0].campaignName
+    : `Campaign-${new Date().toISOString().split('T')[0]}`;
+
+  const [campaignName, setCampaignName] = React.useState(defaultCampaignName);
+
+  // Update campaign name when prospects change (modal opens with new prospects)
+  React.useEffect(() => {
+    if (isOpen && prospects.length > 0 && prospects[0]?.campaignName) {
+      setCampaignName(prospects[0].campaignName);
+    }
+  }, [isOpen, prospects]);
 
   if (!isOpen) return null;
 
