@@ -2648,8 +2648,15 @@ function CampaignBuilder({
       return;
     }
 
+    // CRITICAL FIX (Dec 7): NEVER auto-save empty drafts (prevents duplicates with 0 prospects)
+    // This happens when campaignType changes but csvData hasn't loaded yet
+    if (csvData.length === 0) {
+      console.log('⏭️  Skipping auto-save - no prospects in csvData yet (length:', csvData.length, ')');
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
-      console.log('💾 Auto-saving draft with campaignType:', campaignType, 'currentDraftId:', currentDraftId);
+      console.log('💾 Auto-saving draft with campaignType:', campaignType, 'csvData:', csvData.length, 'prospects');
       saveDraft();
     }, 2000); // Save 2 seconds after last change
 
