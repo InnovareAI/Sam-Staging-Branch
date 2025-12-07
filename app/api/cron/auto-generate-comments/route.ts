@@ -91,6 +91,25 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // CRITICAL: Claim these posts immediately to prevent race conditions
+    // If multiple cron runs execute concurrently, they could process the same posts
+    // Mark as 'processing_comment' so other runs skip them
+    const postIds = posts.map(p => p.id);
+    const { error: claimError } = await supabase
+      .from('linkedin_posts_discovered')
+      .update({
+        status: 'processing_comment',
+        comment_generated_at: new Date().toISOString() // Mark timestamp to prevent re-querying
+      })
+      .in('id', postIds);
+
+    if (claimError) {
+      console.error('❌ Error claiming posts:', claimError);
+      return NextResponse.json({ error: 'Failed to claim posts' }, { status: 500 });
+    }
+
+    console.log(`✅ Claimed ${postIds.length} posts for processing`);
+
     // Log eligible posts with their wait times
     console.log(`📋 Found ${posts.length} posts eligible for comments`);
     for (const post of posts) {
@@ -208,10 +227,10 @@ export async function POST(request: NextRequest) {
           console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - ALREADY HAS COMMENT`);
           skipCount++;
           results.push({ post_id: post.id, status: 'skipped_already_has_comment' });
-          // Mark post so query doesn't pick it up again
+          // Mark post so query doesn't pick it up again (comment_generated_at already set during claim)
           await supabase
             .from('linkedin_posts_discovered')
-            .update({ comment_generated_at: new Date().toISOString(), status: 'comment_pending' })
+            .update({ status: 'comment_pending' })
             .eq('id', post.id);
           continue;
         }
@@ -222,10 +241,10 @@ export async function POST(request: NextRequest) {
           console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - SAME LINKEDIN POST already has comment (social_id: ${post.social_id})`);
           skipCount++;
           results.push({ post_id: post.id, status: 'skipped_duplicate_social_id' });
-          // Mark post so query doesn't pick it up again
+          // Mark post so query doesn't pick it up again (comment_generated_at already set during claim)
           await supabase
             .from('linkedin_posts_discovered')
-            .update({ comment_generated_at: new Date().toISOString(), status: 'skipped' })
+            .update({ status: 'skipped' })
             .eq('id', post.id);
           continue;
         }
@@ -252,10 +271,10 @@ export async function POST(request: NextRequest) {
           console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - ${post.author_name} was commented on within 10 days`);
           skipCount++;
           results.push({ post_id: post.id, status: 'skipped_10_day_rule' });
-          // Mark as skipped so we don't keep trying
+          // Mark as skipped so we don't keep trying (comment_generated_at already set during claim)
           await supabase
             .from('linkedin_posts_discovered')
-            .update({ comment_generated_at: new Date().toISOString(), status: 'skipped' })
+            .update({ status: 'skipped' })
             .eq('id', post.id);
           continue;
         }
@@ -265,10 +284,10 @@ export async function POST(request: NextRequest) {
           console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - NO CONTENT (would generate garbage comment)`);
           skipCount++;
           results.push({ post_id: post.id, status: 'skipped_no_content' });
-          // Mark as skipped so we don't try again
+          // Mark as skipped so we don't try again (comment_generated_at already set during claim)
           await supabase
             .from('linkedin_posts_discovered')
-            .update({ status: 'skipped', comment_generated_at: new Date().toISOString() })
+            .update({ status: 'skipped' })
             .eq('id', post.id);
           continue;
         }
@@ -289,7 +308,7 @@ export async function POST(request: NextRequest) {
             results.push({ post_id: post.id, status: 'skipped_blacklisted_author' });
             await supabase
               .from('linkedin_posts_discovered')
-              .update({ status: 'skipped', comment_generated_at: new Date().toISOString() })
+              .update({ status: 'skipped' })
               .eq('id', post.id);
             continue;
           }
@@ -397,7 +416,7 @@ export async function POST(request: NextRequest) {
           results.push({ post_id: post.id, status: `skipped_${skipReason}` });
           await supabase
             .from('linkedin_posts_discovered')
-            .update({ status: 'skipped', comment_generated_at: new Date().toISOString() })
+            .update({ status: 'skipped' })
             .eq('id', post.id);
           continue;
         }
@@ -521,13 +540,10 @@ export async function POST(request: NextRequest) {
           console.log(`   ⏭️ AI decided not to comment: ${generatedComment?.reasoning || 'No reason'}`);
           skipCount++;
 
-          // Mark post so we don't try again
+          // Mark post so we don't try again (comment_generated_at already set during claim)
           await supabase
             .from('linkedin_posts_discovered')
-            .update({
-              comment_generated_at: new Date().toISOString(),
-              status: 'skipped'
-            })
+            .update({ status: 'skipped' })
             .eq('id', post.id);
 
           results.push({ post_id: post.id, status: 'skipped' });
@@ -557,13 +573,10 @@ export async function POST(request: NextRequest) {
           console.log(`   🚫 REJECTED GARBAGE COMMENT: "${generatedComment.comment_text.substring(0, 100)}..."`);
           errorCount++;
 
-          // Mark post as skipped
+          // Mark post as skipped (comment_generated_at already set during claim)
           await supabase
             .from('linkedin_posts_discovered')
-            .update({
-              comment_generated_at: new Date().toISOString(),
-              status: 'skipped'
-            })
+            .update({ status: 'skipped' })
             .eq('id', post.id);
 
           results.push({ post_id: post.id, status: 'rejected_garbage_comment' });
@@ -634,13 +647,10 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Update post to mark comment generated
+        // Update post status (comment_generated_at already set during claim)
         await supabase
           .from('linkedin_posts_discovered')
-          .update({
-            comment_generated_at: new Date().toISOString(),
-            status: 'comment_pending'
-          })
+          .update({ status: 'comment_pending' })
           .eq('id', post.id);
 
         console.log(`   ✅ Comment saved: ${savedComment.id.substring(0, 8)}`);
