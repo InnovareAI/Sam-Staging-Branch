@@ -388,9 +388,12 @@ export default function DataCollectionHub({
   const [filterStatus, setFilterStatus] = useState<string>('pending') // Only show pending prospects by default
 
   // Modal states (defined early so useQuery can reference them for refetch control)
-  const [showCampaignTypeModal, setShowCampaignTypeModal] = useState(false)
   const [showPreflightModal, setShowPreflightModal] = useState(false)
-  const [modalApprovedProspects, setModalApprovedProspects] = useState<any[]>([]) // CRITICAL FIX (Dec 7): Approved prospects for modal only
+  // CRITICAL FIX (Dec 7): Combine modal state to avoid async race condition
+  const [campaignModal, setCampaignModal] = useState<{
+    isOpen: boolean;
+    approvedProspects: any[];
+  }>({ isOpen: false, approvedProspects: [] })
 
   // REACT QUERY: Fetch and cache approval sessions with pagination
   const queryClient = useQueryClient()
@@ -398,8 +401,8 @@ export default function DataCollectionHub({
     queryKey: ['approval-sessions', currentPage, pageSize, filterStatus, actualWorkspaceId],
     queryFn: () => fetchApprovalSessions(currentPage, pageSize, filterStatus, actualWorkspaceId),
     staleTime: 10000, // Cache for 10 seconds (faster page loads)
-    refetchInterval: showCampaignTypeModal || showPreflightModal ? false : 30000, // Pause refetch when modals open
-    refetchOnWindowFocus: !showCampaignTypeModal && !showPreflightModal, // Don't refetch when modals open
+    refetchInterval: campaignModal.isOpen || showPreflightModal ? false : 30000, // Pause refetch when modals open
+    refetchOnWindowFocus: !campaignModal.isOpen && !showPreflightModal, // Don't refetch when modals open
     keepPreviousData: true, // Smooth page transitions
     enabled: !!actualWorkspaceId && !workspacesLoading && userVerified, // Only fetch after user verified AND workspace validated
   })
@@ -900,10 +903,10 @@ export default function DataCollectionHub({
   // Sync React Query data to local state
   // DON'T sync when campaign type modal is open (prevents data clearing mid-selection)
   useEffect(() => {
-    if (serverProspects.length > 0 && !showCampaignTypeModal && !showPreflightModal) {
+    if (serverProspects.length > 0 && !campaignModal.isOpen && !showPreflightModal) {
       setProspectData(serverProspects)
     }
-  }, [serverProspects, showCampaignTypeModal, showPreflightModal])
+  }, [serverProspects, campaignModal.isOpen, showPreflightModal])
 
   // Fetch workspace information to generate code
   useEffect(() => {
@@ -2519,14 +2522,21 @@ export default function DataCollectionHub({
                         const approvedData = await approvedResponse.json()
                         const approvedProspects = approvedData.prospects || []
 
+                        if (!Array.isArray(approvedProspects)) {
+                          toastError('Invalid response from server')
+                          return
+                        }
+
                         if (approvedProspects.length === 0) {
                           toastError('No approved prospects. Please approve some prospects first.')
                           return
                         }
 
-                        // Store approved prospects for modal use only (don't merge into prospectData - causes re-render issues)
-                        setModalApprovedProspects(approvedProspects)
-                        setShowCampaignTypeModal(true)
+                        // CRITICAL FIX: Single atomic state update prevents React batching race condition
+                        setCampaignModal({
+                          isOpen: true,
+                          approvedProspects: approvedProspects
+                        })
                       } catch (error) {
                         console.error('Error fetching approved prospects:', error)
                         toastError('Failed to load approved prospects')
@@ -2535,7 +2545,7 @@ export default function DataCollectionHub({
                     className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-colors font-medium"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Create Campaign ({selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length})</span>
+                    <span>Create Campaign ({selectedProspectIds.size > 0 ? selectedProspectIds.size : campaignModal.approvedProspects.length || 0})</span>
                   </button>
 
                   <span className="text-gray-500 text-sm">or add to existing:</span>
@@ -3226,17 +3236,14 @@ export default function DataCollectionHub({
 
       {/* Campaign Type Selection Modal */}
       <CampaignTypeModal
-        isOpen={showCampaignTypeModal}
-        onClose={() => setShowCampaignTypeModal(false)}
+        isOpen={campaignModal.isOpen}
+        onClose={() => setCampaignModal({ isOpen: false, approvedProspects: [] })}
         onSelectType={async (type) => {
-          setShowCampaignTypeModal(false);
+          setCampaignModal({ ...campaignModal, isOpen: false });
           setSelectedCampaignType(type); // Keep exact type (connector/messenger/email)
 
-          // CRITICAL FIX (Dec 7): Use modalApprovedProspects (fetched from API) instead of prospectData
-          // prospectData is filtered by filterStatus='pending' so approved prospects are not visible
-          const approvedProspects = modalApprovedProspects.length > 0
-            ? modalApprovedProspects
-            : prospectData.filter(p => p.approvalStatus === 'approved'); // Fallback for backward compatibility
+          // Use approved prospects from modal state
+          const approvedProspects = campaignModal.approvedProspects;
 
           let prospectsToSend = selectedProspectIds.size > 0
             ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
@@ -3302,10 +3309,10 @@ export default function DataCollectionHub({
             setIsRunningPreflight(false);
           }
         }}
-        prospectCount={selectedProspectIds.size > 0 ? selectedProspectIds.size : modalApprovedProspects.length}
+        prospectCount={selectedProspectIds.size > 0 ? selectedProspectIds.size : campaignModal.approvedProspects.length}
         prospects={selectedProspectIds.size > 0
-          ? modalApprovedProspects.filter(p => selectedProspectIds.has(p.id))
-          : modalApprovedProspects
+          ? campaignModal.approvedProspects.filter(p => selectedProspectIds.has(p.id))
+          : campaignModal.approvedProspects
         }
         hasEmailAccount={hasEmailAccount}
       />
