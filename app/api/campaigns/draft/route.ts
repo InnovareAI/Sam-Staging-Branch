@@ -405,7 +405,22 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ drafts: [] });
       }
 
-      return NextResponse.json({ draft });
+      // CRITICAL FIX (Dec 8): Enrich single draft with prospects from campaign_prospects table
+      // (was only enriching when fetching ALL drafts - caused prospects to disappear on refresh)
+      const { data: prospects, count } = await supabase
+        .from('campaign_prospects')
+        .select('*', { count: 'exact' })
+        .eq('campaign_id', draft.id);
+
+      const enrichedDraft = {
+        ...draft,
+        prospect_count: count || draft.draft_data?.csvData?.length || 0,
+        prospects: prospects || [] // Include full prospect data for loading
+      };
+
+      console.log(`✅ [GET DRAFT] Loaded draft ${draftId} with ${prospects?.length || 0} prospects`);
+
+      return NextResponse.json({ draft: enrichedDraft });
     } else {
       // Get all drafts for workspace
       const { data: drafts, error } = await supabase
