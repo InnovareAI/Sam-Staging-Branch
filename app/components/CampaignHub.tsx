@@ -2627,9 +2627,19 @@ function CampaignBuilder({
     setAlternativeMessage(draftToLoad.alternative_message || '');
     setFollowUpMessages(draftToLoad.follow_up_messages || ['']);
 
-    if (draftToLoad.draft_data?.csvData) {
+    // CRITICAL FIX (Dec 8): Load prospects from `prospects` field (from campaign_prospects table)
+    // NOT from draft_data.csvData (no longer used as of Dec 7 fix)
+    if (draftToLoad.prospects && draftToLoad.prospects.length > 0) {
+      console.log('✅ Loading', draftToLoad.prospects.length, 'prospects from campaign_prospects table');
+      setCsvData(draftToLoad.prospects);
+      setShowPreview(true);
+    } else if (draftToLoad.draft_data?.csvData) {
+      // Fallback for old drafts created before Dec 7 fix
+      console.log('⚠️ Loading prospects from legacy draft_data.csvData (old draft format)');
       setCsvData(draftToLoad.draft_data.csvData);
       setShowPreview(true);
+    } else {
+      console.log('⚠️ No prospects found in draft');
     }
 
     toastInfo(`Loaded draft: ${draftToLoad.name}`);
