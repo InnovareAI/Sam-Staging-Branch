@@ -1893,13 +1893,13 @@ function CampaignBuilder({
         console.warn('⚠️ No session_id found in initialProspects - prospects may not transfer to campaign');
       }
 
-      // CRITICAL: Force immediate draft save with prospects (don't wait for debounce)
-      // Use longer timeout to ensure csvData state is fully updated
+      // CRITICAL FIX (Dec 7): Pass initialProspects directly to bypass React state timing issue
+      // Don't rely on csvData state - it won't be updated yet!
       console.log('💾 Scheduling immediate draft save with', initialProspects.length, 'prospects');
       setTimeout(() => {
-        console.log('💾 Executing forced draft save NOW');
-        saveDraft(true); // Force save
-      }, 500); // 500ms to ensure React state is fully updated
+        console.log('💾 Executing forced draft save NOW with initialProspects');
+        saveDraft(true, initialProspects); // Pass prospects directly to bypass state timing
+      }, 500); // Small delay to ensure campaignType is set
 
       // Stay on step 1 to let user select campaign type
       toastSuccess(`Loaded ${initialProspects.length} approved prospects - select campaign type`);
@@ -2523,7 +2523,8 @@ function CampaignBuilder({
   ];
 
   // Auto-save draft with debounce
-  const saveDraft = async (force = false) => {
+  // CRITICAL FIX (Dec 7): Accept optional prospectsOverride to bypass React state timing issues
+  const saveDraft = async (force = false, prospectsOverride?: any[]) => {
     if (!name.trim() || !workspaceId) {
       if (force) {
         toastError(!name.trim() ? 'Please enter a campaign name' : 'No workspace selected');
@@ -2531,11 +2532,17 @@ function CampaignBuilder({
       return;
     }
 
+    // Use prospectsOverride if provided, otherwise fall back to csvData state
+    const prospectsToSave = prospectsOverride !== undefined ? prospectsOverride : csvData;
+
     // CRITICAL DEBUG: Log csvData before sending to API
     console.log('💾 [SAVE DRAFT] Preparing to save draft:', {
       name,
       campaignType,
       csvDataLength: csvData?.length || 0,
+      prospectsOverrideLength: prospectsOverride?.length || 0,
+      prospectsToSaveLength: prospectsToSave?.length || 0,
+      usingOverride: prospectsOverride !== undefined,
       hasCsvData: !!csvData && csvData.length > 0,
       force
     });
@@ -2554,11 +2561,11 @@ function CampaignBuilder({
           connectionMessage,
           alternativeMessage,
           followUpMessages,
-          csvData,
+          csvData: prospectsToSave,
         }),
       });
 
-      console.log('💾 [SAVE DRAFT] API request sent with csvData:', csvData?.length || 0, 'prospects');
+      console.log('💾 [SAVE DRAFT] API request sent with csvData:', prospectsToSave?.length || 0, 'prospects');
 
       const result = await response.json();
 
@@ -2569,11 +2576,9 @@ function CampaignBuilder({
         setLastSavedAt(new Date());
         if (force) {
           toastSuccess('Campaign draft saved! Find it in "Drafts" tab.');
-          queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+          // NOTE: queryClient and refetch are not available in this component scope
+          // Parent component will handle refreshing the drafts list
         }
-        // Auto-refresh campaign list to show new/updated draft immediately
-        console.log('🔄 Refreshing campaign list after draft save');
-        refetch();
       } else {
         if (force) {
           toastError(result.error || 'Failed to save draft');
