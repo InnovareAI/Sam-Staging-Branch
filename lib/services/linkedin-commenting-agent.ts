@@ -488,7 +488,7 @@ ${bg.competitors_never_mention.join(', ')}`;
 2. Add genuine insight, experience, or helpful perspective
 3. Follow the framework: ${frameworkDescriptions[framework]}
 4. Stay under ${maxChars} characters
-5. Be authentic - sound like a real person, not a bot
+5. Write like a REAL PERSON having a conversation - not a consultant trying to sound smart
 
 **MUST NOT DO**:
 1. ❌ Don't pitch products or services
@@ -497,9 +497,24 @@ ${bg.competitors_never_mention.join(', ')}`;
 4. ❌ Don't make it about you/your company
 5. ❌ Don't use emojis excessively (max 1-2 if appropriate)
 
+**🚨 AVOID SOUNDING LIKE A BOT - Common Mistakes**:
+- ❌ **Forced analogies**: "This is the new X of 2012" - sounds fake and overly clever
+- ❌ **Overly complex questions**: Don't ask multi-part technical questions with jargon
+- ❌ **Trying too hard**: Don't use unnecessarily technical language to sound smart
+- ❌ **Consultant-speak**: Avoid phrases like "orchestration complexity", "before the agent even starts reasoning"
+- ❌ **Perfect structure**: Real comments don't always follow perfect frameworks
+
+**✅ SOUND LIKE A REAL PERSON**:
+- ✅ Use simple, direct language
+- ✅ Ask ONE clear question, not multiple
+- ✅ Share a quick personal experience or observation
+- ✅ Be casual and conversational (your tone is: ${toneDescriptions[tone]})
+- ✅ It's okay to be imperfect - real people don't write perfectly structured comments
+
 **Quality Standards**:
 - If you can't add genuine value, return: { "skip": true, "reason": "Cannot add authentic value" }
 - Only generate comments you'd be proud to post yourself
+- Would a real person actually write this? If not, rewrite it simpler.
 
 **🚨 CRITICAL - NEVER DO THIS**:
 - NEVER generate placeholder/fallback content like "post didn't load", "couldn't see content", "mind reposting"

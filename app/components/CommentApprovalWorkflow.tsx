@@ -171,9 +171,16 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
   }, [workspaceId, activeTab]);
 
   // Helper function to calculate time ago
-  const getTimeAgo = (dateString: string) => {
+  const getTimeAgo = (dateString: string | null | undefined) => {
+    // Handle null/undefined/invalid dates
+    if (!dateString) return 'Unknown';
+
     const now = new Date();
     const past = new Date(dateString);
+
+    // Check if date is invalid (returns NaN for getTime())
+    if (isNaN(past.getTime())) return 'Unknown';
+
     const diffMs = now.getTime() - past.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
