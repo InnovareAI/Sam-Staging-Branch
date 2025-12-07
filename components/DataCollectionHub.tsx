@@ -501,6 +501,7 @@ export default function DataCollectionHub({
   const [isRunningPreflight, setIsRunningPreflight] = useState(false)
   const [preflightResults, setPreflightResults] = useState<any>(null)
   const [pendingCampaignType, setPendingCampaignType] = useState<'email' | 'linkedin' | 'connector' | 'messenger' | null>(null)
+  const [pendingCampaignName, setPendingCampaignName] = useState<string>('')
   const [pendingProspects, setPendingProspects] = useState<any[]>([])
 
   // Available prospects (approved but not in campaigns)
@@ -3301,6 +3302,9 @@ export default function DataCollectionHub({
           setCampaignModal({ ...campaignModal, isOpen: false });
           setSelectedCampaignType(type); // Keep exact type (connector/messenger/email)
 
+          // CRITICAL: Store campaign name in state so it survives preflight API call
+          setPendingCampaignName(campaignName);
+
           // Use approved prospects from modal state
           const approvedProspects = campaignModal.approvedProspects.map(p => ({
             ...p,
@@ -3389,18 +3393,25 @@ export default function DataCollectionHub({
           setShowPreflightModal(false);
           setPreflightResults(null);
           setPendingCampaignType(null);
+          setPendingCampaignName('');
           setPendingProspects([]);
         }}
         onProceed={() => {
           console.log('🚀 PREFLIGHT PROCEED CLICKED:', {
             validProspects: preflightResults?.validProspects?.length,
             campaignType: pendingCampaignType,
+            campaignName: pendingCampaignName,
             sample: preflightResults?.validProspects?.[0]
           });
           setShowPreflightModal(false);
           if (preflightResults?.validProspects?.length > 0 && pendingCampaignType) {
-            console.log('✅ Calling handleProceedToCampaignHub with', preflightResults.validProspects.length, 'prospects');
-            handleProceedToCampaignHub(preflightResults.validProspects, pendingCampaignType);
+            // Add campaign name to each prospect before proceeding
+            const prospectsWithName = preflightResults.validProspects.map((p: any) => ({
+              ...p,
+              campaignName: pendingCampaignName
+            }));
+            console.log('✅ Calling handleProceedToCampaignHub with', prospectsWithName.length, 'prospects and name:', pendingCampaignName);
+            handleProceedToCampaignHub(prospectsWithName, pendingCampaignType);
           } else {
             console.error('❌ NO VALID PROSPECTS OR CAMPAIGN TYPE:', {
               validProspects: preflightResults?.validProspects,
