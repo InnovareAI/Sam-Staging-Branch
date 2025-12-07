@@ -111,6 +111,17 @@ export async function POST(request: NextRequest) {
       autoFixes.push(fix);
     }
 
+    // 5.5. Pending Prospects Ready for Approval (valid, >3 days in active campaigns)
+    const pendingApprovalCheck = await checkPendingProspectsReadyForApproval(supabase);
+    allChecks.push(pendingApprovalCheck);
+
+    // AUTO-FIX: Auto-approve valid pending prospects
+    if (pendingApprovalCheck.affected_records && pendingApprovalCheck.affected_records > 0) {
+      console.log(`🔧 Auto-approving ${pendingApprovalCheck.affected_records} pending prospects...`);
+      const fix = await autoFixPendingProspectsReadyForApproval(supabase);
+      autoFixes.push(fix);
+    }
+
     // 6. Campaign State Consistency
     const campaignCheck = await checkCampaignStateConsistency(supabase);
     allChecks.push(campaignCheck);
@@ -458,6 +469,54 @@ async function checkStuckProspects(supabase: any): Promise<QACheck> {
     affected_records: count,
     sample_ids: stuck?.slice(0, 10).map((p: any) => p.id),
     suggested_fix: count > 0 ? `UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN (${stuck?.slice(0, 50).map((p: any) => `'${p.id}'`).join(',')})` : undefined
+  };
+}
+
+async function checkPendingProspectsReadyForApproval(supabase: any): Promise<QACheck> {
+  // Find prospects that are:
+  // 1. Stuck in 'pending' status for >3 days
+  // 2. Have validation_status = 'valid'
+  // 3. Belong to an active campaign
+  // 4. Have complete name fields
+  // These should be auto-approved since they're ready to be sent
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: pendingProspects, error } = await supabase
+    .from('campaign_prospects')
+    .select('id, first_name, last_name, status, validation_status, created_at, campaign_id, campaigns!inner(status)')
+    .eq('status', 'pending')
+    .eq('validation_status', 'valid')
+    .lt('created_at', threeDaysAgo)
+    .not('first_name', 'is', null)
+    .not('last_name', 'is', null);
+
+  if (error) {
+    return {
+      check_name: 'Pending Prospects Ready for Approval',
+      category: 'consistency',
+      status: 'warning',
+      details: `Error checking: ${error.message}`,
+      affected_records: 0
+    };
+  }
+
+  // Filter to only active campaigns
+  const readyForApproval = (pendingProspects || []).filter((p: any) => {
+    return p.campaigns && p.campaigns.status === 'active';
+  });
+
+  const count = readyForApproval.length;
+
+  return {
+    check_name: 'Pending Prospects Ready for Approval',
+    category: 'consistency',
+    status: count > 10 ? 'fail' : count > 0 ? 'warning' : 'pass',
+    details: count > 0
+      ? `${count} valid prospects stuck in pending for >3 days in active campaigns (should be approved)`
+      : 'No pending prospects needing auto-approval',
+    affected_records: count,
+    sample_ids: readyForApproval.slice(0, 5).map((p: any) => p.id),
+    suggested_fix: count > 0 ? 'Run auto-approval for valid pending prospects in active campaigns' : undefined
   };
 }
 
@@ -942,6 +1001,81 @@ async function autoFixStuckProspects(supabase: any): Promise<AutoFixResult> {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       details: 'Failed to fix stuck prospects'
+    };
+  }
+}
+
+/**
+ * AUTO-FIX: Auto-approve valid pending prospects in active campaigns
+ * Prospects that are valid, complete, and waiting >3 days should be approved
+ * This typically happens when CSV upload completes but prospects aren't moved to approved state
+ */
+async function autoFixPendingProspectsReadyForApproval(supabase: any): Promise<AutoFixResult> {
+  try {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Find prospects ready for auto-approval
+    const { data: pendingProspects, error: fetchError } = await supabase
+      .from('campaign_prospects')
+      .select('id, campaign_id, campaigns!inner(status)')
+      .eq('status', 'pending')
+      .eq('validation_status', 'valid')
+      .lt('created_at', threeDaysAgo)
+      .not('first_name', 'is', null)
+      .not('last_name', 'is', null);
+
+    if (fetchError) throw fetchError;
+
+    if (!pendingProspects || pendingProspects.length === 0) {
+      return {
+        issue: 'Pending Prospects Ready for Approval',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No pending prospects needing auto-approval'
+      };
+    }
+
+    // Filter to only active campaigns
+    const readyForApproval = pendingProspects.filter((p: any) => {
+      return p.campaigns && p.campaigns.status === 'active';
+    });
+
+    if (readyForApproval.length === 0) {
+      return {
+        issue: 'Pending Prospects Ready for Approval',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No pending prospects in active campaigns'
+      };
+    }
+
+    // Auto-approve them
+    const { error: updateError } = await supabase
+      .from('campaign_prospects')
+      .update({
+        status: 'approved',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', readyForApproval.map((p: any) => p.id));
+
+    if (updateError) throw updateError;
+
+    return {
+      issue: 'Pending Prospects Ready for Approval',
+      attempted: true,
+      success: true,
+      count: readyForApproval.length,
+      details: `Auto-approved ${readyForApproval.length} valid prospects waiting >3 days in active campaigns`
+    };
+  } catch (error) {
+    return {
+      issue: 'Pending Prospects Ready for Approval',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to auto-approve pending prospects'
     };
   }
 }
