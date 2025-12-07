@@ -5,6 +5,7 @@ import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { SimpleTileCard } from '@/components/TileCard';
 import { createClient } from '@/app/lib/supabase';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -3068,10 +3069,14 @@ export default function Page() {
               console.log('Data collected:', data, 'Source:', source);
             }}
             onApprovalComplete={(approvedData, campaignType) => {
-              // Store approved prospects and navigate to Campaigns
+              // CRITICAL FIX (Dec 7): Force state commit before navigation
+              // flushSync prevents race condition where campaignType is undefined
               console.log('Approved prospects:', approvedData, 'Campaign type:', campaignType);
-              setPendingCampaignProspects(approvedData);
-              setPendingCampaignType(campaignType);
+              flushSync(() => {
+                setPendingCampaignProspects(approvedData);
+                setPendingCampaignType(campaignType);
+              });
+              // State is now committed - safe to navigate
               setActiveMenuItem('campaign');
             }}
             initialUploadedData={uploadedProspects}

@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
           linkedin_url: linkedinUrl,
           linkedin_user_id: prospect.linkedin_user_id || null,  // Preserve LinkedIn provider_id
           connection_degree: connectionDegreeStr,  // CRITICAL: Store connection degree for campaign type validation
-          status: 'pending',
+          status: 'approved',  // FIX: These prospects were already approved in the workflow
           personalization_data: {
             source: 'csv_upload_approval',
             session_id: session_id,
