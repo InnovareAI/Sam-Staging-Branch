@@ -8063,13 +8063,22 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               /* In Progress Table - MERGED: Shows both draft campaigns and approved prospects */
               <div className="overflow-x-auto">
                 {(() => {
-                  // CRITICAL FIX (Dec 7): Define handleBulkDelete INSIDE IIFE to prevent production minification scoping issues
-                  // Previous attempts to reference outer-scope function failed catastrophically in production
-                  const handleBulkDelete = async () => {
-                    if (selectedCampaigns.size === 0) return;
+                  // CRITICAL FIX (Dec 7, 4th attempt): Capture ALL outer scope variables explicitly
+                  // Production minification breaks implicit closure - must explicitly capture dependencies
+                  const _showConfirmModal = showConfirmModal;
+                  const _selectedCampaigns = selectedCampaigns;
+                  const _actualWorkspaceId = actualWorkspaceId;
+                  const _toastSuccess = toastSuccess;
+                  const _toastError = toastError;
+                  const _clearSelection = clearSelection;
+                  const _refetch = refetch;
+                  const _queryClient = queryClient;
 
-                    const count = selectedCampaigns.size;
-                    showConfirmModal({
+                  const handleBulkDelete = async () => {
+                    if (_selectedCampaigns.size === 0) return;
+
+                    const count = _selectedCampaigns.size;
+                    _showConfirmModal({
                       title: 'Delete Draft Campaigns',
                       message: `Delete ${count} draft campaign${count > 1 ? 's' : ''}? This cannot be undone.`,
                       confirmText: 'Delete',
@@ -8078,19 +8087,19 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                         try {
                           // Delete drafts using draft endpoint
                           await Promise.all(
-                            Array.from(selectedCampaigns).map(draftId =>
-                              fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${actualWorkspaceId}`, {
+                            Array.from(_selectedCampaigns).map(draftId =>
+                              fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${_actualWorkspaceId}`, {
                                 method: 'DELETE'
                               })
                             )
                           );
-                          toastSuccess(`Deleted ${count} draft${count > 1 ? 's' : ''}`);
-                          clearSelection();
-                          refetch();
+                          _toastSuccess(`Deleted ${count} draft${count > 1 ? 's' : ''}`);
+                          _clearSelection();
+                          _refetch();
                           // Also refresh drafts list
-                          queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                          _queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
                         } catch (error) {
-                          toastError('Failed to delete some drafts');
+                          _toastError('Failed to delete some drafts');
                         }
                       }
                     });
