@@ -390,6 +390,7 @@ export default function DataCollectionHub({
   // Modal states (defined early so useQuery can reference them for refetch control)
   const [showCampaignTypeModal, setShowCampaignTypeModal] = useState(false)
   const [showPreflightModal, setShowPreflightModal] = useState(false)
+  const [modalApprovedProspects, setModalApprovedProspects] = useState<any[]>([]) // CRITICAL FIX (Dec 7): Approved prospects for modal only
 
   // REACT QUERY: Fetch and cache approval sessions with pagination
   const queryClient = useQueryClient()
@@ -2523,14 +2524,8 @@ export default function DataCollectionHub({
                           return
                         }
 
-                        // Temporarily add approved prospects to prospectData so modal can see them
-                        setProspectData(prev => {
-                          // Merge approved prospects with existing data, avoiding duplicates
-                          const existingIds = new Set(prev.map(p => p.id))
-                          const newProspects = approvedProspects.filter((p: any) => !existingIds.has(p.id))
-                          return [...prev, ...newProspects]
-                        })
-
+                        // Store approved prospects for modal use only (don't merge into prospectData - causes re-render issues)
+                        setModalApprovedProspects(approvedProspects)
                         setShowCampaignTypeModal(true)
                       } catch (error) {
                         console.error('Error fetching approved prospects:', error)
@@ -3237,8 +3232,12 @@ export default function DataCollectionHub({
           setShowCampaignTypeModal(false);
           setSelectedCampaignType(type); // Keep exact type (connector/messenger/email)
 
-          // Get prospects to send (selected or all approved)
-          const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved');
+          // CRITICAL FIX (Dec 7): Use modalApprovedProspects (fetched from API) instead of prospectData
+          // prospectData is filtered by filterStatus='pending' so approved prospects are not visible
+          const approvedProspects = modalApprovedProspects.length > 0
+            ? modalApprovedProspects
+            : prospectData.filter(p => p.approvalStatus === 'approved'); // Fallback for backward compatibility
+
           let prospectsToSend = selectedProspectIds.size > 0
             ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
             : approvedProspects;
@@ -3303,10 +3302,10 @@ export default function DataCollectionHub({
             setIsRunningPreflight(false);
           }
         }}
-        prospectCount={selectedProspectIds.size > 0 ? selectedProspectIds.size : prospectData.filter(p => p.approvalStatus === 'approved').length}
+        prospectCount={selectedProspectIds.size > 0 ? selectedProspectIds.size : modalApprovedProspects.length}
         prospects={selectedProspectIds.size > 0
-          ? prospectData.filter(p => p.approvalStatus === 'approved' && selectedProspectIds.has(p.id))
-          : prospectData.filter(p => p.approvalStatus === 'approved')
+          ? modalApprovedProspects.filter(p => selectedProspectIds.has(p.id))
+          : modalApprovedProspects
         }
         hasEmailAccount={hasEmailAccount}
       />
