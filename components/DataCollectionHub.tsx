@@ -3522,17 +3522,17 @@ function CampaignTypeModal({
   prospects?: any[];
   hasEmailAccount?: boolean;
 }) {
-  // Use lead search name from prospects as default, fallback to date-based name
-  const defaultCampaignName = prospects.length > 0 && prospects[0]?.campaignName
-    ? prospects[0].campaignName
-    : `Campaign-${new Date().toISOString().split('T')[0]}`;
+  // State for campaign name
+  const [campaignName, setCampaignName] = React.useState('');
 
-  const [campaignName, setCampaignName] = React.useState(defaultCampaignName);
-
-  // Update campaign name when prospects change (modal opens with new prospects)
+  // Update campaign name when modal opens with new prospects
   React.useEffect(() => {
-    if (isOpen && prospects.length > 0 && prospects[0]?.campaignName) {
-      setCampaignName(prospects[0].campaignName);
+    if (isOpen) {
+      // Use lead search name from prospects if available, fallback to date-based name
+      const defaultName = prospects?.length > 0 && prospects[0]?.campaignName
+        ? prospects[0].campaignName
+        : `Campaign-${new Date().toISOString().split('T')[0]}`;
+      setCampaignName(defaultName);
     }
   }, [isOpen, prospects]);
 
