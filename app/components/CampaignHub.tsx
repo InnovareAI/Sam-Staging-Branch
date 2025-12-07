@@ -5720,7 +5720,7 @@ Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
                         <div className="flex-1">
                           <h4 className="text-white font-medium mb-1">{campaign.name || 'Untitled Campaign'}</h4>
                           <p className="text-gray-400 text-sm mb-2">
-                            Type: {getCampaignTypeLabel(campaign.type || 'connector')}
+                            Type: {getCampaignTypeLabel(campaign.campaign_type || campaign.type || 'connector')}
                           </p>
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             {campaign.connection_message && (
@@ -8511,7 +8511,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-gray-300">{getCampaignTypeLabel(campaign.type)}</span>
+                        <span className="text-gray-300">{getCampaignTypeLabel(campaign.campaign_type || campaign.type)}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-white">{campaign.sent || 0}</div>

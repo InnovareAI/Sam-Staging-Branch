@@ -85,6 +85,81 @@ function getQualityBadge(score: number): { variant: 'default' | 'secondary' | 'd
   return { variant: 'destructive', label: 'Low', icon: <Star className="w-3 h-3 fill-gray-500 text-gray-500" /> }
 }
 
+// Duplicate Warning Badge Component
+function DuplicateWarningBadge({
+  warning,
+  prospectId,
+  onRemoveFromCampaign
+}: {
+  warning: DuplicateWarning
+  prospectId: string
+  onRemoveFromCampaign: (campaignId: string, identifier: string, type: string) => Promise<void>
+}) {
+  const [isRemoving, setIsRemoving] = useState(false)
+
+  const handleRemove = async () => {
+    setIsRemoving(true)
+    try {
+      await onRemoveFromCampaign(
+        warning.existing_campaign_id,
+        warning.identifier,
+        warning.type
+      )
+      toastSuccess(`Removed from ${warning.existing_campaign_name}`)
+    } catch (error) {
+      toastError('Failed to remove from campaign')
+    } finally {
+      setIsRemoving(false)
+    }
+  }
+
+  if (warning.blocking) {
+    // LinkedIn campaigns - hard block
+    return (
+      <div className="mt-2 p-2 bg-red-600/20 border border-red-600/30 rounded flex items-start gap-2">
+        <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+        <div className="flex-1 text-xs">
+          <p className="text-red-300 font-medium">
+            Already in {warning.existing_campaign_name}
+          </p>
+          <p className="text-red-400/80 mt-0.5">
+            LinkedIn profiles can only be in one campaign at a time
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Email campaigns - warning with action
+  return (
+    <div className="mt-2 p-2 bg-yellow-600/20 border border-yellow-600/30 rounded flex items-start gap-2">
+      <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+      <div className="flex-1 text-xs">
+        <p className="text-yellow-300 font-medium">
+          Also in {warning.existing_campaign_name}
+        </p>
+        <p className="text-yellow-400/80 mt-0.5">
+          This email is already in another campaign
+        </p>
+        <button
+          onClick={handleRemove}
+          disabled={isRemoving}
+          className="mt-1 px-2 py-1 text-xs bg-yellow-600/30 hover:bg-yellow-600/50 rounded text-yellow-200 disabled:opacity-50"
+        >
+          {isRemoving ? (
+            <>
+              <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
+              Removing...
+            </>
+          ) : (
+            'Remove from that campaign'
+          )}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 interface DataCollectionHubProps {
   onDataCollected: (data: ProspectData[], source: string) => void
   onApprovalComplete?: (approvedData: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger') => void
@@ -237,6 +312,28 @@ async function fetchApprovalSessions(
           // Calculate quality scores
           mappedProspects.forEach((p: ProspectData) => {
             p.qualityScore = calculateQualityScore(p)
+          })
+
+          // Attach duplicate warnings to prospects
+          mappedProspects.forEach((p: ProspectData) => {
+            // Check for duplicate warning by LinkedIn URL
+            const linkedinUrl = p.linkedinUrl || p.contact?.linkedin_url
+            if (linkedinUrl) {
+              const warning = duplicateWarnings.get(linkedinUrl)
+              if (warning) {
+                p.duplicateWarning = warning
+                return
+              }
+            }
+
+            // Check for duplicate warning by email
+            const email = p.email || p.contact?.email
+            if (email) {
+              const warning = duplicateWarnings.get(email)
+              if (warning) {
+                p.duplicateWarning = warning
+              }
+            }
           })
 
           allProspects.push(...mappedProspects)
@@ -462,6 +559,54 @@ export default function DataCollectionHub({
   // Duplicate warnings tracking
   const [duplicateWarnings, setDuplicateWarnings] = useState<Map<string, DuplicateWarning>>(new Map())
 
+  // Remove prospect from existing campaign
+  const handleRemoveFromCampaign = async (
+    campaignId: string,
+    identifier: string,
+    type: 'email' | 'linkedin'
+  ) => {
+    try {
+      const response = await fetch(
+        `/api/prospect-approval/remove-from-campaign?` +
+        `campaign_id=${campaignId}&identifier=${encodeURIComponent(identifier)}&type=${type}`,
+        { method: 'DELETE' }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to remove prospect')
+      }
+
+      // Update local state - remove duplicate warning for this prospect
+      const updatedWarnings = new Map(duplicateWarnings)
+      // Find and remove the warning by matching identifier
+      for (const [key, warning] of updatedWarnings) {
+        if (warning.identifier === identifier && warning.type === type) {
+          updatedWarnings.delete(key)
+        }
+      }
+      setDuplicateWarnings(updatedWarnings)
+
+      // Update prospect data to remove duplicate warning
+      setProspectData(prev => prev.map(p => {
+        const prospectIdentifier = type === 'email'
+          ? (p.email || (p as any).contact?.email)
+          : ((p as any).contact?.linkedin_url || (p as any).linkedin_url || (p as any).linkedinUrl)
+
+        if (prospectIdentifier === identifier) {
+          return { ...p, duplicateWarning: undefined }
+        }
+        return p
+      }))
+
+      return data
+    } catch (error) {
+      console.error('Remove from campaign error:', error)
+      throw error
+    }
+  }
+
   // Data input methods
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [pasteText, setPasteText] = useState('')
@@ -667,7 +812,25 @@ export default function DataCollectionHub({
 
         if (response.ok) {
           const data = await response.json()
-          toastSuccess(`✅ Added ${data.count || 0} prospects from pasted data and saved to database`)
+
+          // Store duplicate warnings if any exist
+          if (data.duplicate_warnings && data.duplicate_warnings.length > 0) {
+            const warningsMap = new Map<string, DuplicateWarning>()
+            data.duplicate_warnings.forEach((warning: DuplicateWarning) => {
+              // Use identifier as key
+              warningsMap.set(warning.identifier, warning)
+            })
+            setDuplicateWarnings(warningsMap)
+
+            // Show summary toast
+            toastInfo(
+              `Uploaded ${data.count} prospects. ` +
+              `${data.duplicate_warnings.length} duplicate(s) detected - review warnings during approval.`
+            )
+          } else {
+            toastSuccess(`✅ Added ${data.count || 0} prospects from pasted data and saved to database`)
+          }
+
           setPasteText('') // Clear the textarea
           // Immediately refetch to show new data
           await refetch()
@@ -2589,8 +2752,12 @@ export default function DataCollectionHub({
                       type="checkbox"
                       checked={selectedProspectIds.has(prospect.id)}
                       onChange={() => toggleSelectProspect(prospect.id)}
+                      disabled={prospect.duplicateWarning?.blocking}
                       aria-label={`Select ${prospect.name}`}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500 focus:ring-offset-gray-800"
+                      className={`w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500 focus:ring-offset-gray-800 ${
+                        prospect.duplicateWarning?.blocking ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                      title={prospect.duplicateWarning?.blocking ? 'Cannot approve - already in another LinkedIn campaign' : undefined}
                     />
                   </td>
                   <td className="px-4 py-3 text-sm text-white font-medium">{prospect.name}</td>
@@ -2633,12 +2800,21 @@ export default function DataCollectionHub({
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => handleApprove(prospect.id)}
+                          disabled={prospect.duplicateWarning?.blocking}
                           className={`p-1.5 rounded-lg transition-colors border ${
-                            prospect.approvalStatus === 'approved'
+                            prospect.duplicateWarning?.blocking
+                              ? 'bg-gray-500/20 text-gray-500 border-gray-500/40 cursor-not-allowed opacity-50'
+                              : prospect.approvalStatus === 'approved'
                               ? 'bg-green-500/40 text-green-300 border-green-500/60'
                               : 'bg-green-500/20 hover:bg-green-500/30 text-green-400 border-green-500/40'
                           }`}
-                          title={prospect.approvalStatus === 'approved' ? 'Already approved' : 'Approve this prospect'}
+                          title={
+                            prospect.duplicateWarning?.blocking
+                              ? 'Cannot approve - already in another LinkedIn campaign'
+                              : prospect.approvalStatus === 'approved'
+                              ? 'Already approved'
+                              : 'Approve this prospect'
+                          }
                         >
                           <Check className="w-3.5 h-3.5" />
                         </button>
@@ -2679,6 +2855,24 @@ export default function DataCollectionHub({
                     </div>
                   </td>
                 </tr>
+                {/* Duplicate Warning Row */}
+                {prospect.duplicateWarning && (
+                  <tr className={`${
+                    dismissedProspectIds.has(prospect.id)
+                      ? 'bg-red-500/5 opacity-50'
+                      : selectedProspectIds.has(prospect.id)
+                      ? 'bg-purple-600/10'
+                      : 'bg-gray-800/50'
+                  }`}>
+                    <td colSpan={10} className="px-4 py-2">
+                      <DuplicateWarningBadge
+                        warning={prospect.duplicateWarning}
+                        prospectId={prospect.id}
+                        onRemoveFromCampaign={handleRemoveFromCampaign}
+                      />
+                    </td>
+                  </tr>
+                )}
                 {/* Expanded Detail Row */}
                 {expandedProspect === prospect.id && (
                   <tr className="bg-gray-750">
