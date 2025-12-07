@@ -1908,20 +1908,13 @@ function CampaignBuilder({
 
       toastSuccess(`Loaded ${initialProspects.length} approved prospects - select campaign type`);
 
-      // QUICK FIX (Dec 7): Force immediate draft save to prevent race condition
-      // This bypasses the 2-second auto-save delay that causes prospects to disappear
-      setTimeout(() => {
-        const typeForDraft = initialCampaignType === 'linkedin' ? 'connector' : (initialCampaignType || 'connector');
-        console.log('💾 Force-saving draft immediately with', initialProspects.length, 'prospects, type:', typeForDraft);
-
-        // CRITICAL: Manually set campaignType in draft payload to override state
-        // State may not have updated yet due to React batching
-        saveDraft(false, initialProspects);
-      }, 150); // Wait 150ms for state (campaignType) to settle
+      // REMOVED (Dec 7): Duplicate draft creation
+      // Draft is now created BEFORE navigation in DataCollectionHub.performCampaignHubNavigation
+      // No need to create another draft here - just load the existing one via draftToLoad prop
     } else {
       console.log('⚠️ No initialProspects provided to CampaignBuilder');
     }
-  }, [initialProspects, initialCampaignType, saveDraft]);
+  }, [initialProspects, initialCampaignType]);
   const [samMessages, setSamMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [samInput, setSamInput] = useState('');
   const [isGeneratingTemplates, setIsGeneratingTemplates] = useState(false);
