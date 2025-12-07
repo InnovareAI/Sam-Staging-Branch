@@ -317,6 +317,26 @@ export default function DataCollectionHub({
     enabled: !!actualWorkspaceId && !workspacesLoading && userVerified, // Only fetch after user verified AND workspace validated
   })
 
+  // REACT QUERY: Check for connected email accounts
+  const { data: emailAccountsData } = useQuery({
+    queryKey: ['email-accounts', actualWorkspaceId],
+    queryFn: async () => {
+      if (!actualWorkspaceId) return { hasEmailAccount: false };
+      const { data, error } = await supabase
+        .from('workspace_accounts')
+        .select('id, provider, status')
+        .eq('workspace_id', actualWorkspaceId)
+        .in('provider', ['postmark', 'gmail', 'outlook', 'smtp'])
+        .eq('status', 'active')
+        .limit(1);
+
+      return { hasEmailAccount: !error && data && data.length > 0 };
+    },
+    staleTime: 60000, // Cache for 1 minute
+    enabled: !!actualWorkspaceId && !workspacesLoading && userVerified,
+  })
+  const hasEmailAccount = emailAccountsData?.hasEmailAccount || false;
+
   // REAL-TIME SUBSCRIPTIONS: Invalidate cache when sessions change
   useEffect(() => {
     // Wait for user verified AND workspace validated before subscribing
@@ -3046,6 +3066,7 @@ export default function DataCollectionHub({
           ? prospectData.filter(p => p.approvalStatus === 'approved' && selectedProspectIds.has(p.id))
           : prospectData.filter(p => p.approvalStatus === 'approved')
         }
+        hasEmailAccount={hasEmailAccount}
       />
 
       {/* Pre-flight Results Modal */}
@@ -3170,13 +3191,15 @@ function CampaignTypeModal({
   onClose,
   onSelectType,
   prospectCount,
-  prospects = []
+  prospects = [],
+  hasEmailAccount = false
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSelectType: (type: 'email' | 'linkedin' | 'connector' | 'messenger') => void;
   prospectCount: number;
   prospects?: any[];
+  hasEmailAccount?: boolean;
 }) {
   if (!isOpen) return null;
 
@@ -3224,30 +3247,44 @@ function CampaignTypeModal({
 
         <div className="space-y-3">
           {/* Email Campaign Option */}
-          <button
-            onClick={() => emailCount > 0 && onSelectType('email')}
-            disabled={emailCount === 0}
-            className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
-              emailCount === 0
-                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
-                : 'border-gray-700 hover:border-blue-500 hover:bg-gray-750'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${emailCount > 0 ? 'bg-blue-600/20 text-blue-400 group-hover:bg-blue-600/30' : 'bg-gray-600/20 text-gray-500'}`}>
-                <Mail className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-white font-semibold">Email Campaign</div>
-                  <div className={`text-xs px-2 py-0.5 rounded ${emailCount > 0 ? 'bg-blue-600/30 text-blue-300' : 'bg-gray-600/30 text-gray-500'}`}>
-                    {emailCount} prospect{emailCount !== 1 ? 's' : ''}
-                  </div>
+          <div className="relative">
+            <button
+              onClick={() => emailCount > 0 && hasEmailAccount && onSelectType('email')}
+              disabled={emailCount === 0 || !hasEmailAccount}
+              className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
+                emailCount === 0 || !hasEmailAccount
+                  ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                  : 'border-gray-700 hover:border-blue-500 hover:bg-gray-750'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${emailCount > 0 && hasEmailAccount ? 'bg-blue-600/20 text-blue-400 group-hover:bg-blue-600/30' : 'bg-gray-600/20 text-gray-500'}`}>
+                  <Mail className="w-5 h-5" />
                 </div>
-                <div className="text-gray-400 text-sm">Send emails to prospects with email addresses</div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div className="text-white font-semibold">Email Campaign</div>
+                    <div className={`text-xs px-2 py-0.5 rounded ${emailCount > 0 && hasEmailAccount ? 'bg-blue-600/30 text-blue-300' : 'bg-gray-600/30 text-gray-500'}`}>
+                      {emailCount} prospect{emailCount !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <div className="text-gray-400 text-sm">Send emails to prospects with email addresses</div>
+                </div>
               </div>
-            </div>
-          </button>
+            </button>
+            {/* Warning tooltip when no email account connected */}
+            {emailCount > 0 && !hasEmailAccount && (
+              <div className="mt-2 p-3 bg-yellow-600/20 border border-yellow-600/30 rounded-lg flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-yellow-300 text-xs font-medium">No email account connected</p>
+                  <p className="text-yellow-400/80 text-xs mt-0.5">
+                    Connect an email provider in Settings → Integrations to send email campaigns
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* LinkedIn Connector Option */}
           <button
