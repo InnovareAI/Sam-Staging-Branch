@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         author_title,
         author_headline,
         post_content,
+        post_intent,
         post_date,
         hashtags,
         engagement_metrics,
@@ -502,6 +503,7 @@ export async function POST(request: NextRequest) {
                   post_social_id: post.social_id || '',
                   post_text: post.post_content || '',
                   post_type: 'article',
+                  post_intent: post.post_intent || 'thought_leadership',
                   author: {
                     linkedin_id: post.author_profile_id || '',
                     name: post.author_name || 'Unknown Author',

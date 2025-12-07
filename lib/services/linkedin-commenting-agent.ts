@@ -14,6 +14,7 @@ export interface LinkedInPost {
   post_social_id: string;
   post_text: string;
   post_type: string;
+  post_intent?: string; // NEW: 'question' | 'thought_leadership' | 'announcement'
   author: {
     linkedin_id: string;
     name: string;
@@ -476,6 +477,28 @@ ${bg.competitors_never_mention.join(', ')}`;
     prompt += `\n\n## CTA Guidelines
 - Frequency: ${bg.end_with_cta}
 - Style: ${ctaStyleDesc[bg.cta_style || 'question_only']}`;
+  }
+
+  // Question Post Handling (NEW - Dec 7, 2025)
+  if (post.post_intent === 'question') {
+    prompt += `\n\n## ⚠️ THIS IS A QUESTION POST - SPECIAL INSTRUCTIONS
+
+**The author is asking readers to answer a question or make a choice.**
+
+**Your Response MUST:**
+1. ✅ **Directly answer the question being asked** - This is the #1 priority
+2. ✅ **Start with your answer/choice** (e.g., "Team Test That One More Time" or "I prefer X")
+3. ✅ **Add 1 sentence explaining why** (personal experience/insight)
+4. ✅ **Optionally ask a related follow-up question** to continue the conversation
+5. ❌ **DO NOT write general commentary** about the topic without answering
+6. ❌ **DO NOT ignore the question** and share unrelated insights
+
+**Example:**
+- Post: "Are you team Move Fast or team Test That One More Time?"
+- ✅ Good: "Team Test That One More Time. I've learned rushing to production creates tech debt that takes 3x longer to fix. What's been your experience with this?"
+- ❌ Bad: "This is such an important debate in software development..." (doesn't answer the question)
+
+**Format:** [Your choice/answer] + [Brief why] + [Optional follow-up question]`;
   }
 
   // Final Guidelines

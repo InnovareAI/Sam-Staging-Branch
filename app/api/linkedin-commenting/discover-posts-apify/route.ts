@@ -174,6 +174,40 @@ function isEngagementBait(postContent: string): { isBait: boolean; matchedPatter
   return { isBait: false };
 }
 
+/**
+ * Detects if a post is asking a question or requesting reader input/choice
+ * Question posts should get direct answers rather than thought leadership comments
+ */
+function isQuestionPost(text: string): boolean {
+  const lowerText = text.toLowerCase();
+
+  // Binary choice patterns - high confidence
+  const binaryPatterns = [
+    /are you team .+ or .+\?/i,
+    /tell me in the comments:.+or.+/i,
+    /which do you (prefer|choose):.+or.+/i,
+    /do you (use|prefer).+or.+\?/i,
+    /(team .+ or team .+)/i
+  ];
+
+  // Open-ended question patterns - moderate confidence
+  const openPatterns = [
+    /what's your take on .+\?/i,
+    /thoughts on .+\?/i,
+    /how do you (handle|approach) .+\?/i
+  ];
+
+  // Check binary patterns first (higher confidence)
+  if (binaryPatterns.some(p => p.test(text))) return true;
+
+  // Check open patterns (if post ends with question mark)
+  if (text.trim().endsWith('?') && openPatterns.some(p => p.test(text))) {
+    return true;
+  }
+
+  return false;
+}
+
 async function resolveCorrectUrn(
   activityUrn: string,
   unipileAccountId: string
@@ -644,12 +678,16 @@ export async function POST(request: NextRequest) {
               }
             }
 
+            // Detect question posts for better comment generation
+            const postContent = post.text || '';
+            const detectedIntent = isQuestionPost(postContent) ? 'question' : 'thought_leadership';
+
             return {
               workspace_id: monitor.workspace_id,
               monitor_id: monitor.id,
               social_id: finalSocialId,
               share_url: post.url || `https://www.linkedin.com/feed/update/${post.full_urn}`,
-              post_content: post.text || '',
+              post_content: postContent,
               author_name: resolvedAuthor.authorName || (post.author?.first_name ? `${post.author.first_name} ${post.author.last_name || ''}`.trim() : vanityName),
               author_profile_id: post.author?.username || vanityName,
               author_title: resolvedAuthor.authorHeadline || post.author?.headline || post.author?.title || null,
@@ -661,7 +699,8 @@ export async function POST(request: NextRequest) {
                 reactions: post.stats?.total_reactions || 0,
                 reposts: post.stats?.reposts_count || 0
               },
-              status: 'discovered'
+              status: 'discovered',
+              post_intent: detectedIntent  // NEW: Track post type for better AI comments
             };
           }));
 
@@ -693,6 +732,12 @@ export async function POST(request: NextRequest) {
             // Update daily counter for this workspace
             workspacePostsToday.set(monitor.workspace_id, (workspacePostsToday.get(monitor.workspace_id) || 0) + newPosts.length);
             console.log(`✅ Stored ${newPosts.length} new posts (workspace daily total: ${workspacePostsToday.get(monitor.workspace_id)}/${MAX_APIFY_REQUESTS_PER_DAY})`);
+
+            // Log question post detection
+            const questionPostCount = postsToInsert.filter(p => p.post_intent === 'question').length;
+            if (questionPostCount > 0) {
+              console.log(`❓ Detected ${questionPostCount} question post${questionPostCount > 1 ? 's' : ''} (will get direct answers, not thought leadership)`);
+            }
 
             // 🤖 AUTO-GENERATE COMMENTS FOR NEW POSTS
             if (insertedPosts && insertedPosts.length > 0) {
