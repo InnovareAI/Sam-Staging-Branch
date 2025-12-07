@@ -1779,6 +1779,7 @@ function CampaignBuilder({
   onClose,
   initialProspects,
   initialCampaignType,
+  initialDraftId,
   draftToLoad,
   onPrepareForApproval,
   workspaceId,
@@ -1791,6 +1792,7 @@ function CampaignBuilder({
   onClose?: () => void;
   initialProspects?: any[] | null;
   initialCampaignType?: 'email' | 'linkedin' | 'connector' | 'messenger';
+  initialDraftId?: string;
   draftToLoad?: any;
   onPrepareForApproval?: (campaignData: any) => void;
   workspaceId?: string | null;
@@ -1885,6 +1887,12 @@ function CampaignBuilder({
       setDataSource('approved');
       setShowPreview(true);
 
+      // CRITICAL FIX (Dec 7): Set draftId to prevent duplicate creation
+      if (initialDraftId) {
+        console.log('✅ Setting currentDraftId from prop:', initialDraftId);
+        setCurrentDraftId(initialDraftId);
+      }
+
       // CRITICAL FIX (Dec 7): Set campaign name from prospects
       if (initialProspects[0]?.campaignName) {
         setName(initialProspects[0].campaignName);
@@ -1914,7 +1922,7 @@ function CampaignBuilder({
     } else {
       console.log('⚠️ No initialProspects provided to CampaignBuilder');
     }
-  }, [initialProspects, initialCampaignType]);
+  }, [initialProspects, initialCampaignType, initialDraftId]);
   const [samMessages, setSamMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [samInput, setSamInput] = useState('');
   const [isGeneratingTemplates, setIsGeneratingTemplates] = useState(false);
@@ -6020,10 +6028,11 @@ interface CampaignHubProps {
   workspaceId?: string | null;
   initialProspects?: any[] | null;
   initialCampaignType?: 'email' | 'linkedin' | 'connector' | 'messenger';
+  initialDraftId?: string;
   onCampaignCreated?: () => void;
 }
 
-const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects, initialCampaignType, onCampaignCreated }) => {
+const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects, initialCampaignType, initialDraftId, onCampaignCreated }) => {
   // Use workspaceId from props - no fallback to prevent loading wrong workspace data
   const actualWorkspaceId = workspaceId;
 
@@ -7999,6 +8008,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 }}
                 initialProspects={selectedCampaignProspects || initialProspects}
                 initialCampaignType={selectedCampaignType || initialCampaignType}
+                initialDraftId={initialDraftId}
                 draftToLoad={selectedDraft}
                 onPrepareForApproval={(campaignData) => {
                   setCampaignDataForApproval(campaignData);

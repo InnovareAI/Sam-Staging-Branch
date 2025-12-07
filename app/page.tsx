@@ -172,6 +172,7 @@ export default function Page() {
   // Campaign state - for auto-proceed from approval to campaign
   const [pendingCampaignProspects, setPendingCampaignProspects] = useState<any[] | null>(null);
   const [pendingCampaignType, setPendingCampaignType] = useState<'email' | 'linkedin' | 'connector' | 'messenger' | undefined>(undefined);
+  const [pendingDraftId, setPendingDraftId] = useState<string | undefined>(undefined);
   const [showCampaignApprovalView, setShowCampaignApprovalView] = useState(false);
 
   // Workspace state
@@ -3068,13 +3069,14 @@ export default function Page() {
               // Handle data collected from DataCollectionHub
               console.log('Data collected:', data, 'Source:', source);
             }}
-            onApprovalComplete={(approvedData, campaignType) => {
-              // CRITICAL FIX (Dec 7): Force state commit before navigation
+            onApprovalComplete={(approvedData, campaignType, draftId) => {
+              // CRITICAL FIX (Dec 7): Force state commit before navigation + pass draftId
               // flushSync prevents race condition where campaignType is undefined
-              console.log('Approved prospects:', approvedData, 'Campaign type:', campaignType);
+              console.log('Approved prospects:', approvedData.length, 'Campaign type:', campaignType, 'Draft ID:', draftId);
               flushSync(() => {
                 setPendingCampaignProspects(approvedData);
                 setPendingCampaignType(campaignType);
+                setPendingDraftId(draftId);
               });
               // State is now committed - safe to navigate
               setActiveMenuItem('campaign');
@@ -3107,9 +3109,11 @@ export default function Page() {
                   workspaceId={currentWorkspace?.id || null}
                   initialProspects={pendingCampaignProspects}
                   initialCampaignType={pendingCampaignType}
+                  initialDraftId={pendingDraftId}
                   onCampaignCreated={() => {
                     setPendingCampaignProspects(null);
                     setPendingCampaignType(undefined);
+                    setPendingDraftId(undefined);
                   }}
                 />
               )}

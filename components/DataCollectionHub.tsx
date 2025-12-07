@@ -162,7 +162,7 @@ function DuplicateWarningBadge({
 
 interface DataCollectionHubProps {
   onDataCollected: (data: ProspectData[], source: string) => void
-  onApprovalComplete?: (approvedData: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger') => void
+  onApprovalComplete?: (approvedData: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger', draftId?: string) => void
   className?: string
   initialUploadedData?: ProspectData[]
   userSession?: any  // Pass session from parent to avoid auth issues
