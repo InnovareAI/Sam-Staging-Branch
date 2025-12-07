@@ -2636,15 +2636,15 @@ function CampaignBuilder({
   }, [draftToLoad]);
 
   // Auto-save on changes (debounced)
-  // CRITICAL (Dec 7): COMPLETELY DISABLE auto-save when initialDraftId prop exists
+  // CRITICAL (Dec 7): COMPLETELY DISABLE auto-save when initialDraftId prop exists OR initialProspects present
   useEffect(() => {
     if (!name.trim()) return;
 
-    // CRITICAL FIX (Dec 7): If initialDraftId was passed as a prop, the draft already exists
-    // NEVER auto-save in this case - DataCollectionHub created the draft before navigation
-    // Only enable auto-save AFTER user makes first manual save (lastSavedAt gets set)
-    if (initialDraftId && !lastSavedAt) {
-      console.log('⏭️  Skipping auto-save - draft created by DataCollectionHub (initialDraftId:', initialDraftId, ')');
+    // CRITICAL FIX (Dec 7): If initialDraftId OR initialProspects exist, draft already created by DataCollectionHub
+    // NEVER auto-save until user makes first manual save (lastSavedAt gets set)
+    // This prevents race condition where campaignType changes before csvData loads
+    if ((initialDraftId || initialProspects) && !lastSavedAt) {
+      console.log('⏭️  Skipping auto-save - draft created by DataCollectionHub (initialDraftId:', initialDraftId, ', initialProspects:', initialProspects?.length, ')');
       return;
     }
 
@@ -2664,7 +2664,7 @@ function CampaignBuilder({
       console.log('🚫 Cancelling auto-save timeout (campaignType or other deps changed)');
       clearTimeout(timeoutId);
     };
-  }, [name, campaignType, currentStep, connectionMessage, alternativeMessage, followUpMessages, csvData, currentDraftId, initialDraftId, lastSavedAt]);
+  }, [name, campaignType, currentStep, connectionMessage, alternativeMessage, followUpMessages, csvData, currentDraftId, initialDraftId, initialProspects, lastSavedAt]);
 
   // Auto-scroll SAM chat to bottom when messages change
   useEffect(() => {
