@@ -8166,8 +8166,8 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
                   // Get only draft items for bulk operations
-                  const draftItems = allItems.filter(item => item.type === 'draft' && item.draft);
-                  const draftIds = draftItems.map(item => item.draft.id);
+                  const draftItems = allItems.filter(item => item.type === 'draft' && item.draft?.id);
+                  const draftIds = draftItems.map(item => item.draft.id).filter(Boolean);
                   const allDraftsSelected = draftIds.length > 0 && draftIds.every(id => selectedCampaigns.has(id));
 
                   return (
@@ -8247,13 +8247,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           >
                             {/* Checkbox column - only for drafts */}
                             <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                              {item.type === 'draft' && item.draft && (
+                              {item.type === 'draft' && item.draft?.id && (
                                 <label className="relative flex items-center cursor-pointer">
                                   <input
                                     type="checkbox"
                                     checked={selectedCampaigns.has(item.draft.id)}
                                     onChange={(e) => {
                                       e.stopPropagation();
+                                      if (!item.draft?.id) return;
                                       const newSelected = new Set(selectedCampaigns);
                                       if (e.target.checked) {
                                         newSelected.add(item.draft.id);
