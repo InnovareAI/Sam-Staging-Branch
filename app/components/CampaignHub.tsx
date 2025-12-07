@@ -2636,14 +2636,15 @@ function CampaignBuilder({
   }, [draftToLoad]);
 
   // Auto-save on changes (debounced)
-  // CRITICAL (Dec 7): Don't auto-save if draft was just created (currentDraftId exists but user hasn't made edits)
+  // CRITICAL (Dec 7): COMPLETELY DISABLE auto-save when draft already exists from initialDraftId
   useEffect(() => {
     if (!name.trim()) return;
 
-    // CRITICAL FIX (Dec 7): Skip auto-save if we just loaded initialProspects with a draftId
-    // The draft already exists - only save when user makes actual changes
-    if (currentDraftId && csvData.length > 0 && !lastSavedAt) {
-      console.log('⏭️  Skipping auto-save - draft already exists and no user edits yet');
+    // CRITICAL FIX (Dec 7): If currentDraftId exists AND we have initialProspects, this draft was just created
+    // NEVER auto-save in this case - the draft already exists in the database
+    // Only auto-save when user makes explicit changes (detected by lastSavedAt being set after initial load)
+    if (currentDraftId && initialProspects && initialProspects.length > 0 && !lastSavedAt) {
+      console.log('⏭️  Skipping auto-save - draft already exists from DataCollectionHub (draftId:', currentDraftId, ')');
       return;
     }
 
@@ -2656,7 +2657,7 @@ function CampaignBuilder({
       console.log('🚫 Cancelling auto-save timeout (campaignType or other deps changed)');
       clearTimeout(timeoutId);
     };
-  }, [name, campaignType, currentStep, connectionMessage, alternativeMessage, followUpMessages, csvData, currentDraftId]);
+  }, [name, campaignType, currentStep, connectionMessage, alternativeMessage, followUpMessages, csvData, currentDraftId, initialProspects, lastSavedAt]);
 
   // Auto-scroll SAM chat to bottom when messages change
   useEffect(() => {
