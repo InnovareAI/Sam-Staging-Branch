@@ -3535,17 +3535,23 @@ function CampaignTypeModal({
 }) {
   // State for campaign name
   const [campaignName, setCampaignName] = React.useState('');
+  const [hasInitialized, setHasInitialized] = React.useState(false);
 
-  // Update campaign name when modal opens with new prospects
+  // Update campaign name ONLY when modal first opens (not on every prospects change)
   React.useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !hasInitialized) {
       // Use lead search name from prospects if available, fallback to date-based name
       const defaultName = prospects?.length > 0 && prospects[0]?.campaignName
         ? prospects[0].campaignName
         : `Campaign-${new Date().toISOString().split('T')[0]}`;
       setCampaignName(defaultName);
+      setHasInitialized(true);
     }
-  }, [isOpen, prospects]);
+    // Reset initialization when modal closes
+    if (!isOpen && hasInitialized) {
+      setHasInitialized(false);
+    }
+  }, [isOpen, prospects, hasInitialized]);
 
   if (!isOpen) return null;
 
