@@ -102,23 +102,29 @@ export async function POST(request: NextRequest) {
         const masterProspectIds: Map<string, string> = new Map();
 
         // STEP 1: Upsert to workspace_prospects (master table)
+        // CRITICAL FIX (Dec 8): Support prospects with OR without LinkedIn URLs
+        // Email/Messenger campaigns use email, LinkedIn campaigns use linkedin_url
         for (const p of csvData) {
           const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
-          console.log(`💾 [PROSPECT] Processing: ${p.name}, LinkedIn: "${linkedinUrl}"`);
+          const email = p.email || p.contact?.email;
 
-          if (!linkedinUrl) {
-            console.log(`⚠️  [SKIP] No LinkedIn URL for: ${p.name}`);
+          console.log(`💾 [PROSPECT] Processing: ${p.name}, LinkedIn: "${linkedinUrl || 'none'}", Email: "${email || 'none'}"`);
+
+          // Skip only if prospect has NEITHER LinkedIn URL nor email
+          if (!linkedinUrl && !email) {
+            console.log(`⚠️  [SKIP] No LinkedIn URL OR email for: ${p.name}`);
             continue;
           }
 
-          const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
+          const linkedinUrlHash = linkedinUrl ? normalizeLinkedInUrl(linkedinUrl) : null;
           const firstName = p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown';
           const lastName = p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '';
 
           const workspaceProspectData = {
             workspace_id: workspaceId,
-            linkedin_url: linkedinUrl,
+            linkedin_url: linkedinUrl || null,
             linkedin_url_hash: linkedinUrlHash,
+            email: email || null,
             first_name: firstName,
             last_name: lastName,
             company: p.company || p.organization || null,
@@ -138,24 +144,37 @@ export async function POST(request: NextRequest) {
             .select('id')
             .single();
 
-          if (!upsertError && upsertedProspect && linkedinUrlHash) {
-            masterProspectIds.set(linkedinUrlHash, upsertedProspect.id);
+          if (!upsertError && upsertedProspect) {
+            // Store by LinkedIn hash if available, otherwise by email
+            const lookupKey = linkedinUrlHash || email;
+            if (lookupKey) {
+              masterProspectIds.set(lookupKey, upsertedProspect.id);
+            }
           }
         }
 
         // STEP 2: Insert to campaign_prospects WITH master_prospect_id
+        // CRITICAL FIX (Dec 8): Include prospects with email-only (no LinkedIn URL filter)
         const prospectsToInsert = csvData
-          .filter((p: any) => p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url)
+          .filter((p: any) => {
+            const hasLinkedIn = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
+            const hasEmail = p.email || p.contact?.email;
+            return hasLinkedIn || hasEmail; // Accept either
+          })
           .map((p: any) => {
             const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
-            const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
+            const linkedinUrlHash = linkedinUrl ? normalizeLinkedInUrl(linkedinUrl) : null;
+            const email = p.email || p.contact?.email;
+            const lookupKey = linkedinUrlHash || email;
+
             return {
               campaign_id: draftId,
               workspace_id: workspaceId,
-              master_prospect_id: linkedinUrlHash ? masterProspectIds.get(linkedinUrlHash) : null,
+              master_prospect_id: lookupKey ? masterProspectIds.get(lookupKey) : null,
               first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
               last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
-              linkedin_url: linkedinUrl,
+              linkedin_url: linkedinUrl || null,
+              email: email || null,
               provider_id: p.provider_id || p.providerId || null,
               company: p.company || p.organization || null,
               title: p.title || p.job_title || null,
@@ -219,23 +238,29 @@ export async function POST(request: NextRequest) {
         const masterProspectIds: Map<string, string> = new Map();
 
         // STEP 1: Upsert to workspace_prospects (master table)
+        // CRITICAL FIX (Dec 8): Support prospects with OR without LinkedIn URLs
+        // Email/Messenger campaigns use email, LinkedIn campaigns use linkedin_url
         for (const p of csvData) {
           const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
-          console.log(`💾 [PROSPECT] Processing: ${p.name}, LinkedIn: "${linkedinUrl}"`);
+          const email = p.email || p.contact?.email;
 
-          if (!linkedinUrl) {
-            console.log(`⚠️  [SKIP] No LinkedIn URL for: ${p.name}`);
+          console.log(`💾 [PROSPECT] Processing: ${p.name}, LinkedIn: "${linkedinUrl || 'none'}", Email: "${email || 'none'}"`);
+
+          // Skip only if prospect has NEITHER LinkedIn URL nor email
+          if (!linkedinUrl && !email) {
+            console.log(`⚠️  [SKIP] No LinkedIn URL OR email for: ${p.name}`);
             continue;
           }
 
-          const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
+          const linkedinUrlHash = linkedinUrl ? normalizeLinkedInUrl(linkedinUrl) : null;
           const firstName = p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown';
           const lastName = p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '';
 
           const workspaceProspectData = {
             workspace_id: workspaceId,
-            linkedin_url: linkedinUrl,
+            linkedin_url: linkedinUrl || null,
             linkedin_url_hash: linkedinUrlHash,
+            email: email || null,
             first_name: firstName,
             last_name: lastName,
             company: p.company || p.organization || null,
@@ -255,24 +280,37 @@ export async function POST(request: NextRequest) {
             .select('id')
             .single();
 
-          if (!upsertError && upsertedProspect && linkedinUrlHash) {
-            masterProspectIds.set(linkedinUrlHash, upsertedProspect.id);
+          if (!upsertError && upsertedProspect) {
+            // Store by LinkedIn hash if available, otherwise by email
+            const lookupKey = linkedinUrlHash || email;
+            if (lookupKey) {
+              masterProspectIds.set(lookupKey, upsertedProspect.id);
+            }
           }
         }
 
         // STEP 2: Insert to campaign_prospects WITH master_prospect_id
+        // CRITICAL FIX (Dec 8): Include prospects with email-only (no LinkedIn URL filter)
         const prospectsToInsert = csvData
-          .filter((p: any) => p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url)
+          .filter((p: any) => {
+            const hasLinkedIn = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
+            const hasEmail = p.email || p.contact?.email;
+            return hasLinkedIn || hasEmail; // Accept either
+          })
           .map((p: any) => {
             const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
-            const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
+            const linkedinUrlHash = linkedinUrl ? normalizeLinkedInUrl(linkedinUrl) : null;
+            const email = p.email || p.contact?.email;
+            const lookupKey = linkedinUrlHash || email;
+
             return {
               campaign_id: campaign.id,
               workspace_id: workspaceId,
-              master_prospect_id: linkedinUrlHash ? masterProspectIds.get(linkedinUrlHash) : null,
+              master_prospect_id: lookupKey ? masterProspectIds.get(lookupKey) : null,
               first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
               last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
-              linkedin_url: linkedinUrl,
+              linkedin_url: linkedinUrl || null,
+              email: email || null,
               provider_id: p.provider_id || p.providerId || null,
               company: p.company || p.organization || null,
               title: p.title || p.job_title || null,
