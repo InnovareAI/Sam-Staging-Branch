@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         .from('campaigns')
         .update({
           name,
-          campaign_type: campaignType || 'linkedin', // Use campaign_type (primary field)
+          campaign_type: campaignType, // FIXED (Dec 7): Don't default - preserve actual campaign type from frontend
           // NOTE: Do NOT set 'type' column - it has a CHECK constraint that rejects 'connector'/'messenger'
           current_step: currentStep,
           connection_message: connectionMessage,
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
         .insert({
           workspace_id: workspaceId,
           name,
-          campaign_type: campaignType || 'linkedin', // Use campaign_type (primary field)
+          campaign_type: campaignType, // FIXED (Dec 7): Don't default - preserve actual campaign type from frontend
           // NOTE: Do NOT set 'type' column - it has a CHECK constraint that rejects 'connector'/'messenger'
           status: 'draft',
           current_step: currentStep || 1,
