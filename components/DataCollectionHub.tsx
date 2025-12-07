@@ -1979,8 +1979,16 @@ export default function DataCollectionHub({
 
     // Call the onApprovalComplete callback to navigate to Campaign screen
     // Use savedProspects (with database IDs) instead of local approvedProspects
+    console.log('🚀 Calling onApprovalComplete with:', {
+      prospectsCount: savedProspects.length,
+      campaignType,
+      sample: savedProspects[0]
+    });
+
     if (onApprovalComplete) {
       onApprovalComplete(savedProspects, campaignType || undefined)
+    } else {
+      console.error('❌ onApprovalComplete callback is not defined!');
     }
 
     toastSuccess(`✅ Success!\n\n${approvedProspects.length} approved prospects ready for campaign\n\nNext: Select or create a campaign to add them to`)
@@ -1988,6 +1996,12 @@ export default function DataCollectionHub({
 
   // Proceed to Campaign Hub with approved prospects ONLY (disregard rejected and pending)
   const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger') => {
+    console.log('🎯 handleProceedToCampaignHub CALLED:', {
+      prospectsOverride: prospectsOverride?.length,
+      campaignType,
+      sample: prospectsOverride?.[0]
+    });
+
     // When prospectsOverride is provided (from preflight), use them directly
     // These prospects have already been validated by preflight check
     // Only filter by approvalStatus when using prospectData (local state)
@@ -3330,9 +3344,20 @@ export default function DataCollectionHub({
           setPendingProspects([]);
         }}
         onProceed={() => {
+          console.log('🚀 PREFLIGHT PROCEED CLICKED:', {
+            validProspects: preflightResults?.validProspects?.length,
+            campaignType: pendingCampaignType,
+            sample: preflightResults?.validProspects?.[0]
+          });
           setShowPreflightModal(false);
           if (preflightResults?.validProspects?.length > 0 && pendingCampaignType) {
+            console.log('✅ Calling handleProceedToCampaignHub with', preflightResults.validProspects.length, 'prospects');
             handleProceedToCampaignHub(preflightResults.validProspects, pendingCampaignType);
+          } else {
+            console.error('❌ NO VALID PROSPECTS OR CAMPAIGN TYPE:', {
+              validProspects: preflightResults?.validProspects,
+              campaignType: pendingCampaignType
+            });
           }
           setPreflightResults(null);
           setPendingCampaignType(null);
