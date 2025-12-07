@@ -149,8 +149,8 @@ export async function POST(request: NextRequest) {
     // Use the authenticated user's ID for the session
     const userId = user.id;
 
-    // Create approval session
-    const { data: session, error: sessionError } = await supabase
+    // Create approval session (note: duplicate checking happens after session creation)
+    const { data: session, error: sessionError} = await supabase
       .from('prospect_approval_sessions')
       .insert({
         workspace_id: workspace_id,
@@ -174,32 +174,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: sessionError.message }, { status: 500 });
     }
 
-    // CHECK FOR DUPLICATES: One LinkedIn URL can only exist in ONE campaign
+    // CHECK FOR DUPLICATES: Campaign-type-aware validation
+    // - Email campaigns: Allow duplicates but return warnings for user control
+    // - LinkedIn campaigns (connector/messenger): Block duplicates (hard constraint)
     const linkedinUrls = prospects
       .map((p: any) => p.linkedin_url || p.contact?.linkedin_url)
       .filter(Boolean);
 
+    const emails = prospects
+      .map((p: any) => p.email || p.contact?.email)
+      .filter(Boolean);
+
+    let duplicateWarnings: any[] = [];
+
+    // Check LinkedIn URL duplicates (applies to all campaign types)
     if (linkedinUrls.length > 0) {
-      const { data: existingProspects } = await supabase
+      const { data: existingLinkedInProspects } = await supabase
         .from('campaign_prospects')
-        .select('linkedin_url, campaign_id, campaigns(campaign_name)')
+        .select('linkedin_url, campaign_id, campaigns(id, campaign_name, campaign_type)')
         .in('linkedin_url', linkedinUrls);
 
-      if (existingProspects && existingProspects.length > 0) {
-        const duplicates = existingProspects.map((ep: any) => ({
-          linkedin_url: ep.linkedin_url,
-          existing_campaign: ep.campaigns?.campaign_name || 'Unknown campaign'
-        }));
+      if (existingLinkedInProspects && existingLinkedInProspects.length > 0) {
+        duplicateWarnings = duplicateWarnings.concat(
+          existingLinkedInProspects.map((ep: any) => ({
+            type: 'linkedin',
+            identifier: ep.linkedin_url,
+            existing_campaign_id: ep.campaigns?.id,
+            existing_campaign_name: ep.campaigns?.campaign_name || 'Unknown campaign',
+            existing_campaign_type: ep.campaigns?.campaign_type || 'unknown',
+            blocking: ['connector', 'messenger'].includes(ep.campaigns?.campaign_type || '')
+          }))
+        );
+      }
+    }
 
-        // Rollback session
-        await supabase.from('prospect_approval_sessions').delete().eq('id', session.id);
+    // Check email duplicates (warning only for email campaigns)
+    if (emails.length > 0) {
+      const { data: existingEmailProspects } = await supabase
+        .from('campaign_prospects')
+        .select('email, campaign_id, campaigns(id, campaign_name, campaign_type)')
+        .in('email', emails)
+        .not('email', 'is', null);
 
-        return NextResponse.json({
-          success: false,
-          error: `${duplicates.length} prospect(s) already exist in other campaigns`,
-          duplicates: duplicates,
-          message: 'Each prospect can only be in one campaign. Remove duplicates and try again.'
-        }, { status: 400 });
+      if (existingEmailProspects && existingEmailProspects.length > 0) {
+        duplicateWarnings = duplicateWarnings.concat(
+          existingEmailProspects.map((ep: any) => ({
+            type: 'email',
+            identifier: ep.email,
+            existing_campaign_id: ep.campaigns?.id,
+            existing_campaign_name: ep.campaigns?.campaign_name || 'Unknown campaign',
+            existing_campaign_type: ep.campaigns?.campaign_type || 'unknown',
+            blocking: false // Email duplicates are warnings, not blocking
+          }))
+        );
       }
     }
 
@@ -395,12 +422,18 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Successfully inserted ${verifyCount} prospects`);
     console.log(`📋 Session ID: ${session.id}`);
 
+    // Add duplicate warnings to response if any exist
+    const responseMessage = duplicateWarnings.length > 0
+      ? `Successfully uploaded ${verifyCount} prospects. ${duplicateWarnings.length} duplicate(s) detected - review warnings during approval.`
+      : `Successfully uploaded ${verifyCount} prospects. Go to Prospect Approval to review.`;
+
     return NextResponse.json({
       success: true,
       session_id: session.id,
       count: verifyCount,
       campaign_name: campaign_name,
-      message: `Successfully uploaded ${verifyCount} prospects. Go to Prospect Approval to review.`
+      message: responseMessage,
+      duplicate_warnings: duplicateWarnings.length > 0 ? duplicateWarnings : undefined
     });
 
   } catch (error) {

@@ -22,6 +22,16 @@ type LinkedInCampaignType =
   | '2nd-3rd-group'          // Group messages (shared groups)
   | 'open-inmail'            // InMail campaigns (requires premium)
 
+// Duplicate Warning Type
+type DuplicateWarning = {
+  type: 'email' | 'linkedin'
+  identifier: string
+  existing_campaign_id: string
+  existing_campaign_name: string
+  existing_campaign_type: string
+  blocking: boolean
+}
+
 // FIXED: Import ProspectData from ProspectApprovalModal and extend it
 type ProspectData = BaseProspectData & {
   campaignName?: string            // Primary: e.g., "20251001-IFC-College Campaign"
@@ -40,6 +50,7 @@ type ProspectData = BaseProspectData & {
   researchedBy?: string            // User who researched/created this prospect
   researchedByInitials?: string    // User initials (e.g., "CL" for Charissa L.)
   linkedinUserId?: string          // LinkedIn Internal ID for messaging (ACoAAA...)
+  duplicateWarning?: DuplicateWarning  // Duplicate detection warning
 }
 
 // Quality Score Calculation (0-100)
@@ -447,6 +458,9 @@ export default function DataCollectionHub({
   // Campaign name editing
   const [editingCampaignName, setEditingCampaignName] = useState<string | null>(null)
   const [editedCampaignNameValue, setEditedCampaignNameValue] = useState('')
+
+  // Duplicate warnings tracking
+  const [duplicateWarnings, setDuplicateWarnings] = useState<Map<string, DuplicateWarning>>(new Map())
 
   // Data input methods
   const [csvFile, setCsvFile] = useState<File | null>(null)
