@@ -94,6 +94,9 @@ export async function POST(request: NextRequest) {
       }
 
       // DATABASE-FIRST: Upsert to workspace_prospects then campaign_prospects
+      console.log('💾 [DRAFT] Received csvData:', csvData?.length || 0, 'prospects');
+      console.log('💾 [DRAFT] Sample prospect:', JSON.stringify(csvData?.[0], null, 2));
+
       if (csvData && csvData.length > 0) {
         // Map to track linkedin_url_hash -> master_prospect_id
         const masterProspectIds: Map<string, string> = new Map();
@@ -101,7 +104,12 @@ export async function POST(request: NextRequest) {
         // STEP 1: Upsert to workspace_prospects (master table)
         for (const p of csvData) {
           const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
-          if (!linkedinUrl) continue;
+          console.log(`💾 [PROSPECT] Processing: ${p.name}, LinkedIn: "${linkedinUrl}"`);
+
+          if (!linkedinUrl) {
+            console.log(`⚠️  [SKIP] No LinkedIn URL for: ${p.name}`);
+            continue;
+          }
 
           const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
           const firstName = p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown';
@@ -203,6 +211,9 @@ export async function POST(request: NextRequest) {
       }
 
       // DATABASE-FIRST: Upsert to workspace_prospects then campaign_prospects
+      console.log('💾 [DRAFT] Received csvData:', csvData?.length || 0, 'prospects');
+      console.log('💾 [DRAFT] Sample prospect:', JSON.stringify(csvData?.[0], null, 2));
+
       if (csvData && csvData.length > 0) {
         // Map to track linkedin_url_hash -> master_prospect_id
         const masterProspectIds: Map<string, string> = new Map();
@@ -210,7 +221,12 @@ export async function POST(request: NextRequest) {
         // STEP 1: Upsert to workspace_prospects (master table)
         for (const p of csvData) {
           const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
-          if (!linkedinUrl) continue;
+          console.log(`💾 [PROSPECT] Processing: ${p.name}, LinkedIn: "${linkedinUrl}"`);
+
+          if (!linkedinUrl) {
+            console.log(`⚠️  [SKIP] No LinkedIn URL for: ${p.name}`);
+            continue;
+          }
 
           const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
           const firstName = p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown';
@@ -265,14 +281,22 @@ export async function POST(request: NextRequest) {
             };
           });
 
+        console.log(`💾 [INSERT CP] Inserting ${prospectsToInsert.length} prospects into campaign_prospects...`);
+
         if (prospectsToInsert.length > 0) {
-          const { error: insertError } = await supabase
+          const { data: insertedData, error: insertError } = await supabase
             .from('campaign_prospects')
-            .insert(prospectsToInsert);
+            .insert(prospectsToInsert)
+            .select('id');
 
           if (insertError) {
-            console.error('Error inserting prospects:', insertError);
+            console.error('❌ [ERROR] Failed to insert prospects:', insertError);
+            console.error('❌ [ERROR] Prospects that failed:', JSON.stringify(prospectsToInsert, null, 2));
+          } else {
+            console.log(`✅ [SUCCESS] Inserted ${insertedData?.length || 0} prospects successfully`);
           }
+        } else {
+          console.log('⚠️  [SKIP] No prospects to insert (all filtered out)');
         }
       }
 
