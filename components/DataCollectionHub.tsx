@@ -2524,37 +2524,21 @@ export default function DataCollectionHub({
                         return
                       }
 
-                      // CRITICAL FIX (Dec 7): Fetch ALL approved prospects from API
-                      // prospectData only contains prospects matching current filterStatus (pending by default)
-                      // So approved prospects are not in prospectData - we must fetch them separately
-                      try {
-                        const approvedResponse = await fetch(`/api/prospect-approval/approved?workspace_id=${actualWorkspaceId}`)
-                        if (!approvedResponse.ok) {
-                          toastError('Failed to load approved prospects')
-                          return
-                        }
-                        const approvedData = await approvedResponse.json()
-                        const approvedProspects = approvedData.prospects || []
+                      // Use approved prospects from CURRENT list only (not all approved prospects)
+                      const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
 
-                        if (!Array.isArray(approvedProspects)) {
-                          toastError('Invalid response from server')
-                          return
-                        }
-
-                        if (approvedProspects.length === 0) {
-                          toastError('No approved prospects. Please approve some prospects first.')
-                          return
-                        }
-
-                        // CRITICAL FIX: Single atomic state update prevents React batching race condition
-                        setCampaignModal({
-                          isOpen: true,
-                          approvedProspects: approvedProspects
-                        })
-                      } catch (error) {
-                        console.error('Error fetching approved prospects:', error)
-                        toastError('Failed to load approved prospects')
+                      if (approvedProspects.length === 0) {
+                        toastError('No approved prospects in this list. Please approve some prospects first.')
+                        return
                       }
+
+                      console.log('📊 Opening campaign modal with', approvedProspects.length, 'approved prospects from current list')
+
+                      // CRITICAL FIX: Single atomic state update prevents React batching race condition
+                      setCampaignModal({
+                        isOpen: true,
+                        approvedProspects: approvedProspects
+                      })
                     }}
                     className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-colors font-medium"
                   >
@@ -3515,7 +3499,7 @@ function CampaignTypeModal({
         </div>
 
         <p className="text-gray-400 text-sm mb-6">
-          Select the type of campaign to create with {prospectCount} prospects
+          Select the type of campaign to create
         </p>
 
         <div className="space-y-3">
@@ -3535,12 +3519,7 @@ function CampaignTypeModal({
                   <Mail className="w-5 h-5" />
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="text-white font-semibold">Email Campaign</div>
-                    <div className={`text-xs px-2 py-0.5 rounded ${emailCount > 0 && hasEmailAccount ? 'bg-blue-600/30 text-blue-300' : 'bg-gray-600/30 text-gray-500'}`}>
-                      {emailCount} prospect{emailCount !== 1 ? 's' : ''}
-                    </div>
-                  </div>
+                  <div className="text-white font-semibold">Email Campaign</div>
                   <div className="text-gray-400 text-sm">Send emails to prospects with email addresses</div>
                 </div>
               </div>
@@ -3574,12 +3553,7 @@ function CampaignTypeModal({
                 <UserPlus className="w-5 h-5" />
               </div>
               <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-white font-semibold">LinkedIn Connector</div>
-                  <div className={`text-xs px-2 py-0.5 rounded ${connectorCount > 0 ? 'bg-purple-600/30 text-purple-300' : 'bg-gray-600/30 text-gray-500'}`}>
-                    {connectorCount} prospect{connectorCount !== 1 ? 's' : ''}
-                  </div>
-                </div>
+                <div className="text-white font-semibold">LinkedIn Connector</div>
                 <div className="text-gray-400 text-sm">Send connection requests to 2nd/3rd degree</div>
               </div>
             </div>
@@ -3600,12 +3574,7 @@ function CampaignTypeModal({
                 <MessageSquare className="w-5 h-5" />
               </div>
               <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-white font-semibold">LinkedIn Messenger</div>
-                  <div className={`text-xs px-2 py-0.5 rounded ${messengerCount > 0 ? 'bg-green-600/30 text-green-300' : 'bg-gray-600/30 text-gray-500'}`}>
-                    {messengerCount} prospect{messengerCount !== 1 ? 's' : ''}
-                  </div>
-                </div>
+                <div className="text-white font-semibold">LinkedIn Messenger</div>
                 <div className="text-gray-400 text-sm">Send direct messages to 1st degree connections</div>
               </div>
             </div>
