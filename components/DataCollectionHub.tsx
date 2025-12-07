@@ -317,7 +317,7 @@ async function fetchApprovalSessions(
           // Attach duplicate warnings to prospects
           mappedProspects.forEach((p: ProspectData) => {
             // Check for duplicate warning by LinkedIn URL
-            const linkedinUrl = p.linkedinUrl || p.contact?.linkedin_url
+            const linkedinUrl = p.linkedinUrl
             if (linkedinUrl) {
               const warning = duplicateWarnings.get(linkedinUrl)
               if (warning) {
@@ -327,7 +327,7 @@ async function fetchApprovalSessions(
             }
 
             // Check for duplicate warning by email
-            const email = p.email || p.contact?.email
+            const email = p.email
             if (email) {
               const warning = duplicateWarnings.get(email)
               if (warning) {
@@ -591,8 +591,8 @@ export default function DataCollectionHub({
       // Update prospect data to remove duplicate warning
       setProspectData(prev => prev.map(p => {
         const prospectIdentifier = type === 'email'
-          ? (p.email || (p as any).contact?.email)
-          : ((p as any).contact?.linkedin_url || (p as any).linkedin_url || (p as any).linkedinUrl)
+          ? p.email
+          : p.linkedinUrl
 
         if (prospectIdentifier === identifier) {
           return { ...p, duplicateWarning: undefined }
