@@ -1965,6 +1965,56 @@ export default function DataCollectionHub({
       // Continue anyway - prospects will still be passed to campaign hub
     }
 
+    // CRITICAL FIX (Dec 7): Create draft campaign IMMEDIATELY after saving prospects
+    // This eliminates the race condition where auto-save fails after navigation
+    let draftId: string | undefined;
+
+    try {
+      console.log('💾 Creating draft campaign immediately...');
+      setLoadingMessage('Creating draft campaign...');
+
+      const campaignName = savedProspects[0]?.campaignName || `Draft-${new Date().toISOString().split('T')[0]}`;
+
+      const draftResponse = await fetch('/api/campaigns/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId: workspaceId,
+          name: campaignName,
+          campaignType: campaignType || 'connector',
+          status: 'draft',
+          csvData: savedProspects.map(p => ({
+            name: p.name,
+            title: p.title || '',
+            company: p.company?.name || p.company || '',
+            email: p.email || p.contact?.email || '',
+            linkedin_url: p.linkedin_url || p.contact?.linkedin_url || '',
+            connection_degree: p.connection_degree || p.connectionDegree || 'Unknown',
+            location: p.location || '',
+            industry: p.industry || ''
+          }))
+        })
+      });
+
+      if (!draftResponse.ok) {
+        const errorData = await draftResponse.json();
+        console.error('Failed to create draft:', errorData);
+        toastError('Failed to create draft campaign');
+        setLoading(false);
+        return; // Stop here, don't navigate
+      }
+
+      const draftData = await draftResponse.json();
+      draftId = draftData.draftId;
+      console.log('✅ Draft campaign created:', draftId);
+
+    } catch (error) {
+      console.error('Error creating draft campaign:', error);
+      toastError('Failed to create draft campaign');
+      setLoading(false);
+      return; // Stop here, don't navigate
+    }
+
     setLoading(false)
 
     // Remove approved prospects from view
@@ -1982,11 +2032,12 @@ export default function DataCollectionHub({
     console.log('🚀 Calling onApprovalComplete with:', {
       prospectsCount: savedProspects.length,
       campaignType,
+      draftId,
       sample: savedProspects[0]
     });
 
     if (onApprovalComplete) {
-      onApprovalComplete(savedProspects, campaignType || undefined)
+      onApprovalComplete(savedProspects, campaignType || undefined, draftId)
     } else {
       console.error('❌ onApprovalComplete callback is not defined!');
     }
@@ -3245,12 +3296,15 @@ export default function DataCollectionHub({
       <CampaignTypeModal
         isOpen={campaignModal.isOpen}
         onClose={() => setCampaignModal({ isOpen: false, approvedProspects: [] })}
-        onSelectType={async (type) => {
+        onSelectType={async (type, campaignName) => {
           setCampaignModal({ ...campaignModal, isOpen: false });
           setSelectedCampaignType(type); // Keep exact type (connector/messenger/email)
 
           // Use approved prospects from modal state
-          const approvedProspects = campaignModal.approvedProspects;
+          const approvedProspects = campaignModal.approvedProspects.map(p => ({
+            ...p,
+            campaignName // Add campaign name to each prospect so draft creation can use it
+          }));
 
           let prospectsToSend = selectedProspectIds.size > 0
             ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
@@ -3462,11 +3516,13 @@ function CampaignTypeModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSelectType: (type: 'email' | 'linkedin' | 'connector' | 'messenger') => void;
+  onSelectType: (type: 'email' | 'linkedin' | 'connector' | 'messenger', campaignName?: string) => void;
   prospectCount: number;
   prospects?: any[];
   hasEmailAccount?: boolean;
 }) {
+  const [campaignName, setCampaignName] = React.useState(`Campaign-${new Date().toISOString().split('T')[0]}`);
+
   if (!isOpen) return null;
 
   // Count prospects by campaign type eligibility
@@ -3507,15 +3563,30 @@ function CampaignTypeModal({
           </button>
         </div>
 
-        <p className="text-gray-400 text-sm mb-6">
+        <p className="text-gray-400 text-sm mb-4">
           Select the type of campaign to create
         </p>
+
+        {/* Campaign Name Input */}
+        <div className="mb-6">
+          <label htmlFor="campaign-name" className="block text-sm font-medium text-gray-300 mb-2">
+            Campaign Name
+          </label>
+          <input
+            id="campaign-name"
+            type="text"
+            value={campaignName}
+            onChange={(e) => setCampaignName(e.target.value)}
+            placeholder="Enter campaign name..."
+            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
 
         <div className="space-y-3">
           {/* Email Campaign Option */}
           <div className="relative">
             <button
-              onClick={() => emailCount > 0 && hasEmailAccount && onSelectType('email')}
+              onClick={() => emailCount > 0 && hasEmailAccount && onSelectType('email', campaignName)}
               disabled={emailCount === 0 || !hasEmailAccount}
               className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
                 emailCount === 0 || !hasEmailAccount
@@ -3549,7 +3620,7 @@ function CampaignTypeModal({
 
           {/* LinkedIn Connector Option */}
           <button
-            onClick={() => connectorCount > 0 && onSelectType('connector')}
+            onClick={() => connectorCount > 0 && onSelectType('connector', campaignName)}
             disabled={connectorCount === 0}
             className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
               connectorCount === 0
@@ -3570,7 +3641,7 @@ function CampaignTypeModal({
 
           {/* LinkedIn Messenger Option */}
           <button
-            onClick={() => messengerCount > 0 && onSelectType('messenger')}
+            onClick={() => messengerCount > 0 && onSelectType('messenger', campaignName)}
             disabled={messengerCount === 0}
             className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
               messengerCount === 0
