@@ -3,9 +3,10 @@
  * Generates AI-powered comments for LinkedIn posts
  *
  * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
+ * Updated Dec 7, 2025: Switched to Haiku 4.5 for cost optimization
  */
 
-import { claudeClient } from '@/lib/llm/claude-client';
+import { claudeClient, CLAUDE_MODELS } from '@/lib/llm/claude-client';
 
 export interface LinkedInPost {
   id: string;
@@ -181,7 +182,9 @@ export async function generateLinkedInComment(
   const userPrompt = buildCommentUserPrompt(context.post);
 
   // Generate comment via Claude Direct API (GDPR compliant)
+  // Using Haiku 4.5 for fast, cost-effective comment generation
   const response = await claudeClient.chat({
+    model: CLAUDE_MODELS.HAIKU,
     system: systemPrompt,
     messages: [
       { role: 'user', content: userPrompt }
@@ -880,7 +883,9 @@ export async function generateCommentReply(
   const userPrompt = buildCommentReplyUserPrompt(context);
 
   // Generate via Claude Direct API
+  // Using Haiku 4.5 for fast, cost-effective comment reply generation
   const response = await claudeClient.chat({
+    model: CLAUDE_MODELS.HAIKU,
     system: systemPrompt,
     messages: [
       { role: 'user', content: userPrompt }
