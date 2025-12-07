@@ -2524,35 +2524,29 @@ export default function DataCollectionHub({
                         return
                       }
 
-                      // Use approved prospects from CURRENT list only (not all approved prospects)
-                      console.log('🔍 DEBUG: prospectData before filter:', prospectData.map(p => ({
+                      // Use SELECTED prospects (checked boxes) for campaign creation
+                      const selectedIds = Array.from(selectedProspectIds)
+                      const selectedProspects = prospectData.filter(p => selectedIds.includes(p.id))
+
+                      console.log('🔍 DEBUG: Selected prospects for campaign:', selectedProspects.map(p => ({
                         id: p.id,
                         name: p.name,
-                        approvalStatus: p.approvalStatus
-                      })))
-
-                      const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
-
-                      console.log('✅ DEBUG: Filtered approved prospects:', approvedProspects.map(p => ({
-                        id: p.id,
-                        name: p.name,
-                        approvalStatus: p.approvalStatus,
                         email: p.email || p.contact?.email,
                         linkedin_url: p.linkedin_url || p.contact?.linkedin_url,
                         connection_degree: p.connection_degree || p.connectionDegree
                       })))
 
-                      if (approvedProspects.length === 0) {
-                        toastError('No approved prospects in this list. Please approve some prospects first.')
+                      if (selectedProspects.length === 0) {
+                        toastError('No prospects selected. Please check the boxes next to prospects you want in the campaign.')
                         return
                       }
 
-                      console.log('📊 Opening campaign modal with', approvedProspects.length, 'approved prospects from current list')
+                      console.log('📊 Opening campaign modal with', selectedProspects.length, 'selected prospects')
 
                       // CRITICAL FIX: Single atomic state update prevents React batching race condition
                       setCampaignModal({
                         isOpen: true,
-                        approvedProspects: approvedProspects
+                        approvedProspects: selectedProspects
                       })
                     }}
                     className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-colors font-medium"
