@@ -314,28 +314,6 @@ async function fetchApprovalSessions(
             p.qualityScore = calculateQualityScore(p)
           })
 
-          // Attach duplicate warnings to prospects
-          mappedProspects.forEach((p: ProspectData) => {
-            // Check for duplicate warning by LinkedIn URL
-            const linkedinUrl = p.linkedinUrl
-            if (linkedinUrl) {
-              const warning = duplicateWarnings.get(linkedinUrl)
-              if (warning) {
-                p.duplicateWarning = warning
-                return
-              }
-            }
-
-            // Check for duplicate warning by email
-            const email = p.email
-            if (email) {
-              const warning = duplicateWarnings.get(email)
-              if (warning) {
-                p.duplicateWarning = warning
-              }
-            }
-          })
-
           allProspects.push(...mappedProspects)
         }
     }
@@ -558,6 +536,37 @@ export default function DataCollectionHub({
 
   // Duplicate warnings tracking
   const [duplicateWarnings, setDuplicateWarnings] = useState<Map<string, DuplicateWarning>>(new Map())
+
+  // Attach duplicate warnings to prospects when data loads or warnings change
+  useEffect(() => {
+    if (serverProspects.length > 0 && duplicateWarnings.size > 0) {
+      const prospectsWithWarnings = serverProspects.map(p => {
+        // Check for duplicate warning by LinkedIn URL
+        const linkedinUrl = p.linkedinUrl
+        if (linkedinUrl) {
+          const warning = duplicateWarnings.get(linkedinUrl)
+          if (warning) {
+            return { ...p, duplicateWarning: warning }
+          }
+        }
+
+        // Check for duplicate warning by email
+        const email = p.email
+        if (email) {
+          const warning = duplicateWarnings.get(email)
+          if (warning) {
+            return { ...p, duplicateWarning: warning }
+          }
+        }
+
+        return p
+      })
+      setProspectData(prospectsWithWarnings)
+    } else if (serverProspects.length > 0) {
+      // No warnings, just set the prospects
+      setProspectData(serverProspects)
+    }
+  }, [serverProspects, duplicateWarnings])
 
   // Remove prospect from existing campaign
   const handleRemoveFromCampaign = async (
