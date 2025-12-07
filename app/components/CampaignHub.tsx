@@ -8198,19 +8198,32 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                                 confirmVariant: 'danger',
                                 onConfirm: async () => {
                                   try {
-                                    await Promise.all(
+                                    const results = await Promise.allSettled(
                                       Array.from(selectedCampaigns).map(draftId =>
                                         fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${actualWorkspaceId}`, {
                                           method: 'DELETE'
+                                        }).then(res => {
+                                          if (!res.ok) throw new Error(`Failed to delete draft ${draftId}`);
+                                          return res.json();
                                         })
                                       )
                                     );
-                                    toastSuccess(`Deleted ${count} draft${count > 1 ? 's' : ''}`);
+
+                                    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+                                    const failed = results.filter(r => r.status === 'rejected').length;
+
+                                    if (failed > 0) {
+                                      toastError(`Deleted ${succeeded} draft${succeeded > 1 ? 's' : ''}, ${failed} failed`);
+                                    } else {
+                                      toastSuccess(`Deleted ${succeeded} draft${succeeded > 1 ? 's' : ''}`);
+                                    }
+
                                     clearSelection();
                                     refetch();
                                     queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
                                   } catch (error) {
-                                    toastError('Failed to delete some drafts');
+                                    console.error('Bulk delete error:', error);
+                                    toastError('Failed to delete drafts');
                                   }
                                 }
                               });
