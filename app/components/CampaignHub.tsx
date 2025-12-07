@@ -8091,15 +8091,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               /* In Progress Table - MERGED: Shows both draft campaigns and approved prospects */
               <div className="overflow-x-auto">
                 {(() => {
-                  // CRITICAL: Capture function references before IIFE scope to prevent minification issues
-                  const _showConfirmModal = showConfirmModal;
-                  const _toastSuccess = toastSuccess;
-                  const _toastError = toastError;
-                  const _clearSelection = clearSelection;
-                  const _refetch = refetch;
-                  const _queryClient = queryClient;
-                  const _actualWorkspaceId = actualWorkspaceId;
-
                   // Merge temp initialProspects and persistent DB campaigns
                   const pendingCampaigns: any[] = [];
 
@@ -8188,33 +8179,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             {selectedCampaigns.size} draft{selectedCampaigns.size > 1 ? 's' : ''} selected
                           </span>
                           <button
-                            onClick={() => {
-                              const count = selectedCampaigns.size;
-                              if (count === 0) return;
-                              _showConfirmModal({
-                                title: 'Delete Draft Campaigns',
-                                message: `Delete ${count} draft campaign${count > 1 ? 's' : ''}? This cannot be undone.`,
-                                confirmText: 'Delete',
-                                confirmVariant: 'danger',
-                                onConfirm: async () => {
-                                  try {
-                                    await Promise.all(
-                                      Array.from(selectedCampaigns).map(draftId =>
-                                        fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${_actualWorkspaceId}`, {
-                                          method: 'DELETE'
-                                        })
-                                      )
-                                    );
-                                    _toastSuccess(`Deleted ${count} draft${count > 1 ? 's' : ''}`);
-                                    _clearSelection();
-                                    _refetch();
-                                    _queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
-                                  } catch (error) {
-                                    _toastError('Failed to delete some drafts');
-                                  }
-                                }
-                              });
-                            }}
+                            onClick={handleBulkDelete}
                             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
                           >
                             <Trash2 size={16} />
