@@ -8184,7 +8184,37 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             {selectedCampaigns.size} draft{selectedCampaigns.size > 1 ? 's' : ''} selected
                           </span>
                           <button
-                            onClick={handleBulkDelete}
+                            onClick={() => {
+                              // CRITICAL FIX (Dec 7, 5th attempt): Inline all logic directly in onClick
+                              // Avoids function reference issues with IIFE + production minification
+                              const count = selectedCampaigns.size;
+                              if (count === 0) return;
+
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Delete Draft Campaigns',
+                                message: `Delete ${count} draft campaign${count > 1 ? 's' : ''}? This cannot be undone.`,
+                                confirmText: 'Delete',
+                                confirmVariant: 'danger',
+                                onConfirm: async () => {
+                                  try {
+                                    await Promise.all(
+                                      Array.from(selectedCampaigns).map(draftId =>
+                                        fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${actualWorkspaceId}`, {
+                                          method: 'DELETE'
+                                        })
+                                      )
+                                    );
+                                    toastSuccess(`Deleted ${count} draft${count > 1 ? 's' : ''}`);
+                                    clearSelection();
+                                    refetch();
+                                    queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                                  } catch (error) {
+                                    toastError('Failed to delete some drafts');
+                                  }
+                                }
+                              });
+                            }}
                             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
                           >
                             <Trash2 size={16} />
