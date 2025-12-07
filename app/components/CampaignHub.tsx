@@ -1898,10 +1898,17 @@ function CampaignBuilder({
       }
 
       toastSuccess(`Loaded ${initialProspects.length} approved prospects - select campaign type`);
+
+      // QUICK FIX (Dec 7): Force immediate draft save to prevent race condition
+      // This bypasses the 2-second auto-save delay that causes prospects to disappear
+      setTimeout(() => {
+        console.log('💾 Force-saving draft immediately with', initialProspects.length, 'prospects');
+        saveDraft(false, initialProspects);
+      }, 100); // Wait just 100ms for state to settle
     } else {
       console.log('⚠️ No initialProspects provided to CampaignBuilder');
     }
-  }, [initialProspects]);
+  }, [initialProspects, saveDraft]);
   const [samMessages, setSamMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [samInput, setSamInput] = useState('');
   const [isGeneratingTemplates, setIsGeneratingTemplates] = useState(false);
