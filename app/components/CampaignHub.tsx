@@ -747,22 +747,27 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
     const count = selectedCampaigns.size;
     showConfirmModal({
-      title: 'Delete Campaigns',
-      message: `Delete ${count} campaign(s)? This cannot be undone.`,
+      title: 'Delete Draft Campaigns',
+      message: `Delete ${count} draft campaign${count > 1 ? 's' : ''}? This cannot be undone.`,
       confirmText: 'Delete',
       confirmVariant: 'danger',
       onConfirm: async () => {
         try {
+          // Delete drafts using draft endpoint
           await Promise.all(
-            Array.from(selectedCampaigns).map(campaignId =>
-              fetch(`/api/campaigns/${campaignId}`, { method: 'DELETE' })
+            Array.from(selectedCampaigns).map(draftId =>
+              fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${actualWorkspaceId}`, {
+                method: 'DELETE'
+              })
             )
           );
-          toastSuccess(`Deleted ${count} campaign(s)`);
+          toastSuccess(`Deleted ${count} draft${count > 1 ? 's' : ''}`);
           clearSelection();
           refetch();
+          // Also refresh drafts list
+          queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
         } catch (error) {
-          toastError('Failed to delete some campaigns');
+          toastError('Failed to delete some drafts');
         }
       }
     });
@@ -1876,16 +1881,19 @@ function CampaignBuilder({
   const [currentStep, setCurrentStep] = useState(getInitialStep());
   const [uploadedSessionId, setUploadedSessionId] = useState<string | null>(null); // CRITICAL FIX: Track session_id from CSV uploads
 
-  // CRITICAL FIX: Sync campaignType when initialCampaignType changes (e.g., Email selected in approval modal)
-  // useState only runs once on mount, so we need useEffect to handle updates
+  // CRITICAL FIX (Dec 7): IMMEDIATE sync when initialCampaignType arrives
+  // Force re-calculation every time initialCampaignType changes to prevent race conditions
   useEffect(() => {
     if (initialCampaignType) {
       const newType = initialCampaignType === 'linkedin' ? 'connector' : initialCampaignType;
-      console.log('🔄 Syncing campaignType from initialCampaignType:', initialCampaignType, '→', newType);
+      console.log('🔄 [FORCE SYNC] campaignType:', initialCampaignType, '→', newType);
       setCampaignType(newType);
-      setUserSelectedCampaignType(true); // Dec 5: Treat initial type as user-selected to prevent auto-override
+      setUserSelectedCampaignType(true);
+    } else {
+      // If initialCampaignType is explicitly cleared, reset to default
+      console.log('⚠️ [RESET] initialCampaignType is undefined, keeping current:', campaignType);
     }
-  }, [initialCampaignType]);
+  }, [initialCampaignType]); // Re-run whenever initialCampaignType changes
 
   // Auto-populate CSV data when initialProspects are provided
   useEffect(() => {
@@ -2571,6 +2579,9 @@ function CampaignBuilder({
           toastSuccess('Campaign draft saved! Find it in "Drafts" tab.');
           queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
         }
+        // Auto-refresh campaign list to show new/updated draft immediately
+        console.log('🔄 Refreshing campaign list after draft save');
+        refetch();
       } else {
         if (force) {
           toastError(result.error || 'Failed to save draft');
@@ -2612,14 +2623,19 @@ function CampaignBuilder({
   }, [draftToLoad]);
 
   // Auto-save on changes (debounced)
+  // CRITICAL (Dec 7): campaignType in deps ensures timeout is cancelled/recreated when type changes
   useEffect(() => {
     if (!name.trim()) return;
 
     const timeoutId = setTimeout(() => {
+      console.log('💾 Auto-saving draft with campaignType:', campaignType);
       saveDraft();
     }, 2000); // Save 2 seconds after last change
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      console.log('🚫 Cancelling auto-save timeout (campaignType or other deps changed)');
+      clearTimeout(timeoutId);
+    };
   }, [name, campaignType, currentStep, connectionMessage, alternativeMessage, followUpMessages, csvData]);
 
   // Auto-scroll SAM chat to bottom when messages change
@@ -8149,18 +8165,67 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     }))
                   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+                  // Get only draft items for bulk operations
+                  const draftItems = allItems.filter(item => item.type === 'draft' && item.draft);
+                  const draftIds = draftItems.map(item => item.draft.id);
+                  const allDraftsSelected = draftIds.length > 0 && draftIds.every(id => selectedCampaigns.has(id));
+
                   return (
-                    <table className="w-full">
-                      <thead className="bg-gray-750">
-                        <tr className="text-left text-gray-400 text-xs uppercase">
-                          <th className="px-6 py-3 font-medium">Campaign</th>
-                          <th className="px-6 py-3 font-medium">Type</th>
-                          <th className="px-6 py-3 font-medium">Status</th>
-                          <th className="px-6 py-3 font-medium">Prospects</th>
-                          <th className="px-6 py-3 font-medium">Date</th>
-                          <th className="px-6 py-3 font-medium"></th>
-                        </tr>
-                      </thead>
+                    <>
+                      {/* Bulk Actions Bar */}
+                      {selectedCampaigns.size > 0 && (
+                        <div className="mb-4 p-4 bg-purple-900/20 border border-purple-500/40 rounded-lg flex items-center justify-between">
+                          <span className="text-white font-medium">
+                            {selectedCampaigns.size} draft{selectedCampaigns.size > 1 ? 's' : ''} selected
+                          </span>
+                          <button
+                            onClick={handleBulkDelete}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                          >
+                            <Trash2 size={16} />
+                            Delete Selected
+                          </button>
+                        </div>
+                      )}
+
+                      <table className="w-full">
+                        <thead className="bg-gray-750">
+                          <tr className="text-left text-gray-400 text-xs uppercase">
+                            <th className="px-6 py-3 font-medium w-12">
+                              {draftItems.length > 0 && (
+                                <label className="relative flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={allDraftsSelected}
+                                    onChange={() => {
+                                      if (allDraftsSelected) {
+                                        // Deselect all drafts
+                                        setSelectedCampaigns(new Set());
+                                      } else {
+                                        // Select all drafts
+                                        setSelectedCampaigns(new Set(draftIds));
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded border-2 border-gray-500 bg-gray-700 checked:bg-purple-500 checked:border-purple-500 focus:ring-2 focus:ring-purple-400 focus:ring-offset-0 cursor-pointer appearance-none transition-colors"
+                                  />
+                                  <svg
+                                    className={`absolute w-4 h-4 pointer-events-none text-white transition-opacity ${allDraftsSelected ? 'opacity-100' : 'opacity-0'}`}
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </label>
+                              )}
+                            </th>
+                            <th className="px-6 py-3 font-medium">Campaign</th>
+                            <th className="px-6 py-3 font-medium">Type</th>
+                            <th className="px-6 py-3 font-medium">Status</th>
+                            <th className="px-6 py-3 font-medium">Prospects</th>
+                            <th className="px-6 py-3 font-medium">Date</th>
+                            <th className="px-6 py-3 font-medium"></th>
+                          </tr>
+                        </thead>
                       <tbody>
                         {allItems.map((item, idx) => (
                           <tr
@@ -8180,6 +8245,35 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             }}
                             className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
                           >
+                            {/* Checkbox column - only for drafts */}
+                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                              {item.type === 'draft' && item.draft && (
+                                <label className="relative flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedCampaigns.has(item.draft.id)}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      const newSelected = new Set(selectedCampaigns);
+                                      if (e.target.checked) {
+                                        newSelected.add(item.draft.id);
+                                      } else {
+                                        newSelected.delete(item.draft.id);
+                                      }
+                                      setSelectedCampaigns(newSelected);
+                                    }}
+                                    className="w-4 h-4 rounded border-2 border-gray-500 bg-gray-700 checked:bg-purple-500 checked:border-purple-500 focus:ring-2 focus:ring-purple-400 focus:ring-offset-0 cursor-pointer appearance-none transition-colors"
+                                  />
+                                  <svg
+                                    className={`absolute w-4 h-4 pointer-events-none text-white transition-opacity ${selectedCampaigns.has(item.draft.id) ? 'opacity-100' : 'opacity-0'}`}
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                  >
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </label>
+                              )}
+                            </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <div className={`w-2 h-2 rounded-full ${item.status === 'draft' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
@@ -8274,6 +8368,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                         ))}
                       </tbody>
                     </table>
+                    </>
                   );
                 })()}
               </div>
