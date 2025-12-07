@@ -1872,6 +1872,7 @@ function CampaignBuilder({
     console.log('🔍 CampaignBuilder initialProspects check:', {
       hasProspects: !!initialProspects,
       length: initialProspects?.length,
+      initialCampaignType,
       sample: initialProspects?.[0]
     });
 
@@ -1890,6 +1891,14 @@ function CampaignBuilder({
         console.log('✅ Set campaign name:', initialProspects[0].campaignName);
       }
 
+      // CRITICAL FIX (Dec 7): Sync campaign type IMMEDIATELY before saving
+      if (initialCampaignType) {
+        const typeToSet = initialCampaignType === 'linkedin' ? 'connector' : initialCampaignType;
+        console.log('✅ Setting campaign type from prop:', initialCampaignType, '→', typeToSet);
+        setCampaignType(typeToSet);
+        setUserSelectedCampaignType(true);
+      }
+
       // Extract session_id
       const sessionId = initialProspects[0]?.sessionId || initialProspects[0]?.session_id;
       if (sessionId) {
@@ -1902,13 +1911,17 @@ function CampaignBuilder({
       // QUICK FIX (Dec 7): Force immediate draft save to prevent race condition
       // This bypasses the 2-second auto-save delay that causes prospects to disappear
       setTimeout(() => {
-        console.log('💾 Force-saving draft immediately with', initialProspects.length, 'prospects');
+        const typeForDraft = initialCampaignType === 'linkedin' ? 'connector' : (initialCampaignType || 'connector');
+        console.log('💾 Force-saving draft immediately with', initialProspects.length, 'prospects, type:', typeForDraft);
+
+        // CRITICAL: Manually set campaignType in draft payload to override state
+        // State may not have updated yet due to React batching
         saveDraft(false, initialProspects);
-      }, 100); // Wait just 100ms for state to settle
+      }, 150); // Wait 150ms for state (campaignType) to settle
     } else {
       console.log('⚠️ No initialProspects provided to CampaignBuilder');
     }
-  }, [initialProspects, saveDraft]);
+  }, [initialProspects, initialCampaignType, saveDraft]);
   const [samMessages, setSamMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
   const [samInput, setSamInput] = useState('');
   const [isGeneratingTemplates, setIsGeneratingTemplates] = useState(false);
