@@ -2525,7 +2525,22 @@ export default function DataCollectionHub({
                       }
 
                       // Use approved prospects from CURRENT list only (not all approved prospects)
+                      console.log('🔍 DEBUG: prospectData before filter:', prospectData.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        approvalStatus: p.approvalStatus
+                      })))
+
                       const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
+
+                      console.log('✅ DEBUG: Filtered approved prospects:', approvedProspects.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        approvalStatus: p.approvalStatus,
+                        email: p.email || p.contact?.email,
+                        linkedin_url: p.linkedin_url || p.contact?.linkedin_url,
+                        connection_degree: p.connection_degree || p.connectionDegree
+                      })))
 
                       if (approvedProspects.length === 0) {
                         toastError('No approved prospects in this list. Please approve some prospects first.')
