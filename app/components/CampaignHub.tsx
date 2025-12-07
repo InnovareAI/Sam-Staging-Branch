@@ -742,36 +742,8 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     setIsMultiSelectMode(false);
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedCampaigns.size === 0) return;
-
-    const count = selectedCampaigns.size;
-    showConfirmModal({
-      title: 'Delete Draft Campaigns',
-      message: `Delete ${count} draft campaign${count > 1 ? 's' : ''}? This cannot be undone.`,
-      confirmText: 'Delete',
-      confirmVariant: 'danger',
-      onConfirm: async () => {
-        try {
-          // Delete drafts using draft endpoint
-          await Promise.all(
-            Array.from(selectedCampaigns).map(draftId =>
-              fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${actualWorkspaceId}`, {
-                method: 'DELETE'
-              })
-            )
-          );
-          toastSuccess(`Deleted ${count} draft${count > 1 ? 's' : ''}`);
-          clearSelection();
-          refetch();
-          // Also refresh drafts list
-          queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
-        } catch (error) {
-          toastError('Failed to delete some drafts');
-        }
-      }
-    });
-  };
+  // REMOVED (Dec 7): handleBulkDelete moved inside IIFE to fix production minification scoping issue
+  // See line 8096 for new location - defined where it's used to ensure proper closure scope
 
   const handleBulkPause = async () => {
     if (selectedCampaigns.size === 0) return;
@@ -8091,6 +8063,39 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               /* In Progress Table - MERGED: Shows both draft campaigns and approved prospects */
               <div className="overflow-x-auto">
                 {(() => {
+                  // CRITICAL FIX (Dec 7): Define handleBulkDelete INSIDE IIFE to prevent production minification scoping issues
+                  // Previous attempts to reference outer-scope function failed catastrophically in production
+                  const handleBulkDelete = async () => {
+                    if (selectedCampaigns.size === 0) return;
+
+                    const count = selectedCampaigns.size;
+                    showConfirmModal({
+                      title: 'Delete Draft Campaigns',
+                      message: `Delete ${count} draft campaign${count > 1 ? 's' : ''}? This cannot be undone.`,
+                      confirmText: 'Delete',
+                      confirmVariant: 'danger',
+                      onConfirm: async () => {
+                        try {
+                          // Delete drafts using draft endpoint
+                          await Promise.all(
+                            Array.from(selectedCampaigns).map(draftId =>
+                              fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${actualWorkspaceId}`, {
+                                method: 'DELETE'
+                              })
+                            )
+                          );
+                          toastSuccess(`Deleted ${count} draft${count > 1 ? 's' : ''}`);
+                          clearSelection();
+                          refetch();
+                          // Also refresh drafts list
+                          queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                        } catch (error) {
+                          toastError('Failed to delete some drafts');
+                        }
+                      }
+                    });
+                  };
+
                   // Merge temp initialProspects and persistent DB campaigns
                   const pendingCampaigns: any[] = [];
 
