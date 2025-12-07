@@ -1876,7 +1876,8 @@ function CampaignBuilder({
     });
 
     if (initialProspects && initialProspects.length > 0) {
-      console.log('✅ Loading initialProspects into csvData:', initialProspects);
+      console.log('✅ Loading initialProspects into csvData:', initialProspects.length, 'prospects');
+      console.log('📊 First prospect sample:', initialProspects[0]);
       const headers = ['name', 'title', 'company', 'email', 'linkedin_url', 'connection_degree'];
       setCsvHeaders(headers);
       setCsvData(initialProspects);
@@ -1891,6 +1892,14 @@ function CampaignBuilder({
       } else {
         console.warn('⚠️ No session_id found in initialProspects - prospects may not transfer to campaign');
       }
+
+      // CRITICAL: Force immediate draft save with prospects (don't wait for debounce)
+      // Use longer timeout to ensure csvData state is fully updated
+      console.log('💾 Scheduling immediate draft save with', initialProspects.length, 'prospects');
+      setTimeout(() => {
+        console.log('💾 Executing forced draft save NOW');
+        saveDraft(true); // Force save
+      }, 500); // 500ms to ensure React state is fully updated
 
       // Stay on step 1 to let user select campaign type
       toastSuccess(`Loaded ${initialProspects.length} approved prospects - select campaign type`);
@@ -2522,6 +2531,15 @@ function CampaignBuilder({
       return;
     }
 
+    // CRITICAL DEBUG: Log csvData before sending to API
+    console.log('💾 [SAVE DRAFT] Preparing to save draft:', {
+      name,
+      campaignType,
+      csvDataLength: csvData?.length || 0,
+      hasCsvData: !!csvData && csvData.length > 0,
+      force
+    });
+
     setIsSavingDraft(true);
     try {
       const response = await fetch('/api/campaigns/draft', {
@@ -2539,6 +2557,8 @@ function CampaignBuilder({
           csvData,
         }),
       });
+
+      console.log('💾 [SAVE DRAFT] API request sent with csvData:', csvData?.length || 0, 'prospects');
 
       const result = await response.json();
 
