@@ -1982,7 +1982,7 @@ export default function DataCollectionHub({
         body: JSON.stringify({
           workspaceId: workspaceId,
           name: campaignName,
-          campaignType: campaignType || 'connector',
+          campaignType: campaignType, // FIXED (Dec 7): Don't default to 'connector' - preserve actual campaign type (messenger, email, linkedin, connector)
           status: 'draft',
           csvData: savedProspects.map(p => ({
             name: p.name,
