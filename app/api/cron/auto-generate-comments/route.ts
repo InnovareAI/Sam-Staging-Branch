@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
 
     // CRITICAL: Get post IDs that already have ANY comment (prevents duplicates)
     // This catches race conditions where multiple cron runs process same post
-    const postIds = posts.map(p => p.id);
+    // Reuse postIds from claim step (line 97)
     const { data: existingPostComments } = await supabase
       .from('linkedin_post_comments')
       .select('post_id')
