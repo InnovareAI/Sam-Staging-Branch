@@ -7476,7 +7476,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
     // Initialize editable settings from campaign data
     if (campaign) {
+      // Safely access nested properties with fallbacks
       const execPrefs = campaign.execution_preferences || {};
+      const timezone = campaign.timezone || 'America/New_York';
+      const workingHoursStart = typeof campaign.working_hours_start === 'number' ? campaign.working_hours_start : 7;
+      const workingHoursEnd = typeof campaign.working_hours_end === 'number' ? campaign.working_hours_end : 18;
+      const skipWeekends = campaign.skip_weekends !== false; // Default true
+      const skipHolidays = campaign.skip_holidays !== false; // Default true
+      const countryCode = campaign.country_code || 'US';
+
       setEditedCampaignSettings({
         name: campaign.name || '',
         daily_connection_limit: execPrefs.daily_connection_limit || 15,
@@ -7485,12 +7493,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         priority: execPrefs.priority || 'medium',
         start_immediately: execPrefs.start_immediately !== false,
         scheduled_start: execPrefs.scheduled_start || null,
-        timezone: campaign.timezone || 'America/New_York',
-        working_hours_start: campaign.working_hours_start || 7,
-        working_hours_end: campaign.working_hours_end || 18,
-        skip_weekends: campaign.skip_weekends !== false,
-        skip_holidays: campaign.skip_holidays !== false,
-        country_code: campaign.country_code || 'US',
+        timezone,
+        working_hours_start: workingHoursStart,
+        working_hours_end: workingHoursEnd,
+        skip_weekends: skipWeekends,
+        skip_holidays: skipHolidays,
+        country_code: countryCode,
         allow_same_company: execPrefs.allow_same_company || false,
         allow_duplicate_emails: execPrefs.allow_duplicate_emails || false,
         skip_bounced_emails: execPrefs.skip_bounced_emails !== false
