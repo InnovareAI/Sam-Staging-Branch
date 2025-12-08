@@ -53,6 +53,87 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // ============================================================
+    // VALIDATION: Ensure campaign is properly configured before activation
+    // Dec 8: Added to prevent silent failures during execution
+    // ============================================================
+
+    // 1. LinkedIn account must be configured for LinkedIn campaigns
+    const isLinkedInCampaign = ['connector', 'linkedin', 'messenger'].includes(campaign.campaign_type || 'connector')
+    if (isLinkedInCampaign && !campaign.linkedin_account_id) {
+      throw apiError.validation(
+        'LinkedIn account not configured',
+        'Please select a LinkedIn account in campaign settings before activating. Go to Settings → LinkedIn Accounts to connect one.'
+      )
+    }
+
+    // 2. Verify the LinkedIn account exists and is active
+    if (campaign.linkedin_account_id) {
+      const { data: linkedinAccount, error: accountError } = await supabase
+        .from('workspace_accounts')
+        .select('id, account_name, connection_status, is_active')
+        .eq('id', campaign.linkedin_account_id)
+        .single()
+
+      if (accountError || !linkedinAccount) {
+        throw apiError.validation(
+          'LinkedIn account not found',
+          'The configured LinkedIn account no longer exists. Please select a different account.'
+        )
+      }
+
+      if (!linkedinAccount.is_active) {
+        throw apiError.validation(
+          'LinkedIn account is inactive',
+          `The account "${linkedinAccount.account_name}" is inactive. Please reconnect it in Settings → LinkedIn Accounts.`
+        )
+      }
+
+      if (linkedinAccount.connection_status !== 'connected') {
+        throw apiError.validation(
+          'LinkedIn account disconnected',
+          `The account "${linkedinAccount.account_name}" is ${linkedinAccount.connection_status}. Please reconnect it in Settings → LinkedIn Accounts.`
+        )
+      }
+    }
+
+    // 3. Check for prospects ready to send
+    const { count: prospectCount, error: prospectError } = await supabase
+      .from('campaign_prospects')
+      .select('*', { count: 'exact', head: true })
+      .eq('campaign_id', campaignId)
+      .in('status', ['pending', 'approved'])
+      .not('linkedin_url', 'is', null)
+
+    if (prospectError) {
+      console.error('Error checking prospects:', prospectError)
+    }
+
+    if (!prospectCount || prospectCount === 0) {
+      throw apiError.validation(
+        'No prospects ready to send',
+        'Add and approve prospects before activating. Prospects must have LinkedIn URLs and be in pending or approved status.'
+      )
+    }
+
+    // 4. Check connection message exists for connector campaigns
+    if (campaign.campaign_type === 'connector' || !campaign.campaign_type) {
+      const connectionMessage =
+        campaign.message_templates?.connection_request ||
+        campaign.connection_message ||
+        (campaign.linkedin_config as any)?.connection_message ||
+        (campaign.draft_data as any)?.connectionRequestMessage
+
+      if (!connectionMessage) {
+        throw apiError.validation(
+          'Connection message not configured',
+          'Please add a connection request message in the campaign builder before activating.'
+        )
+      }
+    }
+
+    console.log(`✅ Campaign validation passed: ${prospectCount} prospects ready, LinkedIn account configured`)
+
     // Update campaign status to active
     // Dec 5 FIX: Use launched_at instead of activated_at (column doesn't exist)
     const { error: updateError } = await supabase
