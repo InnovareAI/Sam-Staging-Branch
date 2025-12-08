@@ -6703,8 +6703,18 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       // Determine campaign type (needed for LinkedIn ID sync logic)
       const approvedCampaignType = _executionData?.campaignType || finalCampaignData.type || 'connector';
 
-      // Extract session_id from prospects (for auto-transfer of approved prospects)
-      const sessionId = finalCampaignData.prospects?.[0]?.sessionId || initialProspects?.[0]?.sessionId;
+      // Dec 8 CRITICAL FIX: DO NOT pass session_id to campaign creation!
+      // The campaigns API has "auto-transfer" logic that pulls ALL prospects from the session,
+      // which causes data leakage when user only selected a subset.
+      // Instead, prospects are uploaded explicitly via /api/campaigns/upload-prospects (line ~6929)
+      // with ONLY the user's selected prospects (mappedProspectsFiltered).
+      //
+      // Previous bug:
+      //   1. Campaign created with session_id → auto-transfers ALL 6 prospects from session
+      //   2. upload-prospects adds user's selection (1 prospect)
+      //   3. Result: 6 + 1 = 7 prospects (or 6 if duplicates filtered)
+      //
+      // Fix: Don't pass session_id, let upload-prospects handle the specific selection.
 
       // Step 1: Create campaign with 'inactive' status (ready to activate)
       console.log('🎯 [APPROVE CAMPAIGN] Creating campaign with workspace_id:', actualWorkspaceId);
@@ -6717,7 +6727,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           name: finalCampaignData.name,
           campaign_type: approvedCampaignType,
           status: 'active', // Set to active after user approves in modal so it can execute immediately
-          session_id: sessionId, // CRITICAL: Pass session_id to auto-transfer approved prospects
+          // session_id: REMOVED - caused auto-transfer of ALL session prospects (data leakage bug)
           // MESSENGER: Use direct_message_1/2/3 (no CR)
           // CONNECTOR: Use connection_request + follow_ups
           message_templates: approvedCampaignType === 'messenger' ? {
