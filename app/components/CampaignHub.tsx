@@ -8731,7 +8731,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                         Resume
                       </button>
                       <button
-                        onClick={handleBulkDelete}
+                        onClick={handleBulkDeleteWithConfirm}
                         className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm flex items-center gap-1"
                       >
                         <Trash2 size={14} />
