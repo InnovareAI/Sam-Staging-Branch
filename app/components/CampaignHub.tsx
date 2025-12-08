@@ -6285,6 +6285,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     onConfirm: () => {}
   });
 
+  // Helper to show confirm modal (Dec 9: use this setConfirmModal which is connected to the modal component)
+  const showConfirmModal = (config: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    confirmVariant?: 'danger' | 'primary' | 'success';
+    onConfirm: () => void;
+  }) => {
+    setConfirmModal({ isOpen: true, ...config });
+  };
+
   // Account connection wizards state (for CampaignBuilder)
   const [showUnipileWizard, setShowUnipileWizard] = useState(false);
   const [unipileProvider, setUnipileProvider] = useState<'LINKEDIN' | 'GOOGLE' | 'OUTLOOK'>('LINKEDIN');
