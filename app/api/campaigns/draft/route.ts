@@ -176,8 +176,8 @@ export async function POST(request: NextRequest) {
               linkedin_url: linkedinUrl || null,
               email: email || null,
               provider_id: p.provider_id || p.providerId || null,
-              company: p.company || p.organization || null,
-              title: p.title || p.job_title || null,
+              // REMOVED: company field (Dec 8) - not in campaign_prospects schema
+              // REMOVED: title field (Dec 8) - not in campaign_prospects schema
               status: 'pending',
               created_at: new Date().toISOString()
             };
@@ -312,8 +312,8 @@ export async function POST(request: NextRequest) {
               linkedin_url: linkedinUrl || null,
               email: email || null,
               provider_id: p.provider_id || p.providerId || null,
-              company: p.company || p.organization || null,
-              title: p.title || p.job_title || null,
+              // REMOVED: company field (Dec 8) - not in campaign_prospects schema
+              // REMOVED: title field (Dec 8) - not in campaign_prospects schema
               status: 'pending',
               created_at: new Date().toISOString()
             };
