@@ -1935,56 +1935,15 @@ export default function DataCollectionHub({
     setLoading(true)
     setLoadingMessage(`Saving ${approvedProspects.length} approved prospects...`)
 
-    let savedProspects = approvedProspects;
-
-    try {
-      // Check if prospects need to be saved to database (don't have prospect_id yet)
-      const needsSaving = approvedProspects.some(p => !p.prospect_id || p.prospect_id.startsWith('temp_'));
-
-      if (needsSaving && workspaceId) {
-        // Save to prospect_approval_data via upload-prospects API
-        const response = await fetch('/api/prospect-approval/upload-prospects', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            campaign_name: approvedProspects[0]?.campaignName || 'Approved Prospects',
-            campaign_tag: approvedProspects[0]?.campaignTag || 'approved',
-            source: 'data-approval',
-            prospects: approvedProspects.map(p => ({
-              name: p.name,
-              title: p.title || '',
-              company: p.company || { name: '' },
-              location: p.location || '',
-              contact: p.contact || {
-                email: p.email,
-                linkedin_url: p.linkedinUrl || p.linkedin_url
-              },
-              source: 'data-approval',
-              enrichment_score: p.enrichment_score || 70,
-              approval_status: 'approved'
-            }))
-          })
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log('✅ Prospects saved to database:', result);
-
-          // Fetch the saved prospects to get their database IDs
-          // CRITICAL: Pass session_id to get only the prospects from THIS session, not all sessions
-          const sessionIdParam = result.session_id ? `&session_id=${result.session_id}` : '';
-          const approvedResponse = await fetch(`/api/prospect-approval/approved?workspace_id=${workspaceId}${sessionIdParam}`);
-          if (approvedResponse.ok) {
-            const approvedData = await approvedResponse.json();
-            savedProspects = approvedData.prospects || approvedProspects;
-            console.log('✅ Fetched saved prospects with IDs:', savedProspects.length, 'from session:', result.session_id);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error saving prospects to database:', error)
-      // Continue anyway - prospects will still be passed to campaign hub
-    }
+    // Dec 8 CRITICAL FIX: DO NOT fetch from /api/prospect-approval/approved
+    // That endpoint returns ALL approved prospects in the session, which can include
+    // prospects from previous uploads (data leakage). Instead, use the prospects
+    // passed in directly - they are already the user's explicit selection.
+    //
+    // Previous bug: User selects 2 → uploads → fetches ALL 6 from session → 6 in campaign
+    // Fix: User selects 2 → passes 2 directly → 2 in campaign
+    const savedProspects = approvedProspects;
+    console.log(`📊 [DATA LEAKAGE FIX] Using ${savedProspects.length} prospects directly (no database fetch)`)
 
     // CHANGED (Dec 8): Do NOT create draft here - just pass prospects to CampaignHub
     // Draft/campaign will be created when user actually saves or activates
