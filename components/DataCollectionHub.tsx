@@ -3316,11 +3316,28 @@ export default function DataCollectionHub({
           setShowPreflightModal(true);
 
           try {
+            // Dec 9: Safely serialize prospects to avoid circular reference crashes
+            const safeProspects = prospectsToSend.map((p: any) => ({
+              id: p.id,
+              name: p.name || p.contact?.name || 'Unknown',
+              email: p.email || p.contact?.email || p.email_address,
+              linkedin_url: p.linkedin_url || p.contact?.linkedin_url || p.linkedinUrl,
+              linkedinUrl: p.linkedinUrl || p.linkedin_url || p.contact?.linkedin_url,
+              connection_degree: p.connection_degree || p.connectionDegree,
+              connectionDegree: p.connectionDegree || p.connection_degree,
+              company: p.company || p.contact?.company,
+              title: p.title || p.contact?.title,
+              sessionId: p.sessionId,
+              campaignName: p.campaignName
+            }));
+
+            console.log(`📤 Sending ${safeProspects.length} prospects to preflight check`);
+
             const response = await fetch('/api/linkedin/preflight-check', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                prospects: prospectsToSend,
+                prospects: safeProspects,
                 workspaceId: actualWorkspaceId,
                 campaignType: type
               })
