@@ -235,13 +235,21 @@ export async function POST(req: NextRequest) {
     const connectionChecks = await Promise.all(
       sampleProspects.map(async (p) => {
         try {
-          // Skip if no LinkedIn user ID
-          if (!p.linkedin_user_id) {
-            return { id: p.id, name: `${p.first_name} ${p.last_name}`, connected: false, reason: 'No LinkedIn ID' };
+          // CRITICAL FIX (Dec 8): Use vanity URL endpoint, NOT provider_id endpoint
+          // Unipile's profile?provider_id= returns WRONG profiles (returns Jamshaid Ali for Paul Dhaliwal!)
+          // The legacy /users/{vanity} endpoint works correctly
+
+          // Extract vanity from LinkedIn URL
+          const vanityMatch = p.linkedin_url?.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+          const vanity = vanityMatch?.[1];
+
+          if (!vanity) {
+            return { id: p.id, name: `${p.first_name} ${p.last_name}`, connected: false, reason: 'No LinkedIn URL' };
           }
 
+          // Use legacy endpoint that actually works correctly
           const profile = await unipileRequest(
-            `/api/v1/users/profile?account_id=${unipileAccountId}&provider_id=${p.linkedin_user_id}`
+            `/api/v1/users/${vanity}?account_id=${unipileAccountId}`
           );
 
           return {
