@@ -1662,11 +1662,31 @@ export default function DataCollectionHub({
   }
 
   const addApprovedToExistingCampaign = async () => {
-    // FIXED: Use selected prospects if any are checked, otherwise use all approved
+    // Dec 8 FIX: Prevent data leakage - use only most recent session if no selection
     const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
-    const prospectsToAdd = selectedProspectIds.size > 0
-      ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
-      : approvedProspects
+
+    let prospectsToAdd: ProspectData[]
+    if (selectedProspectIds.size > 0) {
+      // User explicitly selected prospects - use exactly those
+      prospectsToAdd = approvedProspects.filter(p => selectedProspectIds.has(p.id))
+    } else if (approvedProspects.length > 0) {
+      // No explicit selection - ONLY use prospects from the most recent session
+      const sortedByDate = [...approvedProspects].sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0
+        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0
+        return dateB - dateA
+      })
+      const mostRecentSessionId = sortedByDate[0]?.sessionId
+
+      if (mostRecentSessionId) {
+        prospectsToAdd = approvedProspects.filter(p => p.sessionId === mostRecentSessionId)
+        console.log(`📊 [DATA LEAKAGE FIX] Adding ${prospectsToAdd.length} prospects from most recent session: ${mostRecentSessionId.substring(0, 8)}`)
+      } else {
+        prospectsToAdd = [sortedByDate[0]]
+      }
+    } else {
+      prospectsToAdd = []
+    }
 
     if (prospectsToAdd.length === 0) {
       toastError('No prospects to add. Please select prospects or approve some first.')
@@ -2056,9 +2076,35 @@ export default function DataCollectionHub({
     }
 
     const approvedProspects = prospectData.filter(p => p.approvalStatus === 'approved')
-    let prospectsToSend = selectedProspectIds.size > 0
-      ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
-      : approvedProspects
+
+    // Dec 8 FIX: Prevent data leakage across sessions
+    // If no prospects explicitly selected, use ONLY the most recently approved prospect's session
+    // This prevents accidentally including approved prospects from old/unrelated sessions
+    let prospectsToSend: ProspectData[]
+    if (selectedProspectIds.size > 0) {
+      // User explicitly selected prospects - use exactly those
+      prospectsToSend = approvedProspects.filter(p => selectedProspectIds.has(p.id))
+    } else if (approvedProspects.length > 0) {
+      // No explicit selection - ONLY use prospects from the most recent session
+      // Sort by creation date and get the most recent prospect's session
+      const sortedByDate = [...approvedProspects].sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0
+        const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0
+        return dateB - dateA // Most recent first
+      })
+      const mostRecentSessionId = sortedByDate[0]?.sessionId
+
+      if (mostRecentSessionId) {
+        prospectsToSend = approvedProspects.filter(p => p.sessionId === mostRecentSessionId)
+        console.log(`📊 [DATA LEAKAGE FIX] Using ${prospectsToSend.length} prospects from most recent session: ${mostRecentSessionId.substring(0, 8)}`)
+      } else {
+        // Fallback if no sessionId - use just the most recent one
+        prospectsToSend = [sortedByDate[0]]
+        console.log('⚠️ [DATA LEAKAGE FIX] No sessionId found, using single most recent prospect')
+      }
+    } else {
+      prospectsToSend = []
+    }
 
     if (prospectsToSend.length === 0) {
       toastError('No approved prospects to create campaign. Please approve some prospects first.')
@@ -3264,9 +3310,29 @@ export default function DataCollectionHub({
             campaignName // Add campaign name to each prospect so draft creation can use it
           }));
 
-          let prospectsToSend = selectedProspectIds.size > 0
-            ? approvedProspects.filter(p => selectedProspectIds.has(p.id))
-            : approvedProspects;
+          // Dec 8 FIX: Prevent data leakage - use only most recent session if no selection
+          let prospectsToSend: any[]
+          if (selectedProspectIds.size > 0) {
+            // User explicitly selected prospects - use exactly those
+            prospectsToSend = approvedProspects.filter(p => selectedProspectIds.has(p.id))
+          } else if (approvedProspects.length > 0) {
+            // No explicit selection - ONLY use prospects from the most recent session
+            const sortedByDate = [...approvedProspects].sort((a, b) => {
+              const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0
+              const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0
+              return dateB - dateA
+            })
+            const mostRecentSessionId = sortedByDate[0]?.sessionId
+
+            if (mostRecentSessionId) {
+              prospectsToSend = approvedProspects.filter(p => p.sessionId === mostRecentSessionId)
+              console.log(`📊 [DATA LEAKAGE FIX] Modal: Using ${prospectsToSend.length} prospects from most recent session: ${mostRecentSessionId.substring(0, 8)}`)
+            } else {
+              prospectsToSend = [sortedByDate[0]]
+            }
+          } else {
+            prospectsToSend = []
+          }
 
           // Filter prospects based on campaign type selection
           // Helper to check if email exists (must be non-empty string)
