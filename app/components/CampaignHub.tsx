@@ -6284,13 +6284,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     return true;
   });
 
-  // Don't auto-open builder - show Pending Approval section instead
-  // Users will click "Draft Messages" to open builder for each campaign
-  // useEffect(() => {
-  //   if (initialProspects && initialProspects.length > 0) {
-  //     setShowBuilder(true);
-  //   }
-  // }, [initialProspects]);
+  // CRITICAL FIX (Dec 8): Auto-open builder when coming from prospect approval with initialDraftId
+  // This ensures users are taken through the campaign setup flow after approving prospects
+  useEffect(() => {
+    if (initialDraftId) {
+      console.log('🚀 Auto-opening builder for draft:', initialDraftId);
+      setShowBuilder(true);
+    } else if (initialProspects && initialProspects.length > 0) {
+      console.log('🚀 Auto-opening builder for initialProspects:', initialProspects.length);
+      setShowBuilder(true);
+    }
+  }, [initialDraftId, initialProspects]);
 
   // Save auto-open preference to localStorage
   useEffect(() => {
