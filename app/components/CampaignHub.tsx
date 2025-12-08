@@ -1943,21 +1943,25 @@ function CampaignBuilder({
                 console.log('✅ Loaded campaign settings from draft');
               }
 
-              // Load prospects - PRIORITY: draft.prospects (from campaign_prospects table) > draft_data.csvData (legacy) > initialProspects (fallback)
-              if (draft.prospects && draft.prospects.length > 0) {
-                // NEW: Prospects come from campaign_prospects table (Dec 8 fix)
+              // Load prospects - CRITICAL FIX (Dec 8): initialProspects from user selection
+              // takes HIGHEST priority. Database prospects are only used if no explicit selection.
+              // Previous bug: Database prospects overwrote user's selection, causing 6 prospects
+              // to appear when user only selected 2.
+              if (initialProspects && initialProspects.length > 0) {
+                // HIGHEST PRIORITY: User's explicit selection (from DataCollectionHub)
+                // Already set at line 1886, don't override it!
+                console.log('✅ Keeping', initialProspects.length, 'prospects from initialProspects (user selection - highest priority)');
+                toastSuccess(`Loaded draft "${draft.name}" - using ${initialProspects.length} selected prospects`);
+              } else if (draft.prospects && draft.prospects.length > 0) {
+                // FALLBACK 1: Load from campaign_prospects table if no user selection
                 setCsvData(draft.prospects);
                 console.log('✅ Loaded', draft.prospects.length, 'prospects from campaign_prospects table');
                 toastSuccess(`Loaded draft "${draft.name}" with ${draft.prospects.length} prospects`);
               } else if (draft.draft_data?.csvData && draft.draft_data.csvData.length > 0) {
-                // LEGACY: Old drafts stored prospects in draft_data.csvData
+                // FALLBACK 2: Legacy drafts stored prospects in draft_data.csvData
                 setCsvData(draft.draft_data.csvData);
                 console.log('✅ Loaded', draft.draft_data.csvData.length, 'prospects from legacy draft_data.csvData');
                 toastSuccess(`Loaded draft "${draft.name}" with ${draft.draft_data.csvData.length} prospects`);
-              } else if (initialProspects && initialProspects.length > 0) {
-                // FALLBACK: Use initialProspects passed as prop
-                setCsvData(initialProspects);
-                console.log('✅ Loaded', initialProspects.length, 'prospects from initialProspects (fallback)');
               } else {
                 console.warn('⚠️ Draft has no prospects anywhere!');
               }
