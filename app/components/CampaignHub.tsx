@@ -1914,6 +1914,33 @@ function CampaignBuilder({
                 console.log('✅ Set campaign type from draft:', draft.campaign_type, '→', typeToSet);
               }
 
+              // CRITICAL FIX (Dec 8): Load ALL draft metadata (not just csvData)
+              // Set current step (important for showing correct UI)
+              if (draft.draft_data?.current_step !== undefined) {
+                setCurrentStep(draft.draft_data.current_step);
+                console.log('✅ Set current step from draft:', draft.draft_data.current_step);
+              }
+
+              // Load messages from draft_data
+              if (draft.draft_data?.connection_message) {
+                setConnectionMessage(draft.draft_data.connection_message);
+                console.log('✅ Loaded connection message from draft');
+              }
+              if (draft.draft_data?.alternative_message) {
+                setAlternativeMessage(draft.draft_data.alternative_message);
+                console.log('✅ Loaded alternative message from draft');
+              }
+              if (draft.draft_data?.followup_messages && Array.isArray(draft.draft_data.followup_messages)) {
+                setFollowUpMessages(draft.draft_data.followup_messages);
+                console.log('✅ Loaded', draft.draft_data.followup_messages.length, 'follow-up messages from draft');
+              }
+
+              // Load campaign settings (timing/cadence)
+              if (draft.draft_data?.campaign_settings) {
+                setCampaignSettings(draft.draft_data.campaign_settings);
+                console.log('✅ Loaded campaign settings from draft');
+              }
+
               // Load prospects from draft_data.csvData
               if (draft.draft_data?.csvData && draft.draft_data.csvData.length > 0) {
                 setCsvData(draft.draft_data.csvData);
