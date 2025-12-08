@@ -175,9 +175,8 @@ export async function POST(request: NextRequest) {
               last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
               linkedin_url: linkedinUrl || null,
               email: email || null,
-              // REMOVED: provider_id field (Dec 8) - not in campaign_prospects schema
-              // REMOVED: company field (Dec 8) - not in campaign_prospects schema
-              // REMOVED: title field (Dec 8) - not in campaign_prospects schema
+              company_name: p.company || p.companyName || p.company_name || p.contact?.company || null,
+              title: p.title || p.jobTitle || p.job_title || p.contact?.title || null,
               status: 'pending',
               created_at: new Date().toISOString()
             };
@@ -311,9 +310,8 @@ export async function POST(request: NextRequest) {
               last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
               linkedin_url: linkedinUrl || null,
               email: email || null,
-              // REMOVED: provider_id field (Dec 8) - not in campaign_prospects schema
-              // REMOVED: company field (Dec 8) - not in campaign_prospects schema
-              // REMOVED: title field (Dec 8) - not in campaign_prospects schema
+              company_name: p.company || p.companyName || p.company_name || p.contact?.company || null,
+              title: p.title || p.jobTitle || p.job_title || p.contact?.title || null,
               status: 'pending',
               created_at: new Date().toISOString()
             };
