@@ -3270,7 +3270,7 @@ export default function DataCollectionHub({
           //
           // Previous bug: selectedProspectIds.size === 0 would fall through to "most recent session"
           // logic, which included ALL prospects from the session instead of just the selected ones.
-          const prospectsToSend = campaignModal.approvedProspects.map(p => ({
+          let prospectsToSend = campaignModal.approvedProspects.map(p => ({
             ...p,
             campaignName // Add campaign name to each prospect so draft creation can use it
           }));
