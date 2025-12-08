@@ -3107,6 +3107,7 @@ export default function Page() {
               ) : (
                 <CampaignHub
                   workspaceId={currentWorkspace?.id || null}
+                  initialProspects={pendingCampaignProspects}
                   initialCampaignType={pendingCampaignType}
                   initialDraftId={pendingDraftId}
                   onCampaignCreated={() => {
