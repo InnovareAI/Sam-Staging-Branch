@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
               last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
               linkedin_url: linkedinUrl || null,
               email: email || null,
-              provider_id: p.provider_id || p.providerId || null,
+              // REMOVED: provider_id field (Dec 8) - not in campaign_prospects schema
               // REMOVED: company field (Dec 8) - not in campaign_prospects schema
               // REMOVED: title field (Dec 8) - not in campaign_prospects schema
               status: 'pending',
@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
               last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
               linkedin_url: linkedinUrl || null,
               email: email || null,
-              provider_id: p.provider_id || p.providerId || null,
+              // REMOVED: provider_id field (Dec 8) - not in campaign_prospects schema
               // REMOVED: company field (Dec 8) - not in campaign_prospects schema
               // REMOVED: title field (Dec 8) - not in campaign_prospects schema
               status: 'pending',
