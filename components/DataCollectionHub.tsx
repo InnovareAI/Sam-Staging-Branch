@@ -3304,35 +3304,19 @@ export default function DataCollectionHub({
           // CRITICAL: Store campaign name in state so it survives preflight API call
           setPendingCampaignName(campaignName);
 
-          // Use approved prospects from modal state
-          const approvedProspects = campaignModal.approvedProspects.map(p => ({
+          // Dec 8 CRITICAL FIX: campaignModal.approvedProspects already contains ONLY the
+          // user's selected prospects (filtered when modal was opened at line 2580).
+          // DO NOT check selectedProspectIds again - React state may have changed between
+          // modal open and onSelectType call, causing data leakage.
+          //
+          // Previous bug: selectedProspectIds.size === 0 would fall through to "most recent session"
+          // logic, which included ALL prospects from the session instead of just the selected ones.
+          const prospectsToSend = campaignModal.approvedProspects.map(p => ({
             ...p,
             campaignName // Add campaign name to each prospect so draft creation can use it
           }));
 
-          // Dec 8 FIX: Prevent data leakage - use only most recent session if no selection
-          let prospectsToSend: any[]
-          if (selectedProspectIds.size > 0) {
-            // User explicitly selected prospects - use exactly those
-            prospectsToSend = approvedProspects.filter(p => selectedProspectIds.has(p.id))
-          } else if (approvedProspects.length > 0) {
-            // No explicit selection - ONLY use prospects from the most recent session
-            const sortedByDate = [...approvedProspects].sort((a, b) => {
-              const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0
-              const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0
-              return dateB - dateA
-            })
-            const mostRecentSessionId = sortedByDate[0]?.sessionId
-
-            if (mostRecentSessionId) {
-              prospectsToSend = approvedProspects.filter(p => p.sessionId === mostRecentSessionId)
-              console.log(`📊 [DATA LEAKAGE FIX] Modal: Using ${prospectsToSend.length} prospects from most recent session: ${mostRecentSessionId.substring(0, 8)}`)
-            } else {
-              prospectsToSend = [sortedByDate[0]]
-            }
-          } else {
-            prospectsToSend = []
-          }
+          console.log(`📊 [DATA LEAKAGE FIX] Using ${prospectsToSend.length} prospects from modal (already filtered at modal open)`)
 
           // Filter prospects based on campaign type selection
           // Helper to check if email exists (must be non-empty string)
@@ -3394,11 +3378,8 @@ export default function DataCollectionHub({
             setIsRunningPreflight(false);
           }
         }}
-        prospectCount={selectedProspectIds.size > 0 ? selectedProspectIds.size : campaignModal.approvedProspects.length}
-        prospects={selectedProspectIds.size > 0
-          ? campaignModal.approvedProspects.filter(p => selectedProspectIds.has(p.id))
-          : campaignModal.approvedProspects
-        }
+        prospectCount={campaignModal.approvedProspects.length}
+        prospects={campaignModal.approvedProspects}
         hasEmailAccount={hasEmailAccount}
       />
 
