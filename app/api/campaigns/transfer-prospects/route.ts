@@ -75,22 +75,21 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get approved prospects from prospect_approval_data
-    let query = supabase
-      .from('prospect_approval_data')
-      .select('*')
-      .eq('approval_status', 'approved');
-
-    // If session_id provided, filter by it
-    // Otherwise get all approved prospects with matching campaign name
-    if (session_id) {
-      query = query.eq('session_id', session_id);
-    } else if (campaign.name) {
-      // Try to match by campaign name in prospect data
-      query = query.eq('campaign_name', campaign.name);
+    // Dec 8 FIX: REQUIRE session_id to prevent loading old/unrelated prospects
+    // The campaign_name fallback was pulling data from sessions with similar names
+    if (!session_id) {
+      return NextResponse.json({
+        error: 'session_id is required to transfer prospects',
+        message: 'Must specify which approval session to transfer from to prevent data leakage'
+      }, { status: 400 });
     }
 
-    const { data: approvedProspects, error: prospectsError } = await query;
+    // Get approved prospects from the specific session only
+    const { data: approvedProspects, error: prospectsError } = await supabase
+      .from('prospect_approval_data')
+      .select('*')
+      .eq('approval_status', 'approved')
+      .eq('session_id', session_id);
 
     if (prospectsError) {
       return NextResponse.json({
