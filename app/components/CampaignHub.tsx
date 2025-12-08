@@ -3882,8 +3882,8 @@ Would you like me to adjust these or create more variations?`
             <Rocket size={20} className="text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-white">New Campaign</h2>
-            <p className="text-gray-400 text-sm">Multi-channel outreach automation</p>
+            <h2 className="text-xl font-semibold text-white">{name || 'New Campaign'}</h2>
+            <p className="text-gray-400 text-sm">{getCampaignTypeLabel(campaignType)} Campaign</p>
           </div>
         </div>
         {onClose && (
@@ -4277,6 +4277,18 @@ Would you like me to adjust these or create more variations?`
       {/* Step 2: Message Templates (Connector Campaign) */}
       {currentStep === 2 && campaignType === 'connector' && (
         <div className="space-y-6">
+          {/* Campaign Name - Editable in Step 2 */}
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+            <label className="block text-sm font-medium text-gray-400 mb-2">Campaign Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              placeholder="Enter campaign name..."
+            />
+          </div>
+
           {/* SAM Messaging Generation */}
           <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
             <div className="flex items-center mb-3">
@@ -4731,6 +4743,18 @@ Would you like me to adjust these or create more variations?`
       {/* Step 2: Message Templates (Messenger Campaign - 1st degree connections) */}
       {currentStep === 2 && campaignType === 'messenger' && (
         <div className="space-y-6">
+          {/* Campaign Name - Editable in Step 2 */}
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+            <label className="block text-sm font-medium text-gray-400 mb-2">Campaign Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              placeholder="Enter campaign name..."
+            />
+          </div>
+
           {/* SAM Messaging Generation */}
           <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
             <div className="flex items-center mb-3">
@@ -5064,6 +5088,18 @@ Would you like me to adjust these or create more variations?`
       {/* Step 2: Message Templates (Email Campaign) */}
       {currentStep === 2 && campaignType === 'email' && (
         <div className="space-y-6">
+          {/* Campaign Name - Editable in Step 2 */}
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+            <label className="block text-sm font-medium text-gray-400 mb-2">Campaign Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+              placeholder="Enter campaign name..."
+            />
+          </div>
+
           {/* SAM Messaging Generation */}
           <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
             <div className="flex items-center mb-3">
