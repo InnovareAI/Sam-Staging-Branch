@@ -1888,15 +1888,17 @@ function CampaignBuilder({
       setShowPreview(true);
 
       // CRITICAL FIX (Dec 8): Load draft from database if initialDraftId is provided
-      if (initialDraftId) {
-        console.log('💾 Loading existing draft from database:', initialDraftId);
+      if (initialDraftId && workspaceId) {
+        console.log('💾 Loading existing draft from database:', initialDraftId, 'workspace:', workspaceId);
         setCurrentDraftId(initialDraftId);
 
         // Fetch the draft from the API to get ALL data including prospects
-        fetch(`/api/campaigns/draft?draftId=${initialDraftId}`)
+        // CRITICAL: Must include workspaceId - API requires it for auth
+        fetch(`/api/campaigns/draft?draftId=${initialDraftId}&workspaceId=${workspaceId}`)
           .then(res => res.json())
           .then(data => {
-            if (data.success && data.draft) {
+            // API returns { draft: ... } - no success field
+            if (data.draft) {
               const draft = data.draft;
               console.log('✅ Draft loaded from database:', draft);
 
@@ -1941,18 +1943,23 @@ function CampaignBuilder({
                 console.log('✅ Loaded campaign settings from draft');
               }
 
-              // Load prospects from draft_data.csvData
-              if (draft.draft_data?.csvData && draft.draft_data.csvData.length > 0) {
+              // Load prospects - PRIORITY: draft.prospects (from campaign_prospects table) > draft_data.csvData (legacy) > initialProspects (fallback)
+              if (draft.prospects && draft.prospects.length > 0) {
+                // NEW: Prospects come from campaign_prospects table (Dec 8 fix)
+                setCsvData(draft.prospects);
+                console.log('✅ Loaded', draft.prospects.length, 'prospects from campaign_prospects table');
+                toastSuccess(`Loaded draft "${draft.name}" with ${draft.prospects.length} prospects`);
+              } else if (draft.draft_data?.csvData && draft.draft_data.csvData.length > 0) {
+                // LEGACY: Old drafts stored prospects in draft_data.csvData
                 setCsvData(draft.draft_data.csvData);
-                console.log('✅ Loaded', draft.draft_data.csvData.length, 'prospects from draft');
+                console.log('✅ Loaded', draft.draft_data.csvData.length, 'prospects from legacy draft_data.csvData');
                 toastSuccess(`Loaded draft "${draft.name}" with ${draft.draft_data.csvData.length} prospects`);
+              } else if (initialProspects && initialProspects.length > 0) {
+                // FALLBACK: Use initialProspects passed as prop
+                setCsvData(initialProspects);
+                console.log('✅ Loaded', initialProspects.length, 'prospects from initialProspects (fallback)');
               } else {
-                console.warn('⚠️ Draft has no csvData - falling back to initialProspects');
-                // Fallback to initialProspects if draft has no csvData
-                if (initialProspects && initialProspects.length > 0) {
-                  setCsvData(initialProspects);
-                  console.log('✅ Loaded', initialProspects.length, 'prospects from initialProspects (fallback)');
-                }
+                console.warn('⚠️ Draft has no prospects anywhere!');
               }
             } else {
               console.error('❌ Failed to load draft:', data.error || 'Unknown error');
