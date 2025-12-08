@@ -1887,38 +1887,100 @@ function CampaignBuilder({
       setDataSource('approved');
       setShowPreview(true);
 
-      // CRITICAL FIX (Dec 7): Set draftId to prevent duplicate creation
+      // CRITICAL FIX (Dec 8): Load draft from database if initialDraftId is provided
       if (initialDraftId) {
-        console.log('✅ Setting currentDraftId from prop:', initialDraftId);
+        console.log('💾 Loading existing draft from database:', initialDraftId);
         setCurrentDraftId(initialDraftId);
+
+        // Fetch the draft from the API to get ALL data including prospects
+        fetch(`/api/campaigns/draft?draftId=${initialDraftId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.draft) {
+              const draft = data.draft;
+              console.log('✅ Draft loaded from database:', draft);
+
+              // Set campaign name
+              if (draft.name) {
+                setName(draft.name);
+                console.log('✅ Set campaign name from draft:', draft.name);
+              }
+
+              // Set campaign type
+              if (draft.campaign_type) {
+                const typeToSet = draft.campaign_type === 'linkedin' ? 'connector' : draft.campaign_type;
+                setCampaignType(typeToSet);
+                setUserSelectedCampaignType(true);
+                console.log('✅ Set campaign type from draft:', draft.campaign_type, '→', typeToSet);
+              }
+
+              // Load prospects from draft_data.csvData
+              if (draft.draft_data?.csvData && draft.draft_data.csvData.length > 0) {
+                setCsvData(draft.draft_data.csvData);
+                console.log('✅ Loaded', draft.draft_data.csvData.length, 'prospects from draft');
+                toastSuccess(`Loaded draft "${draft.name}" with ${draft.draft_data.csvData.length} prospects`);
+              } else {
+                console.warn('⚠️ Draft has no csvData - falling back to initialProspects');
+                // Fallback to initialProspects if draft has no csvData
+                if (initialProspects && initialProspects.length > 0) {
+                  setCsvData(initialProspects);
+                  console.log('✅ Loaded', initialProspects.length, 'prospects from initialProspects (fallback)');
+                }
+              }
+            } else {
+              console.error('❌ Failed to load draft:', data.error || 'Unknown error');
+              // Fallback to initialProspects
+              if (initialProspects && initialProspects.length > 0) {
+                setCsvData(initialProspects);
+                setName(initialProspects[0]?.campaignName || 'New Campaign');
+                if (initialCampaignType) {
+                  const typeToSet = initialCampaignType === 'linkedin' ? 'connector' : initialCampaignType;
+                  setCampaignType(typeToSet);
+                  setUserSelectedCampaignType(true);
+                }
+              }
+            }
+          })
+          .catch(error => {
+            console.error('❌ Error fetching draft:', error);
+            // Fallback to initialProspects
+            if (initialProspects && initialProspects.length > 0) {
+              setCsvData(initialProspects);
+              setName(initialProspects[0]?.campaignName || 'New Campaign');
+              if (initialCampaignType) {
+                const typeToSet = initialCampaignType === 'linkedin' ? 'connector' : initialCampaignType;
+                setCampaignType(typeToSet);
+                setUserSelectedCampaignType(true);
+              }
+            }
+          });
+      } else {
+        // No initialDraftId - use initialProspects directly (old flow)
+        console.log('⚠️ No initialDraftId - loading prospects from initialProspects prop');
+
+        // CRITICAL FIX (Dec 7): Set campaign name from prospects
+        if (initialProspects[0]?.campaignName) {
+          setName(initialProspects[0].campaignName);
+          console.log('✅ Set campaign name:', initialProspects[0].campaignName);
+        }
+
+        // CRITICAL FIX (Dec 7): Sync campaign type IMMEDIATELY before saving
+        if (initialCampaignType) {
+          const typeToSet = initialCampaignType === 'linkedin' ? 'connector' : initialCampaignType;
+          console.log('✅ Setting campaign type from prop:', initialCampaignType, '→', typeToSet);
+          setCampaignType(typeToSet);
+          setUserSelectedCampaignType(true);
+        }
+
+        // Extract session_id
+        const sessionId = initialProspects[0]?.sessionId || initialProspects[0]?.session_id;
+        if (sessionId) {
+          console.log('✅ Extracted session_id:', sessionId);
+          setUploadedSessionId(sessionId);
+        }
+
+        toastSuccess(`Loaded ${initialProspects.length} approved prospects - select campaign type`);
       }
-
-      // CRITICAL FIX (Dec 7): Set campaign name from prospects
-      if (initialProspects[0]?.campaignName) {
-        setName(initialProspects[0].campaignName);
-        console.log('✅ Set campaign name:', initialProspects[0].campaignName);
-      }
-
-      // CRITICAL FIX (Dec 7): Sync campaign type IMMEDIATELY before saving
-      if (initialCampaignType) {
-        const typeToSet = initialCampaignType === 'linkedin' ? 'connector' : initialCampaignType;
-        console.log('✅ Setting campaign type from prop:', initialCampaignType, '→', typeToSet);
-        setCampaignType(typeToSet);
-        setUserSelectedCampaignType(true);
-      }
-
-      // Extract session_id
-      const sessionId = initialProspects[0]?.sessionId || initialProspects[0]?.session_id;
-      if (sessionId) {
-        console.log('✅ Extracted session_id:', sessionId);
-        setUploadedSessionId(sessionId);
-      }
-
-      toastSuccess(`Loaded ${initialProspects.length} approved prospects - select campaign type`);
-
-      // REMOVED (Dec 7): Duplicate draft creation
-      // Draft is now created BEFORE navigation in DataCollectionHub.performCampaignHubNavigation
-      // No need to create another draft here - just load the existing one via draftToLoad prop
     } else {
       console.log('⚠️ No initialProspects provided to CampaignBuilder');
     }
