@@ -37,12 +37,22 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const workspaceId = searchParams.get('workspace_id')
-    const sessionId = searchParams.get('session_id') // Optional: filter by specific session
+    const sessionId = searchParams.get('session_id') // REQUIRED: must specify which session to load from
 
     if (!workspaceId) {
       return NextResponse.json({
         success: false,
         error: 'workspace_id required'
+      }, { status: 400 })
+    }
+
+    // Dec 8 FIX: Require session_id to prevent loading prospects from wrong sessions
+    // Without this, all approved prospects from ALL sessions would be returned,
+    // causing campaigns to include prospects from unrelated approval sessions
+    if (!sessionId) {
+      return NextResponse.json({
+        success: false,
+        error: 'session_id required - must specify which approval session to load prospects from'
       }, { status: 400 })
     }
 
@@ -61,51 +71,27 @@ export async function GET(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // Get approved prospects from prospect_approval_data (join with sessions for workspace_id)
-    // If session_id is provided, only get prospects from that specific session
-    let sessionIds: string[] = []
+    // Get approved prospects from the specific session
+    // Dec 8 FIX: session_id is now REQUIRED to prevent cross-session data leakage
 
-    if (sessionId) {
-      // Filter by specific session - verify it belongs to this workspace
-      const { data: session, error: sessionError } = await supabase
-        .from('prospect_approval_sessions')
-        .select('id')
-        .eq('id', sessionId)
-        .eq('workspace_id', workspaceId)
-        .single()
+    // Verify session belongs to this workspace
+    const { data: session, error: sessionError } = await supabase
+      .from('prospect_approval_sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .eq('workspace_id', workspaceId)
+      .single()
 
-      if (sessionError || !session) {
-        return NextResponse.json({
-          success: true,
-          prospects: [],
-          total: 0
-        })
-      }
-      sessionIds = [session.id]
-    } else {
-      // Get all sessions for workspace
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('prospect_approval_sessions')
-        .select('id')
-        .eq('workspace_id', workspaceId)
-
-      if (sessionsError) {
-        console.error('Error fetching sessions:', sessionsError)
-        return NextResponse.json({
-          success: false,
-          error: 'Failed to fetch approval sessions'
-        }, { status: 500 })
-      }
-      sessionIds = (sessions || []).map(s => s.id)
-    }
-
-    if (sessionIds.length === 0) {
+    if (sessionError || !session) {
       return NextResponse.json({
         success: true,
         prospects: [],
-        total: 0
+        total: 0,
+        message: 'Session not found or does not belong to this workspace'
       })
     }
+
+    const sessionIds = [session.id]
 
     const { data: approvedData, error: dataError } = await supabase
       .from('prospect_approval_data')
