@@ -1966,57 +1966,9 @@ export default function DataCollectionHub({
       // Continue anyway - prospects will still be passed to campaign hub
     }
 
-    // CRITICAL FIX (Dec 7): Create draft campaign IMMEDIATELY after saving prospects
-    // This eliminates the race condition where auto-save fails after navigation
-    let draftId: string | undefined;
-
-    try {
-      console.log('💾 Creating draft campaign immediately...');
-      setLoadingMessage('Creating draft campaign...');
-
-      const campaignName = savedProspects[0]?.campaignName || `Draft-${new Date().toISOString().split('T')[0]}`;
-
-      const draftResponse = await fetch('/api/campaigns/draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspaceId: workspaceId,
-          name: campaignName,
-          campaignType: campaignType, // FIXED (Dec 7): Don't default to 'connector' - preserve actual campaign type (messenger, email, linkedin, connector)
-          status: 'draft',
-          currentStep: 2, // CRITICAL FIX (Dec 8): Start at Step 2 (message creation) since type/name already set
-          csvData: savedProspects.map(p => ({
-            name: p.name,
-            title: p.title || '',
-            company: p.company?.name || p.company || '',
-            email: p.email || p.contact?.email || '',
-            linkedin_url: p.linkedin_url || p.contact?.linkedin_url || '',
-            connection_degree: p.connection_degree || p.connectionDegree || 'Unknown',
-            location: p.location || '',
-            industry: p.industry || ''
-          }))
-        })
-      });
-
-      if (!draftResponse.ok) {
-        const errorData = await draftResponse.json();
-        console.error('Failed to create draft:', errorData);
-        toastError('Failed to create draft campaign');
-        setLoading(false);
-        return; // Stop here, don't navigate
-      }
-
-      const draftData = await draftResponse.json();
-      draftId = draftData.draftId;
-      console.log('✅ Draft campaign created:', draftId);
-
-    } catch (error) {
-      console.error('Error creating draft campaign:', error);
-      toastError('Failed to create draft campaign');
-      setLoading(false);
-      return; // Stop here, don't navigate
-    }
-
+    // CHANGED (Dec 8): Do NOT create draft here - just pass prospects to CampaignHub
+    // Draft/campaign will be created when user actually saves or activates
+    // This allows user to see prospects BEFORE any database record is created
     setLoading(false)
 
     // Remove approved prospects from view
@@ -2031,15 +1983,15 @@ export default function DataCollectionHub({
 
     // Call the onApprovalComplete callback to navigate to Campaign screen
     // Use savedProspects (with database IDs) instead of local approvedProspects
+    // NOTE: No draftId - campaign will be created when user saves/activates in CampaignHub
     console.log('🚀 Calling onApprovalComplete with:', {
       prospectsCount: savedProspects.length,
       campaignType,
-      draftId,
       sample: savedProspects[0]
     });
 
     if (onApprovalComplete) {
-      onApprovalComplete(savedProspects, campaignType || undefined, draftId)
+      onApprovalComplete(savedProspects, campaignType || undefined, undefined) // No draftId - prospects passed directly
     } else {
       console.error('❌ onApprovalComplete callback is not defined!');
     }
