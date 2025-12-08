@@ -3097,9 +3097,11 @@ export default function Page() {
                   }}
                   onApprovalComplete={(approvedData, campaignType) => {
                     // Store approved prospects and switch to campaign creation view
+                    // Dec 8 FIX: MUST reset pendingDraftId to prevent loading old draft with all session prospects
                     console.log('Approved prospects:', approvedData, 'Campaign type:', campaignType);
                     setPendingCampaignProspects(approvedData);
                     setPendingCampaignType(campaignType);
+                    setPendingDraftId(undefined); // CRITICAL: Clear stale draft ID to prevent data leakage
                     setShowCampaignApprovalView(false); // Switch to campaign hub after approval
                   }}
                   initialUploadedData={uploadedProspects}

@@ -2775,10 +2775,17 @@ function CampaignBuilder({
           setFollowUpMessages(draft.follow_up_messages || ['']);
 
           // Load prospects from campaign_prospects table
+          // Dec 8 CRITICAL FIX: Do NOT overwrite csvData if initialProspects was already provided
+          // initialProspects contains the user's ACTUAL selection from DataCollectionHub
+          // Loading draft.prospects would cause data leakage (all 6 prospects instead of selected 1)
           if (draft.prospects && draft.prospects.length > 0) {
-            console.log('✅ Loading', draft.prospects.length, 'prospects from initialDraftId');
-            setCsvData(draft.prospects);
-            setShowPreview(true);
+            if (initialProspects && initialProspects.length > 0) {
+              console.log('⏭️  SKIPPING draft.prospects load - initialProspects already set:', initialProspects.length, 'prospects (user selection takes priority)');
+            } else {
+              console.log('✅ Loading', draft.prospects.length, 'prospects from initialDraftId (no initialProspects)');
+              setCsvData(draft.prospects);
+              setShowPreview(true);
+            }
           }
 
           toastInfo(`Loaded draft: ${draft.name}`);
