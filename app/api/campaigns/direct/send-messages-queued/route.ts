@@ -394,13 +394,18 @@ export async function POST(req: NextRequest) {
         }
 
         // Now validate they are connected (FIRST_DEGREE)
+        // CRITICAL FIX (Dec 8): Use vanity endpoint - provider_id endpoint returns WRONG profiles!
         console.log(`🔍 Checking connection status for ${prospect.first_name}...`);
         let profile: any;
 
         try {
-          profile = await unipileRequest(
-            `/api/v1/users/profile?account_id=${unipileAccountId}&provider_id=${providerId}`
-          );
+          // Extract vanity from LinkedIn URL for reliable lookup
+          const vanityMatch = prospect.linkedin_url?.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+          if (!vanityMatch) {
+            throw new Error('Could not extract vanity from LinkedIn URL');
+          }
+          const vanityId = vanityMatch[1];
+          profile = await unipileRequest(`/api/v1/users/${vanityId}?account_id=${unipileAccountId}`);
         } catch (profileError: any) {
           console.error(`❌ Failed to check connection status:`, profileError.message);
           validationResults.push({
