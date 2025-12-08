@@ -126,12 +126,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Fetch pending prospects (limit 50)
+    // 2. Fetch prospects ready for outreach (limit 50)
+    // CRITICAL FIX (Dec 8): Include BOTH 'pending' AND 'approved' statuses
+    // Prospects go through approval workflow → status becomes 'approved'
+    // We need to queue approved prospects, not just pending ones
     const { data: prospects, error: prospectsError } = await supabaseAdmin
       .from('campaign_prospects')
       .select('*')
       .eq('campaign_id', campaignId)
-      .eq('status', 'pending')
+      .in('status', ['pending', 'approved'])  // Include both pending and approved
       .not('linkedin_url', 'is', null)
       .order('created_at', { ascending: true })
       .limit(50);
