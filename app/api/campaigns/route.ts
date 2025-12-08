@@ -565,6 +565,50 @@ export async function POST(req: NextRequest) {
           };
         });
 
+        // ============================================================
+        // AUTO-RESOLVE LinkedIn IDs for prospects missing them
+        // This prevents Messenger campaigns from failing at launch
+        // ============================================================
+        const unipileDsn = process.env.UNIPILE_DSN || 'api6.unipile.com:13670';
+        const unipileApiKey = process.env.UNIPILE_API_KEY;
+
+        if (unipileApiKey && unipileAccountId) {
+          const prospectsNeedingResolution = campaignProspects.filter(
+            p => p.linkedin_url && !p.linkedin_user_id
+          );
+
+          if (prospectsNeedingResolution.length > 0) {
+            console.log(`🔍 AUTO-RESOLVE: ${prospectsNeedingResolution.length} prospects need LinkedIn ID resolution`);
+
+            await Promise.all(prospectsNeedingResolution.map(async (prospect) => {
+              try {
+                // Extract vanity from URL
+                const vanityMatch = prospect.linkedin_url?.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+                if (!vanityMatch) return;
+
+                const vanity = vanityMatch[1];
+                const response = await fetch(
+                  `https://${unipileDsn}/api/v1/users/${vanity}?account_id=${unipileAccountId}`,
+                  { headers: { 'X-API-KEY': unipileApiKey, 'Accept': 'application/json' } }
+                );
+
+                if (response.ok) {
+                  const data = await response.json();
+                  if (data.provider_id) {
+                    prospect.linkedin_user_id = data.provider_id;
+                    console.log(`   ✅ Resolved ${prospect.first_name} ${prospect.last_name}: ${data.provider_id}`);
+                  }
+                }
+              } catch (err) {
+                console.warn(`   ⚠️ Failed to resolve ${prospect.first_name} ${prospect.last_name}:`, err);
+              }
+            }));
+
+            const resolved = campaignProspects.filter(p => p.linkedin_user_id).length;
+            console.log(`✅ AUTO-RESOLVE complete: ${resolved}/${campaignProspects.length} prospects have LinkedIn IDs`);
+          }
+        }
+
         const { data: inserted, error: insertError } = await supabase
           .from('campaign_prospects')
           .insert(campaignProspects)
