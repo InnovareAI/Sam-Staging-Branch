@@ -330,18 +330,44 @@ export async function POST(request: NextRequest) {
           if (insertError) {
             console.error('❌ [ERROR] Failed to insert prospects:', insertError);
             console.error('❌ [ERROR] Prospects that failed:', JSON.stringify(prospectsToInsert, null, 2));
+
+            // CRITICAL FIX (Dec 8): Return error instead of continuing
+            return NextResponse.json({
+              success: false,
+              error: 'Failed to insert prospects into campaign',
+              details: insertError.message
+            }, { status: 500 });
           } else {
             console.log(`✅ [SUCCESS] Inserted ${insertedData?.length || 0} prospects successfully`);
+
+            // CRITICAL FIX (Dec 8): Verify insertion by counting prospects
+            const { count, error: countError } = await supabase
+              .from('campaign_prospects')
+              .select('id', { count: 'exact', head: true })
+              .eq('campaign_id', campaign.id);
+
+            if (countError) {
+              console.error('❌ [ERROR] Failed to verify prospect count:', countError);
+            } else {
+              console.log(`✅ [VERIFY] Campaign ${campaign.id} now has ${count} prospects in database`);
+            }
           }
         } else {
           console.log('⚠️  [SKIP] No prospects to insert (all filtered out)');
         }
       }
 
+      // CRITICAL FIX (Dec 8): Return prospect count in response
+      const { count: finalCount } = await supabase
+        .from('campaign_prospects')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id);
+
       return NextResponse.json({
         success: true,
         draftId: campaign.id,
         message: 'Draft created successfully',
+        prospectCount: finalCount || 0
       });
     }
   } catch (error: any) {
