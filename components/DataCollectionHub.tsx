@@ -1984,6 +1984,7 @@ export default function DataCollectionHub({
           name: campaignName,
           campaignType: campaignType, // FIXED (Dec 7): Don't default to 'connector' - preserve actual campaign type (messenger, email, linkedin, connector)
           status: 'draft',
+          currentStep: 2, // CRITICAL FIX (Dec 8): Start at Step 2 (message creation) since type/name already set
           csvData: savedProspects.map(p => ({
             name: p.name,
             title: p.title || '',
