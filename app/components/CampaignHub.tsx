@@ -2645,6 +2645,52 @@ function CampaignBuilder({
     toastInfo(`Loaded draft: ${draftToLoad.name}`);
   }, [draftToLoad]);
 
+  // CRITICAL FIX (Dec 8): Load draft when initialDraftId is provided
+  // This handles the flow from DataCollectionHub where draft is created BEFORE navigation
+  useEffect(() => {
+    if (!initialDraftId || !workspaceId) return;
+
+    console.log('🔄 Loading draft from initialDraftId:', initialDraftId);
+
+    const loadDraft = async () => {
+      try {
+        const response = await fetch(`/api/campaigns/draft?draftId=${initialDraftId}&workspaceId=${workspaceId}`);
+        if (!response.ok) {
+          console.error('Failed to load draft:', response.statusText);
+          return;
+        }
+
+        const result = await response.json();
+        const draft = result.draft;
+
+        if (draft) {
+          console.log('✅ Loaded draft from initialDraftId:', draft.id, 'with', draft.prospects?.length || 0, 'prospects');
+          setCurrentDraftId(draft.id);
+          setName(draft.name);
+          setCampaignType(draft.campaign_type);
+          setUserSelectedCampaignType(true);
+          setCurrentStep(draft.current_step || 1);
+          setConnectionMessage(draft.connection_message || '');
+          setAlternativeMessage(draft.alternative_message || '');
+          setFollowUpMessages(draft.follow_up_messages || ['']);
+
+          // Load prospects from campaign_prospects table
+          if (draft.prospects && draft.prospects.length > 0) {
+            console.log('✅ Loading', draft.prospects.length, 'prospects from initialDraftId');
+            setCsvData(draft.prospects);
+            setShowPreview(true);
+          }
+
+          toastInfo(`Loaded draft: ${draft.name}`);
+        }
+      } catch (error) {
+        console.error('Error loading draft from initialDraftId:', error);
+      }
+    };
+
+    loadDraft();
+  }, [initialDraftId, workspaceId]);
+
   // Auto-save on changes (debounced)
   // CRITICAL (Dec 7): COMPLETELY DISABLE auto-save when initialDraftId prop exists OR initialProspects present
   useEffect(() => {
