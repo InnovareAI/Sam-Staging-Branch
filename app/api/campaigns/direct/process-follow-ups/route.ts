@@ -128,22 +128,14 @@ export async function POST(req: NextRequest) {
           // Get the prospect's profile to check network_distance
           let profile: any;
 
-          // CRITICAL BUG FIX (Nov 22): profile?identifier= returns WRONG profiles for vanities with numbers
-          if (prospect.linkedin_user_id) {
-            // PRIMARY: Use stored provider_id
-            profile = await unipileRequest(
-              `/api/v1/users/profile?account_id=${unipileAccountId}&provider_id=${prospect.linkedin_user_id}`
-            );
-          } else {
-            // FALLBACK: Use legacy /users/{vanity} endpoint ONLY (reliable)
-            // DO NOT use profile?identifier= - it returns wrong profiles (e.g., noah-ottmar-b59478295 returns Jamshaid Ali)
-            const vanityMatch = prospect.linkedin_url.match(/linkedin\.com\/in\/([^\/\?#]+)/);
-            if (!vanityMatch) throw new Error(`Cannot extract LinkedIn vanity identifier from ${prospect.linkedin_url}`);
+          // CRITICAL FIX (Dec 8): ALWAYS use vanity endpoint - provider_id endpoint returns WRONG profiles!
+          // Unipile bug: profile?provider_id= returns Jamshaid Ali when looking up Paul Dhaliwal
+          const vanityMatch = prospect.linkedin_url?.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+          if (!vanityMatch) throw new Error(`Cannot extract LinkedIn vanity identifier from ${prospect.linkedin_url}`);
 
-            const vanityId = vanityMatch[1];
-            // ALWAYS use legacy endpoint - profile?identifier= returns wrong profiles
-            profile = await unipileRequest(`/api/v1/users/${vanityId}?account_id=${unipileAccountId}`);
-          }
+          const vanityId = vanityMatch[1];
+          // ALWAYS use legacy /users/{vanity} endpoint - provider_id lookup is broken
+          profile = await unipileRequest(`/api/v1/users/${vanityId}?account_id=${unipileAccountId}`);
 
           // Check if connection is accepted (1st degree connection)
           if (profile.network_distance !== 'FIRST_DEGREE') {

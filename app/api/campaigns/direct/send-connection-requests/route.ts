@@ -209,36 +209,26 @@ export async function POST(req: NextRequest) {
         let providerId = prospect.linkedin_user_id;
         let profile: any = null;
 
-        // Profile lookup strategy: provider_id → legacy /users/{vanity} ONLY
-        // CRITICAL BUG FIX (Nov 22): profile?identifier= returns WRONG profiles for vanities with numbers
-        if (providerId) {
-          // PRIMARY: Use stored provider_id from search results (most authoritative)
-          console.log(`📝 Looking up profile with stored provider_id ${providerId} for ${prospect.first_name}`);
-          profile = await unipileRequest(
-            `/api/v1/users/profile?account_id=${unipileAccountId}&provider_id=${encodeURIComponent(providerId)}`
-          );
-        } else {
-          // FALLBACK: Extract vanity identifier and use LEGACY endpoint ONLY
-          // DO NOT use profile?identifier= - it returns wrong profiles (e.g., noah-ottmar-b59478295 returns Jamshaid Ali)
-          console.log(`📝 Extracting vanity identifier from ${prospect.linkedin_url}`);
-          const vanityMatch = prospect.linkedin_url.match(/linkedin\.com\/in\/([^\/\?#]+)/);
-          if (vanityMatch) {
-            const vanityId = vanityMatch[1];
+        // CRITICAL FIX (Dec 8): ALWAYS use vanity endpoint - provider_id endpoint returns WRONG profiles!
+        // Unipile bug: profile?provider_id= returns Jamshaid Ali when looking up Paul Dhaliwal
+        // The legacy /users/{vanity} endpoint is the ONLY reliable method
+        console.log(`📝 Extracting vanity identifier from ${prospect.linkedin_url}`);
+        const vanityMatch = prospect.linkedin_url?.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+        if (vanityMatch) {
+          const vanityId = vanityMatch[1];
 
-            // ALWAYS use legacy /users/{vanity} endpoint (correct profile resolution)
-            try {
-              console.log(`  Using legacy endpoint (reliable): /users/${vanityId}`);
-              profile = await unipileRequest(`/api/v1/users/${vanityId}?account_id=${unipileAccountId}`);
-              providerId = profile.provider_id;
-              console.log(`  ✅ Found correct profile: ${profile.first_name} ${profile.last_name} (ID: ${providerId})`);
-            } catch (legacyError: any) {
-              // If legacy fails, the profile likely doesn't exist or is private
-              // DO NOT fallback to profile?identifier= as it returns wrong profiles
-              throw new Error(`Could not access LinkedIn profile for ${prospect.first_name} ${prospect.last_name} - profile may be private or deleted. Legacy endpoint error: ${legacyError.message || legacyError}`);
-            }
-          } else {
-            throw new Error(`Could not extract LinkedIn vanity identifier from ${prospect.linkedin_url}`);
+          // ALWAYS use legacy /users/{vanity} endpoint (correct profile resolution)
+          try {
+            console.log(`  Using legacy endpoint (reliable): /users/${vanityId}`);
+            profile = await unipileRequest(`/api/v1/users/${vanityId}?account_id=${unipileAccountId}`);
+            providerId = profile.provider_id;
+            console.log(`  ✅ Found correct profile: ${profile.first_name} ${profile.last_name} (ID: ${providerId})`);
+          } catch (legacyError: any) {
+            // If legacy fails, the profile likely doesn't exist or is private
+            throw new Error(`Could not access LinkedIn profile for ${prospect.first_name} ${prospect.last_name} - profile may be private or deleted. Legacy endpoint error: ${legacyError.message || legacyError}`);
           }
+        } else {
+          throw new Error(`Could not extract LinkedIn vanity identifier from ${prospect.linkedin_url}`);
         }
 
         // Check if already connected
