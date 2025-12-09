@@ -8427,10 +8427,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
                   if (!hasPending && !hasDrafts) {
                     return (
-                      <div className="text-center py-12">
-                        <CheckCircle className="mx-auto text-green-400 mb-4" size={48} />
-                        <div className="text-white font-medium mb-2">Nothing in progress</div>
-                        <div className="text-gray-400">Approve prospects in Prospect Database to create campaigns.</div>
+                      <div className="bg-gradient-to-r from-gray-800 to-gray-750 border border-gray-700 rounded-lg p-8 text-center">
+                        <div className="max-w-md mx-auto">
+                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-500/10 flex items-center justify-center">
+                            <FileText className="w-8 h-8 text-purple-400" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-white mb-2">No Drafts</h3>
+                          <p className="text-gray-400">You don't have any campaign drafts. Go to Data Collection to find and approve prospects, then create a campaign.</p>
+                        </div>
                       </div>
                     );
                   }
