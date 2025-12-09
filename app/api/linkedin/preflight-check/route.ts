@@ -61,16 +61,27 @@ interface ProspectCheck {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('🚀 Pre-flight check started');
+  let step = 'init';
+
   try {
+    step = 'createSupabaseClient';
     const supabase = await createSupabaseRouteClient();
+    console.log('✅ Supabase client created');
 
     // Authenticate user
+    step = 'authenticateUser';
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
+      console.log('❌ User authentication failed:', userError?.message);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    console.log(`✅ User authenticated: ${user.id}`);
 
-    const { prospects, workspaceId, campaignType } = await req.json();
+    step = 'parseRequestBody';
+    const body = await req.json();
+    const { prospects, workspaceId, campaignType } = body;
+    console.log(`✅ Request parsed: ${prospects?.length || 0} prospects, workspace: ${workspaceId}, type: ${campaignType}`);
 
     if (!prospects || !Array.isArray(prospects)) {
       return NextResponse.json({
@@ -85,19 +96,31 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify workspace access
-    const { data: member } = await supabase
+    step = 'verifyWorkspaceAccess';
+    const { data: member, error: memberError } = await supabase
       .from('workspace_members')
       .select('role')
       .eq('workspace_id', workspaceId)
       .eq('user_id', user.id)
       .single();
 
-    if (!member) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (memberError) {
+      console.log('❌ Workspace member query error:', memberError.message);
+      return NextResponse.json({
+        error: 'Failed to verify workspace access',
+        details: memberError.message
+      }, { status: 500 });
     }
 
+    if (!member) {
+      console.log('❌ User not a member of workspace');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    console.log(`✅ Workspace access verified, role: ${member.role}`);
+
     // Get Unipile LinkedIn account for this workspace
-    const { data: workspaceAccount } = await supabase
+    step = 'getLinkedInAccount';
+    const { data: workspaceAccount, error: accountError } = await supabase
       .from('workspace_accounts')
       .select('unipile_account_id')
       .eq('workspace_id', workspaceId)
@@ -105,13 +128,19 @@ export async function POST(req: NextRequest) {
       .eq('connection_status', 'connected')
       .single();
 
+    if (accountError && accountError.code !== 'PGRST116') { // PGRST116 = no rows found (not an error)
+      console.log('❌ LinkedIn account query error:', accountError.message);
+    }
+
     const unipileAccountId = workspaceAccount?.unipile_account_id;
     const canVerifyLinkedIn = !!unipileAccountId;
+    console.log(`✅ LinkedIn account: ${unipileAccountId || 'not connected'}`);
 
     console.log(`🔍 Pre-flight check for ${prospects.length} prospects (campaign type: ${campaignType})`);
     const startTime = Date.now();
 
     // Step 1: Check for duplicates within the batch
+    step = 'extractUrls';
     const seenLinkedInUrls = new Map<string, string>(); // normalized URL -> first prospect ID
     const seenEmails = new Map<string, string>(); // email -> first prospect ID
 
@@ -131,13 +160,16 @@ export async function POST(req: NextRequest) {
         emails.push(email.toLowerCase().trim());
       }
     }
+    console.log(`✅ Extracted ${linkedinUrls.length} LinkedIn URLs and ${emails.length} emails`);
 
     // Query existing prospects
+    step = 'fetchExistingProspects';
     console.log(`⏱️ Starting existing prospects query (${linkedinUrls.length} URLs, ${emails.length} emails) at ${Date.now() - startTime}ms`);
     const existingProspects = await fetchExistingProspects(supabase, workspaceId, linkedinUrls, emails);
     console.log(`⏱️ Existing prospects query complete (${existingProspects.length} found) at ${Date.now() - startTime}ms`);
 
     // Step 3: Check rate limit status based on campaign type
+    step = 'checkRateLimits';
     // - Connector: 20/day, 100/week (LinkedIn CR limits)
     // - Messenger: 100/day, 700/week (LinkedIn message limits)
     // - Email: 40/day per account
@@ -151,6 +183,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 4: Process each prospect
+    step = 'processProspects';
+    console.log(`⏱️ Starting prospect processing at ${Date.now() - startTime}ms`);
     const results: ProspectCheck[] = [];
     let processedCount = 0;
 
@@ -317,13 +351,20 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Pre-flight check error:', error);
+    console.error(`❌ Pre-flight check error at step "${step}":`, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Full error details:', JSON.stringify(error, null, 2));
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Full error details:', {
+      step,
+      message: errorMessage,
+      stack: errorStack,
+      error: JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
+    });
     return NextResponse.json({
       success: false,
-      error: errorMessage,
-      details: errorMessage
+      error: `Error at step "${step}": ${errorMessage}`,
+      details: errorMessage,
+      step: step
     }, { status: 500 });
   }
 }
