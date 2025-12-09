@@ -215,11 +215,34 @@ export async function POST(request: NextRequest) {
     const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
     console.log('CSV Parsing - Detected headers:', headers);
 
-    // Check if any LinkedIn-related header exists
+    // Check if any LinkedIn-related header exists and auto-map it
     const linkedinHeaders = headers.filter(h =>
       h.includes('linkedin') || h.includes('li ') || h === 'profile url'
     );
     console.log('CSV Parsing - LinkedIn-related headers found:', linkedinHeaders.length > 0 ? linkedinHeaders : 'NONE - LinkedIn URLs will NOT be imported!');
+
+    // SMART FALLBACK: Auto-detect LinkedIn URL columns that aren't in headerMap
+    // This handles ANY column containing "linkedin" + "url" or just "linkedin" with a URL pattern
+    let linkedinUrlColumnIndex = -1;
+    for (let i = 0; i < headers.length; i++) {
+      const h = headers[i];
+      // If this header contains 'linkedin' and looks like a URL column
+      if (h.includes('linkedin') && (h.includes('url') || h.includes('profile') || h.includes('link'))) {
+        linkedinUrlColumnIndex = i;
+        console.log(`🔗 Auto-detected LinkedIn URL column: "${h}" at index ${i}`);
+        break;
+      }
+    }
+    // Fallback: any column with just 'linkedin' in the name
+    if (linkedinUrlColumnIndex === -1) {
+      for (let i = 0; i < headers.length; i++) {
+        if (headers[i].includes('linkedin') && !headers[i].includes('degree')) {
+          linkedinUrlColumnIndex = i;
+          console.log(`🔗 Auto-detected LinkedIn column (fallback): "${headers[i]}" at index ${i}`);
+          break;
+        }
+      }
+    }
 
     // Check if degree column exists
     const hasDegreeColumn = headers.some(h =>
@@ -363,8 +386,16 @@ export async function POST(request: NextRequest) {
       const rawCompanyName = prospect.company || '';
       const cleanCompanyName = normalizeCompanyName(rawCompanyName);
 
-      // Detect Sales Navigator URLs and skip them
-      const linkedinUrl = prospect.linkedinUrl || '';
+      // Get LinkedIn URL - try mapped value first, then use auto-detected column index
+      let linkedinUrl = prospect.linkedinUrl || '';
+
+      // SMART FALLBACK: If linkedinUrl is empty but we detected a LinkedIn column, extract it directly
+      if (!linkedinUrl && linkedinUrlColumnIndex >= 0 && values[linkedinUrlColumnIndex]) {
+        linkedinUrl = values[linkedinUrlColumnIndex].trim();
+        if (i === 1) {
+          console.log(`🔗 Using auto-detected LinkedIn column value: "${linkedinUrl}"`);
+        }
+      }
       if (detectSalesNavUrl(linkedinUrl)) {
         salesNavUrlsDetected++;
         skippedRows.push({
