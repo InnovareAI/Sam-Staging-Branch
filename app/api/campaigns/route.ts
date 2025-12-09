@@ -363,7 +363,14 @@ export async function POST(req: NextRequest) {
       .update({
         status,
         flow_settings: flowSettings,
-        linkedin_account_id: linkedinAccountId
+        linkedin_account_id: linkedinAccountId,
+        // CRITICAL FIX (Dec 9): Default to Pacific Time for all IA accounts
+        timezone: 'America/Los_Angeles',
+        country_code: 'US',
+        working_hours_start: 7,
+        working_hours_end: 18,
+        skip_weekends: true,
+        skip_holidays: true,
       })
       .eq('id', campaignId);
 

@@ -216,6 +216,13 @@ export async function POST(request: NextRequest) {
           alternative_message: alternativeMessage,
           follow_up_messages: followUpMessages || [],
           draft_data: draftData,
+          // CRITICAL FIX (Dec 9): Default to Pacific Time for all IA accounts
+          timezone: 'America/Los_Angeles',
+          country_code: 'US',
+          working_hours_start: 7,
+          working_hours_end: 18,
+          skip_weekends: true,
+          skip_holidays: true,
         })
         .select()
         .single();
