@@ -190,6 +190,12 @@ export async function POST(request: NextRequest) {
 
         console.log(`📝 Retrieved ${posts.length} posts from profile`);
 
+        // Only keep the most recent post (first in array - already sorted by date)
+        if (posts.length > 1) {
+          console.log(`✂️ Trimming to most recent post only (was ${posts.length})`);
+          posts = posts.slice(0, 1);
+        }
+
         if (posts.length > 0) {
           const firstPost = posts[0];
           console.log(`🔍 Sample post structure:`, {
