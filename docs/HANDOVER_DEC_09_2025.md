@@ -114,13 +114,119 @@ const safeProspects = prospects.map((p: any) => ({
 - [x] Select campaigns → Delete button → Confirmation modal appears
 - [x] Confirm delete → Campaigns deleted
 
-## Next Session Priorities
+---
 
-1. Monitor for any related issues
-2. Consider refactoring duplicate state declarations in CampaignHub.tsx
-3. Continue with other pending features
+## Session 2: LinkedIn Commenting Agent Fixes
+
+### CRITICAL: Duplicate Comments Bug Fixed
+
+**Problem:** System posted 3-4 duplicate comments on the same LinkedIn post within minutes last weekend.
+
+**Root Causes:**
+1. No database constraint preventing duplicate comments per post
+2. No claim mechanism in `process-comment-queue` - concurrent cron runs could process same comments
+3. Race conditions between `auto-generate-comments` runs
+
+**Fixes Applied:**
+
+#### 1. Database Unique Constraint (CRITICAL)
+```sql
+ALTER TABLE linkedin_post_comments
+ADD CONSTRAINT unique_comment_per_post UNIQUE (post_id);
+```
+- Makes duplicate comments **physically impossible**
+- Also added `posting` and `skipped` to valid status values
+
+#### 2. Claim Mechanism in process-comment-queue
+- Before processing, comments are claimed with `status='posting'`
+- Prevents concurrent cron runs from processing same comments
+- File: `/app/api/cron/process-comment-queue/route.ts`
+
+#### 3. Real-time Duplicate Check Before Insert
+- Final database check right before inserting comment
+- Catches race conditions between concurrent cron runs
+- Checks both `post_id` AND `social_id`
+- File: `/app/api/cron/auto-generate-comments/route.ts`
+
+#### 4. Final Check Before Posting to LinkedIn
+- Verifies post doesn't already have a `posted` comment
+- Prevents duplicate API calls to LinkedIn
+- File: `/app/api/cron/process-comment-queue/route.ts`
+
+### Other Commenting Agent Improvements
+
+| Change | Description |
+|--------|-------------|
+| Daily cap | 45 posts/day max discovered |
+| Author cooldown | 5 days between comments on same author (was 10) |
+| Course completion filter | Skip "My certificate for..." posts |
+| Profile discovery | Only fetch most recent post per profile |
+
+### Protection Layers Now in Place
+
+| Layer | Where | Protection |
+|-------|-------|------------|
+| 1 | auto-generate | Pre-loop socialIdsWithComments set |
+| 2 | auto-generate | Real-time DB check before insert |
+| 3 | auto-generate | DB unique constraint on insert |
+| 4 | process-queue | Claim mechanism (status='posting') |
+| 5 | process-queue | Final check before posting to LinkedIn |
+| 6 | Database | UNIQUE constraint on post_id |
+
+### Files Modified
+
+- `/app/api/cron/auto-generate-comments/route.ts` - duplicate checks, 5-day rule, filters
+- `/app/api/cron/process-comment-queue/route.ts` - claim mechanism, final check
+- `/app/api/linkedin-commenting/discover-posts-hashtag/route.ts` - daily cap logic
+- `/app/api/linkedin-commenting/discover-profile-posts/route.ts` - single post per profile
+- `/sql/migrations/028-prevent-duplicate-comments.sql` - DB constraint
+
+### Database Changes Applied
+
+```sql
+-- Status values updated
+ALTER TABLE linkedin_post_comments
+ADD CONSTRAINT linkedin_post_comments_status_check
+CHECK (status IN ('pending_approval', 'scheduled', 'posting', 'posted', 'rejected', 'failed', 'skipped'));
+
+-- Unique constraint added
+ALTER TABLE linkedin_post_comments
+ADD CONSTRAINT unique_comment_per_post UNIQUE (post_id);
+```
+
+### Current Limits
+
+| Setting | Value | Location |
+|---------|-------|----------|
+| Daily post cap | 45 | Code constant |
+| Max posts per keyword | 15 | Code constant |
+| Max keywords per run | 3 | Code constant |
+| Author cooldown | 5 days | Code constant |
+| Profile posts | 1 (most recent only) | Code |
+
+### Todo (Parked for Later)
+
+- **Threaded replies**: Pass `comment_id` to Unipile API when `is_reply_to_comment=true`
+  - Unipile supports this via `comment_id` parameter in POST body
+  - Currently replies are posted as top-level comments
+
+### Commits
+
+1. `895a9f8b` - Add daily cap enforcement during discovery runs
+2. `f31c8a2f` - Add real-time duplicate check + change author cooldown to 5 days
+3. `c0a47586` - CRITICAL: Prevent duplicate LinkedIn comments via claim mechanism + DB constraint
+4. `d15e0c8a` - Profile discovery: Only fetch most recent post per profile
 
 ---
 
-**Last Updated:** December 9, 2025
+## Next Session Priorities
+
+1. Monitor commenting system for any duplicate issues
+2. Test profile-based discovery with single post
+3. Consider making limits configurable via database
+4. Implement threaded replies when ready
+
+---
+
+**Last Updated:** December 9, 2025 (Session 2)
 **Author:** Claude (AI Assistant)
