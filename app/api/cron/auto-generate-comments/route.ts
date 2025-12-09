@@ -693,6 +693,13 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (saveError) {
+          // Handle unique constraint violation gracefully (race condition caught by DB)
+          if (saveError.code === '23505' || saveError.message?.includes('unique_comment_per_post')) {
+            console.log(`   🛑 DB CONSTRAINT CAUGHT DUPLICATE: ${post.id.substring(0, 8)}`);
+            skipCount++;
+            results.push({ post_id: post.id, status: 'skipped_db_constraint_duplicate' });
+            continue;
+          }
           console.error(`   ❌ Error saving comment:`, saveError);
           errorCount++;
           results.push({ post_id: post.id, status: 'error', error: saveError.message });

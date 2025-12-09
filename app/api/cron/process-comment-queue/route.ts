@@ -152,6 +152,28 @@ export async function POST(req: NextRequest) {
 
     console.log(`📋 Found ${dueComments.length} scheduled comments to post`);
 
+    // CRITICAL: Claim comments immediately to prevent race conditions
+    // Change status to 'posting' so other concurrent runs skip them
+    const commentIds = dueComments.map(c => c.id);
+    const { error: claimError } = await supabase
+      .from('linkedin_post_comments')
+      .update({
+        status: 'posting',
+        updated_at: new Date().toISOString()
+      })
+      .in('id', commentIds)
+      .eq('status', 'scheduled'); // Only claim if still scheduled (not claimed by another run)
+
+    if (claimError) {
+      console.error('❌ Error claiming comments:', claimError);
+      return NextResponse.json({
+        error: 'Failed to claim comments',
+        details: claimError.message
+      }, { status: 500 });
+    }
+
+    console.log(`✅ Claimed ${commentIds.length} comments for processing`);
+
     // Group comments by workspace for timezone check
     const workspaceIds = [...new Set(dueComments.map(c => c.workspace_id))];
 
@@ -258,6 +280,29 @@ export async function POST(req: NextRequest) {
         }
 
         console.log(`   📤 Posting to LinkedIn post: ${postSocialId}`);
+
+        // CRITICAL: Final check - verify this post hasn't already been commented on
+        // Catches race conditions where another run posted while we were resolving IDs
+        const { data: existingPostedComment } = await supabase
+          .from('linkedin_post_comments')
+          .select('id')
+          .eq('post_id', comment.post_id)
+          .eq('status', 'posted')
+          .limit(1)
+          .single();
+
+        if (existingPostedComment) {
+          console.log(`   🛑 DUPLICATE PREVENTED: Post already has a posted comment`);
+          await supabase
+            .from('linkedin_post_comments')
+            .update({
+              status: 'skipped',
+              failure_reason: 'Duplicate prevented - post already has comment',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', comment.id);
+          continue;
+        }
 
         const unipileResponse = await fetch(
           `${UNIPILE_BASE_URL}/api/v1/posts/${encodeURIComponent(postSocialId)}/comments`,
