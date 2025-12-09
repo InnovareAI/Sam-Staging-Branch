@@ -78,9 +78,15 @@ const COUNTRY_TIMEZONES: Record<string, string> = {
 
 /**
  * Check if we can post a comment now based on workspace settings
- * WEEKENDS ALLOWED - only respects business hours (9 AM - 6 PM)
+ * If skip_business_hours is true, always returns canPost: true
+ * Otherwise respects business hours (9 AM - 6 PM)
  */
-function canPostCommentNow(timezone: string, countryCode: string): { canPost: boolean; reason?: string } {
+function canPostCommentNow(timezone: string, countryCode: string, skipBusinessHours: boolean = false): { canPost: boolean; reason?: string } {
+  // If business hours check is disabled, always allow posting
+  if (skipBusinessHours) {
+    return { canPost: true, reason: 'Business hours check disabled' };
+  }
+
   const localTime = moment().tz(timezone);
   const hour = localTime.hour();
 
@@ -116,7 +122,8 @@ export async function POST(req: NextRequest) {
   const errors: string[] = [];
 
   try {
-    // Get all scheduled comments that are due
+    // Get ONE scheduled comment that is due
+    // IMPORTANT: Process only 1 comment per cron run to respect rate limits
     const { data: dueComments, error: fetchError } = await supabase
       .from('linkedin_post_comments')
       .select(`
@@ -131,7 +138,7 @@ export async function POST(req: NextRequest) {
       .eq('status', 'scheduled')
       .lte('scheduled_post_time', now.toISOString())
       .order('scheduled_post_time', { ascending: true })
-      .limit(5); // Process up to 5 at a time to avoid timeout
+      .limit(1); // Process exactly 1 comment per cron run
 
     if (fetchError) {
       console.error('❌ Error fetching scheduled comments:', fetchError);
@@ -183,11 +190,18 @@ export async function POST(req: NextRequest) {
       .select('workspace_id, timezone, country_code')
       .in('workspace_id', workspaceIds);
 
-    const workspaceSettings: Record<string, { timezone: string; country_code: string }> = {};
+    // Workspaces that bypass business hours (configured via code until DB column is added)
+    // InnovareAI workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+    const SKIP_BUSINESS_HOURS_WORKSPACES = new Set([
+      'babdcab8-1a78-4b2f-913e-6e9fd9821009' // InnovareAI - Thorsten's workspace
+    ]);
+
+    const workspaceSettings: Record<string, { timezone: string; country_code: string; skip_business_hours: boolean }> = {};
     for (const bg of brandGuidelines || []) {
       workspaceSettings[bg.workspace_id] = {
         timezone: bg.timezone || 'America/Los_Angeles',
-        country_code: bg.country_code || 'US'
+        country_code: bg.country_code || 'US',
+        skip_business_hours: SKIP_BUSINESS_HOURS_WORKSPACES.has(bg.workspace_id)
       };
     }
 
@@ -197,8 +211,9 @@ export async function POST(req: NextRequest) {
         console.log(`\n📤 Posting comment ${comment.id}...`);
 
         // Business hours check: 9 AM - 6 PM (weekends allowed)
-        const settings = workspaceSettings[comment.workspace_id] || { timezone: 'America/Los_Angeles', country_code: 'US' };
-        const { canPost, reason } = canPostCommentNow(settings.timezone, settings.country_code);
+        // Can be bypassed with skip_business_hours setting in brand guidelines
+        const settings = workspaceSettings[comment.workspace_id] || { timezone: 'America/Los_Angeles', country_code: 'US', skip_business_hours: false };
+        const { canPost, reason } = canPostCommentNow(settings.timezone, settings.country_code, settings.skip_business_hours);
         if (!canPost) {
           console.log(`   ⏸️ Skipping - ${reason}`);
           continue;
