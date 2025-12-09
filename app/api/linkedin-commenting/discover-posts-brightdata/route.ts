@@ -44,10 +44,37 @@ interface LinkedInPost {
   author_avatar?: string;
   post_text: string;
   posted_at?: string;
+  relative_time?: string;
+  hours_ago?: number;
   num_likes: number;
   num_comments: number;
   num_shares: number;
   hashtags: string[];
+}
+
+/**
+ * Parse LinkedIn relative time string to hours
+ * Examples: "2h" -> 2, "1d" -> 24, "3d" -> 72, "1w" -> 168, "2mo" -> 1440
+ */
+function parseRelativeTimeToHours(timeStr: string): number {
+  if (!timeStr) return 999; // Unknown = treat as old
+
+  const match = timeStr.match(/(\d+)\s*(s|m|h|d|w|mo|y)/i);
+  if (!match) return 999;
+
+  const value = parseInt(match[1]);
+  const unit = match[2].toLowerCase();
+
+  switch (unit) {
+    case 's': return 0; // seconds = just now
+    case 'm': return value / 60; // minutes to hours
+    case 'h': return value; // hours
+    case 'd': return value * 24; // days to hours
+    case 'w': return value * 24 * 7; // weeks to hours
+    case 'mo': return value * 24 * 30; // months to hours
+    case 'y': return value * 24 * 365; // years to hours
+    default: return 999;
+  }
 }
 
 /**
@@ -99,7 +126,7 @@ async function scrapeHashtagPosts(hashtag: string): Promise<LinkedInPost[]> {
     // Extract posts from the page
     const posts = await page.evaluate((maxPosts: number, searchHashtag: string) => {
       const postElements = document.querySelectorAll('[data-urn^="urn:li:activity"]');
-      const results: LinkedInPost[] = [];
+      const results: any[] = [];
 
       postElements.forEach((el, index) => {
         if (index >= maxPosts) return;
@@ -119,6 +146,29 @@ async function scrapeHashtagPosts(hashtag: string): Promise<LinkedInPost[]> {
 
           const avatarEl = el.querySelector('.update-components-actor__avatar img') as HTMLImageElement;
           const authorAvatar = avatarEl?.src || '';
+
+          // Get post timestamp (LinkedIn shows relative time like "2h", "1d", "3d")
+          // Try multiple selectors as LinkedIn changes their markup
+          let relativeTime = '';
+          const timeSelectors = [
+            '.update-components-actor__sub-description time',
+            '.update-components-actor__sub-description span[aria-hidden="true"]',
+            '.feed-shared-actor__sub-description time',
+            'time.visually-hidden',
+            '.update-components-actor__meta time'
+          ];
+          for (const selector of timeSelectors) {
+            const timeEl = el.querySelector(selector);
+            if (timeEl?.textContent) {
+              relativeTime = timeEl.textContent.trim();
+              // Extract just the time part (e.g., "2h" from "2h •" or "2 hours ago")
+              const timeMatch = relativeTime.match(/(\d+)\s*(s|m|h|d|w|mo|y|second|minute|hour|day|week|month|year)/i);
+              if (timeMatch) {
+                relativeTime = timeMatch[0];
+                break;
+              }
+            }
+          }
 
           // Get post content
           const textEl = el.querySelector('.update-components-text');
@@ -151,6 +201,7 @@ async function scrapeHashtagPosts(hashtag: string): Promise<LinkedInPost[]> {
               author_url: authorUrl,
               author_avatar: authorAvatar,
               post_text: postText,
+              relative_time: relativeTime,
               num_likes: numLikes,
               num_comments: numComments,
               num_shares: 0, // Not easily accessible
@@ -165,8 +216,22 @@ async function scrapeHashtagPosts(hashtag: string): Promise<LinkedInPost[]> {
       return results;
     }, MAX_POSTS_PER_HASHTAG, hashtag);
 
-    console.log(`✅ Found ${posts.length} posts for #${hashtag}`);
-    return posts;
+    // Filter posts by age (only last 24 hours)
+    const recentPosts: LinkedInPost[] = posts
+      .map(post => ({
+        ...post,
+        hours_ago: parseRelativeTimeToHours(post.relative_time || '')
+      }))
+      .filter(post => {
+        const isRecent = post.hours_ago <= MAX_POST_AGE_HOURS;
+        if (!isRecent) {
+          console.log(`⏭️ Skipping old post (${post.relative_time || 'unknown time'}): ${post.author_name}`);
+        }
+        return isRecent;
+      });
+
+    console.log(`✅ Found ${posts.length} posts for #${hashtag}, ${recentPosts.length} within last ${MAX_POST_AGE_HOURS}h`);
+    return recentPosts;
 
   } catch (error) {
     console.error(`❌ Scraping error for #${hashtag}:`, error);
@@ -222,7 +287,12 @@ export async function POST(request: NextRequest) {
         // Skip profile monitors
         if (tag.startsWith('PROFILE:')) return;
 
-        const cleanTag = tag.replace(/^#/, '').toLowerCase();
+        // Handle different formats: "GenAI", "#GenAI", "HASHTAG:GenAI", "KEYWORD:GenAI"
+        let cleanTag = tag;
+        if (cleanTag.startsWith('HASHTAG:')) cleanTag = cleanTag.substring(8);
+        if (cleanTag.startsWith('KEYWORD:')) cleanTag = cleanTag.substring(8);
+        cleanTag = cleanTag.replace(/^#/, '').toLowerCase();
+
         allHashtags.add(cleanTag);
 
         // Track which monitors want this hashtag
