@@ -212,6 +212,80 @@ export default function CommentingAgentDashboard() {
         />
       </div>
 
+      {/* Two Main Sections */}
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+        {/* Section 1: Comment on Others' Posts */}
+        <div className="bg-gradient-to-br from-pink-900/40 to-purple-900/40 rounded-xl p-6 border border-pink-700/50">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-pink-600 rounded-xl flex items-center justify-center">
+              <Target size={24} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Comment on Others' Posts</h2>
+              <p className="text-gray-400 text-sm">Monitor profiles, companies & hashtags</p>
+            </div>
+          </div>
+          <p className="text-gray-300 text-sm mb-4">
+            Discover posts from people you want to engage with. AI generates comments for your approval before posting.
+          </p>
+          <div className="space-y-2">
+            <button
+              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/profiles`)}
+              className="w-full flex items-center justify-between p-3 bg-gray-800/50 hover:bg-gray-800 rounded-lg transition-colors group"
+            >
+              <span className="text-white font-medium">Manage Monitors</span>
+              <span className="text-gray-400 text-sm">{stats?.active_profiles || 0} active →</span>
+            </button>
+            <button
+              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/approve`)}
+              className="w-full flex items-center justify-between p-3 bg-gray-800/50 hover:bg-gray-800 rounded-lg transition-colors group"
+            >
+              <span className="text-white font-medium">Review Comments</span>
+              <span className="text-amber-400 text-sm">{stats?.pending_comments || 0} pending →</span>
+            </button>
+          </div>
+          <button
+            onClick={() => setShowCampaignModal(true)}
+            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors font-medium"
+          >
+            <Plus size={18} />
+            Add Profile / Company / Hashtag
+          </button>
+        </div>
+
+        {/* Section 2: My Posts (Auto-Reply) */}
+        <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 rounded-xl p-6 border border-blue-700/50">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
+              <UserCircle2 size={24} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">My Posts & Company Page</h2>
+              <p className="text-gray-400 text-sm">Auto-reply to comments on YOUR posts</p>
+            </div>
+          </div>
+          <p className="text-gray-300 text-sm mb-4">
+            Monitor your own LinkedIn posts for new comments. AI generates personalized replies and captures leads.
+          </p>
+          <div className="space-y-2">
+            <button
+              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
+              className="w-full flex items-center justify-between p-3 bg-gray-800/50 hover:bg-gray-800 rounded-lg transition-colors group"
+            >
+              <span className="text-white font-medium">My Post Monitors</span>
+              <span className="text-gray-400 text-sm">View all →</span>
+            </button>
+          </div>
+          <button
+            onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
+            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+          >
+            <Plus size={18} />
+            Add My Post to Monitor
+          </button>
+        </div>
+      </div>
+
       {/* Main Content Grid */}
       <div className="grid md:grid-cols-3 gap-6">
         {/* Quick Actions */}
@@ -243,7 +317,7 @@ export default function CommentingAgentDashboard() {
                   <Target size={16} className="text-pink-400" />
                 </div>
                 <div className="text-left">
-                  <p className="text-white font-medium">Manage Profiles</p>
+                  <p className="text-white font-medium">Manage Monitors</p>
                   <p className="text-gray-400 text-sm">{stats?.active_profiles || 0} active</p>
                 </div>
               </div>
@@ -261,22 +335,6 @@ export default function CommentingAgentDashboard() {
                 <div className="text-left">
                   <p className="text-white font-medium">View Analytics</p>
                   <p className="text-gray-400 text-sm">Performance metrics</p>
-                </div>
-              </div>
-              <ExternalLink size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
-            </button>
-
-            <button
-              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
-              className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-pink-600/20 to-purple-600/20 hover:from-pink-600/30 hover:to-purple-600/30 rounded-lg transition-colors group border border-pink-500/30"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-pink-600/30 rounded-lg flex items-center justify-center">
-                  <UserCircle2 size={16} className="text-pink-400" />
-                </div>
-                <div className="text-left">
-                  <p className="text-white font-medium">My Posts</p>
-                  <p className="text-gray-400 text-sm">Auto-reply to comments</p>
                 </div>
               </div>
               <ExternalLink size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
