@@ -115,21 +115,6 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     onConfirm: () => {}
   });
 
-  // Rate limit notification state
-  const [rateLimitStatus, setRateLimitStatus] = useState<{
-    hasWarnings: boolean;
-    hasLimitsReached: boolean;
-    accounts: Array<{
-      accountId: string;
-      accountName: string;
-      sentToday: number;
-      dailyLimit: number;
-      remaining: number;
-      status: 'ok' | 'warning' | 'limit_reached';
-      message: string | null;
-    }>;
-  } | null>(null);
-
   // Helper to show confirm modal
   const showConfirmModal = (config: {
     title: string;
@@ -140,32 +125,6 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
   }) => {
     setConfirmModal({ isOpen: true, ...config });
   };
-
-  // Fetch rate limit status for LinkedIn accounts
-  useEffect(() => {
-    const fetchRateLimits = async () => {
-      if (!actualWorkspaceId) return;
-      try {
-        const response = await fetch(`/api/linkedin/rate-limits?workspace_id=${actualWorkspaceId}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setRateLimitStatus({
-              hasWarnings: data.hasWarnings,
-              hasLimitsReached: data.hasLimitsReached,
-              accounts: data.accounts
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch rate limits:', error);
-      }
-    };
-    fetchRateLimits();
-    // Refresh rate limits every 5 minutes
-    const interval = setInterval(fetchRateLimits, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [actualWorkspaceId]);
 
   // Check if ReachInbox is configured for this workspace
   useEffect(() => {
@@ -8389,39 +8348,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
               {/* Spacer */}
               <div className="flex-1" />
             </div>
-
-            {/* Rate Limit Warning Banner */}
-            {rateLimitStatus && (rateLimitStatus.hasLimitsReached || rateLimitStatus.hasWarnings) && (
-              <div className={`mx-4 mt-4 p-4 rounded-lg border ${
-                rateLimitStatus.hasLimitsReached
-                  ? 'bg-red-500/10 border-red-500/30'
-                  : 'bg-yellow-500/10 border-yellow-500/30'
-              }`}>
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                    rateLimitStatus.hasLimitsReached ? 'text-red-400' : 'text-yellow-400'
-                  }`} />
-                  <div className="flex-1">
-                    <h4 className={`font-medium ${
-                      rateLimitStatus.hasLimitsReached ? 'text-red-400' : 'text-yellow-400'
-                    }`}>
-                      {rateLimitStatus.hasLimitsReached
-                        ? 'LinkedIn Daily Limit Reached'
-                        : 'Approaching LinkedIn Daily Limit'}
-                    </h4>
-                    <div className="mt-1 space-y-1">
-                      {rateLimitStatus.accounts
-                        .filter(a => a.status !== 'ok')
-                        .map(account => (
-                          <p key={account.accountId} className="text-sm text-gray-300">
-                            <span className="font-medium">{account.accountName}</span>: {account.message}
-                          </p>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Conditional Content: Campaign Table OR In Progress Table (merged drafts + pending) */}
             {campaignFilter === 'pending' ? (
