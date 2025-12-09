@@ -3343,12 +3343,29 @@ export default function DataCollectionHub({
               })
             });
 
+            // FIX (Dec 9): Add proper error handling for HTTP errors
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              console.error('❌ Pre-flight API error:', response.status, errorData);
+
+              if (response.status === 401) {
+                toastError('Session expired. Please refresh the page and try again.');
+              } else if (response.status === 403) {
+                toastError('You don\'t have access to this workspace.');
+              } else {
+                toastError(`Pre-flight check failed: ${errorData.error || 'Server error'}`);
+              }
+              setShowPreflightModal(false);
+              setIsRunningPreflight(false);
+              return;
+            }
+
             const data = await response.json();
             console.log('📊 Pre-flight results:', data.summary);
             setPreflightResults(data);
           } catch (error) {
             console.error('Pre-flight check failed:', error);
-            toastError('Failed to verify prospects');
+            toastError('Failed to verify prospects. Please try again.');
             setShowPreflightModal(false);
           } finally {
             setIsRunningPreflight(false);
