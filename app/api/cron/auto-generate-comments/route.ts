@@ -168,14 +168,15 @@ export async function POST(request: NextRequest) {
 
     console.log(`📋 ${authorsWithPendingComments.size} authors already have pending comments`);
 
-    // 10-DAY RULE: Get authors we've commented on in the last 10 days
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    // 5-DAY RULE: Get authors we've commented on in the last 5 days
+    // (Changed from 10 days - Dec 9, 2025)
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
     const { data: recentAuthorComments } = await supabase
       .from('linkedin_post_comments')
       .select('post:linkedin_posts_discovered!inner(author_profile_id, author_name)')
       .in('workspace_id', workspaceIds)
-      .gte('generated_at', tenDaysAgo.toISOString());
+      .gte('generated_at', fiveDaysAgo.toISOString());
 
     const authorsCommentedRecently = new Set<string>();
     for (const comment of recentAuthorComments || []) {
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
       if (authorName) authorsCommentedRecently.add(authorName); // Fallback to name
     }
 
-    console.log(`📋 ${authorsCommentedRecently.size} authors commented on in last 10 days`);
+    console.log(`📋 ${authorsCommentedRecently.size} authors commented on in last 5 days`);
 
     // CRITICAL: Get post IDs that already have ANY comment (prevents duplicates)
     // This catches race conditions where multiple cron runs process same post
@@ -268,12 +269,12 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // 10-DAY RULE: Skip if we've commented on this author in the last 10 days
+        // 5-DAY RULE: Skip if we've commented on this author in the last 5 days
         const authorNameKey = post.author_name || authorId;
         if (authorsCommentedRecently.has(authorId) || authorsCommentedRecently.has(authorNameKey)) {
-          console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - ${post.author_name} was commented on within 10 days`);
+          console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - ${post.author_name} was commented on within 5 days`);
           skipCount++;
-          results.push({ post_id: post.id, status: 'skipped_10_day_rule' });
+          results.push({ post_id: post.id, status: 'skipped_5_day_rule' });
           // Mark as skipped so we don't keep trying (comment_generated_at already set during claim)
           await supabase
             .from('linkedin_posts_discovered')
@@ -589,6 +590,49 @@ export async function POST(request: NextRequest) {
 
           results.push({ post_id: post.id, status: 'rejected_garbage_comment' });
           continue;
+        }
+
+        // ============================================
+        // CRITICAL: Final real-time duplicate check right before insert
+        // Catches race conditions where another run inserted while we were generating
+        // ============================================
+        const { count: finalPostCheck } = await supabase
+          .from('linkedin_post_comments')
+          .select('id', { count: 'exact', head: true })
+          .eq('post_id', post.id);
+
+        if (finalPostCheck && finalPostCheck > 0) {
+          console.log(`   🛑 RACE CONDITION CAUGHT: Comment already exists for post ${post.id.substring(0, 8)}`);
+          skipCount++;
+          results.push({ post_id: post.id, status: 'skipped_race_condition' });
+          continue;
+        }
+
+        // Also check by social_id (same LinkedIn post may have different UUIDs)
+        if (post.social_id) {
+          const { data: sameSocialIdPosts } = await supabase
+            .from('linkedin_posts_discovered')
+            .select('id')
+            .eq('social_id', post.social_id);
+
+          if (sameSocialIdPosts && sameSocialIdPosts.length > 1) {
+            const allPostIds = sameSocialIdPosts.map(p => p.id);
+            const { count: socialIdCommentCount } = await supabase
+              .from('linkedin_post_comments')
+              .select('id', { count: 'exact', head: true })
+              .in('post_id', allPostIds);
+
+            if (socialIdCommentCount && socialIdCommentCount > 0) {
+              console.log(`   🛑 RACE CONDITION CAUGHT: Comment exists for same social_id ${post.social_id}`);
+              skipCount++;
+              await supabase
+                .from('linkedin_posts_discovered')
+                .update({ status: 'skipped' })
+                .eq('id', post.id);
+              results.push({ post_id: post.id, status: 'skipped_race_condition_social_id' });
+              continue;
+            }
+          }
         }
 
         // Determine status based on auto_approve setting
