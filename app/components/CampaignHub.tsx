@@ -8753,6 +8753,47 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   </div>
                 )}
 
+                {/* Empty state banners for each tab */}
+                {filteredCampaigns.length === 0 ? (
+                  <div className="bg-gradient-to-r from-gray-800 to-gray-750 border border-gray-700 rounded-lg p-8 text-center">
+                    <div className="max-w-md mx-auto">
+                      {campaignFilter === 'active' && (
+                        <>
+                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/10 flex items-center justify-center">
+                            <Play className="w-8 h-8 text-green-400" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-white mb-2">No Active Campaigns</h3>
+                          <p className="text-gray-400 mb-4">You don't have any campaigns currently running. Create a new campaign or activate a paused one to start reaching out to prospects.</p>
+                        </>
+                      )}
+                      {campaignFilter === 'paused' && (
+                        <>
+                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                            <Pause className="w-8 h-8 text-yellow-400" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-white mb-2">No Paused Campaigns</h3>
+                          <p className="text-gray-400 mb-4">You don't have any paused campaigns. Active campaigns can be paused at any time if you need to temporarily stop outreach.</p>
+                        </>
+                      )}
+                      {campaignFilter === 'completed' && (
+                        <>
+                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/10 flex items-center justify-center">
+                            <CheckCircle className="w-8 h-8 text-blue-400" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-white mb-2">No Completed Campaigns</h3>
+                          <p className="text-gray-400 mb-4">You don't have any completed campaigns yet. Campaigns are marked as completed when all prospects have been contacted.</p>
+                        </>
+                      )}
+                      <button
+                        onClick={() => setShowBuilder(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      >
+                        <Plus size={18} />
+                        Create Campaign
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                 <table className="w-full">
                 <thead className="bg-gray-750">
                   <tr className="text-left text-gray-400 text-xs uppercase">
@@ -8882,6 +8923,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                   ))}
                 </tbody>
               </table>
+                )}
               </div>
             )}
           </div>
