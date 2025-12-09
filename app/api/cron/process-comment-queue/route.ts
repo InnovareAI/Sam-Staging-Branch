@@ -359,10 +359,11 @@ export async function POST(req: NextRequest) {
         const linkedinCommentId = unipileData.id || unipileData.comment_id || unipileData.object_id || null;
 
         // Auto-like the post after commenting
-        console.log(`   👍 Liking post ${postSocialId}...`);
+        // Use the original activity ID for reactions (not ugcPost)
+        console.log(`   👍 Liking post ${activitySocialId}...`);
         try {
           const likeResponse = await fetch(
-            `${UNIPILE_BASE_URL}/api/v1/posts/${encodeURIComponent(postSocialId)}/reactions`,
+            `${UNIPILE_BASE_URL}/api/v1/posts/reaction`,
             {
               method: 'POST',
               headers: {
@@ -371,7 +372,8 @@ export async function POST(req: NextRequest) {
               },
               body: JSON.stringify({
                 account_id: linkedinAccount.unipile_account_id,
-                reaction_type: 'LIKE'
+                post_id: activitySocialId,
+                reaction_type: 'like'  // lowercase required
               })
             }
           );
