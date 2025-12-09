@@ -330,6 +330,7 @@ function normalizeLinkedInUrl(url: string): string | null {
 }
 
 // Helper: Fetch existing prospects from database
+// FIX (Dec 9, 2025): Batch queries to handle 200+ prospects without OR query overflow
 async function fetchExistingProspects(
   supabase: any,
   workspaceId: string,
@@ -337,26 +338,55 @@ async function fetchExistingProspects(
   emails: string[]
 ): Promise<any[]> {
   const results: any[] = [];
+  const BATCH_SIZE = 50; // Process 50 at a time to avoid query length issues
 
-  // Query by LinkedIn URL
+  // Query by LinkedIn URL in batches
   if (linkedinUrls.length > 0) {
-    const linkedinConditions = linkedinUrls.map(url => `linkedin_url.ilike.%${url}%`).join(',');
-    const { data } = await supabase
-      .from('campaign_prospects')
-      .select('linkedin_url, email, status, error_message, campaigns(campaign_name)')
-      .eq('workspace_id', workspaceId)
-      .or(linkedinConditions);
-    if (data) results.push(...data);
+    for (let i = 0; i < linkedinUrls.length; i += BATCH_SIZE) {
+      const batch = linkedinUrls.slice(i, i + BATCH_SIZE);
+      const linkedinConditions = batch.map(url => `linkedin_url.ilike.%${url}%`).join(',');
+
+      try {
+        const { data, error } = await supabase
+          .from('campaign_prospects')
+          .select('linkedin_url, email, status, error_message, campaigns(campaign_name)')
+          .eq('workspace_id', workspaceId)
+          .or(linkedinConditions);
+
+        if (error) {
+          console.error(`Error fetching batch ${i / BATCH_SIZE + 1}:`, error);
+          continue;
+        }
+        if (data) results.push(...data);
+      } catch (batchError) {
+        console.error(`Exception in batch ${i / BATCH_SIZE + 1}:`, batchError);
+        continue;
+      }
+    }
   }
 
-  // Query by email
+  // Query by email in batches
   if (emails.length > 0) {
-    const { data } = await supabase
-      .from('campaign_prospects')
-      .select('linkedin_url, email, status, error_message, campaigns(campaign_name)')
-      .eq('workspace_id', workspaceId)
-      .in('email', emails);
-    if (data) results.push(...data);
+    for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+      const batch = emails.slice(i, i + BATCH_SIZE);
+
+      try {
+        const { data, error } = await supabase
+          .from('campaign_prospects')
+          .select('linkedin_url, email, status, error_message, campaigns(campaign_name)')
+          .eq('workspace_id', workspaceId)
+          .in('email', batch);
+
+        if (error) {
+          console.error(`Error fetching email batch ${i / BATCH_SIZE + 1}:`, error);
+          continue;
+        }
+        if (data) results.push(...data);
+      } catch (batchError) {
+        console.error(`Exception in email batch ${i / BATCH_SIZE + 1}:`, batchError);
+        continue;
+      }
+    }
   }
 
   return results;
