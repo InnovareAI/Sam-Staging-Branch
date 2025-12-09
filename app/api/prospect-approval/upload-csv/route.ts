@@ -215,6 +215,12 @@ export async function POST(request: NextRequest) {
     const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
     console.log('CSV Parsing - Detected headers:', headers);
 
+    // Check if any LinkedIn-related header exists
+    const linkedinHeaders = headers.filter(h =>
+      h.includes('linkedin') || h.includes('li ') || h === 'profile url'
+    );
+    console.log('CSV Parsing - LinkedIn-related headers found:', linkedinHeaders.length > 0 ? linkedinHeaders : 'NONE - LinkedIn URLs will NOT be imported!');
+
     // Check if degree column exists
     const hasDegreeColumn = headers.some(h =>
       h === 'degree' ||
@@ -224,7 +230,13 @@ export async function POST(request: NextRequest) {
     );
     console.log('CSV Parsing - Has degree column:', hasDegreeColumn);
 
-    // Map common header names
+    // Map common header names (all lowercase - headers are lowercased on line 215)
+    // NOTE: We support many variations because different tools export different formats:
+    // - Apollo.io: "Person Linkedin Url"
+    // - Sales Navigator: "LinkedIn Member URL"
+    // - ZoomInfo: "Contact LinkedIn URL"
+    // - Lusha: "LinkedIn"
+    // - Custom exports: "linkedin_url", "linkedinurl", etc.
     const headerMap: Record<string, string> = {
       'name': 'name',
       'full name': 'name',
@@ -241,10 +253,23 @@ export async function POST(request: NextRequest) {
       'organization': 'company',
       'email': 'email',
       'e-mail': 'email',
+      // LinkedIn URL variations (CRITICAL - must match all export formats)
       'linkedin': 'linkedinUrl',
       'linkedin url': 'linkedinUrl',
       'linkedin profile': 'linkedinUrl',
       'profile url': 'linkedinUrl',
+      'linkedin_url': 'linkedinUrl',           // underscore variant
+      'linkedinurl': 'linkedinUrl',            // no space variant
+      'person linkedin url': 'linkedinUrl',    // Apollo.io format
+      'person linkedin': 'linkedinUrl',        // Apollo.io short
+      'linkedin member url': 'linkedinUrl',    // Sales Navigator format
+      'linkedin profile url': 'linkedinUrl',   // Generic format
+      'contact linkedin url': 'linkedinUrl',   // ZoomInfo format
+      'contact linkedin': 'linkedinUrl',       // ZoomInfo short
+      'li url': 'linkedinUrl',                 // Short format
+      'li profile': 'linkedinUrl',             // Short format
+      'linkedin link': 'linkedinUrl',          // Link variant
+      'linkedinprofile': 'linkedinUrl',        // No space variant
       'phone': 'phone',
       'location': 'location',
       'city': 'location',

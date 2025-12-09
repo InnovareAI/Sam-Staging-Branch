@@ -400,16 +400,120 @@ Added "My Posts" button to Quick Actions section with gradient styling.
 
 ---
 
-## Next Session Priorities
+## Session 4: LinkedIn Commenting & Campaign Scheduling
 
-1. Monitor commenting system for any duplicate issues
-2. Test profile-based discovery with single post
-3. **Test My Posts feature end-to-end**
-4. Consider making limits configurable via database
-5. Implement threaded replies when ready
-6. Activate lead capture queue cron when ready
+### Commenting Agent Enhancements
+
+#### 1. English-Only Filter
+**File:** `app/api/linkedin-commenting/discover-posts-hashtag/route.ts`
+
+Added `isEnglishText()` function that:
+- Uses common English word frequency detection (100+ common words)
+- Cleans text (removes URLs, mentions, hashtags)
+- Requires 15% of words to be common English words
+- Integrated into `shouldExcludePost()` check
+
+```typescript
+function isEnglishText(text: string): boolean {
+  const commonEnglishWords = ['the', 'be', 'to', 'of', 'and', ...];
+  // Returns true if >= 15% of words are common English
+}
+```
+
+#### 2. Per-Workspace Daily Caps
+- Changed from global daily cap to per-workspace cap
+- Each workspace limited to 25 posts/day
+- Tracks `workspacePostCounts` and `workspacesSavedCounts` per run
+
+```typescript
+const DAILY_POST_CAP_PER_WORKSPACE = 25;
+```
+
+#### 3. Digest Email CC Support
+**File:** `app/api/cron/commenting-digest/route.ts`
+
+- Added `DIGEST_CC_EMAIL = 'tl@innovareai.com'` constant
+- Modified `sendPostmarkEmail()` to accept optional CC parameter
+- All digest emails now CC'd to admin for oversight
+
+### Workspaces Activated
+
+| Workspace | Owner | Keyword | Status |
+|-----------|-------|---------|--------|
+| ChillMine (aa1a214c) | Brian | datacenter | ✅ Active |
+| ChillMine - Pete Noble (d4e5f6a7) | Pete | bitcoin | ✅ Active |
+| InnovareAI (babdcab8) | Thorsten | GenAI, Agentic AI | ✅ Active |
+
+### Comments Scheduled (IA1 Workspace)
+
+| Post Author | Scheduled Time (UTC) | Status |
+|-------------|---------------------|--------|
+| Comment 1 | 12:15 | ✅ Scheduled |
+| Comment 2 | 13:00 | ✅ Scheduled |
+| Comment 3 | 13:45 | ✅ Scheduled |
+
+**Note:** Comments spaced 45 minutes apart as requested.
 
 ---
 
-**Last Updated:** December 9, 2025 (Session 3)
+## Session 4B: LinkedIn Campaign Rescheduling
+
+### CRITICAL RULE: All Campaigns Start at 8:00 AM Eastern
+
+**User Directive:** "ALL campaigns need to start at 8:00 AM Eastern - there is NO exception"
+
+- 8:00 AM Eastern = 13:00 UTC (during EST)
+- Applies to ALL connector campaigns (CRs and follow-ups)
+- Messages spaced 24 minutes apart
+
+### Irish Campaign 4 Rescheduling
+
+**Problem:** 25 pending CRs were scheduled for Dec 10 (tomorrow) starting at 08:00 UTC
+
+**Fix:** Rescheduled all 25 items to TODAY (Dec 9) starting at 13:00 UTC (8:00 AM Eastern)
+
+| Time (UTC) | Time (Eastern) | Action |
+|------------|----------------|--------|
+| 13:00 | 8:00 AM | CR #1 |
+| 13:24 | 8:24 AM | CR #2 |
+| 13:48 | 8:48 AM | CR #3 |
+| ... | ... | ... |
+| 22:36 | 5:36 PM | CR #25 |
+
+**Total:** 25 CRs, 24 minutes apart, running from 8:00 AM to 5:36 PM Eastern
+
+### Campaign Status Summary (Dec 9)
+
+| Campaign | Owner | Sent Today | Pending | Notes |
+|----------|-------|------------|---------|-------|
+| Irish Campaign 4 | Irish | 19 | 25 | ✅ Rescheduled to TODAY |
+| 12/2 Cha Campaign 5 | Chrissa | 1 (Dec 4) | 0 | Complete |
+| 12/2 Irish Campaign 3 | Irish | 24 (Dec 4) | 0 | Complete |
+| 12/1 Mich Campaign 2 | Michelle | 33 (Dec 1-2) | 0 | Complete |
+| Mich Campaign 4 | Michelle | 10 (Dec 4) | 0 | Complete |
+| Mich Campaign 3, 5 | Michelle | 0 | 0 | Empty queues |
+| Cha Messenger | Chrissa | 0 | 0 | Empty queue |
+
+### Cron Processing
+
+The `process-send-queue` cron runs every minute via Netlify scheduled functions:
+- Picks up items where `scheduled_for <= NOW()` and `status = 'pending'`
+- Processes 1 item per run
+- First CR for Irish Campaign 4 will send at 13:00 UTC (8:00 AM Eastern)
+
+---
+
+## Next Session Priorities
+
+1. Monitor Irish Campaign 4 CRs sending (starting 13:00 UTC)
+2. Monitor commenting system for any duplicate issues
+3. Test profile-based discovery with single post
+4. **Test My Posts feature end-to-end**
+5. Consider making limits configurable via database
+6. Implement threaded replies when ready
+7. Activate lead capture queue cron when ready
+
+---
+
+**Last Updated:** December 9, 2025 (Session 4B)
 **Author:** Claude (AI Assistant)
