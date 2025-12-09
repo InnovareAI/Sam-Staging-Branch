@@ -71,11 +71,69 @@ const QUALITY_INDICATORS = [
 ];
 
 /**
+ * Simple English language detection
+ * Uses common English words and character patterns to identify English text
+ * Returns true if the text appears to be in English
+ */
+function isEnglishText(text: string): boolean {
+  if (!text || text.length < 20) return false;
+
+  // Common English words that appear frequently
+  const commonEnglishWords = [
+    'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i',
+    'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
+    'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
+    'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what',
+    'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me',
+    'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know', 'take',
+    'people', 'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other',
+    'than', 'then', 'now', 'look', 'only', 'come', 'its', 'over', 'think', 'also',
+    'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first', 'well', 'way',
+    'even', 'new', 'want', 'because', 'any', 'these', 'give', 'day', 'most', 'us',
+    'is', 'are', 'was', 'were', 'been', 'being', 'has', 'had', 'does', 'did',
+    'very', 'much', 'more', 'here', 'where', 'why', 'should', 'need', 'must', 'may'
+  ];
+
+  // Normalize text: lowercase, remove URLs, mentions, hashtags
+  const cleanText = text
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/@\w+/g, '')
+    .replace(/#\w+/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const words = cleanText.split(' ').filter(w => w.length > 1);
+  if (words.length < 5) return false;
+
+  // Count how many common English words appear
+  let englishWordCount = 0;
+  for (const word of words) {
+    if (commonEnglishWords.includes(word)) {
+      englishWordCount++;
+    }
+  }
+
+  // Calculate ratio of English words to total words
+  const englishRatio = englishWordCount / words.length;
+
+  // If at least 15% of words are common English words, consider it English
+  // This threshold is low because posts contain technical terms, names, etc.
+  return englishRatio >= 0.15;
+}
+
+/**
  * Check if a post should be excluded based on content patterns
  */
 function shouldExcludePost(text: string): { exclude: boolean; reason?: string } {
   if (!text || text.trim().length < 50) {
     return { exclude: true, reason: 'Too short' };
+  }
+
+  // CRITICAL: English posts only
+  if (!isEnglishText(text)) {
+    return { exclude: true, reason: 'Non-English content' };
   }
 
   for (const pattern of EXCLUDE_PATTERNS) {
