@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
         const hashtagMatches = post.text?.match(/#\w+/g) || [];
         const hashtags = hashtagMatches.map((h) => h.substring(1).toLowerCase());
 
-        // Insert new post
+        // Insert new post (using correct column names from schema)
         const { error: insertError } = await supabase
           .from('linkedin_posts_discovered')
           .insert({
@@ -200,14 +200,16 @@ export async function POST(request: NextRequest) {
             share_url: post.share_url,
             author_name: post.author?.name || 'Unknown',
             author_headline: post.author?.headline || '',
-            author_provider_id: post.author?.id,
-            author_vanity: post.author?.public_identifier,
-            post_text: post.text,
-            num_likes: post.reaction_counter || 0,
-            num_comments: post.comment_counter || 0,
+            author_profile_id: post.author?.public_identifier,
+            post_content: post.text,
             hashtags: hashtags,
             status: 'discovered',
-            posted_at: post.parsed_datetime || new Date().toISOString(),
+            post_date: post.parsed_datetime || new Date().toISOString(),
+            engagement_metrics: {
+              likes: post.reaction_counter || 0,
+              comments: post.comment_counter || 0,
+              reposts: post.repost_counter || 0,
+            },
           });
 
         if (insertError) {
