@@ -28,6 +28,7 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 // Limits (3 keywords × 15 posts = 45 max per day)
 const MAX_POSTS_PER_KEYWORD = 15;
 const MAX_KEYWORDS_PER_RUN = 3;
+const DAILY_POST_CAP = 45;
 
 interface UnipilePost {
   social_id: string;
@@ -107,6 +108,27 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+    // Check daily cap - stop if 45 posts already discovered today
+    const today = new Date().toISOString().split('T')[0];
+    const { count: postsToday } = await supabase
+      .from('linkedin_posts_discovered')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', `${today}T00:00:00Z`);
+
+    if (postsToday && postsToday >= DAILY_POST_CAP) {
+      console.log(`📊 Daily cap reached: ${postsToday}/${DAILY_POST_CAP} posts discovered today`);
+      return NextResponse.json({
+        success: true,
+        message: `Daily cap reached (${postsToday}/${DAILY_POST_CAP} posts)`,
+        posts_discovered: 0,
+        posts_saved: 0,
+        daily_cap_reached: true,
+      });
+    }
+
+    const remainingCap = DAILY_POST_CAP - (postsToday || 0);
+    console.log(`📊 Daily progress: ${postsToday || 0}/${DAILY_POST_CAP} posts, ${remainingCap} remaining`);
+
     // Get all active monitors
     const { data: monitors, error: monitorsError } = await supabase
       .from('linkedin_post_monitors')
@@ -161,11 +183,22 @@ export async function POST(request: NextRequest) {
 
     // Search each hashtag
     for (const hashtag of hashtagsToSearch) {
+      // Stop if we've hit the daily cap
+      if (totalSaved >= remainingCap) {
+        console.log(`📊 Daily cap reached during run: ${totalSaved} saved, stopping search`);
+        break;
+      }
+
       const posts = await searchLinkedInPosts(hashtag);
       totalDiscovered += posts.length;
 
       // Save posts to database
       for (const post of posts) {
+        // Stop saving if we've hit the daily cap
+        if (totalSaved >= remainingCap) {
+          console.log(`📊 Daily cap reached: stopping post saves`);
+          break;
+        }
         // Get monitor IDs for this hashtag
         const monitorIds = hashtagToMonitors.get(hashtag) || [];
         if (monitorIds.length === 0) continue;
