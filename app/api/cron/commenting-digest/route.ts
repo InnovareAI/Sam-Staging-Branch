@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
           ? `📅 ${comments.length} LinkedIn Comment${comments.length > 1 ? 's' : ''} Scheduled for Today`
           : `🗨️ ${comments.length} LinkedIn Comment${comments.length > 1 ? 's' : ''} Ready for Review`;
 
-        const sendResult = await sendPostmarkEmail(recipientEmail, subject, emailHtml);
+        const sendResult = await sendPostmarkEmail(recipientEmail, subject, emailHtml, DIGEST_CC_EMAIL);
 
         if (sendResult.success) {
           await supabase
@@ -559,7 +559,10 @@ function buildPreviewDigestEmail(comments: DigestComment[], workspaceId: string,
 </html>`;
 }
 
-async function sendPostmarkEmail(to: string, subject: string, htmlBody: string): Promise<{ success: boolean; error?: string }> {
+// CC email for all digests - admin oversight
+const DIGEST_CC_EMAIL = 'tl@innovareai.com';
+
+async function sendPostmarkEmail(to: string, subject: string, htmlBody: string, cc?: string): Promise<{ success: boolean; error?: string }> {
   const POSTMARK_TOKEN = process.env.POSTMARK_SERVER_TOKEN || process.env.POSTMARK_INNOVAREAI_API_KEY;
   const FROM_EMAIL = process.env.POSTMARK_FROM_EMAIL || 'sp@innovareai.com';
   const FROM_NAME = process.env.POSTMARK_FROM_NAME || 'Sam';
@@ -569,6 +572,19 @@ async function sendPostmarkEmail(to: string, subject: string, htmlBody: string):
   }
 
   try {
+    const emailPayload: Record<string, string> = {
+      From: `${FROM_NAME} <${FROM_EMAIL}>`,
+      To: to,
+      Subject: subject,
+      HtmlBody: htmlBody,
+      MessageStream: 'outbound'
+    };
+
+    // Add CC if provided
+    if (cc) {
+      emailPayload.Cc = cc;
+    }
+
     const response = await fetch('https://api.postmarkapp.com/email', {
       method: 'POST',
       headers: {
@@ -576,13 +592,7 @@ async function sendPostmarkEmail(to: string, subject: string, htmlBody: string):
         'Content-Type': 'application/json',
         'X-Postmark-Server-Token': POSTMARK_TOKEN
       },
-      body: JSON.stringify({
-        From: `${FROM_NAME} <${FROM_EMAIL}>`,
-        To: to,
-        Subject: subject,
-        HtmlBody: htmlBody,
-        MessageStream: 'outbound'
-      })
+      body: JSON.stringify(emailPayload)
     });
 
     if (!response.ok) {
