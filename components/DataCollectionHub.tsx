@@ -3353,7 +3353,9 @@ export default function DataCollectionHub({
               } else if (response.status === 403) {
                 toastError('You don\'t have access to this workspace.');
               } else {
-                toastError(`Pre-flight check failed: ${errorData.error || 'Server error'}`);
+                const errMsg = errorData.error || errorData.details || errorData.message || 'Server error';
+                console.error('Pre-flight error details:', JSON.stringify(errorData));
+                toastError(`Pre-flight check failed: ${errMsg}`);
               }
               setShowPreflightModal(false);
               setIsRunningPreflight(false);

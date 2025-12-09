@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
     const canVerifyLinkedIn = !!unipileAccountId;
 
     console.log(`🔍 Pre-flight check for ${prospects.length} prospects (campaign type: ${campaignType})`);
+    const startTime = Date.now();
 
     // Step 1: Check for duplicates within the batch
     const seenLinkedInUrls = new Map<string, string>(); // normalized URL -> first prospect ID
@@ -132,7 +133,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Query existing prospects
+    console.log(`⏱️ Starting existing prospects query (${linkedinUrls.length} URLs, ${emails.length} emails) at ${Date.now() - startTime}ms`);
     const existingProspects = await fetchExistingProspects(supabase, workspaceId, linkedinUrls, emails);
+    console.log(`⏱️ Existing prospects query complete (${existingProspects.length} found) at ${Date.now() - startTime}ms`);
 
     // Step 3: Check rate limit status based on campaign type
     // - Connector: 20/day, 100/week (LinkedIn CR limits)
@@ -290,6 +293,7 @@ export async function POST(req: NextRequest) {
       rateLimitStatus
     };
 
+    console.log(`⏱️ Total preflight time: ${Date.now() - startTime}ms`);
     console.log(`📊 Pre-flight complete:
       - Can proceed: ${summary.canProceed}
       - Blocked: ${summary.blocked}
@@ -314,9 +318,12 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Pre-flight check error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Full error details:', JSON.stringify(error, null, 2));
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: errorMessage,
+      details: errorMessage
     }, { status: 500 });
   }
 }
