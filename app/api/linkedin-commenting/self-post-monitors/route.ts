@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@/lib/supabase-server';
+import { createCleanRouteHandlerClient } from '@/lib/supabase-server';
 
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
@@ -77,7 +77,7 @@ async function fetchPostDetails(activityId: string, accountId: string): Promise<
  */
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = await createCleanRouteHandlerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = await createCleanRouteHandlerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

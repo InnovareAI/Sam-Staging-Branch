@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase-server';
+import { createCleanRouteHandlerClient } from '@/lib/supabase-server';
 
 /**
  * GET - Get single monitor with recent replies
@@ -17,7 +17,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createServerClient();
+    const supabase = await createCleanRouteHandlerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -85,7 +85,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createServerClient();
+    const supabase = await createCleanRouteHandlerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -177,7 +177,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createServerClient();
+    const supabase = await createCleanRouteHandlerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
