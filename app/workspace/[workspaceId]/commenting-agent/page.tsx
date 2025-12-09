@@ -15,7 +15,8 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
-  Eye
+  Eye,
+  UserCircle2
 } from 'lucide-react';
 import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import CommentingAgentSettings from '@/app/components/CommentingAgentSettings';
@@ -260,6 +261,22 @@ export default function CommentingAgentDashboard() {
                 <div className="text-left">
                   <p className="text-white font-medium">View Analytics</p>
                   <p className="text-gray-400 text-sm">Performance metrics</p>
+                </div>
+              </div>
+              <ExternalLink size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
+            </button>
+
+            <button
+              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
+              className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-pink-600/20 to-purple-600/20 hover:from-pink-600/30 hover:to-purple-600/30 rounded-lg transition-colors group border border-pink-500/30"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-pink-600/30 rounded-lg flex items-center justify-center">
+                  <UserCircle2 size={16} className="text-pink-400" />
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-medium">My Posts</p>
+                  <p className="text-gray-400 text-sm">Auto-reply to comments</p>
                 </div>
               </div>
               <ExternalLink size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />

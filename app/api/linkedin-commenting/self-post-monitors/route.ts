@@ -7,7 +7,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { createCleanRouteHandlerClient } from '@/lib/supabase-server';
 
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;

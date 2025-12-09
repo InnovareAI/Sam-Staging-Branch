@@ -10,6 +10,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
+import {
+  fetchCommenterProfile,
+  scoreCommenter,
+  generateCRMessage,
+  DEFAULT_SCORING_RULES,
+  type ScoringRules,
+  type ScoreBreakdown
+} from '@/lib/services/linkedin-lead-scoring';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -363,6 +371,145 @@ export async function POST(req: NextRequest) {
 
             posted++;
             console.log(`   ✅ Reply posted successfully`);
+
+            // ============================================
+            // PHASE 2B: Score commenter and queue lead capture
+            // ============================================
+            try {
+              // Check if lead capture is enabled for this monitor
+              const { data: monitorSettings } = await supabase
+                .from('linkedin_self_post_monitors')
+                .select('auto_connect_enabled, auto_connect_min_score, auto_connect_message, dm_sequence_campaign_id, crm_sync_enabled, crm_provider, crm_list_id, crm_tags, lead_source_label')
+                .eq('id', reply.monitor.id)
+                .single();
+
+              if (monitorSettings?.auto_connect_enabled || monitorSettings?.crm_sync_enabled) {
+                console.log(`   📊 Scoring commenter: ${reply.commenter_name}...`);
+
+                // Fetch commenter profile from LinkedIn
+                const commenterProfile = await fetchCommenterProfile(
+                  reply.commenter_provider_id || reply.commenter_linkedin_url?.split('/in/')[1]?.replace(/\/$/, '') || '',
+                  linkedinAccount.unipile_account_id
+                );
+
+                if (commenterProfile) {
+                  // Get workspace scoring rules or use defaults
+                  const { data: customRules } = await supabase
+                    .from('linkedin_lead_scoring_rules')
+                    .select('*')
+                    .eq('workspace_id', reply.monitor.workspace_id)
+                    .single();
+
+                  const scoringRules: ScoringRules = customRules ? {
+                    title_keywords: customRules.title_keywords || DEFAULT_SCORING_RULES.title_keywords,
+                    company_size_scoring: customRules.company_size_scoring || DEFAULT_SCORING_RULES.company_size_scoring,
+                    target_industries: customRules.target_industries || DEFAULT_SCORING_RULES.target_industries,
+                    industry_bonus: customRules.industry_bonus ?? DEFAULT_SCORING_RULES.industry_bonus,
+                    first_degree_bonus: customRules.first_degree_bonus ?? DEFAULT_SCORING_RULES.first_degree_bonus,
+                    second_degree_bonus: customRules.second_degree_bonus ?? DEFAULT_SCORING_RULES.second_degree_bonus,
+                    third_degree_bonus: customRules.third_degree_bonus ?? DEFAULT_SCORING_RULES.third_degree_bonus,
+                    comment_length_bonus: customRules.comment_length_bonus ?? DEFAULT_SCORING_RULES.comment_length_bonus,
+                    question_bonus: customRules.question_bonus ?? DEFAULT_SCORING_RULES.question_bonus,
+                    min_score_for_cr: monitorSettings.auto_connect_min_score || customRules.min_score_for_cr || DEFAULT_SCORING_RULES.min_score_for_cr,
+                    min_score_for_dm_sequence: customRules.min_score_for_dm_sequence ?? DEFAULT_SCORING_RULES.min_score_for_dm_sequence,
+                    min_score_for_crm_sync: customRules.min_score_for_crm_sync ?? DEFAULT_SCORING_RULES.min_score_for_crm_sync
+                  } : DEFAULT_SCORING_RULES;
+
+                  // Score the commenter
+                  const scoreBreakdown = scoreCommenter(
+                    commenterProfile,
+                    reply.comment_text,
+                    scoringRules
+                  );
+
+                  console.log(`   📈 Score: ${scoreBreakdown.total_score} (CR: ${scoreBreakdown.qualifying_actions.connection_request}, DM: ${scoreBreakdown.qualifying_actions.dm_sequence})`);
+
+                  // Update reply record with commenter profile and score
+                  await supabase
+                    .from('linkedin_self_post_comment_replies')
+                    .update({
+                      commenter_score: scoreBreakdown.total_score,
+                      commenter_title: commenterProfile.title,
+                      commenter_company: commenterProfile.company,
+                      commenter_location: commenterProfile.location,
+                      commenter_connections: commenterProfile.connections,
+                      commenter_is_1st_degree: commenterProfile.connection_degree === '1st',
+                      score_breakdown: scoreBreakdown,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', reply.id);
+
+                  // Queue connection request if score meets threshold
+                  if (monitorSettings.auto_connect_enabled &&
+                      scoreBreakdown.qualifying_actions.connection_request &&
+                      commenterProfile.connection_degree !== '1st') { // Don't send CR to 1st degree connections
+
+                    const crMessage = monitorSettings.auto_connect_message
+                      ? generateCRMessage(commenterProfile, reply.monitor.post_title || '', monitorSettings.auto_connect_message)
+                      : generateCRMessage(commenterProfile, reply.monitor.post_title || '');
+
+                    // Queue the connection request action
+                    await supabase
+                      .from('linkedin_lead_capture_queue')
+                      .upsert({
+                        workspace_id: reply.monitor.workspace_id,
+                        comment_reply_id: reply.id,
+                        commenter_provider_id: commenterProfile.provider_id,
+                        commenter_name: commenterProfile.name,
+                        commenter_linkedin_url: commenterProfile.profile_url,
+                        commenter_score: scoreBreakdown.total_score,
+                        action_type: 'connection_request',
+                        status: 'pending',
+                        scheduled_for: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 min delay
+                        action_data: {
+                          message: crMessage,
+                          account_id: linkedinAccount.unipile_account_id,
+                          dm_sequence_campaign_id: monitorSettings.dm_sequence_campaign_id,
+                          score_breakdown: scoreBreakdown
+                        }
+                      }, {
+                        onConflict: 'comment_reply_id,action_type'
+                      });
+
+                    console.log(`   🎯 Queued CR for ${commenterProfile.name} (score: ${scoreBreakdown.total_score})`);
+                  }
+
+                  // Queue CRM sync if enabled
+                  if (monitorSettings.crm_sync_enabled &&
+                      scoreBreakdown.qualifying_actions.crm_sync) {
+
+                    await supabase
+                      .from('linkedin_lead_capture_queue')
+                      .upsert({
+                        workspace_id: reply.monitor.workspace_id,
+                        comment_reply_id: reply.id,
+                        commenter_provider_id: commenterProfile.provider_id,
+                        commenter_name: commenterProfile.name,
+                        commenter_linkedin_url: commenterProfile.profile_url,
+                        commenter_score: scoreBreakdown.total_score,
+                        action_type: 'crm_sync',
+                        status: 'pending',
+                        scheduled_for: new Date().toISOString(), // Immediate
+                        action_data: {
+                          crm_provider: monitorSettings.crm_provider,
+                          crm_list_id: monitorSettings.crm_list_id,
+                          crm_tags: monitorSettings.crm_tags,
+                          lead_source: monitorSettings.lead_source_label || 'LinkedIn Post Comment',
+                          profile: commenterProfile,
+                          score_breakdown: scoreBreakdown
+                        }
+                      }, {
+                        onConflict: 'comment_reply_id,action_type'
+                      });
+
+                    console.log(`   📤 Queued CRM sync for ${commenterProfile.name}`);
+                  }
+                }
+              }
+            } catch (leadCaptureError) {
+              // Don't fail the whole reply - log and continue
+              console.error(`   ⚠️ Lead capture error:`, leadCaptureError);
+            }
 
           } else {
             throw new Error(postResult.error || 'Post failed');
