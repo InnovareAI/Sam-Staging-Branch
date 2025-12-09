@@ -3319,20 +3319,21 @@ Would you like me to adjust these or create more variations?`
         return;
       }
 
-      if (result.success) {
-        setParsedPreview(result.parsed);
-
-        // Show warning if fallback was used
-        if (result.warning) {
-          console.warn('⚠️ Parse warning:', result.warning);
-          toastWarning(`Using original text (AI parsing had issues)`);
-        } else {
-          toastSuccess('Template parsed successfully!');
-        }
-      } else {
+      if (!result.success) {
         const errorMessage = result.error || 'Failed to parse template';
         console.error('Parse template failed:', result);
         toastError(`Error: ${errorMessage}`);
+        return;
+      }
+
+      setParsedPreview(result.parsed);
+
+      // Show warning if fallback was used
+      if (result.warning) {
+        console.warn('⚠️ Parse warning:', result.warning);
+        toastWarning(`Using original text (AI parsing had issues)`);
+      } else {
+        toastSuccess('Template parsed successfully!');
       }
     } catch (error) {
       console.error('Parse error:', error);
@@ -5988,17 +5989,21 @@ Would you like me to adjust these or create more variations?`
                     <label htmlFor="paste-text" className="block text-sm font-medium text-gray-300 mb-2">
                       Paste your message template(s)
                     </label>
+                    <p className="text-gray-500 text-xs mb-2">Include CR + all follow-ups. Labels like "CR1", "FU1" will be removed automatically.</p>
                     <textarea
                       id="paste-text"
                       value={pastedText}
                       onChange={(e) => setPastedText(e.target.value)}
                       placeholder="Example:
 
-Hi Sarah, I noticed you're the VP of Sales at Acme Corp. I'd love to connect and share some insights on outbound automation.
+CR1 (250 chars)
+Hi [First Name], I noticed we both work in the leadership space. Looking forward to staying in touch.
 
-Follow-up: Hey Sarah, wanted to circle back on connecting.
+FU1 — Day 3
+Hi [First Name], thanks for connecting. I wanted to share a case study...
 
-Follow-up 2: Sarah, last attempt - would you be open to a quick chat?"
+FU2 — Day 7
+Hi [First Name], quick follow-up on my previous message..."
                       className="w-full min-h-[300px] px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                     />
                   </div>

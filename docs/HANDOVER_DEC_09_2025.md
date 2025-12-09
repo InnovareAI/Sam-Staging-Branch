@@ -515,5 +515,110 @@ The `process-send-queue` cron runs every minute via Netlify scheduled functions:
 
 ---
 
-**Last Updated:** December 9, 2025 (Session 4B)
+## Session 5: A/B Testing Paste Modal (Attempted & Deferred)
+
+### Summary
+
+Attempted to implement A/B testing paste functionality for the message template modal. Feature was rolled back due to parsing issues - AI couldn't reliably separate structured message sequences into Variant A vs B.
+
+### What Was Attempted
+
+**Goal:** Allow users to paste TWO complete messaging sequences (Variant A and Variant B) into the "Paste Message Template" modal, with automatic detection and parsing.
+
+**User's input format:**
+```
+SEQUENCE A:
+CR1 (259 chars)
+Hi [First Name], I noticed...
+
+FU1 — Day 3
+Following up on my connection request...
+
+FU2 — Day 7
+...
+
+SEQUENCE B:
+CR2 (245 chars)
+Hi [First Name], Your expertise in...
+
+FU1 — Day 3
+...
+```
+
+**Implementation approach:**
+1. Added second textarea for "Variant B" messages
+2. Added orange styling for B textarea, purple for A
+3. Updated parse-template API to handle dual sequences
+4. Auto-enable A/B testing when both sequences provided
+
+### Why It Failed
+
+**Problem:** Everything got concatenated into a single "Connection Message" instead of being properly separated into:
+- `connectionMessage` (CR1)
+- `alternativeMessage` (CR2/Variant B)
+- `followUpMessages[]` (FU1-FU4)
+
+**Root Cause:** The Claude Haiku model in the parse-template API couldn't reliably:
+1. Separate "Sequence A" from "Sequence B"
+2. Strip labels like "CR1 (259 chars)", "FU1 — Day 3"
+3. Extract clean message content without headers
+
+### What Was Kept
+
+The parse-template API improvements were retained since they're useful even without A/B:
+
+**File:** `/app/api/campaigns/parse-template/route.ts`
+
+```typescript
+// Updated AI prompt now handles:
+// - Generic placeholders like "[First Name]" → {first_name}
+// - Labels like "CR1 (259 chars)" should be ignored
+// - Section headers like "— Post-Connection (Day 1-2)" are stripped
+// - Character count indicators removed from output
+```
+
+### What Was Rolled Back
+
+**File:** `/app/components/CampaignHub.tsx`
+
+Removed:
+- Second textarea for Variant B messages
+- `pastedTextB` state variable
+- Dual API calls in `parsePastedTemplate`
+- B variant handling in `parsedPreview` type
+- Auto-enable A/B logic in `applyParsedTemplate`
+
+Kept:
+- Simple single-textarea paste modal (as before)
+- Basic template parsing functionality
+
+### Pending Todo
+
+**Status:** Added to todo list for future implementation
+
+```
+"Implement A/B testing paste modal with proper sequence parsing"
+```
+
+**Future approach suggestions:**
+1. Use explicit delimiters (e.g., `---VARIANT A---` / `---VARIANT B---`)
+2. Have two separate modals instead of one
+3. Use a more powerful model (Claude Sonnet) for parsing
+4. Pre-process the text with regex before sending to AI
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `/app/api/campaigns/parse-template/route.ts` | ✅ KEPT: Label stripping, placeholder conversion improvements |
+| `/app/components/CampaignHub.tsx` | ❌ REVERTED: Removed A/B paste UI code |
+
+### Commits
+
+- Build succeeded after rollback
+- No new commits for this session (rollback was not committed separately)
+
+---
+
+**Last Updated:** December 9, 2025 (Session 5)
 **Author:** Claude (AI Assistant)

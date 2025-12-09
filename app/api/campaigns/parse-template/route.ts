@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
    - Recipient's job titles (like "VP of Sales at Acme") → {job_title}
    - Recipient's industries (when specific like "your SaaS company") → {industry}
    - Recipient's locations (like "your team in Austin") → {location}
+   - Generic placeholders like "[First Name]" → {first_name}
 
 3. NEVER REPLACE SENDER INFORMATION:
    - Sender's company name: KEEP AS-IS (e.g., "I work at 3cubed", "our company Findabl")
@@ -75,16 +76,26 @@ export async function POST(request: NextRequest) {
    - Product categories: "CRM", "software", "platform" stay as-is
    - Common phrases: "VP of Sales", "your company" stay as-is UNLESS specific name follows
 
-5. IDENTIFY MESSAGE TYPES:
-   - First substantial message = connectionMessage
-   - If contains "Follow-up:", "Follow up 2:", "#1 Message", "#2 Message", split into followUpMessages
-   - Alternative message only if explicitly labeled
+5. IDENTIFY MESSAGE TYPES FROM STRUCTURE:
+   Look for these patterns to identify message types:
+   - "CR", "CR1", "Connection Request" = connectionMessage (the LinkedIn connection request)
+   - "FU", "FU1", "Follow-up 1", "Follow up:", "#1 Message" = followUpMessages array
+   - Character count indicators like "(259 chars)" should be ignored, not included in output
+   - Section headers like "— Post-Connection (Day 1-2)" are descriptive labels, not part of the message
+
+   EXTRACT ONLY THE ACTUAL MESSAGE CONTENT, not the labels/headers.
+
+   For example, if you see:
+   "CR1 (259 chars)
+   Hi [First Name], I noticed we both work..."
+
+   The connectionMessage is: "Hi {first_name}, I noticed we both work..." (without "CR1 (259 chars)")
 
 6. RETURN JSON EXACTLY:
 {
-  "connectionMessage": "exact text with only RECIPIENT placeholders replaced",
-  "alternativeMessage": "exact text or null",
-  "followUpMessages": ["exact text array"] or []
+  "connectionMessage": "actual message text only, no labels",
+  "alternativeMessage": "actual message text or null",
+  "followUpMessages": ["message 1 text only", "message 2 text only"] or []
 }
 
 EXAMPLE - CORRECT (Recipient info replaced, Sender info kept):
@@ -92,12 +103,22 @@ Input: "Hey Sarah! I'm from 3cubed. Love your work at Acme Corp. Try our tool Fi
 Output: "Hey {first_name}! I'm from 3cubed. Love your work at {company_name}. Try our tool Findabl!"
 (Notice: "3cubed" and "Findabl" stayed, only "Sarah" and "Acme Corp" were replaced)
 
-EXAMPLE - WRONG (don't replace sender info):
-Input: "I'm the co-founder of 3cubed. Would love to connect with you at Acme Corp."
-Output: "I'm the co-founder of {company_name}. Would love to connect with you at {company_name}." ❌
-Correct: "I'm the co-founder of 3cubed. Would love to connect with you at {company_name}." ✓
+EXAMPLE - Message extraction:
+Input:
+"CR1 (250 chars)
+Hi [First Name], noticed your work at XYZ Corp.
 
-Remember: You are NOT a copywriter. You are a FIND-AND-REPLACE tool for RECIPIENT info only. Keep the user's voice AND their company/product names intact!`
+FU1 — Day 3
+Hi [First Name], following up on my connection request."
+
+Output:
+{
+  "connectionMessage": "Hi {first_name}, noticed your work at {company_name}.",
+  "alternativeMessage": null,
+  "followUpMessages": ["Hi {first_name}, following up on my connection request."]
+}
+
+Remember: You are NOT a copywriter. You are a FIND-AND-REPLACE tool for RECIPIENT info only. Extract clean message content without labels!`
           },
           {
             role: 'user',
