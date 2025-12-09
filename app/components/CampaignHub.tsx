@@ -8763,7 +8763,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             <Play className="w-8 h-8 text-green-400" />
                           </div>
                           <h3 className="text-xl font-semibold text-white mb-2">No Active Campaigns</h3>
-                          <p className="text-gray-400 mb-4">You don't have any campaigns currently running. Create a new campaign or activate a paused one to start reaching out to prospects.</p>
+                          <p className="text-gray-400">You don't have any campaigns currently running. Go to Data Collection to find and approve prospects, then create a campaign.</p>
                         </>
                       )}
                       {campaignFilter === 'paused' && (
@@ -8772,7 +8772,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             <Pause className="w-8 h-8 text-yellow-400" />
                           </div>
                           <h3 className="text-xl font-semibold text-white mb-2">No Paused Campaigns</h3>
-                          <p className="text-gray-400 mb-4">You don't have any paused campaigns. Active campaigns can be paused at any time if you need to temporarily stop outreach.</p>
+                          <p className="text-gray-400">You don't have any paused campaigns. Active campaigns can be paused at any time if you need to temporarily stop outreach.</p>
                         </>
                       )}
                       {campaignFilter === 'completed' && (
@@ -8781,16 +8781,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                             <CheckCircle className="w-8 h-8 text-blue-400" />
                           </div>
                           <h3 className="text-xl font-semibold text-white mb-2">No Completed Campaigns</h3>
-                          <p className="text-gray-400 mb-4">You don't have any completed campaigns yet. Campaigns are marked as completed when all prospects have been contacted.</p>
+                          <p className="text-gray-400">You don't have any completed campaigns yet. Campaigns are marked as completed when all prospects have been contacted.</p>
                         </>
                       )}
-                      <button
-                        onClick={() => setShowBuilder(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-                      >
-                        <Plus size={18} />
-                        Create Campaign
-                      </button>
                     </div>
                   </div>
                 ) : (
