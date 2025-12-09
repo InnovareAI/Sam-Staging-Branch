@@ -248,56 +248,15 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // For LinkedIn campaigns, verify profile and get provider_id
-      if (campaignType !== 'email' && linkedinUrl && canVerifyLinkedIn && !check.is_duplicate) {
-        try {
-          const vanityMatch = linkedinUrl.match(/linkedin\.com\/in\/([^\/?#]+)/i);
-          if (vanityMatch) {
-            const vanityId = vanityMatch[1];
-
-            // Rate limit: Don't overload API - process max 20 profiles
-            if (processedCount < 20) {
-              const profile = await unipileRequest(`/api/v1/users/${vanityId}?account_id=${unipileAccountId}`);
-
-              if (profile.provider_id) {
-                check.verified_provider_id = profile.provider_id;
-                check.profile_exists = true;
-
-                // Get actual connection degree
-                if (profile.network_distance === 'FIRST_DEGREE') {
-                  check.verified_connection_degree = '1st';
-                } else if (profile.network_distance === 'SECOND_DEGREE') {
-                  check.verified_connection_degree = '2nd';
-                } else if (profile.network_distance === 'THIRD_DEGREE') {
-                  check.verified_connection_degree = '3rd';
-                } else {
-                  check.verified_connection_degree = 'OUT_OF_NETWORK';
-                }
-
-                // Check campaign type compatibility
-                if (campaignType === 'messenger' && check.verified_connection_degree !== '1st') {
-                  check.errors.push(`Not 1st degree connection (${check.verified_connection_degree}) - use Connector campaign`);
-                  check.can_proceed = false;
-                } else if (campaignType === 'connector' && check.verified_connection_degree === '1st') {
-                  check.warnings.push('Already connected - consider Messenger campaign instead');
-                }
-              } else {
-                check.profile_exists = false;
-                check.warnings.push('Could not resolve LinkedIn profile');
-              }
-
-              // Small delay to avoid rate limiting
-              await new Promise(resolve => setTimeout(resolve, 100));
-            } else {
-              check.warnings.push('Profile not verified (batch limit reached)');
-            }
-          } else {
-            check.errors.push('Invalid LinkedIn URL format');
-            check.can_proceed = false;
-          }
-        } catch (error) {
-          check.warnings.push(`Profile lookup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // For LinkedIn campaigns, just validate URL format (profile verification disabled to prevent timeout)
+      // Profile verification moved to send-connection-requests endpoint where it's done per-prospect
+      if (campaignType !== 'email' && linkedinUrl && !check.is_duplicate) {
+        const vanityMatch = linkedinUrl.match(/linkedin\.com\/in\/([^\/?#]+)/i);
+        if (!vanityMatch) {
+          check.errors.push('Invalid LinkedIn URL format');
+          check.can_proceed = false;
         }
+        // Note: Profile verification happens at send time to avoid preflight timeout
       }
 
       // Email campaign validation
@@ -322,8 +281,10 @@ export async function POST(req: NextRequest) {
       previouslyFailed: results.filter(r => r.previous_status === 'failed').length,
       duplicates: results.filter(r => r.is_duplicate).length,
       wrongDegree: results.filter(r => r.errors.some(e => e.includes('degree'))).length,
-      profileNotFound: results.filter(r => r.profile_exists === false).length,
-      verified: results.filter(r => r.verified_provider_id).length,
+      // Note: Profile verification disabled in preflight to prevent timeout
+      // Profiles are verified per-prospect at send time
+      profileNotFound: 0,
+      verified: 0,
       rateLimitStatus
     };
 
@@ -341,12 +302,12 @@ export async function POST(req: NextRequest) {
       results,
       summary,
       // Return only prospects that can proceed
+      // Note: linkedin_user_id and connection_degree will be resolved at send time
       validProspects: results
         .filter(r => r.can_proceed)
         .map(r => ({
           ...prospects.find(p => (p.id || `temp_${prospects.indexOf(p)}`) === r.id),
-          linkedin_user_id: r.verified_provider_id,
-          connection_degree: r.verified_connection_degree || r.connection_degree
+          connection_degree: r.connection_degree
         }))
     });
 
