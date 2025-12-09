@@ -228,14 +228,34 @@ export async function POST(request: NextRequest) {
     console.log('   Subject:', emailSubject.substring(0, 50) + (emailSubject.length > 50 ? '...' : ''));
     console.log('   Body length:', emailBody.length, 'chars');
 
+    // A/B Testing: Check if enabled and get variant B content
+    const abTestingEnabled = templates.ab_testing_enabled || false;
+    const emailBodyB = templates.email_body_b || null;
+    const emailSubjectB = templates.initial_subject_b || null;
+
+    if (abTestingEnabled && (emailBodyB || emailSubjectB)) {
+      console.log('🧪 A/B Testing ENABLED:');
+      console.log('   Variant B subject:', emailSubjectB ? 'Yes' : 'No');
+      console.log('   Variant B body:', emailBodyB ? 'Yes' : 'No');
+    } else if (abTestingEnabled) {
+      console.log('⚠️ A/B Testing enabled but no Variant B content found - using Variant A only');
+    }
+
     // Prepare queue records using already-validated emailBody and emailSubject
     const queueRecords = prospectsToQueue.map((prospect, index) => {
       const scheduledFor = calculateNextSendTime(new Date(), index);
 
-      // Personalize subject and body with prospect data
-      const subject = personalizeMessage(emailSubject, prospect);
+      // A/B Testing: Assign variant (even index = A, odd index = B)
+      const useAbTesting = abTestingEnabled && (emailBodyB || emailSubjectB);
+      const variant: 'A' | 'B' | null = useAbTesting ? (index % 2 === 0 ? 'A' : 'B') : null;
 
-      const body = personalizeMessage(emailBody, prospect);
+      // Use variant B content if assigned
+      const subjectToUse = (variant === 'B' && emailSubjectB) ? emailSubjectB : emailSubject;
+      const bodyToUse = (variant === 'B' && emailBodyB) ? emailBodyB : emailBody;
+
+      // Personalize subject and body with prospect data
+      const subject = personalizeMessage(subjectToUse, prospect);
+      const body = personalizeMessage(bodyToUse, prospect);
 
       return {
         campaign_id: campaignId,
@@ -246,7 +266,8 @@ export async function POST(request: NextRequest) {
         body,
         from_name: emailAccount.account_name || 'SAM AI',
         scheduled_for: scheduledFor.toISOString(),
-        status: 'pending'
+        status: 'pending',
+        variant: variant // A/B testing: 'A', 'B', or null
       };
     });
 
@@ -285,6 +306,31 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Queued ${insertedRecords.length} emails for campaign ${campaignId}`);
     console.log(`⏰ First email: ${queueRecords[0].scheduled_for}`);
     console.log(`⏰ Last email: ${queueRecords[queueRecords.length - 1].scheduled_for}`);
+
+    // Update campaign_prospects with A/B variant assignments (if A/B testing enabled)
+    const useAbTesting = abTestingEnabled && (emailBodyB || emailSubjectB);
+    if (useAbTesting) {
+      const variantAProspects = queueRecords.filter(q => q.variant === 'A').map(q => q.prospect_id);
+      const variantBProspects = queueRecords.filter(q => q.variant === 'B').map(q => q.prospect_id);
+
+      // Update Variant A prospects
+      if (variantAProspects.length > 0) {
+        await supabase
+          .from('campaign_prospects')
+          .update({ ab_variant: 'A' })
+          .in('id', variantAProspects);
+      }
+
+      // Update Variant B prospects
+      if (variantBProspects.length > 0) {
+        await supabase
+          .from('campaign_prospects')
+          .update({ ab_variant: 'B' })
+          .in('id', variantBProspects);
+      }
+
+      console.log(`🧪 A/B variants assigned: ${variantAProspects.length} Variant A, ${variantBProspects.length} Variant B`);
+    }
 
     return NextResponse.json({
       success: true,

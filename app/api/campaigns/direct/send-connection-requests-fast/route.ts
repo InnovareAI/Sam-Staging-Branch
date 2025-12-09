@@ -219,6 +219,16 @@ export async function POST(req: NextRequest) {
       campaign.connection_message ? 'connection_message column' :
       linkedinConfig?.connection_message ? 'linkedin_config' : 'draft_data');
 
+    // A/B Testing: Check if enabled and get variant B message
+    const abTestingEnabled = campaign.message_templates?.ab_testing_enabled || false;
+    const connectionMessageB = campaign.message_templates?.connection_request_b || null;
+
+    if (abTestingEnabled && connectionMessageB) {
+      console.log('🧪 A/B Testing ENABLED - will alternate between variants A and B (50/50)');
+    } else if (abTestingEnabled && !connectionMessageB) {
+      console.log('⚠️ A/B Testing enabled but no Variant B message found - using Variant A only');
+    }
+
     // Start scheduling from now or next business hour
     let scheduledTime = new Date();
     const currentHour = scheduledTime.getUTCHours();
@@ -261,6 +271,11 @@ export async function POST(req: NextRequest) {
         scheduledTime = new Date(scheduledTime.getTime() + (SPACING_MINUTES * 60 * 1000));
       }
 
+      // A/B Testing: Assign variant (even index = A, odd index = B)
+      const useAbTesting = abTestingEnabled && connectionMessageB;
+      const variant: 'A' | 'B' | null = useAbTesting ? (i % 2 === 0 ? 'A' : 'B') : null;
+      const messageToUse = variant === 'B' ? connectionMessageB : connectionMessage;
+
       // Personalize message - handle all variable formats and null values
       // CRITICAL FIX (Dec 4): Add fallbacks for undefined/null prospect fields
       const firstName = prospect.first_name || prospect.firstName || '';
@@ -270,7 +285,7 @@ export async function POST(req: NextRequest) {
 
       // CRITICAL: Process double-brace {{var}} BEFORE single-brace {var}
       // Otherwise {firstName} matches inside {{firstName}} leaving {value}
-      const personalizedMessage = connectionMessage
+      const personalizedMessage = messageToUse
         // Double-brace patterns FIRST (most specific)
         .replace(/\{\{firstName\}\}/g, firstName)
         .replace(/\{\{lastName\}\}/g, lastName)
@@ -303,7 +318,8 @@ export async function POST(req: NextRequest) {
         linkedin_user_id: prospect.linkedin_user_id || prospect.linkedin_url,
         message: personalizedMessage,
         scheduled_for: scheduledTime.toISOString(),
-        status: 'pending'
+        status: 'pending',
+        variant: variant // A/B testing: 'A', 'B', or null
       });
 
       dailyCount++;
@@ -320,6 +336,30 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`✅ Queued ${queueRecords.length} prospects successfully (${skippedCount} already in queue)`);
+
+    // 4.5. Update campaign_prospects with A/B variant assignments (if A/B testing enabled)
+    if (abTestingEnabled && connectionMessageB) {
+      const variantAProspects = queueRecords.filter(q => q.variant === 'A').map(q => q.prospect_id);
+      const variantBProspects = queueRecords.filter(q => q.variant === 'B').map(q => q.prospect_id);
+
+      // Update Variant A prospects
+      if (variantAProspects.length > 0) {
+        await supabaseAdmin
+          .from('campaign_prospects')
+          .update({ ab_variant: 'A' })
+          .in('id', variantAProspects);
+      }
+
+      // Update Variant B prospects
+      if (variantBProspects.length > 0) {
+        await supabaseAdmin
+          .from('campaign_prospects')
+          .update({ ab_variant: 'B' })
+          .in('id', variantBProspects);
+      }
+
+      console.log(`🧪 A/B variants assigned: ${variantAProspects.length} Variant A, ${variantBProspects.length} Variant B`);
+    }
 
     // Sync prospects to Airtable with "No Response" status (initial state)
     // This runs async in background - don't block the response

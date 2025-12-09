@@ -335,6 +335,17 @@ export async function POST(req: NextRequest) {
 
     console.log(`📝 Campaign has ${allMessages.length} messages to queue per prospect`);
 
+    // A/B Testing: Check if enabled and get variant B message
+    const abTestingEnabled = messageTemplates.ab_testing_enabled || false;
+    // For messenger campaigns, alternative_message_b is the variant B of the first message
+    const alternativeMessageB = messageTemplates.alternative_message_b || null;
+
+    if (abTestingEnabled && alternativeMessageB) {
+      console.log('🧪 A/B Testing ENABLED - will alternate first message between variants A and B (50/50)');
+    } else if (abTestingEnabled && !alternativeMessageB) {
+      console.log('⚠️ A/B Testing enabled but no Variant B message found - using Variant A only');
+    }
+
     // 4. Follow-up delays (in days) - default to 3, 5, 7, 5, 7 for up to 5 follow-ups
     const followUpDelayDays = messageTemplates.follow_up_delays || [3, 5, 7, 5, 7];
 
@@ -442,13 +453,23 @@ export async function POST(req: NextRequest) {
 
         console.log(`✅ ${prospect.first_name} is connected - queuing ${allMessages.length} messages`);
 
+        // A/B Testing: Assign variant for this prospect (even index = A, odd index = B)
+        // Only applies to first message - follow-ups are the same for both variants
+        const useAbTesting = abTestingEnabled && alternativeMessageB;
+        const variant: 'A' | 'B' | null = useAbTesting ? (prospectIndex % 2 === 0 ? 'A' : 'B') : null;
+
         // Queue all messages for this prospect - ALL formats (Dec 4 fix)
         const firstName = prospect.first_name || '';
         const lastName = prospect.last_name || '';
         const companyName = prospect.company_name || '';
         const title = prospect.title || '';
         for (let messageIndex = 0; messageIndex < allMessages.length; messageIndex++) {
-          const message = allMessages[messageIndex]
+          // For first message (messageIndex 0), use variant B if assigned
+          const messageTemplate = (messageIndex === 0 && variant === 'B')
+            ? alternativeMessageB
+            : allMessages[messageIndex];
+
+          const message = messageTemplate
             .replace(/\{first_name\}/gi, firstName)
             .replace(/\{last_name\}/gi, lastName)
             .replace(/\{company_name\}/gi, companyName)
@@ -486,17 +507,19 @@ export async function POST(req: NextRequest) {
             status: 'pending',
             message_type: messageType,
             requires_connection: false, // Messenger campaigns don't need to check connection (already connected)
+            variant: messageIndex === 0 ? variant : null, // A/B variant only for first message
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
         }
 
-        // Update prospect status
+        // Update prospect status (and A/B variant if applicable)
         await supabase
           .from('campaign_prospects')
           .update({
             status: 'connected', // Mark as connected
             linkedin_user_id: providerId,
+            ab_variant: variant, // A/B testing variant assignment
             updated_at: new Date().toISOString()
           })
           .eq('id', prospect.id);

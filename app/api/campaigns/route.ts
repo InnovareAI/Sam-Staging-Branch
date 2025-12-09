@@ -141,10 +141,10 @@ export async function GET(req: NextRequest) {
       prospectCountMap[p.campaign_id] = (prospectCountMap[p.campaign_id] || 0) + 1;
     });
 
-    // Get all prospects with their statuses for detailed counts
+    // Get all prospects with their statuses for detailed counts (including A/B variant)
     const { data: allProspects } = await supabaseAdmin
       .from('campaign_prospects')
-      .select('campaign_id, status, responded_at')
+      .select('campaign_id, status, responded_at, ab_variant')
       .in('campaign_id', campaignIds);
 
     // Build detailed count maps
@@ -152,7 +152,10 @@ export async function GET(req: NextRequest) {
     const repliedCountMap: Record<string, number> = {};
     const failedCountMap: Record<string, number> = {};
 
-    allProspects?.forEach((p: { campaign_id: string; status: string; responded_at: string | null }) => {
+    // A/B Testing stats: { campaignId: { a_sent, a_connected, b_sent, b_connected } }
+    const abStatsMap: Record<string, { a_sent: number; a_connected: number; b_sent: number; b_connected: number }> = {};
+
+    allProspects?.forEach((p: { campaign_id: string; status: string; responded_at: string | null; ab_variant?: string | null }) => {
       // Count sent (CR sent or beyond)
       const sentStatuses = ['processing', 'cr_sent', 'connection_request_sent', 'fu1_sent', 'fu2_sent', 'fu3_sent', 'fu4_sent', 'fu5_sent', 'completed', 'connection_requested', 'contacted', 'connected', 'messaging', 'replied', 'follow_up_sent'];
       if (sentStatuses.includes(p.status)) {
@@ -173,6 +176,24 @@ export async function GET(req: NextRequest) {
       const failedStatuses = ['failed', 'error', 'already_invited', 'invitation_declined', 'rate_limited', 'rate_limited_cr', 'rate_limited_message', 'bounced'];
       if (failedStatuses.includes(p.status)) {
         failedCountMap[p.campaign_id] = (failedCountMap[p.campaign_id] || 0) + 1;
+      }
+
+      // A/B Testing stats
+      if (p.ab_variant === 'A' || p.ab_variant === 'B') {
+        if (!abStatsMap[p.campaign_id]) {
+          abStatsMap[p.campaign_id] = { a_sent: 0, a_connected: 0, b_sent: 0, b_connected: 0 };
+        }
+
+        const isSent = sentStatuses.includes(p.status);
+        const isConnected = p.status === 'connected' || p.status === 'messaging' || p.status === 'replied' || p.status === 'follow_up_sent';
+
+        if (p.ab_variant === 'A') {
+          if (isSent) abStatsMap[p.campaign_id].a_sent++;
+          if (isConnected) abStatsMap[p.campaign_id].a_connected++;
+        } else if (p.ab_variant === 'B') {
+          if (isSent) abStatsMap[p.campaign_id].b_sent++;
+          if (isConnected) abStatsMap[p.campaign_id].b_connected++;
+        }
       }
     });
 
@@ -195,7 +216,9 @@ export async function GET(req: NextRequest) {
         connections: connections,
         replies: replied,
         failed: failed,
-        response_rate: responseRate
+        response_rate: responseRate,
+        // A/B Testing stats (if enabled)
+        ab_stats: abStatsMap[campaign.id] || null
       };
     });
 
@@ -234,7 +257,13 @@ export async function POST(req: NextRequest) {
       // Legacy fields that may be passed directly
       connection_message,
       alternative_message,
-      follow_up_messages = []
+      follow_up_messages = [],
+      // A/B Testing fields
+      ab_testing_enabled,
+      connection_request_b,
+      alternative_message_b,
+      email_body_b,
+      initial_subject_b
     } = await req.json();
 
     if (!workspace_id || !name) {
@@ -274,14 +303,23 @@ export async function POST(req: NextRequest) {
       follow_up_messages: follow_up_messages.length > 0 ? follow_up_messages : (message_templates.follow_up_messages || []),
       initial_subject: initial_subject || message_templates.initial_subject || '',
       follow_up_subjects: follow_up_subjects.length > 0 ? follow_up_subjects : (message_templates.follow_up_subjects || []),
-      use_threaded_replies: use_threaded_replies ?? message_templates.use_threaded_replies ?? false
+      use_threaded_replies: use_threaded_replies ?? message_templates.use_threaded_replies ?? false,
+      // A/B Testing fields
+      ab_testing_enabled: ab_testing_enabled || message_templates.ab_testing_enabled || false,
+      connection_request_b: isEmailCampaign ? '' : (connection_request_b || message_templates.connection_request_b || ''),
+      alternative_message_b: isEmailCampaign ? '' : (alternative_message_b || message_templates.alternative_message_b || ''),
+      email_body_b: isEmailCampaign ? (email_body_b || message_templates.email_body_b || '') : '',
+      initial_subject_b: initial_subject_b || message_templates.initial_subject_b || ''
     };
 
     console.log('📧 Campaign message_templates:', {
       has_initial_subject: !!finalMessageTemplates.initial_subject,
       initial_subject: finalMessageTemplates.initial_subject,
       follow_up_subjects_count: finalMessageTemplates.follow_up_subjects?.length || 0,
-      use_threaded_replies: finalMessageTemplates.use_threaded_replies
+      use_threaded_replies: finalMessageTemplates.use_threaded_replies,
+      // A/B Testing logging
+      ab_testing_enabled: finalMessageTemplates.ab_testing_enabled,
+      has_variant_b: !!(finalMessageTemplates.connection_request_b || finalMessageTemplates.alternative_message_b || finalMessageTemplates.email_body_b)
     });
 
     // Create campaign using database function

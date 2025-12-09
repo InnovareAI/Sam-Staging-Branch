@@ -43,7 +43,8 @@ import {
   Trash2,
   Sparkles,
   Rocket,
-  UserPlus
+  UserPlus,
+  FlaskConical
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 // All UI components now use custom Tailwind (shadcn removed)
@@ -490,7 +491,13 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       initial_subject: campaign.message_templates?.initial_subject || '',
       follow_up_subjects: campaign.message_templates?.follow_up_subjects || [],
       use_threaded_replies: campaign.message_templates?.use_threaded_replies || false,
-      timing: campaign.timing || {}
+      timing: campaign.timing || {},
+      // A/B Testing fields
+      ab_testing_enabled: campaign.message_templates?.ab_testing_enabled || false,
+      connection_request_b: campaign.message_templates?.connection_request_b || '',
+      alternative_message_b: campaign.message_templates?.alternative_message_b || '',
+      email_body_b: campaign.message_templates?.email_body_b || '',
+      initial_subject_b: campaign.message_templates?.initial_subject_b || ''
     });
     setShowEditModal(true);
   };
@@ -512,7 +519,13 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
         follow_up_messages: editFormData.follow_up_messages || [],
         initial_subject: editFormData.initial_subject || '',
         follow_up_subjects: editFormData.follow_up_subjects || [],
-        use_threaded_replies: editFormData.use_threaded_replies || false
+        use_threaded_replies: editFormData.use_threaded_replies || false,
+        // A/B Testing fields
+        ab_testing_enabled: editFormData.ab_testing_enabled || false,
+        connection_request_b: isEmailCampaign ? '' : (editFormData.connection_request_b || ''),
+        alternative_message_b: isEmailCampaign ? '' : (editFormData.alternative_message_b || ''),
+        email_body_b: isEmailCampaign ? (editFormData.email_body_b || '') : '',
+        initial_subject_b: editFormData.initial_subject_b || ''
       };
 
       const updatePayload = {
@@ -1093,6 +1106,50 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
               </div>
             )}
 
+            {/* A/B Testing Results - Only shown if A/B testing was enabled */}
+            {c.message_templates?.ab_testing_enabled && c.ab_stats && c.status !== 'draft' && (
+              <div className="mt-3 pt-3 border-t border-orange-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <FlaskConical className="text-orange-400" size={14} />
+                  <span className="text-orange-400 text-xs font-medium">A/B Test Results</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-gray-700/50 rounded p-2 text-center">
+                    <div className="text-xs text-gray-400 mb-1">Variant A</div>
+                    <div className="text-sm font-bold text-white">
+                      {c.ab_stats.a_connected || 0}/{c.ab_stats.a_sent || 0}
+                    </div>
+                    <div className="text-xs text-green-400">
+                      {c.ab_stats.a_sent > 0 ? Math.round((c.ab_stats.a_connected / c.ab_stats.a_sent) * 100) : 0}% rate
+                    </div>
+                  </div>
+                  <div className="bg-gray-700/50 rounded p-2 text-center">
+                    <div className="text-xs text-gray-400 mb-1">Variant B</div>
+                    <div className="text-sm font-bold text-white">
+                      {c.ab_stats.b_connected || 0}/{c.ab_stats.b_sent || 0}
+                    </div>
+                    <div className="text-xs text-green-400">
+                      {c.ab_stats.b_sent > 0 ? Math.round((c.ab_stats.b_connected / c.ab_stats.b_sent) * 100) : 0}% rate
+                    </div>
+                  </div>
+                </div>
+                {/* Winner indicator */}
+                {c.ab_stats.a_sent >= 5 && c.ab_stats.b_sent >= 5 && (
+                  <div className="mt-2 text-center text-xs">
+                    {(() => {
+                      const aRate = c.ab_stats.a_sent > 0 ? (c.ab_stats.a_connected / c.ab_stats.a_sent) : 0;
+                      const bRate = c.ab_stats.b_sent > 0 ? (c.ab_stats.b_connected / c.ab_stats.b_sent) : 0;
+                      const diff = Math.abs(aRate - bRate) * 100;
+                      if (diff < 5) return <span className="text-gray-400">Too close to call</span>;
+                      return aRate > bRate
+                        ? <span className="text-green-400">🏆 Variant A winning (+{diff.toFixed(0)}%)</span>
+                        : <span className="text-green-400">🏆 Variant B winning (+{diff.toFixed(0)}%)</span>;
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+
             {c.status === 'draft' && (
               <div className="pt-4 border-t border-gray-700 group-hover:border-purple-400">
                 <div className="text-center text-gray-400 group-hover:text-purple-100 text-sm">
@@ -1141,9 +1198,38 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 />
               </div>
 
-              {/* Connection Message */}
+              {/* A/B Testing Toggle */}
+              <div className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <BarChart3 className="text-orange-400" size={20} />
+                    <div>
+                      <h4 className="text-orange-400 font-medium">A/B Testing</h4>
+                      <p className="text-xs text-gray-400">Test different message variants (50/50 split)</p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={editFormData.ab_testing_enabled || false}
+                      onChange={(e) => setEditFormData({ ...editFormData, ab_testing_enabled: e.target.checked })}
+                    />
+                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                  </label>
+                </div>
+                {editFormData.ab_testing_enabled && (
+                  <p className="text-xs text-orange-300 mt-2">
+                    Variant B inputs will appear below each message field. 50% of prospects will receive Variant A, 50% will receive Variant B.
+                  </p>
+                )}
+              </div>
+
+              {/* Connection Message - Variant A */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Connection Request Message</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Connection Request Message {editFormData.ab_testing_enabled && <span className="text-orange-400">(Variant A - 50%)</span>}
+                </label>
                 <textarea
                   value={editFormData.connection_message || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
@@ -1153,10 +1239,27 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
               </div>
 
-              {/* Email Body (for email campaigns) OR Alternative Message (for LinkedIn) */}
+              {/* Connection Message - Variant B (only when A/B testing is enabled) */}
+              {editFormData.ab_testing_enabled && campaignToEdit?.campaign_type !== 'email' && (
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Connection Request Message <span className="text-orange-400">(Variant B - 50%)</span>
+                  </label>
+                  <textarea
+                    value={editFormData.connection_request_b || ''}
+                    onChange={(e) => setEditFormData({ ...editFormData, connection_request_b: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px] resize-none"
+                    placeholder="Hi {{firstName}}, I came across your profile..."
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Test a different approach - different hook, value prop, or CTA</p>
+                </div>
+              )}
+
+              {/* Email Body (for email campaigns) OR Alternative Message (for LinkedIn) - Variant A */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message (Optional)'}
+                  {editFormData.ab_testing_enabled && <span className="text-orange-400 ml-2">(Variant A - 50%)</span>}
                 </label>
                 <textarea
                   value={campaignToEdit?.campaign_type === 'email' ? (editFormData.email_body || '') : (editFormData.alternative_message || '')}
@@ -1172,6 +1275,28 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 />
               </div>
 
+              {/* Email Body Variant B (for email campaigns) OR Alternative Message Variant B (for Messenger) */}
+              {editFormData.ab_testing_enabled && (
+                <div className="border-l-4 border-orange-500 pl-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message'}
+                    <span className="text-orange-400 ml-2">(Variant B - 50%)</span>
+                  </label>
+                  <textarea
+                    value={campaignToEdit?.campaign_type === 'email' ? (editFormData.email_body_b || '') : (editFormData.alternative_message_b || '')}
+                    onChange={(e) => setEditFormData({
+                      ...editFormData,
+                      ...(campaignToEdit?.campaign_type === 'email'
+                        ? { email_body_b: e.target.value }
+                        : { alternative_message_b: e.target.value })
+                    })}
+                    className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px] resize-none"
+                    placeholder={campaignToEdit?.campaign_type === 'email' ? "Try a different email approach..." : "Alternative message variant..."}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Test a different approach - different hook, value prop, or CTA</p>
+                </div>
+              )}
+
               {/* Email Subject Lines - Only show for email campaigns */}
               {campaignToEdit?.campaign_type === 'email' && (
                 <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 space-y-4">
@@ -1180,9 +1305,11 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                     Email Subject Lines
                   </h4>
 
-                  {/* Initial Subject */}
+                  {/* Initial Subject - Variant A */}
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Initial Email Subject</label>
+                    <label className="block text-sm text-gray-400 mb-1">
+                      Initial Email Subject {editFormData.ab_testing_enabled && <span className="text-orange-400">(Variant A)</span>}
+                    </label>
                     <input
                       type="text"
                       value={editFormData.initial_subject || ''}
@@ -1191,6 +1318,22 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                       placeholder="e.g., Quick question about {{company}}"
                     />
                   </div>
+
+                  {/* Initial Subject - Variant B (only when A/B testing enabled) */}
+                  {editFormData.ab_testing_enabled && (
+                    <div className="border-l-4 border-orange-500 pl-4">
+                      <label className="block text-sm text-gray-400 mb-1">
+                        Initial Email Subject <span className="text-orange-400">(Variant B)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.initial_subject_b || ''}
+                        onChange={(e) => setEditFormData({ ...editFormData, initial_subject_b: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        placeholder="e.g., {{firstName}}, quick question"
+                      />
+                    </div>
+                  )}
 
                   {/* Threading Option */}
                   <div className="flex items-center gap-3 bg-gray-700/50 rounded-lg p-3">
@@ -2164,6 +2307,13 @@ function CampaignBuilder({
   const [initialSubject, setInitialSubject] = useState('');
   const [followUpSubjects, setFollowUpSubjects] = useState<string[]>(['', '', '', '', '']);
   const [useThreadedReplies, setUseThreadedReplies] = useState(false); // If true, follow-ups use "RE: {initialSubject}"
+
+  // A/B Testing state
+  const [abTestingEnabled, setAbTestingEnabled] = useState(false);
+  const [connectionMessageB, setConnectionMessageB] = useState(''); // Variant B for connection request
+  const [alternativeMessageB, setAlternativeMessageB] = useState(''); // Variant B for 1st degree direct message
+  const [emailBodyB, setEmailBodyB] = useState(''); // Variant B for email body
+  const [initialSubjectB, setInitialSubjectB] = useState(''); // Variant B for email subject
 
   const [activeField, setActiveField] = useState<{type: 'connection' | 'alternative' | 'followup', index?: number}>({type: 'connection'});
   const [activeTextarea, setActiveTextarea] = useState<HTMLTextAreaElement | null>(null);
@@ -3607,12 +3757,25 @@ Would you like me to adjust these or create more variations?`
       },
       // Include message timing/cadence settings
       message_delays: campaignSettings.message_delays || [{ value: 3, unit: 'days' }, { value: 5, unit: 'days' }, { value: 1, unit: 'weeks' }, { value: 2, unit: 'weeks' }, { value: 1, unit: 'months' }],
+      // A/B Testing fields
+      ab_testing: abTestingEnabled ? {
+        enabled: true,
+        connection_request_b: connectionMessageB,
+        alternative_message_b: alternativeMessageB,
+        email_body_b: emailBodyB,
+        initial_subject_b: initialSubjectB
+      } : null,
       // Store additional data needed for execution
       _executionData: {
         campaignType,
         alternativeMessage,
         followUpMessages,
-        message_delays: campaignSettings.message_delays
+        message_delays: campaignSettings.message_delays,
+        ab_testing_enabled: abTestingEnabled,
+        connection_message_b: connectionMessageB,
+        alternative_message_b: alternativeMessageB,
+        email_body_b: emailBodyB,
+        initial_subject_b: initialSubjectB
       }
     };
 
@@ -3672,7 +3835,13 @@ Would you like me to adjust these or create more variations?`
           initial_subject: initialSubject,
           follow_up_subjects: followUpSubjects.filter((_, i) => followUpMessages[i]?.trim()), // Only include subjects for non-empty follow-ups
           use_threaded_replies: useThreadedReplies,
-          session_id: sessionId // CRITICAL FIX: Include session_id for auto-transfer of approved prospects
+          session_id: sessionId, // CRITICAL FIX: Include session_id for auto-transfer of approved prospects
+          // A/B Testing fields - stored in message_templates
+          ab_testing_enabled: abTestingEnabled,
+          connection_request_b: abTestingEnabled ? connectionMessageB : undefined,
+          alternative_message_b: abTestingEnabled ? alternativeMessageB : undefined,
+          email_body_b: abTestingEnabled ? emailBodyB : undefined,
+          initial_subject_b: abTestingEnabled ? initialSubjectB : undefined
         })
       });
 
@@ -4382,11 +4551,38 @@ Would you like me to adjust these or create more variations?`
             </div>
           </div>
 
+          {/* A/B Testing Toggle */}
+          <div className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="text-orange-400" size={20} />
+                <div>
+                  <h4 className="text-orange-400 font-medium">A/B Testing</h4>
+                  <p className="text-xs text-gray-400">Test different message variants (50/50 split)</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={abTestingEnabled}
+                  onChange={(e) => setAbTestingEnabled(e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+              </label>
+            </div>
+            {abTestingEnabled && (
+              <p className="text-xs text-orange-300 mt-2">
+                Variant B inputs will appear below each message field. 50% of prospects will receive Variant A, 50% will receive Variant B.
+              </p>
+            )}
+          </div>
+
           {/* ONLY show Connection Request for Connector campaigns */}
           {campaignType === 'connector' && (
             <div className="space-y-2">
               <label htmlFor="connection-message" className="block text-sm font-medium text-gray-400">
-                Connection Request Message
+                Connection Request Message {abTestingEnabled && <span className="text-orange-400">(Variant A - 50%)</span>}
               </label>
               <p className="text-xs text-gray-500">
                 This message will be sent with your connection request
@@ -4483,11 +4679,42 @@ Would you like me to adjust these or create more variations?`
             </div>
           )}
 
+          {/* Connection Request Message - Variant B (only when A/B testing is enabled) */}
+          {campaignType === 'connector' && abTestingEnabled && (
+            <div className="border-l-4 border-orange-500 pl-4 space-y-2">
+              <label htmlFor="connection-message-b" className="block text-sm font-medium text-gray-400">
+                Connection Request Message <span className="text-orange-400">(Variant B - 50%)</span>
+              </label>
+              <p className="text-xs text-gray-500">
+                Alternative version to test against Variant A
+              </p>
+              <textarea
+                id="connection-message-b"
+                className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
+                rows={4}
+                value={connectionMessageB}
+                onChange={e => setConnectionMessageB(e.target.value)}
+                placeholder="Hi {first_name}, I came across your profile and..."
+                maxLength={275}
+              />
+              <div className="flex justify-between items-center">
+                <span className={`text-xs font-medium ${
+                  connectionMessageB.length > 250 ? 'text-orange-400' :
+                  connectionMessageB.length > 270 ? 'text-red-400' :
+                  'text-gray-400'
+                }`}>
+                  {connectionMessageB.length}/275 characters
+                </span>
+                <p className="text-xs text-gray-500">Test a different hook, value prop, or CTA</p>
+              </div>
+            </div>
+          )}
+
           {/* ONLY show Alternative Message for Connector campaigns */}
           {campaignType === 'connector' && (
             <div className="space-y-2">
               <label htmlFor="alternative-message" className="block text-sm font-medium text-gray-400">
-                Alternative Message (Optional)
+                Alternative Message (Optional) {abTestingEnabled && <span className="text-orange-400">(Variant A)</span>}
               </label>
               <p className="text-xs text-gray-500">
                 Shorter alternative message for connection requests
@@ -4562,6 +4789,27 @@ Would you like me to adjust these or create more variations?`
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Alternative Message - Variant B (only when A/B testing is enabled) */}
+          {campaignType === 'connector' && abTestingEnabled && (
+            <div className="border-l-4 border-orange-500 pl-4 space-y-2">
+              <label htmlFor="alternative-message-b" className="block text-sm font-medium text-gray-400">
+                Alternative Message <span className="text-orange-400">(Variant B)</span>
+              </label>
+              <textarea
+                id="alternative-message-b"
+                className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
+                rows={2}
+                value={alternativeMessageB}
+                onChange={e => setAlternativeMessageB(e.target.value)}
+                placeholder="Great to connect with professionals like you!"
+                maxLength={115}
+              />
+              <span className="text-xs text-gray-500">
+                Characters remaining: {115 - alternativeMessageB.length}/115
+              </span>
             </div>
           )}
 
@@ -4910,6 +5158,51 @@ Would you like me to adjust these or create more variations?`
             </div>
           </div>
 
+          {/* A/B Testing Toggle for Messenger */}
+          <div className="bg-orange-600/10 border border-orange-500/30 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center">
+                <FlaskConical className="text-orange-400 mr-2" size={20} />
+                <h4 className="text-white font-medium">A/B Testing</h4>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={abTestingEnabled}
+                  onChange={(e) => setAbTestingEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+              </label>
+            </div>
+            <p className="text-gray-400 text-sm">
+              Test two different initial messages with a 50/50 split to see which performs better.
+            </p>
+          </div>
+
+          {/* Variant B Initial Message (shown when A/B testing enabled) */}
+          {abTestingEnabled && (
+            <div className="space-y-2 border-l-4 border-orange-500 pl-4">
+              <label htmlFor="messenger-initial-message-b" className="block text-sm font-medium text-orange-400">
+                Variant B - Initial Message
+              </label>
+              <p className="text-xs text-gray-500">
+                Alternative initial message (50% of prospects will receive this)
+              </p>
+              <textarea
+                id="messenger-initial-message-b"
+                className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
+                rows={4}
+                value={alternativeMessageB}
+                onChange={e => setAlternativeMessageB(e.target.value)}
+                placeholder="Hi {{first_name}}, [different approach here]..."
+              />
+              <span className="text-xs text-gray-400">
+                Characters: {alternativeMessageB.length}
+              </span>
+            </div>
+          )}
+
           <div>
             <div className="flex items-center justify-between mb-3">
               <label className="block text-sm font-medium text-gray-400">
@@ -5222,6 +5515,73 @@ Would you like me to adjust these or create more variations?`
               </span>
             </div>
           </div>
+
+          {/* A/B Testing Toggle for Email */}
+          <div className="bg-orange-600/10 border border-orange-500/30 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center">
+                <FlaskConical className="text-orange-400 mr-2" size={20} />
+                <h4 className="text-white font-medium">A/B Testing</h4>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={abTestingEnabled}
+                  onChange={(e) => setAbTestingEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+              </label>
+            </div>
+            <p className="text-gray-400 text-sm">
+              Test two different initial emails with a 50/50 split to see which performs better.
+            </p>
+          </div>
+
+          {/* Variant B Email (shown when A/B testing enabled) */}
+          {abTestingEnabled && (
+            <div className="space-y-3 border-l-4 border-orange-500 pl-4">
+              <label className="block text-sm font-medium text-orange-400">
+                Variant B - Initial Email
+              </label>
+              <p className="text-xs text-gray-500">
+                Alternative initial email (50% of prospects will receive this)
+              </p>
+
+              {/* Variant B Subject Line */}
+              <div className="space-y-1">
+                <label htmlFor="email-initial-subject-b" className="block text-xs text-gray-500">
+                  Subject Line (Variant B)
+                </label>
+                <input
+                  id="email-initial-subject-b"
+                  type="text"
+                  className="w-full bg-gray-700 border border-orange-500/50 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none"
+                  value={initialSubjectB}
+                  onChange={e => setInitialSubjectB(e.target.value)}
+                  placeholder="e.g., Alternative subject for {{company_name}}"
+                />
+              </div>
+
+              {/* Variant B Email Body */}
+              <div className="space-y-1">
+                <label htmlFor="email-body-b" className="block text-xs text-gray-500">
+                  Email Body (Variant B)
+                </label>
+                <textarea
+                  id="email-body-b"
+                  className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
+                  rows={6}
+                  value={emailBodyB}
+                  onChange={e => setEmailBodyB(e.target.value)}
+                  placeholder="Hi {{first_name}},&#10;&#10;[Different approach here]...&#10;&#10;Would love to connect!"
+                />
+              </div>
+              <span className="text-xs text-gray-400">
+                Characters: {emailBodyB.length}
+              </span>
+            </div>
+          )}
 
           {/* Threading Option */}
           <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
@@ -7856,7 +8216,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         follow_up_messages: editFormData.follow_up_messages || [],
         initial_subject: editFormData.initial_subject || '',
         follow_up_subjects: editFormData.follow_up_subjects || [],
-        use_threaded_replies: editFormData.use_threaded_replies || false
+        use_threaded_replies: editFormData.use_threaded_replies || false,
+        // A/B Testing fields
+        ab_testing_enabled: editFormData.ab_testing_enabled || false,
+        connection_request_b: isEmailCampaign ? '' : (editFormData.connection_request_b || ''),
+        alternative_message_b: isEmailCampaign ? '' : (editFormData.alternative_message_b || ''),
+        email_body_b: isEmailCampaign ? (editFormData.email_body_b || '') : '',
+        initial_subject_b: editFormData.initial_subject_b || ''
       };
 
       const updatePayload = {
@@ -10523,9 +10889,11 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     Email Subject Lines
                   </h4>
 
-                  {/* Initial Subject */}
+                  {/* Initial Subject - Variant A */}
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Initial Email Subject</label>
+                    <label className="block text-sm text-gray-400 mb-1">
+                      Initial Email Subject {editFormData.ab_testing_enabled && <span className="text-orange-400">(Variant A)</span>}
+                    </label>
                     <input
                       type="text"
                       value={editFormData.initial_subject || ''}
@@ -10534,6 +10902,22 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       placeholder="e.g., Quick question about {{company}}"
                     />
                   </div>
+
+                  {/* Initial Subject - Variant B (only when A/B testing enabled) */}
+                  {editFormData.ab_testing_enabled && (
+                    <div className="border-l-4 border-orange-500 pl-4">
+                      <label className="block text-sm text-gray-400 mb-1">
+                        Initial Email Subject <span className="text-orange-400">(Variant B)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.initial_subject_b || ''}
+                        onChange={(e) => setEditFormData({ ...editFormData, initial_subject_b: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        placeholder="e.g., {{firstName}}, quick question"
+                      />
+                    </div>
+                  )}
 
                   {/* Threading Option */}
                   <div className="flex items-center gap-3 bg-gray-700/50 rounded-lg p-3">
