@@ -25,10 +25,10 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// Limits (3 keywords × 15 posts = 45 max per day)
+// Limits
 const MAX_POSTS_PER_KEYWORD = 15;
 const MAX_KEYWORDS_PER_RUN = 3;
-const DAILY_POST_CAP = 45;
+const DAILY_POST_CAP_PER_WORKSPACE = 25; // Per-workspace cap
 
 /**
  * Content filter patterns to exclude low-value posts
@@ -193,27 +193,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
-    // Check daily cap - stop if 45 posts already discovered today
     const today = new Date().toISOString().split('T')[0];
-    const { count: postsToday } = await supabase
-      .from('linkedin_posts_discovered')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', `${today}T00:00:00Z`);
-
-    if (postsToday && postsToday >= DAILY_POST_CAP) {
-      console.log(`📊 Daily cap reached: ${postsToday}/${DAILY_POST_CAP} posts discovered today`);
-      return NextResponse.json({
-        success: true,
-        message: `Daily cap reached (${postsToday}/${DAILY_POST_CAP} posts)`,
-        posts_discovered: 0,
-        posts_saved: 0,
-        daily_cap_reached: true,
-      });
-    }
-
-    const remainingCap = DAILY_POST_CAP - (postsToday || 0);
-    console.log(`📊 Daily progress: ${postsToday || 0}/${DAILY_POST_CAP} posts, ${remainingCap} remaining`);
 
     // Get all active monitors
     const { data: monitors, error: monitorsError } = await supabase
@@ -233,6 +213,22 @@ export async function POST(request: NextRequest) {
         message: 'No active monitors',
         discovered: 0,
       });
+    }
+
+    // Get unique workspace IDs from active monitors
+    const workspaceIds = [...new Set(monitors.map(m => m.workspace_id).filter(Boolean))];
+
+    // Check per-workspace daily caps
+    const workspacePostCounts = new Map<string, number>();
+    for (const wsId of workspaceIds) {
+      const { count } = await supabase
+        .from('linkedin_posts_discovered')
+        .select('id', { count: 'exact', head: true })
+        .eq('workspace_id', wsId)
+        .gte('created_at', `${today}T00:00:00Z`);
+
+      workspacePostCounts.set(wsId, count || 0);
+      console.log(`📊 Workspace ${wsId}: ${count || 0}/${DAILY_POST_CAP_PER_WORKSPACE} posts today`);
     }
 
     // Collect all unique hashtags (excluding PROFILE: prefixed ones)
@@ -266,25 +262,15 @@ export async function POST(request: NextRequest) {
 
     let totalDiscovered = 0;
     let totalSaved = 0;
+    const workspacesSavedCounts = new Map<string, number>(); // Track saves per workspace this run
 
     // Search each hashtag
     for (const hashtag of hashtagsToSearch) {
-      // Stop if we've hit the daily cap
-      if (totalSaved >= remainingCap) {
-        console.log(`📊 Daily cap reached during run: ${totalSaved} saved, stopping search`);
-        break;
-      }
-
       const posts = await searchLinkedInPosts(hashtag);
       totalDiscovered += posts.length;
 
       // Save posts to database
       for (const post of posts) {
-        // Stop saving if we've hit the daily cap
-        if (totalSaved >= remainingCap) {
-          console.log(`📊 Daily cap reached: stopping post saves`);
-          break;
-        }
         // Get monitor IDs for this hashtag
         const monitorIds = hashtagToMonitors.get(hashtag) || [];
         if (monitorIds.length === 0) continue;
@@ -292,6 +278,19 @@ export async function POST(request: NextRequest) {
         // Use first monitor ID (posts will be associated with a monitor)
         const monitorId = monitorIds[0];
         const monitor = monitors.find((m) => m.id === monitorId);
+        const workspaceId = monitor?.workspace_id;
+
+        // Check per-workspace daily cap
+        if (workspaceId) {
+          const existingCount = workspacePostCounts.get(workspaceId) || 0;
+          const savedThisRun = workspacesSavedCounts.get(workspaceId) || 0;
+          const totalForWorkspace = existingCount + savedThisRun;
+
+          if (totalForWorkspace >= DAILY_POST_CAP_PER_WORKSPACE) {
+            console.log(`📊 Workspace ${workspaceId} cap reached (${totalForWorkspace}/${DAILY_POST_CAP_PER_WORKSPACE}), skipping`);
+            continue;
+          }
+        }
 
         // Check if post already exists
         const { data: existing } = await supabase
@@ -349,7 +348,11 @@ export async function POST(request: NextRequest) {
           console.error(`❌ Error saving post:`, insertError);
         } else {
           totalSaved++;
-          console.log(`✅ Saved post from ${post.author?.name}`);
+          // Track per-workspace save count
+          if (workspaceId) {
+            workspacesSavedCounts.set(workspaceId, (workspacesSavedCounts.get(workspaceId) || 0) + 1);
+          }
+          console.log(`✅ Saved post from ${post.author?.name} (workspace: ${workspaceId})`);
         }
       }
 
@@ -357,13 +360,25 @@ export async function POST(request: NextRequest) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
+    // Log per-workspace breakdown
+    const perWorkspaceStats: Record<string, { saved: number; total: number }> = {};
+    for (const [wsId, savedCount] of workspacesSavedCounts) {
+      const existingCount = workspacePostCounts.get(wsId) || 0;
+      perWorkspaceStats[wsId] = {
+        saved: savedCount,
+        total: existingCount + savedCount,
+      };
+    }
     console.log(`🎉 Discovery complete: ${totalDiscovered} found, ${totalSaved} saved`);
+    console.log(`📊 Per-workspace breakdown:`, JSON.stringify(perWorkspaceStats));
 
     return NextResponse.json({
       success: true,
       keywords_searched: hashtagsToSearch.length,
       posts_discovered: totalDiscovered,
       posts_saved: totalSaved,
+      per_workspace: perWorkspaceStats,
+      daily_cap_per_workspace: DAILY_POST_CAP_PER_WORKSPACE,
       message: `Discovered ${totalDiscovered} posts, saved ${totalSaved} new posts`,
     });
   } catch (error) {
@@ -386,6 +401,7 @@ export async function GET() {
     config: {
       max_posts_per_keyword: MAX_POSTS_PER_KEYWORD,
       max_keywords_per_run: MAX_KEYWORDS_PER_RUN,
+      daily_cap_per_workspace: DAILY_POST_CAP_PER_WORKSPACE,
       unipile_configured: !!(UNIPILE_API_KEY && UNIPILE_ACCOUNT_ID),
     },
   });
