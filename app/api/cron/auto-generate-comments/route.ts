@@ -94,12 +94,13 @@ export async function POST(request: NextRequest) {
 
     // CRITICAL: Claim these posts immediately to prevent race conditions
     // If multiple cron runs execute concurrently, they could process the same posts
-    // Mark as 'processing_comment' so other runs skip them
+    // Mark as 'processing' so other runs skip them
+    // NOTE: Valid statuses are: discovered, processing, commented, skipped
     const postIds = posts.map(p => p.id);
     const { error: claimError } = await supabase
       .from('linkedin_posts_discovered')
       .update({
-        status: 'processing_comment',
+        status: 'processing',
         comment_generated_at: new Date().toISOString() // Mark timestamp to prevent re-querying
       })
       .in('id', postIds);
@@ -229,9 +230,10 @@ export async function POST(request: NextRequest) {
           skipCount++;
           results.push({ post_id: post.id, status: 'skipped_already_has_comment' });
           // Mark post so query doesn't pick it up again (comment_generated_at already set during claim)
+          // Using 'processing' status since 'comment_pending' not in valid_status constraint
           await supabase
             .from('linkedin_posts_discovered')
-            .update({ status: 'comment_pending' })
+            .update({ status: 'processing' })
             .eq('id', post.id);
           continue;
         }
@@ -650,9 +652,10 @@ export async function POST(request: NextRequest) {
         }
 
         // Update post status (comment_generated_at already set during claim)
+        // Using 'processing' status - will be updated to 'commented' when comment is posted
         await supabase
           .from('linkedin_posts_discovered')
-          .update({ status: 'comment_pending' })
+          .update({ status: 'processing' })
           .eq('id', post.id);
 
         console.log(`   ✅ Comment saved: ${savedComment.id.substring(0, 8)}`);
