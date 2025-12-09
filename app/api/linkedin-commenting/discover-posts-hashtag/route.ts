@@ -30,6 +30,92 @@ const MAX_POSTS_PER_KEYWORD = 15;
 const MAX_KEYWORDS_PER_RUN = 3;
 const DAILY_POST_CAP = 45;
 
+/**
+ * Content filter patterns to exclude low-value posts
+ * These are typically self-promotional credential/certificate announcements
+ * that don't drive meaningful engagement
+ */
+const EXCLUDE_PATTERNS = [
+  // Certificate/credential announcements
+  /completed?.*(certification|certificate|course|training|credential)/i,
+  /just (earned|received|obtained|got|passed).*(certification|certificate|badge)/i,
+  /happy to (share|announce).*(certification|certificate|completed)/i,
+  /proud to (share|announce).*(certification|certificate|completed)/i,
+  /excited to (share|announce).*(certification|certificate|completed)/i,
+  /thrilled to (share|announce).*(certification|certificate|completed)/i,
+  /i('ve| have) (successfully )?completed/i,
+  /coursera|udemy|linkedin learning|google cloud skills|aws training/i,
+  /digital badge|credly|acclaim/i,
+  /new certification|certified (in|as|by)/i,
+
+  // Generic self-promotion
+  /check out my (new )?(profile|resume|cv)/i,
+  /i('m| am) (now )?(looking for|open to|seeking)/i,  // Job seekers
+
+  // Very short or empty posts
+  /^.{0,50}$/,  // Less than 50 chars total
+];
+
+/**
+ * Keywords that indicate high-quality thought leadership content
+ * Posts containing these are more likely to be worth engaging with
+ */
+const QUALITY_INDICATORS = [
+  /\b(insight|perspective|lesson|learned|takeaway|observation)\b/i,
+  /\b(unpopular opinion|hot take|here's (what|why))\b/i,
+  /\b(data shows|research|study|according to)\b/i,
+  /\b(strategy|framework|approach|methodology)\b/i,
+  /\b(trend|future|prediction|outlook)\b/i,
+  /\b(challenge|problem|solution|opportunity)\b/i,
+  /\?(.*\?)?$/,  // Ends with a question (drives engagement)
+];
+
+/**
+ * Check if a post should be excluded based on content patterns
+ */
+function shouldExcludePost(text: string): { exclude: boolean; reason?: string } {
+  if (!text || text.trim().length < 50) {
+    return { exclude: true, reason: 'Too short' };
+  }
+
+  for (const pattern of EXCLUDE_PATTERNS) {
+    if (pattern.test(text)) {
+      return { exclude: true, reason: `Matches exclusion pattern: ${pattern.source.substring(0, 30)}...` };
+    }
+  }
+
+  return { exclude: false };
+}
+
+/**
+ * Score a post's quality based on content indicators
+ * Higher score = more likely to be worth engaging with
+ */
+function scorePostQuality(text: string, engagementMetrics: { likes?: number; comments?: number }): number {
+  let score = 0;
+
+  // Quality content indicators
+  for (const pattern of QUALITY_INDICATORS) {
+    if (pattern.test(text)) {
+      score += 10;
+    }
+  }
+
+  // Length bonus (longer thoughtful posts)
+  if (text.length > 500) score += 5;
+  if (text.length > 1000) score += 5;
+
+  // Engagement bonus
+  const likes = engagementMetrics.likes || 0;
+  const comments = engagementMetrics.comments || 0;
+  if (likes > 10) score += 5;
+  if (likes > 50) score += 10;
+  if (comments > 5) score += 10;
+  if (comments > 20) score += 15;
+
+  return score;
+}
+
 interface UnipilePost {
   social_id: string;
   share_url: string;
@@ -218,6 +304,20 @@ export async function POST(request: NextRequest) {
           console.log(`⏭️ Post already exists: ${post.social_id}`);
           continue;
         }
+
+        // CONTENT FILTERING: Exclude low-quality posts (certificates, credentials, etc.)
+        const filterResult = shouldExcludePost(post.text || '');
+        if (filterResult.exclude) {
+          console.log(`🚫 Excluded post: ${filterResult.reason} - "${(post.text || '').substring(0, 50)}..."`);
+          continue;
+        }
+
+        // Score post quality (for logging/debugging)
+        const qualityScore = scorePostQuality(post.text || '', {
+          likes: post.reaction_counter,
+          comments: post.comment_counter
+        });
+        console.log(`📊 Quality score: ${qualityScore} for post from ${post.author?.name}`);
 
         // Extract hashtags from post text
         const hashtagMatches = post.text?.match(/#\w+/g) || [];

@@ -155,6 +155,21 @@
   schedule = "0 13 * * 1-5"
 
 # ============================================
+# SELF-POST ENGAGEMENT (Dec 9, 2025)
+# ============================================
+
+# Discover Self-Post Comments: Find new comments on monitored own posts every 30 minutes
+# Monitors posts you've created and queues comments for AI reply generation
+[functions."discover-self-post-comments"]
+  schedule = "*/30 * * * *"
+
+# Process Self-Post Replies: Generate and post threaded replies every 30 minutes
+# 1. Generates AI replies using per-post custom prompts (e.g., event signup links)
+# 2. Posts approved replies as threaded comments to the original commenter
+[functions."process-self-post-replies"]
+  schedule = "*/30 * * * *"
+
+# ============================================
 # CRM BI-DIRECTIONAL SYNC (Dec 2, 2025)
 # ============================================
 
