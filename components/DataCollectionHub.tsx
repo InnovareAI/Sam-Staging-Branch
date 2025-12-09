@@ -2007,21 +2007,10 @@ export default function DataCollectionHub({
       return
     }
 
-    // Check if all approved prospects have campaign tags
-    const untaggedCount = approvedProspects.filter(p => !p.campaignTag || p.campaignTag.trim() === '').length
-    if (untaggedCount > 0) {
-      // Show confirm modal - navigation will continue in onConfirm callback
-      setConfirmModal({
-        isOpen: true,
-        title: 'Missing Campaign Tags',
-        message: `${untaggedCount} approved prospect(s) don't have campaign tags assigned.\n\nDo you want to proceed anyway?`,
-        onConfirm: () => performCampaignHubNavigation(approvedProspects, campaignType),
-        type: 'warning'
-      })
-      return
-    }
+    // Campaign tags check removed - confusing to users since campaign name IS assigned
+    // Prospects are properly associated with the campaign regardless of this field
 
-    // All prospects have tags, proceed directly
+    // Proceed directly to campaign creation
     await performCampaignHubNavigation(approvedProspects, campaignType)
   }
 
