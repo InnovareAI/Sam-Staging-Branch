@@ -138,12 +138,11 @@
 [functions."auto-generate-comments"]
   schedule = "*/30 * * * *"
 
-# Process Comment Queue: Post scheduled comments every ~35 minutes
+# Process Comment Queue: Post scheduled comments every 45 minutes
 # Comments approved by user are queued and spread throughout the day
-# Runs at :05 and :40 past each hour (35 min gap)
 # Also auto-likes posts when commenting
 [functions."process-comment-queue"]
-  schedule = "5,40 * * * *"
+  schedule = "*/45 * * * *"
 
 # Daily Repost: DISABLED - Does not repost full article content
 # Was: Share high-engagement posts once per day at 10 AM PT (6 PM UTC)
