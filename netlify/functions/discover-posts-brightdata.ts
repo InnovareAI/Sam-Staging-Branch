@@ -1,7 +1,7 @@
 /**
- * Netlify Scheduled Function: Discover LinkedIn Posts via Bright Data
+ * Netlify Scheduled Function: Discover LinkedIn Posts via Unipile API
  *
- * Discovers new posts from LinkedIn hashtags using Bright Data Scraping Browser.
+ * Discovers new posts from LinkedIn hashtags using Unipile's authenticated search.
  * Runs every 4 hours to find fresh content for commenting.
  *
  * Schedule: Every 4 hours (6 times/day)
@@ -10,7 +10,7 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  console.log('📅 Netlify scheduled function triggered: discover-posts-brightdata');
+  console.log('📅 Netlify scheduled function triggered: discover-posts-hashtag');
   console.log(`   Time: ${new Date().toISOString()}`);
 
   try {
@@ -25,9 +25,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       };
     }
 
-    console.log(`📨 Calling: ${apiUrl}/api/linkedin-commenting/discover-posts-brightdata`);
+    console.log(`📨 Calling: ${apiUrl}/api/linkedin-commenting/discover-posts-hashtag`);
 
-    const response = await fetch(`${apiUrl}/api/linkedin-commenting/discover-posts-brightdata`, {
+    const response = await fetch(`${apiUrl}/api/linkedin-commenting/discover-posts-hashtag`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -38,9 +38,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     const result = await response.json();
 
-    console.log('✅ Bright Data discovery result:', {
+    console.log('✅ Unipile hashtag discovery result:', {
       status: response.status,
-      hashtags_scraped: result.hashtags_scraped,
+      keywords_searched: result.keywords_searched,
       posts_discovered: result.posts_discovered,
       posts_saved: result.posts_saved,
       message: result.message
@@ -57,7 +57,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     return {
       statusCode: 500,
       body: JSON.stringify({
-        error: 'Bright Data discovery failed',
+        error: 'Hashtag discovery failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       })
     };
