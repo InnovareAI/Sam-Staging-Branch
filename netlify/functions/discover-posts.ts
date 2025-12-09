@@ -1,10 +1,11 @@
 /**
  * Netlify Scheduled Function: Discover LinkedIn Posts
  *
- * Discovers new posts from monitored profiles and companies using Apify
+ * Discovers new posts from monitored LinkedIn PROFILES using Unipile API
  * Runs every 2 hours to find fresh content for commenting
  *
- * Scheduled to run: every 2 hours via netlify.toml
+ * NOTE: Hashtag-based discovery removed (Dec 9, 2025)
+ * Only PROFILE: monitors are processed now
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
@@ -25,9 +26,10 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
       };
     }
 
-    console.log(`📨 Calling: ${apiUrl}/api/linkedin-commenting/discover-posts-apify`);
+    // Use profile-based discovery via Unipile (not hashtag/Apify)
+    console.log(`📨 Calling: ${apiUrl}/api/linkedin-commenting/discover-profile-posts`);
 
-    const response = await fetch(`${apiUrl}/api/linkedin-commenting/discover-posts-apify`, {
+    const response = await fetch(`${apiUrl}/api/linkedin-commenting/discover-profile-posts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -40,8 +42,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
 
     console.log('✅ Post discovery result:', {
       status: response.status,
-      monitors_processed: result.monitors_processed,
-      posts_discovered: result.total_posts_discovered,
+      discovered: result.discovered || result.totalDiscovered,
       message: result.message
     });
 

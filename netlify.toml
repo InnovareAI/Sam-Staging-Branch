@@ -122,16 +122,11 @@
 
 # Discover Posts (Apify): DISABLED - Costs $4+ per run, ignores all limits
 # Was: Uses Apify to scrape LinkedIn posts
-# Replaced by Google Custom Search version below
-# [functions."discover-posts"]
-#   schedule = "0 */2 * * *"
-
-# Discover Posts (Google): Find new posts via Google Custom Search daily at 8 AM PT
-# Cost: ~$0.005 per term, runs once daily when Western professionals are active
-# 17 terms × 1 query × 1 run/day = 17 queries/day = $0.085/day
-# Schedule: 8:00 AM PT = 16:00 UTC
-[functions."discover-posts-google"]
-  schedule = "0 16 * * *"
+# Discover Posts: Find new posts from PROFILE monitors via Unipile API
+# NOTE: Hashtag-based discovery removed (Dec 9, 2025)
+# Runs every 2 hours to check monitored profiles for new posts
+[functions."discover-posts"]
+  schedule = "0 */2 * * *"
 
 # Auto-Generate Comments: Create AI comments every 30 minutes
 # Generates thoughtful comments for discovered posts (pending approval)
