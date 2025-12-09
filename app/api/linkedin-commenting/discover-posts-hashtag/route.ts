@@ -71,28 +71,14 @@ const QUALITY_INDICATORS = [
 ];
 
 /**
- * Simple English language detection
- * Uses common English words and character patterns to identify English text
- * Returns true if the text appears to be in English
+ * Robust English language detection
+ * Uses a combination of:
+ * 1. English-exclusive words (words that don't exist in Spanish/Portuguese/French/German)
+ * 2. Non-English word detection (if we find Spanish/Portuguese words, reject)
+ * 3. Higher threshold for common words
  */
 function isEnglishText(text: string): boolean {
   if (!text || text.length < 20) return false;
-
-  // Common English words that appear frequently
-  const commonEnglishWords = [
-    'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i',
-    'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at',
-    'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
-    'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what',
-    'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me',
-    'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know', 'take',
-    'people', 'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other',
-    'than', 'then', 'now', 'look', 'only', 'come', 'its', 'over', 'think', 'also',
-    'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first', 'well', 'way',
-    'even', 'new', 'want', 'because', 'any', 'these', 'give', 'day', 'most', 'us',
-    'is', 'are', 'was', 'were', 'been', 'being', 'has', 'had', 'does', 'did',
-    'very', 'much', 'more', 'here', 'where', 'why', 'should', 'need', 'must', 'may'
-  ];
 
   // Normalize text: lowercase, remove URLs, mentions, hashtags
   const cleanText = text
@@ -107,10 +93,131 @@ function isEnglishText(text: string): boolean {
   const words = cleanText.split(' ').filter(w => w.length > 1);
   if (words.length < 5) return false;
 
-  // Count how many common English words appear
+  // SPANISH/PORTUGUESE DETECTION - If we find these words, it's NOT English
+  // These are common words that are UNIQUE to Spanish/Portuguese (not in English)
+  const spanishPortugueseWords = [
+    // Spanish articles/prepositions (not in English)
+    'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'del', 'al',
+    'es', 'está', 'son', 'están', 'ser', 'estar', 'fue', 'sido', 'siendo',
+    'para', 'por', 'con', 'sin', 'sobre', 'entre', 'hacia', 'desde', 'hasta',
+    'pero', 'porque', 'como', 'cuando', 'donde', 'quien', 'cual', 'cuyo',
+    'este', 'esta', 'estos', 'estas', 'ese', 'esa', 'esos', 'esas',
+    'aquel', 'aquella', 'aquellos', 'aquellas', 'esto', 'eso', 'aquello',
+    'yo', 'tu', 'él', 'ella', 'nosotros', 'vosotros', 'ellos', 'ellas',
+    'mi', 'tu', 'su', 'nuestro', 'vuestro', 'sus', 'mis', 'tus',
+    'muy', 'más', 'menos', 'tan', 'tanto', 'mucho', 'poco', 'algo', 'nada',
+    'todo', 'todos', 'toda', 'todas', 'otro', 'otra', 'otros', 'otras',
+    'mismo', 'misma', 'mismos', 'mismas', 'cada', 'algún', 'ningún',
+    'qué', 'cómo', 'cuándo', 'dónde', 'quién', 'cuál', 'cuánto',
+    'si', 'no', 'sí', 'también', 'además', 'aunque', 'mientras', 'siempre', 'nunca',
+    'ahora', 'hoy', 'ayer', 'mañana', 'después', 'antes', 'luego', 'entonces',
+    'aquí', 'allí', 'allá', 'acá', 'cerca', 'lejos', 'dentro', 'fuera',
+    'bien', 'mal', 'mejor', 'peor', 'bueno', 'malo', 'grande', 'pequeño',
+    'nuevo', 'viejo', 'joven', 'largo', 'corto', 'alto', 'bajo',
+    'hacer', 'tener', 'poder', 'decir', 'ir', 'ver', 'dar', 'saber', 'querer',
+    'llegar', 'pasar', 'deber', 'poner', 'parecer', 'quedar', 'creer', 'hablar',
+    'llevar', 'dejar', 'seguir', 'encontrar', 'llamar', 'venir', 'pensar',
+    'salir', 'volver', 'tomar', 'conocer', 'vivir', 'sentir', 'tratar',
+    'mirar', 'contar', 'empezar', 'esperar', 'buscar', 'existir', 'entrar',
+    'trabajar', 'escribir', 'perder', 'producir', 'ocurrir', 'entender',
+    // Portuguese specific
+    'ou', 'em', 'uma', 'um', 'dos', 'das', 'aos', 'às', 'pela', 'pelo',
+    'são', 'está', 'foi', 'eram', 'será', 'seria', 'foram', 'seja', 'fosse',
+    'não', 'sim', 'muito', 'pouco', 'mais', 'menos', 'bem', 'mal',
+    'isso', 'isto', 'aquilo', 'esse', 'essa', 'esses', 'essas',
+    'você', 'vocês', 'nós', 'eles', 'elas', 'dele', 'dela', 'deles', 'delas',
+    'meu', 'minha', 'meus', 'minhas', 'seu', 'sua', 'seus', 'suas',
+    'nosso', 'nossa', 'nossos', 'nossas', 'vosso', 'vossa',
+    'onde', 'quando', 'porque', 'porquê', 'como', 'qual', 'quais',
+    'tudo', 'nada', 'algo', 'alguém', 'ninguém', 'qualquer', 'algum', 'nenhum',
+    'ainda', 'já', 'agora', 'depois', 'antes', 'sempre', 'nunca', 'talvez',
+    'aqui', 'ali', 'lá', 'cá', 'onde', 'aonde',
+    'fazer', 'ter', 'poder', 'dizer', 'ver', 'dar', 'saber', 'querer',
+    'ficar', 'haver', 'ir', 'vir', 'pôr', 'ser', 'estar',
+    // French specific
+    'le', 'les', 'un', 'une', 'des', 'du', 'de', 'à', 'au', 'aux',
+    'et', 'ou', 'mais', 'donc', 'ni', 'car', 'que', 'qui', 'quoi',
+    'ce', 'cette', 'ces', 'cet', 'cela', 'ça', 'ceci',
+    'je', 'tu', 'il', 'elle', 'nous', 'vous', 'ils', 'elles', 'on',
+    'mon', 'ma', 'mes', 'ton', 'ta', 'tes', 'son', 'sa', 'ses',
+    'notre', 'votre', 'leur', 'leurs', 'nos', 'vos',
+    'être', 'avoir', 'faire', 'pouvoir', 'vouloir', 'devoir', 'savoir',
+    'aller', 'venir', 'voir', 'prendre', 'donner', 'parler', 'mettre',
+    'très', 'plus', 'moins', 'bien', 'mal', 'mieux', 'pire',
+    'oui', 'non', 'pas', 'ne', 'jamais', 'toujours', 'souvent', 'parfois',
+    'ici', 'là', 'où', 'quand', 'comment', 'pourquoi', 'combien',
+    'avec', 'sans', 'pour', 'contre', 'vers', 'chez', 'entre', 'parmi',
+    // German specific
+    'der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einer', 'einem', 'einen',
+    'und', 'oder', 'aber', 'denn', 'weil', 'wenn', 'dass', 'ob',
+    'ich', 'du', 'er', 'sie', 'es', 'wir', 'ihr', 'sie', 'Sie',
+    'mein', 'dein', 'sein', 'ihr', 'unser', 'euer', 'Ihr',
+    'dieser', 'diese', 'dieses', 'jener', 'jene', 'jenes',
+    'ist', 'sind', 'war', 'waren', 'wird', 'werden', 'wurde', 'wurden',
+    'hat', 'haben', 'hatte', 'hatten', 'kann', 'können', 'konnte', 'konnten',
+    'muss', 'müssen', 'musste', 'mussten', 'soll', 'sollen', 'sollte',
+    'will', 'wollen', 'wollte', 'darf', 'dürfen', 'durfte',
+    'sehr', 'mehr', 'weniger', 'gut', 'schlecht', 'besser', 'schlechter',
+    'ja', 'nein', 'nicht', 'nie', 'immer', 'oft', 'manchmal',
+    'hier', 'dort', 'wo', 'wann', 'wie', 'warum', 'was', 'wer', 'welche',
+    'mit', 'ohne', 'für', 'gegen', 'bei', 'nach', 'vor', 'zwischen', 'unter', 'über'
+  ];
+
+  // Count non-English words
+  let nonEnglishWordCount = 0;
+  for (const word of words) {
+    if (spanishPortugueseWords.includes(word)) {
+      nonEnglishWordCount++;
+    }
+  }
+
+  // If more than 5% of words are clearly non-English, reject the post
+  const nonEnglishRatio = nonEnglishWordCount / words.length;
+  if (nonEnglishRatio > 0.05) {
+    return false;
+  }
+
+  // English-EXCLUSIVE words (these words are UNIQUE to English, not in Spanish/Portuguese)
+  // Removed words that overlap: 'a', 'no', 'me', 'use', etc.
+  const englishExclusiveWords = [
+    'the', 'be', 'have', 'it', 'for', 'not', 'with', 'he', 'as', 'you', 'do', 'at',
+    'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she',
+    'will', 'would', 'there', 'their', 'what', 'so', 'up', 'out', 'if', 'about',
+    'who', 'get', 'which', 'go', 'when', 'make', 'can', 'like', 'time', 'just',
+    'him', 'know', 'take', 'people', 'into', 'year', 'your', 'good', 'some',
+    'could', 'them', 'see', 'other', 'than', 'then', 'now', 'look', 'only',
+    'come', 'its', 'over', 'think', 'also', 'back', 'after', 'two', 'how',
+    'our', 'work', 'first', 'well', 'way', 'even', 'new', 'want', 'because',
+    'any', 'these', 'give', 'day', 'most', 'us', 'is', 'are', 'was', 'were',
+    'been', 'being', 'has', 'had', 'does', 'did', 'very', 'much', 'more',
+    'here', 'where', 'why', 'should', 'need', 'must', 'may', 'through',
+    'while', 'before', 'after', 'during', 'between', 'under', 'again',
+    'further', 'once', 'each', 'few', 'those', 'both', 'same', 'own',
+    'such', 'too', 'only', 'other', 'than', 'into', 'over', 'down',
+    'off', 'again', 'further', 'then', 'once', 'during', 'without',
+    'however', 'therefore', 'although', 'though', 'whether', 'either',
+    'neither', 'rather', 'quite', 'already', 'always', 'never', 'often',
+    'usually', 'sometimes', 'perhaps', 'maybe', 'probably', 'certainly',
+    'definitely', 'actually', 'really', 'especially', 'particularly',
+    'building', 'looking', 'working', 'thinking', 'getting', 'going',
+    'being', 'having', 'doing', 'making', 'taking', 'coming', 'seeing',
+    'using', 'finding', 'giving', 'telling', 'asking', 'trying', 'calling',
+    'feeling', 'becoming', 'leaving', 'putting', 'meaning', 'keeping',
+    'letting', 'beginning', 'seeming', 'helping', 'showing', 'hearing',
+    'playing', 'running', 'moving', 'living', 'believing', 'bringing',
+    'writing', 'standing', 'losing', 'paying', 'meeting', 'including',
+    'continuing', 'setting', 'learning', 'changing', 'leading', 'understanding',
+    'watching', 'following', 'stopping', 'creating', 'speaking', 'reading',
+    'allowing', 'adding', 'spending', 'growing', 'opening', 'walking',
+    'winning', 'offering', 'remembering', 'considering', 'appearing',
+    'buying', 'waiting', 'serving', 'dying', 'sending', 'expecting',
+    'building', 'staying', 'falling', 'cutting', 'reaching', 'killing'
+  ];
+
+  // Count English words
   let englishWordCount = 0;
   for (const word of words) {
-    if (commonEnglishWords.includes(word)) {
+    if (englishExclusiveWords.includes(word)) {
       englishWordCount++;
     }
   }
@@ -118,9 +225,9 @@ function isEnglishText(text: string): boolean {
   // Calculate ratio of English words to total words
   const englishRatio = englishWordCount / words.length;
 
-  // If at least 15% of words are common English words, consider it English
-  // This threshold is low because posts contain technical terms, names, etc.
-  return englishRatio >= 0.15;
+  // Require at least 20% of words to be English-exclusive
+  // This is higher than before because we removed ambiguous words
+  return englishRatio >= 0.20;
 }
 
 /**
