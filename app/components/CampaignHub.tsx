@@ -8026,29 +8026,19 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     const count = selectedCampaigns.size;
     showConfirmModal({
       title: 'Delete Campaigns',
-      message: `Delete ${count} campaign(s)? Campaigns with sent messages will be archived instead.`,
+      message: `Permanently delete ${count} campaign(s) and all related data? This cannot be undone.`,
       confirmText: 'Delete',
       confirmVariant: 'danger',
       onConfirm: async () => {
         try {
-          const results = await Promise.all(
-            Array.from(selectedCampaigns).map(async (campaignId) => {
-              const res = await fetch(`/api/campaigns/${campaignId}`, { method: 'DELETE' });
-              const data = await res.json();
-              return { campaignId, ...data };
-            })
+          // Force delete all campaigns (including those with messages)
+          await Promise.all(
+            Array.from(selectedCampaigns).map(campaignId =>
+              fetch(`/api/campaigns/${campaignId}?force=true`, { method: 'DELETE' })
+            )
           );
 
-          const deleted = results.filter(r => r.data?.deleted).length;
-          const archived = results.filter(r => r.data?.archived).length;
-
-          if (deleted > 0 && archived > 0) {
-            toastSuccess(`Deleted ${deleted}, archived ${archived} campaign(s)`);
-          } else if (archived > 0) {
-            toastSuccess(`Archived ${archived} campaign(s) (had sent messages)`);
-          } else {
-            toastSuccess(`Deleted ${deleted} campaign(s)`);
-          }
+          toastSuccess(`Deleted ${count} campaign(s)`);
           clearSelection();
           queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
         } catch (error) {

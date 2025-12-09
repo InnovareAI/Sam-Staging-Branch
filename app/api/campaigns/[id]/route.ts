@@ -181,6 +181,8 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createSupabaseRouteClient();
+    const url = new URL(req.url);
+    const forceDelete = url.searchParams.get('force') === 'true';
 
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -211,6 +213,25 @@ export async function DELETE(
 
     if (!membership) {
       throw apiError.forbidden('Access denied to this campaign');
+    }
+
+    // Force delete: skip message check and delete everything
+    if (forceDelete) {
+      // Delete related data first
+      await supabase.from('campaign_messages').delete().eq('campaign_id', campaignId);
+      await supabase.from('campaign_prospects').delete().eq('campaign_id', campaignId);
+      await supabase.from('send_queue').delete().eq('campaign_id', campaignId);
+
+      const { error } = await supabase
+        .from('campaigns')
+        .delete()
+        .eq('id', campaignId);
+
+      if (error) {
+        throw apiError.database('force delete campaign', error);
+      }
+
+      return apiSuccess({ deleted: true, forced: true }, 'Campaign and all related data deleted');
     }
 
     // Check if campaign has sent messages (prevent deletion of active campaigns)
