@@ -25,9 +25,9 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// Limits
-const MAX_POSTS_PER_HASHTAG = 10;
-const MAX_HASHTAGS_PER_RUN = 5;
+// Limits (3 keywords × 15 posts = 45 max per day)
+const MAX_POSTS_PER_KEYWORD = 15;
+const MAX_KEYWORDS_PER_RUN = 3;
 
 interface UnipilePost {
   social_id: string;
@@ -86,7 +86,7 @@ async function searchLinkedInPosts(keyword: string): Promise<UnipilePost[]> {
     const posts = data.items || [];
 
     console.log(`✅ Found ${posts.length} posts for "${keyword}"`);
-    return posts.slice(0, MAX_POSTS_PER_HASHTAG);
+    return posts.slice(0, MAX_POSTS_PER_KEYWORD);
   } catch (error) {
     console.error(`❌ Search error for "${keyword}":`, error);
     return [];
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    const hashtagsToSearch = Array.from(allHashtags).slice(0, MAX_HASHTAGS_PER_RUN);
+    const hashtagsToSearch = Array.from(allHashtags).slice(0, MAX_KEYWORDS_PER_RUN);
     console.log(`📋 Searching ${hashtagsToSearch.length} keywords:`, hashtagsToSearch);
 
     let totalDiscovered = 0;
@@ -251,8 +251,8 @@ export async function GET() {
     message: 'Unipile LinkedIn hashtag discovery endpoint',
     usage: 'POST to trigger discovery',
     config: {
-      max_posts_per_hashtag: MAX_POSTS_PER_HASHTAG,
-      max_hashtags_per_run: MAX_HASHTAGS_PER_RUN,
+      max_posts_per_keyword: MAX_POSTS_PER_KEYWORD,
+      max_keywords_per_run: MAX_KEYWORDS_PER_RUN,
       unipile_configured: !!(UNIPILE_API_KEY && UNIPILE_ACCOUNT_ID),
     },
   });

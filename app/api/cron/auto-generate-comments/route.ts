@@ -366,7 +366,11 @@ export async function POST(request: NextRequest) {
         // Certification flex - personal achievement, not leadership
         const certPatterns = [
           "just passed", "newly certified", "badge earned", "completed course",
-          "certification", "certified in", "earned my", "passed my exam"
+          "certification", "certified in", "earned my", "passed my exam",
+          // Course completion certificates (added Dec 9, 2025)
+          "course completion", "completion certificate", "my certificate for",
+          "earned a certificate", "received my certificate", "finished the course",
+          "completed the course", "course certificate"
         ];
 
         // Holiday/birthday - social pleasantries
