@@ -14,7 +14,19 @@
 
 # SAM AI Platform
 
-SAM is an intelligent AI-powered Sales Assistant platform built for multi-tenant B2B operations. It provides intelligent sales automation, customer engagement, and pipeline management with enterprise-grade security.
+## Your End-to-End AI Sales Automation Assistant
+
+SAM isn't just a tool; it's your AI-powered assistant managing a team of specialized agents working 24/7. SAM automates the entire sales outreach and engagement workflow – from finding the perfect leads to nurturing them with hyper-personalized communication until they're ready for a sales conversation.
+
+**What SAM Does:**
+- **Lead Discovery** - LinkedIn search, CSV uploads with AI-powered prospect validation
+- **Multi-Channel Outreach** - Automated LinkedIn connection requests, follow-up sequences, and email campaigns
+- **LinkedIn Engagement** - AI-powered commenting on relevant posts, profile monitoring, and thought leadership amplification
+- **Hyper-Personalization** - Every message crafted using your custom AI knowledge base unique to your business
+- **Reply Management** - AI-generated response drafts with human-in-the-loop approval
+- **24/7 Automation** - 15+ specialized agents running continuously, handling rate limits, scheduling, and data integrity
+
+Built on enterprise-grade multi-tenant architecture with workspace isolation and Row Level Security.
 
 ## 🚀 Quick Start
 
