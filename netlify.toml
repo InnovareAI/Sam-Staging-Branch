@@ -10,14 +10,24 @@
   package = "@netlify/plugin-nextjs"
 
 [[headers]]
-  for = "/_next/static/*"
+  for = "/*"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
+  for = "/workspace/*/commenting-agent"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
   for = "/_next/static/chunks/*"
   [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
+    Cache-Control = "public, max-age=31536000, immutable"
 
 [dev]
   command = "npm run dev"
