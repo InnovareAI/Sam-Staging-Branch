@@ -61,9 +61,51 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Comment rejected successfully');
 
+    // When a comment is rejected, reset the post to 'discovered' status
+    // This allows the system to potentially generate a new comment for this post
+    // OR discover new posts to replace the rejected content
+    if (comment.post_id) {
+      const { error: resetError } = await supabase
+        .from('linkedin_posts_discovered')
+        .update({
+          status: 'skipped', // Mark as skipped so we don't regenerate for same post
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', comment.post_id);
+
+      if (resetError) {
+        console.warn('⚠️ Could not update post status:', resetError.message);
+      }
+    }
+
+    // Count remaining pending comments for this workspace
+    const { count: pendingCount } = await supabase
+      .from('linkedin_post_comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('workspace_id', comment.workspace_id)
+      .eq('status', 'pending_approval');
+
+    // If we're running low on pending comments, trigger async discovery
+    // This ensures the approval queue stays populated
+    const LOW_THRESHOLD = 5;
+    if ((pendingCount || 0) < LOW_THRESHOLD) {
+      console.log(`📬 Low pending count (${pendingCount}), triggering background discovery...`);
+
+      // Fire and forget - don't wait for discovery to complete
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com';
+      fetch(`${baseUrl}/api/linkedin-commenting/discover-posts-hashtag`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-cron-secret': process.env.CRON_SECRET || ''
+        }
+      }).catch(err => console.warn('Background discovery failed:', err.message));
+    }
+
     return NextResponse.json({
       success: true,
-      comment
+      comment,
+      pending_remaining: pendingCount || 0
     });
 
   } catch (error) {

@@ -102,7 +102,7 @@ export async function GET(
         rejected_at: new Date().toISOString()
       })
       .eq('id', commentId)
-      .select('id')
+      .select('id, post_id, workspace_id')
       .single();
 
     if (error) {
@@ -112,6 +112,34 @@ export async function GET(
         'We couldn\'t find this comment or it may have already been processed.',
         false
       );
+    }
+
+    // Mark the post as skipped so we don't regenerate for same post
+    if (data?.post_id) {
+      await supabase
+        .from('linkedin_posts_discovered')
+        .update({ status: 'skipped', updated_at: new Date().toISOString() })
+        .eq('id', data.post_id);
+    }
+
+    // If pending count is low, trigger background discovery
+    if (data?.workspace_id) {
+      const { count: pendingCount } = await supabase
+        .from('linkedin_post_comments')
+        .select('id', { count: 'exact', head: true })
+        .eq('workspace_id', data.workspace_id)
+        .eq('status', 'pending_approval');
+
+      if ((pendingCount || 0) < 5) {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com';
+        fetch(`${baseUrl}/api/linkedin-commenting/discover-posts-hashtag`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cron-secret': process.env.CRON_SECRET || ''
+          }
+        }).catch(() => {});
+      }
     }
 
     return htmlResponse(
