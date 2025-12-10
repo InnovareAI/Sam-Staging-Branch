@@ -16,7 +16,10 @@ import {
   Trash2,
   ExternalLink,
   ChevronDown,
-  Keyboard
+  Keyboard,
+  Calendar,
+  Ban,
+  Filter
 } from 'lucide-react';
 
 interface PendingComment {
@@ -28,10 +31,23 @@ interface PendingComment {
   post_author_headline?: string;
   post_content: string;
   generated_comment: string;
-  status: 'pending' | 'approved' | 'posted' | 'rejected';
+  status: 'pending_approval' | 'scheduled' | 'posted' | 'rejected';
   created_at: string;
+  scheduled_for?: string;
+  posted_at?: string;
+  rejected_at?: string;
   campaign_name?: string;
 }
+
+// Status filter options with display info
+const STATUS_OPTIONS = [
+  { value: 'pending_approval', label: 'Pending Approval', icon: Clock, color: 'amber' },
+  { value: 'scheduled', label: 'Scheduled', icon: Calendar, color: 'blue' },
+  { value: 'posted', label: 'Posted', icon: CheckCircle2, color: 'green' },
+  { value: 'rejected', label: 'Rejected', icon: Ban, color: 'red' },
+] as const;
+
+type StatusFilter = typeof STATUS_OPTIONS[number]['value'];
 
 export default function ApproveCommentsPage() {
   const params = useParams();
@@ -42,17 +58,29 @@ export default function ApproveCommentsPage() {
 
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<PendingComment[]>([]);
-  const [postedComments, setPostedComments] = useState<PendingComment[]>([]);
-  const [activeTab, setActiveTab] = useState<'pending' | 'posted'>('pending');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending_approval');
+  const [statusCounts, setStatusCounts] = useState<Record<StatusFilter, number>>({
+    pending_approval: 0,
+    scheduled: 0,
+    posted: 0,
+    rejected: 0
+  });
   const [selectedComment, setSelectedComment] = useState<PendingComment | null>(null);
   const [editedComment, setEditedComment] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   useEffect(() => {
     loadComments();
+    loadStatusCounts();
   }, [workspaceId, campaignFilter]);
+
+  // Reload comments when status filter changes
+  useEffect(() => {
+    loadComments();
+  }, [statusFilter]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -61,14 +89,16 @@ export default function ApproveCommentsPage() {
 
       switch (e.key) {
         case 'a':
-          handleApprove(selectedComment.id);
+          if (statusFilter === 'pending_approval') handleApprove(selectedComment.id);
           break;
         case 'e':
-          setIsEditing(true);
-          setEditedComment(selectedComment.generated_comment);
+          if (statusFilter === 'pending_approval') {
+            setIsEditing(true);
+            setEditedComment(selectedComment.generated_comment);
+          }
           break;
         case 'r':
-          handleReject(selectedComment.id);
+          if (statusFilter === 'pending_approval') handleReject(selectedComment.id);
           break;
         case 'ArrowUp':
           navigateComments(-1);
@@ -78,13 +108,50 @@ export default function ApproveCommentsPage() {
           break;
         case 'Escape':
           setSelectedComment(null);
+          setShowStatusDropdown(false);
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedComment, isEditing, comments]);
+  }, [selectedComment, isEditing, comments, statusFilter]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setShowStatusDropdown(false);
+    if (showStatusDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showStatusDropdown]);
+
+  const loadStatusCounts = async () => {
+    try {
+      const params = new URLSearchParams({ workspace_id: workspaceId });
+      if (campaignFilter) params.append('monitor_id', campaignFilter);
+
+      // Fetch counts for all statuses
+      const countPromises = STATUS_OPTIONS.map(async (status) => {
+        const res = await fetch(`/api/linkedin-commenting/comments?${params}&status=${status.value}&count_only=true`);
+        if (res.ok) {
+          const data = await res.json();
+          return { status: status.value, count: data.count || 0 };
+        }
+        return { status: status.value, count: 0 };
+      });
+
+      const counts = await Promise.all(countPromises);
+      const countMap = counts.reduce((acc, { status, count }) => {
+        acc[status as StatusFilter] = count;
+        return acc;
+      }, {} as Record<StatusFilter, number>);
+
+      setStatusCounts(countMap);
+    } catch (error) {
+      console.error('Failed to load status counts:', error);
+    }
+  };
 
   const loadComments = async () => {
     setLoading(true);
@@ -92,22 +159,16 @@ export default function ApproveCommentsPage() {
       const params = new URLSearchParams({ workspace_id: workspaceId });
       if (campaignFilter) params.append('monitor_id', campaignFilter);
 
-      const [pendingRes, postedRes] = await Promise.all([
-        fetch(`/api/linkedin-commenting/comments?${params}&status=pending`),
-        fetch(`/api/linkedin-commenting/comments?${params}&status=posted&limit=20`)
-      ]);
+      const res = await fetch(`/api/linkedin-commenting/comments?${params}&status=${statusFilter}&limit=50`);
 
-      if (pendingRes.ok) {
-        const data = await pendingRes.json();
+      if (res.ok) {
+        const data = await res.json();
         setComments(data.comments || []);
         if (data.comments?.length > 0 && !selectedComment) {
           setSelectedComment(data.comments[0]);
+        } else if (data.comments?.length === 0) {
+          setSelectedComment(null);
         }
-      }
-
-      if (postedRes.ok) {
-        const data = await postedRes.json();
-        setPostedComments(data.comments || []);
       }
     } catch (error) {
       console.error('Failed to load comments:', error);
@@ -118,7 +179,7 @@ export default function ApproveCommentsPage() {
 
   const refreshComments = async () => {
     setRefreshing(true);
-    await loadComments();
+    await Promise.all([loadComments(), loadStatusCounts()]);
     setRefreshing(false);
   };
 
@@ -157,8 +218,8 @@ export default function ApproveCommentsPage() {
         setIsEditing(false);
         setEditedComment('');
 
-        // Refresh posted comments
-        loadComments();
+        // Refresh counts
+        loadStatusCounts();
       }
     } catch (error) {
       console.error('Failed to approve comment:', error);
@@ -183,6 +244,8 @@ export default function ApproveCommentsPage() {
           setSelectedComment(null);
         }
         setIsEditing(false);
+        // Refresh counts
+        loadStatusCounts();
       }
     } catch (error) {
       console.error('Failed to reject comment:', error);
@@ -243,12 +306,14 @@ export default function ApproveCommentsPage() {
 
           <div className="flex items-center gap-3">
             {/* Keyboard Shortcuts Help */}
-            <div className="hidden md:flex items-center gap-2 text-xs text-gray-500 mr-4">
-              <Keyboard size={14} />
-              <span><kbd className="bg-gray-700 px-1 rounded">A</kbd> Approve</span>
-              <span><kbd className="bg-gray-700 px-1 rounded">E</kbd> Edit</span>
-              <span><kbd className="bg-gray-700 px-1 rounded">R</kbd> Reject</span>
-            </div>
+            {statusFilter === 'pending_approval' && (
+              <div className="hidden md:flex items-center gap-2 text-xs text-gray-500 mr-4">
+                <Keyboard size={14} />
+                <span><kbd className="bg-gray-700 px-1 rounded">A</kbd> Approve</span>
+                <span><kbd className="bg-gray-700 px-1 rounded">E</kbd> Edit</span>
+                <span><kbd className="bg-gray-700 px-1 rounded">R</kbd> Reject</span>
+              </div>
+            )}
 
             <button
               onClick={refreshComments}
@@ -258,28 +323,71 @@ export default function ApproveCommentsPage() {
               <RefreshCw size={20} className={`text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
 
-            {/* Tabs */}
-            <div className="flex bg-gray-800 rounded-lg p-1">
+            {/* Status Filter Dropdown */}
+            <div className="relative">
               <button
-                onClick={() => setActiveTab('pending')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'pending'
-                    ? 'bg-pink-600 text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowStatusDropdown(!showStatusDropdown);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
               >
-                Pending ({comments.length})
+                <Filter size={16} className="text-gray-400" />
+                {(() => {
+                  const current = STATUS_OPTIONS.find(s => s.value === statusFilter);
+                  const Icon = current?.icon || Clock;
+                  const colorClass = current?.color === 'amber' ? 'text-amber-400' :
+                                     current?.color === 'blue' ? 'text-blue-400' :
+                                     current?.color === 'green' ? 'text-green-400' :
+                                     current?.color === 'red' ? 'text-red-400' : 'text-gray-400';
+                  return (
+                    <>
+                      <Icon size={16} className={colorClass} />
+                      <span className="text-white text-sm">{current?.label}</span>
+                      <span className="text-gray-400 text-sm">({statusCounts[statusFilter]})</span>
+                    </>
+                  );
+                })()}
+                <ChevronDown size={16} className={`text-gray-400 transition-transform ${showStatusDropdown ? 'rotate-180' : ''}`} />
               </button>
-              <button
-                onClick={() => setActiveTab('posted')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'posted'
-                    ? 'bg-green-600 text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Posted ({postedComments.length})
-              </button>
+
+              {showStatusDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                  {STATUS_OPTIONS.map((option) => {
+                    const Icon = option.icon;
+                    const colorClass = option.color === 'amber' ? 'text-amber-400' :
+                                       option.color === 'blue' ? 'text-blue-400' :
+                                       option.color === 'green' ? 'text-green-400' :
+                                       option.color === 'red' ? 'text-red-400' : 'text-gray-400';
+                    const bgHoverClass = option.color === 'amber' ? 'hover:bg-amber-900/20' :
+                                         option.color === 'blue' ? 'hover:bg-blue-900/20' :
+                                         option.color === 'green' ? 'hover:bg-green-900/20' :
+                                         option.color === 'red' ? 'hover:bg-red-900/20' : 'hover:bg-gray-700';
+                    return (
+                      <button
+                        key={option.value}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setStatusFilter(option.value);
+                          setShowStatusDropdown(false);
+                          setSelectedComment(null);
+                        }}
+                        className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${bgHoverClass} ${
+                          statusFilter === option.value ? 'bg-gray-700' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon size={18} className={colorClass} />
+                          <span className="text-white text-sm">{option.label}</span>
+                        </div>
+                        <span className={`text-sm font-medium ${colorClass}`}>
+                          {statusCounts[option.value]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -289,60 +397,79 @@ export default function ApproveCommentsPage() {
       <div className="flex-1 overflow-hidden flex">
         {/* Left Panel - Comment List */}
         <div className="w-[400px] border-r border-gray-700 overflow-y-auto bg-gray-900">
-          {(activeTab === 'pending' ? comments : postedComments).length === 0 ? (
+          {comments.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-6">
               <MessageSquare size={48} className="text-gray-600 mb-4" />
               <h3 className="text-lg font-medium text-white mb-2">
-                {activeTab === 'pending' ? 'No pending comments' : 'No posted comments yet'}
+                {statusFilter === 'pending_approval' ? 'No pending comments' :
+                 statusFilter === 'scheduled' ? 'No scheduled comments' :
+                 statusFilter === 'posted' ? 'No posted comments yet' :
+                 'No rejected comments'}
               </h3>
               <p className="text-gray-400 text-sm">
-                {activeTab === 'pending'
+                {statusFilter === 'pending_approval'
                   ? 'New comments will appear here when posts are discovered'
-                  : 'Approved comments will appear here after being posted'}
+                  : statusFilter === 'scheduled'
+                  ? 'Approved comments waiting to be posted will appear here'
+                  : statusFilter === 'posted'
+                  ? 'Comments that have been posted to LinkedIn appear here'
+                  : 'Rejected comments are shown here for reference'}
               </p>
             </div>
           ) : (
             <div className="divide-y divide-gray-800">
-              {(activeTab === 'pending' ? comments : postedComments).map((comment) => (
-                <button
-                  key={comment.id}
-                  onClick={() => {
-                    setSelectedComment(comment);
-                    setIsEditing(false);
-                    setEditedComment('');
-                  }}
-                  className={`w-full p-4 text-left transition-colors ${
-                    selectedComment?.id === comment.id
-                      ? 'bg-gray-800 border-l-2 border-pink-500'
-                      : 'hover:bg-gray-800/50'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      comment.status === 'pending' ? 'bg-amber-600/20' :
-                      comment.status === 'posted' ? 'bg-green-600/20' : 'bg-gray-700'
-                    }`}>
-                      {comment.status === 'posted' ? (
-                        <CheckCircle2 size={18} className="text-green-400" />
-                      ) : (
-                        <Clock size={18} className="text-amber-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="text-white font-medium truncate">{comment.post_author}</p>
-                        <span className="text-xs text-gray-500 flex-shrink-0">
-                          {new Date(comment.created_at).toLocaleDateString()}
-                        </span>
+              {comments.map((comment) => {
+                const statusIcon = comment.status === 'pending_approval' ? Clock :
+                                   comment.status === 'scheduled' ? Calendar :
+                                   comment.status === 'posted' ? CheckCircle2 : Ban;
+                const StatusIcon = statusIcon;
+                const iconBgClass = comment.status === 'pending_approval' ? 'bg-amber-600/20' :
+                                    comment.status === 'scheduled' ? 'bg-blue-600/20' :
+                                    comment.status === 'posted' ? 'bg-green-600/20' : 'bg-red-600/20';
+                const iconColorClass = comment.status === 'pending_approval' ? 'text-amber-400' :
+                                       comment.status === 'scheduled' ? 'text-blue-400' :
+                                       comment.status === 'posted' ? 'text-green-400' : 'text-red-400';
+
+                // Determine the date to show based on status
+                const displayDate = comment.status === 'posted' && comment.posted_at ? comment.posted_at :
+                                    comment.status === 'scheduled' && comment.scheduled_for ? comment.scheduled_for :
+                                    comment.status === 'rejected' && comment.rejected_at ? comment.rejected_at :
+                                    comment.created_at;
+
+                return (
+                  <button
+                    key={comment.id}
+                    onClick={() => {
+                      setSelectedComment(comment);
+                      setIsEditing(false);
+                      setEditedComment('');
+                    }}
+                    className={`w-full p-4 text-left transition-colors ${
+                      selectedComment?.id === comment.id
+                        ? 'bg-gray-800 border-l-2 border-pink-500'
+                        : 'hover:bg-gray-800/50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${iconBgClass}`}>
+                        <StatusIcon size={18} className={iconColorClass} />
                       </div>
-                      <p className="text-gray-400 text-sm line-clamp-2">{comment.post_content}</p>
-                      {comment.campaign_name && (
-                        <p className="text-xs text-pink-400 mt-1">{comment.campaign_name}</p>
-                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-white font-medium truncate">{comment.post_author}</p>
+                          <span className="text-xs text-gray-500 flex-shrink-0">
+                            {new Date(displayDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-sm line-clamp-2">{comment.post_content}</p>
+                        {comment.campaign_name && (
+                          <p className="text-xs text-pink-400 mt-1">{comment.campaign_name}</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -409,7 +536,7 @@ export default function ApproveCommentsPage() {
                 )}
 
                 {/* Action Buttons */}
-                {activeTab === 'pending' && (
+                {statusFilter === 'pending_approval' && (
                   <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-700">
                     <div className="flex gap-2">
                       {isEditing ? (
@@ -477,12 +604,36 @@ export default function ApproveCommentsPage() {
                   </div>
                 )}
 
-                {/* Posted Status */}
-                {activeTab === 'posted' && (
+                {/* Status-specific info panels */}
+                {statusFilter === 'scheduled' && (
+                  <div className="mt-4 p-3 bg-blue-900/20 border border-blue-700/30 rounded-lg flex items-center gap-2">
+                    <Calendar size={18} className="text-blue-400" />
+                    <span className="text-blue-200 text-sm">
+                      Scheduled to post {selectedComment.scheduled_for
+                        ? `on ${new Date(selectedComment.scheduled_for).toLocaleString()}`
+                        : 'soon'}
+                    </span>
+                  </div>
+                )}
+
+                {statusFilter === 'posted' && (
                   <div className="mt-4 p-3 bg-green-900/20 border border-green-700/30 rounded-lg flex items-center gap-2">
                     <CheckCircle2 size={18} className="text-green-400" />
                     <span className="text-green-200 text-sm">
-                      This comment was posted to LinkedIn
+                      Posted to LinkedIn {selectedComment.posted_at
+                        ? `on ${new Date(selectedComment.posted_at).toLocaleString()}`
+                        : ''}
+                    </span>
+                  </div>
+                )}
+
+                {statusFilter === 'rejected' && (
+                  <div className="mt-4 p-3 bg-red-900/20 border border-red-700/30 rounded-lg flex items-center gap-2">
+                    <Ban size={18} className="text-red-400" />
+                    <span className="text-red-200 text-sm">
+                      Rejected {selectedComment.rejected_at
+                        ? `on ${new Date(selectedComment.rejected_at).toLocaleString()}`
+                        : ''}
                     </span>
                   </div>
                 )}

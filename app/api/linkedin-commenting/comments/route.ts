@@ -7,9 +7,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');
-    const status = searchParams.get('status') || 'pending';
+    const status = searchParams.get('status') || 'pending_approval';
     const monitorId = searchParams.get('monitor_id');
     const limit = parseInt(searchParams.get('limit') || '50');
+    const countOnly = searchParams.get('count_only') === 'true';
 
     if (!workspaceId) {
       return NextResponse.json({ error: 'workspace_id required' }, { status: 400 });
@@ -17,43 +18,73 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createServerSupabaseClient();
 
+    // If count_only, just return the count
+    if (countOnly) {
+      let countQuery = supabase
+        .from('linkedin_post_comments')
+        .select('id', { count: 'exact', head: true })
+        .eq('workspace_id', workspaceId)
+        .eq('status', status);
+
+      if (monitorId) {
+        countQuery = countQuery.eq('monitor_id', monitorId);
+      }
+
+      const { count, error } = await countQuery;
+
+      if (error) {
+        console.error('Error counting comments:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ count: count || 0 });
+    }
+
+    // Fetch comments from linkedin_post_comments table with joined post data
     let query = supabase
-      .from('linkedin_posts_discovered')
+      .from('linkedin_post_comments')
       .select(`
         id,
+        workspace_id,
         monitor_id,
         post_id,
-        post_url,
-        post_author,
-        post_author_headline,
-        post_content,
-        generated_comment,
+        comment_text,
+        edited_comment_text,
         status,
-        created_at,
+        generated_at,
+        approved_at,
+        rejected_at,
         posted_at,
+        scheduled_post_time,
+        created_at,
+        linkedin_posts_discovered!inner(
+          post_url,
+          author_name,
+          author_headline,
+          post_content
+        ),
         linkedin_post_monitors!inner(name)
       `)
       .eq('workspace_id', workspaceId)
-      .not('generated_comment', 'is', null);
-
-    // Filter by status
-    if (status === 'pending') {
-      query = query.eq('status', 'pending');
-    } else if (status === 'posted') {
-      query = query.eq('status', 'posted');
-    } else if (status === 'rejected') {
-      query = query.eq('status', 'rejected');
-    }
+      .eq('status', status);
 
     // Filter by monitor if specified
     if (monitorId) {
       query = query.eq('monitor_id', monitorId);
     }
 
-    // Order by created_at, newest first for pending, most recent posted first
-    query = query
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    // Order by appropriate date field based on status
+    if (status === 'posted') {
+      query = query.order('posted_at', { ascending: false });
+    } else if (status === 'scheduled') {
+      query = query.order('scheduled_post_time', { ascending: true });
+    } else if (status === 'rejected') {
+      query = query.order('rejected_at', { ascending: false });
+    } else {
+      query = query.order('created_at', { ascending: false });
+    }
+
+    query = query.limit(limit);
 
     const { data: comments, error } = await query;
 
@@ -62,19 +93,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Transform to include campaign name
+    // Transform to the expected format
     const transformedComments = comments?.map(c => ({
       id: c.id,
       monitor_id: c.monitor_id,
       post_id: c.post_id,
-      post_url: c.post_url,
-      post_author: c.post_author,
-      post_author_headline: c.post_author_headline,
-      post_content: c.post_content,
-      generated_comment: c.generated_comment,
+      post_url: (c.linkedin_posts_discovered as any)?.post_url || '',
+      post_author: (c.linkedin_posts_discovered as any)?.author_name || 'Unknown',
+      post_author_headline: (c.linkedin_posts_discovered as any)?.author_headline || '',
+      post_content: (c.linkedin_posts_discovered as any)?.post_content || '',
+      generated_comment: c.edited_comment_text || c.comment_text,
       status: c.status,
       created_at: c.created_at,
+      scheduled_for: c.scheduled_post_time,
       posted_at: c.posted_at,
+      rejected_at: c.rejected_at,
       campaign_name: (c.linkedin_post_monitors as any)?.name || 'Unknown Campaign'
     }));
 
