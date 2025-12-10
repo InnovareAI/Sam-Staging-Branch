@@ -145,10 +145,87 @@ export async function POST(
 
     // Handle two modes: prospect_ids (existing prospects) or prospects (new prospect data)
     if (body.prospect_ids && Array.isArray(body.prospect_ids)) {
-      // Mode 1: Add existing workspace prospects to campaign
+      // Mode 1: Add existing prospects to campaign
+      // These can be from workspace_prospects (UUIDs) or prospect_approval_data (string IDs like csv_xxx)
       const { prospect_ids } = body;
 
-      // Verify all prospects exist in the workspace
+      // First, try to find prospects in prospect_approval_data (from CSV approval flow)
+      // These IDs are stored in the 'id' column as UUIDs, but the prospect_id field contains the csv_xxx IDs
+      const { data: approvalProspects, error: approvalError } = await supabase
+        .from('prospect_approval_data')
+        .select('*')
+        .in('id', prospect_ids);
+
+      if (approvalError) {
+        console.error('Failed to query prospect_approval_data:', approvalError);
+      }
+
+      // If we found prospects in approval data, add them directly to campaign_prospects
+      if (approvalProspects && approvalProspects.length > 0) {
+        console.log(`Found ${approvalProspects.length} prospects in prospect_approval_data`);
+
+        const campaignProspects = approvalProspects.map((prospect: any) => {
+          // Extract name parts
+          const nameParts = prospect.name?.split(' ') || ['Unknown'];
+          const firstName = nameParts[0] || 'Unknown';
+          const lastName = nameParts.slice(1).join(' ') || '';
+
+          // Extract LinkedIn URL from contact object
+          const linkedinUrl = prospect.contact?.linkedin_url || null;
+
+          return {
+            campaign_id: campaignId,
+            workspace_id: campaign.workspace_id,
+            first_name: firstName,
+            last_name: lastName,
+            email: prospect.contact?.email || null,
+            company_name: prospect.company?.name || '',
+            title: prospect.title || '',
+            location: prospect.location || null,
+            linkedin_url: linkedinUrl,
+            linkedin_user_id: prospect.linkedin_user_id || null,
+            connection_degree: prospect.connection_degree ? String(prospect.connection_degree) : null,
+            status: 'approved',
+            personalization_data: {
+              source: 'approval_flow',
+              original_prospect_id: prospect.prospect_id,
+              approved_at: new Date().toISOString()
+            },
+            created_at: new Date().toISOString()
+          };
+        });
+
+        const { data: addedProspects, error: insertError } = await supabase
+          .from('campaign_prospects')
+          .insert(campaignProspects)
+          .select('id');
+
+        if (insertError) {
+          console.error('Failed to add prospects to campaign:', insertError);
+          return NextResponse.json({
+            error: 'Failed to add prospects to campaign',
+            details: insertError.message
+          }, { status: 500 });
+        }
+
+        // Mark as transferred in approval data
+        await supabase
+          .from('prospect_approval_data')
+          .update({
+            approval_status: 'transferred_to_campaign',
+            transferred_at: new Date().toISOString(),
+            transferred_to_campaign_id: campaignId
+          })
+          .in('id', prospect_ids);
+
+        return NextResponse.json({
+          message: 'Prospects added to campaign successfully',
+          added_prospects: addedProspects?.length || 0,
+          total_requested: prospect_ids.length
+        }, { status: 201 });
+      }
+
+      // Fallback: Try workspace_prospects table (original behavior for UUID prospect IDs)
       const { data: existingProspects, error: prospectsError } = await supabase
         .from('workspace_prospects')
         .select('id')
@@ -176,6 +253,7 @@ export async function POST(
       const campaignProspects = prospect_ids.map(prospectId => ({
         campaign_id: campaignId,
         prospect_id: prospectId,
+        workspace_id: campaign.workspace_id,
         status: 'pending',
         created_at: new Date().toISOString()
       }));
