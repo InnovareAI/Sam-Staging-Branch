@@ -57,13 +57,13 @@ export async function GET(request: NextRequest) {
         posted_at,
         scheduled_post_time,
         created_at,
-        linkedin_posts_discovered!inner(
-          post_url,
+        linkedin_posts_discovered(
+          share_url,
           author_name,
           author_headline,
           post_content
         ),
-        linkedin_post_monitors!inner(name)
+        linkedin_post_monitors(name)
       `)
       .eq('workspace_id', workspaceId)
       .eq('status', status);
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
       id: c.id,
       monitor_id: c.monitor_id,
       post_id: c.post_id,
-      post_url: (c.linkedin_posts_discovered as any)?.post_url || '',
+      post_url: (c.linkedin_posts_discovered as any)?.share_url || '',
       post_author: (c.linkedin_posts_discovered as any)?.author_name || 'Unknown',
       post_author_headline: (c.linkedin_posts_discovered as any)?.author_headline || '',
       post_content: (c.linkedin_posts_discovered as any)?.post_content || '',
