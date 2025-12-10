@@ -4,7 +4,39 @@
 
 ### Completed Tasks
 
-#### 1. Fixed Duplicate Campaign Creation (CRITICAL)
+#### 1. Fixed Campaign Dropdown in Prospect Approval (Latest)
+**Problem:** The "Add to Existing Campaign" dropdown in DataCollectionHub was showing empty even when workspace had campaigns.
+
+**Root Cause:** The `/api/campaigns` endpoint returns `{ success, data: { campaigns } }` via `apiSuccess()` wrapper, but frontend was reading `data.campaigns` instead of `data.data.campaigns`.
+
+**Solution:** Updated campaign fetch logic to handle both response formats:
+```javascript
+const campaignsList = data.data?.campaigns || data.campaigns || []
+```
+
+**Files Modified:**
+- `components/DataCollectionHub.tsx` - Line 973
+- `components/ThreadedChatInterface.tsx` - Line 84
+
+#### 2. Rescheduled Samantha Truman's Campaigns (True People Consulting)
+**Problem:** Two new campaigns (Sequence A & B) were scheduled to start immediately instead of 8:00 AM Eastern.
+
+**Solution:** Rescheduled all 54 queue items:
+- **Sequence A (26 prospects):** Dec 10-12, 10/day, 8:00 AM - 12:30 PM ET, 30-min spacing
+- **Sequence B (28 prospects):** Dec 10-12, 10/day, 8:00 AM - 12:30 PM ET, 30-min spacing
+
+**Workspace:** `dea5a7f2-673c-4429-972d-6ba5fca473fb`
+**Campaign IDs:**
+- Sequence A: `22d6c138-98a4-4e0c-8c85-fbc4e2d76bdd`
+- Sequence B: `9904dfec-03dd-4ea7-be70-8db55cb3c261`
+
+#### 3. Verified Asphericon Campaign Running Correctly
+- 11 messages sent successfully
+- 368 pending
+- Schedule: 7:00 AM - 4:40 PM Berlin, 30/day, 20-min spacing
+- Skips weekends (Dec 13-14, 20-21, 25-28)
+
+#### 4. Fixed Duplicate Campaign Creation (CRITICAL)
 **Problem:** Users clicking "Approve & Launch" multiple times created duplicate campaigns (Asphericon had 6 campaigns instead of 1).
 
 **Solution:** Added loading state to `CampaignApprovalScreen.tsx`:
@@ -16,7 +48,7 @@
 **Files Modified:**
 - `app/components/CampaignApprovalScreen.tsx` - Added loading state and disabled buttons
 
-#### 2. Asphericon Campaign Queue Rescheduling
+#### 5. Asphericon Campaign Queue Rescheduling
 **Problem:** 377 prospects needed to be scheduled with proper spacing (30/day, 20-minute intervals).
 
 **Solution:** Created and ran `scripts/js/reschedule-asphericon-queue.mjs`:
@@ -29,7 +61,7 @@
 **Database Updates:**
 - Updated `workspace_accounts.daily_message_limit` from 20 to 30 for Asphericon
 
-#### 3. Added Slack Integration to UI
+#### 6. Added Slack Integration to UI
 **Problem:** Slack integration was built but not accessible in the UI.
 
 **Solution:** Added Slack to IntegrationsToolsModal:
@@ -117,16 +149,28 @@ CREATE TABLE workspace_integrations (
 
 ---
 
-## Asphericon Campaign Status
+## Active Campaign Status
 
+### Asphericon (Berlin)
 - **Campaign ID:** `d7ced167-e7e7-42f2-ba12-dc3bb2d29cfc`
 - **Workspace ID:** `c3100bea-82a6-4365-b159-6581f1be9be3`
 - **Total Prospects:** 379
-- **Queue Status:** 377 pending (rescheduled)
+- **Sent:** 11
+- **Pending:** 368
 - **Schedule:** Dec 10 - Dec 30, 2025
 - **Daily Limit:** 30 messages
 - **Spacing:** 20 minutes
-- **Timezone:** Europe/Berlin
+- **Timezone:** Europe/Berlin (7:00 AM - 4:40 PM)
+
+### Samantha Truman - True People Consulting (Eastern)
+- **Workspace ID:** `dea5a7f2-673c-4429-972d-6ba5fca473fb`
+- **Campaigns:**
+  - Sequence A: `22d6c138-98a4-4e0c-8c85-fbc4e2d76bdd` (26 prospects)
+  - Sequence B: `9904dfec-03dd-4ea7-be70-8db55cb3c261` (28 prospects)
+- **Schedule:** Dec 10-12, 2025
+- **Daily Limit:** 10 per campaign (20 total)
+- **Spacing:** 30 minutes
+- **Timezone:** US/Eastern (8:00 AM - 12:30 PM)
 
 ---
 
@@ -135,6 +179,7 @@ CREATE TABLE workspace_integrations (
 - **Production:** https://app.meet-sam.com
 - **Last Deploy:** December 10, 2025
 - **Commits:**
+  - `c223b914` - Fix campaign dropdown in prospect approval
   - `4b0be938` - Fix duplicate campaign creation
   - `1c81e90c` - Add Slack integration to UI
 
