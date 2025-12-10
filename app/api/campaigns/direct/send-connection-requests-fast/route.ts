@@ -72,9 +72,26 @@ export async function POST(req: NextRequest) {
 
     // 1. Fetch campaign - use admin client for cron, or user client for RLS check
     // CRITICAL FIX (Dec 4): Also fetch connection_message column AND linkedin_config
+    // CRITICAL FIX (Dec 10): Also fetch linkedin_account_id to validate it exists
     const { data: campaign, error: campaignError } = await supabaseAdmin
       .from('campaigns')
-      .select('id, campaign_name, message_templates, workspace_id, draft_data, linkedin_config, connection_message')
+      .select(`
+        id,
+        campaign_name,
+        name,
+        message_templates,
+        workspace_id,
+        draft_data,
+        linkedin_config,
+        connection_message,
+        linkedin_account_id,
+        workspace_accounts!linkedin_account_id (
+          id,
+          unipile_account_id,
+          account_name,
+          connection_status
+        )
+      `)
       .eq('id', campaignId)
       .single();
 
@@ -82,6 +99,42 @@ export async function POST(req: NextRequest) {
       console.error('Campaign not found or access denied:', campaignError);
       return NextResponse.json({ error: 'Campaign not found or access denied' }, { status: 404 });
     }
+
+    // CRITICAL VALIDATION (Dec 10): LinkedIn account MUST be configured
+    // This prevents campaigns from silently failing when linkedin_account_id is null
+    if (!campaign.linkedin_account_id) {
+      console.error('❌ CRITICAL: Campaign has no LinkedIn account configured!');
+      console.error(`   Campaign ID: ${campaignId}`);
+      console.error(`   Campaign Name: ${campaign.campaign_name || campaign.name || 'Unknown'}`);
+      return NextResponse.json({
+        error: 'LinkedIn account not configured',
+        details: 'This campaign has no LinkedIn account selected. Please edit the campaign and select a LinkedIn account before launching.',
+        campaignId,
+        campaignName: campaign.campaign_name || campaign.name
+      }, { status: 400 });
+    }
+
+    // CRITICAL VALIDATION (Dec 10): Verify the LinkedIn account exists and is connected
+    const linkedinAccount = campaign.workspace_accounts as any;
+    if (!linkedinAccount) {
+      console.error('❌ CRITICAL: LinkedIn account not found in workspace_accounts!');
+      return NextResponse.json({
+        error: 'LinkedIn account not found',
+        details: 'The configured LinkedIn account no longer exists. Please select a different account.',
+        campaignId
+      }, { status: 400 });
+    }
+
+    if (linkedinAccount.connection_status !== 'connected') {
+      console.error(`❌ LinkedIn account is ${linkedinAccount.connection_status}, not connected`);
+      return NextResponse.json({
+        error: 'LinkedIn account disconnected',
+        details: `The account "${linkedinAccount.account_name}" is ${linkedinAccount.connection_status}. Please reconnect it in Settings → LinkedIn Accounts.`,
+        campaignId
+      }, { status: 400 });
+    }
+
+    console.log(`✅ LinkedIn account validated: ${linkedinAccount.account_name} (${linkedinAccount.unipile_account_id})`)
 
     // 1.5. CRITICAL FIX: Transfer draft_data.csvData to campaign_prospects if needed
     // This handles the case where drafts were created with prospects stored in draft_data
