@@ -32,6 +32,7 @@ import AIConfiguration from '@/app/components/AIConfiguration';
 import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import CommentApprovalWorkflow from '@/app/components/CommentApprovalWorkflow';
 import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
+import { IntegrationsToolsModal } from '@/app/components/IntegrationsToolsModal';
 // SuperAdminPage removed - no cross-workspace data access allowed
 import {
   Activity,
@@ -5372,6 +5373,18 @@ export default function Page() {
             onClose={() => setShowCrmIntegrationModal(false)}
             workspaceId={targetWorkspace?.id}
             workspaceName={targetWorkspace?.name || 'Workspace'}
+          />
+        );
+      })()}
+
+      {/* Integrations Tools Modal */}
+      {(() => {
+        if (!showIntegrationsToolsModal || !targetWorkspace?.id) return null;
+        return (
+          <IntegrationsToolsModal
+            isOpen={showIntegrationsToolsModal}
+            onClose={() => setShowIntegrationsToolsModal(false)}
+            workspaceId={targetWorkspace.id}
           />
         );
       })()}
