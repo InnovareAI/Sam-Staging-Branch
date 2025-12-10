@@ -155,9 +155,10 @@
 ## **🌍 COMPLIANCE & SECURITY**
 
 ### **Global Compliance Ready**
-- **GDPR** - European data protection compliance
-- **CCPA** - California consumer privacy compliance  
 - **SOC 2 Type II** - Enterprise security certification
+- **HIPAA** - Healthcare data protection compliance
+- **GDPR** - European data protection compliance
+- **CCPA** - California consumer privacy compliance
 - **PIPEDA** - Canadian privacy law compliance
 
 ### **Enterprise Security**

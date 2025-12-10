@@ -28,6 +28,12 @@ SAM isn't just a tool; it's your AI-powered assistant managing a team of special
 
 Built on enterprise-grade multi-tenant architecture with workspace isolation and Row Level Security.
 
+**Compliance & Security:**
+- **SOC 2 Type II** compliant
+- **HIPAA** compliant
+- **GDPR** compliant
+- **CCPA** compliant
+
 ## 🚀 Quick Start
 
 ### Prerequisites
