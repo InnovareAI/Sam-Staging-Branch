@@ -26,6 +26,9 @@ SAM isn't just a tool; it's your AI-powered assistant managing a team of special
 - **Reply Management** - AI-generated response drafts with human-in-the-loop approval
 - **24/7 Automation** - 15+ specialized agents running continuously, handling rate limits, scheduling, and data integrity
 
+**Industry Expertise:**
+SAM has been specifically trained to be an expert in 11+ industries including SaaS, Healthcare, Financial Services, Legal/LegalTech, Pharma/Biotech, Manufacturing, Consulting, Recruiting, Marketing Agencies, Coaching/Advisory, and Cybersecurity. SAM understands regulatory frameworks (HIPAA, FINRA, FDA, etc.), adapts tonality based on seniority level and industry context, and uses industry-specific terminology to craft authentic, relevant outreach.
+
 Built on enterprise-grade multi-tenant architecture with workspace isolation and Row Level Security.
 
 **Compliance & Security:**
