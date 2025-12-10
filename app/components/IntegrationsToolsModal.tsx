@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react';
 import { X, Linkedin, Mail, Send, Zap } from 'lucide-react';
-import { UnipileModal } from '@/components/integrations/UnipileModal';
-import EmailProvidersModal from '@/app/components/EmailProvidersModal';
-import ReachInboxModal from '@/app/components/ReachInboxModal';
+import dynamic from 'next/dynamic';
+
+const UnipileModal = dynamic(() => import('@/components/integrations/UnipileModal').then(mod => ({ default: mod.UnipileModal })), { ssr: false });
+const EmailProvidersModal = dynamic(() => import('@/app/components/EmailProvidersModal'), { ssr: false });
+const ReachInboxModal = dynamic(() => import('@/app/components/ReachInboxModal'), { ssr: false });
 
 interface IntegrationsToolsModalProps {
   isOpen: boolean;

@@ -5378,8 +5378,12 @@ export default function Page() {
       })()}
 
       {/* Integrations Tools Modal */}
-      {(() => {
-        if (!showIntegrationsToolsModal || !targetWorkspace?.id) return null;
+      {showIntegrationsToolsModal && (() => {
+        const targetWorkspace = isSuperAdmin
+          ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+          : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+
+        if (!targetWorkspace?.id) return null;
         return (
           <IntegrationsToolsModal
             isOpen={showIntegrationsToolsModal}

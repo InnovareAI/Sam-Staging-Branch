@@ -39,6 +39,9 @@ export default function CampaignApprovalScreen({
 }: CampaignApprovalScreenProps) {
   const [messages, setMessages] = useState(campaignData.messages || {});
 
+  // CRITICAL FIX (Dec 10): Prevent duplicate campaign creation from double-clicks
+  const [isLaunching, setIsLaunching] = useState(false);
+
   // Channel type selection state
   const [channelType, setChannelType] = useState<'linkedin' | 'email'>(
     campaignData.type === 'Email' ? 'email' : 'linkedin'
@@ -139,6 +142,13 @@ export default function CampaignApprovalScreen({
   };
 
   const handleApprove = () => {
+    // CRITICAL: Prevent double-click
+    if (isLaunching) {
+      console.log('⚠️ Campaign launch already in progress - ignoring duplicate click');
+      return;
+    }
+    setIsLaunching(true);
+
     // Build flow_settings for data-driven campaigns
     const flow_settings = {
       campaign_type: campaignData.campaignType === 'messenger' ? 'linkedin_dm' : 'linkedin_connection',
@@ -308,7 +318,12 @@ export default function CampaignApprovalScreen({
         <div className="flex items-center justify-end gap-4 bg-gray-800 rounded-lg p-6 border border-gray-700">
           <button
             onClick={onReject}
-            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+            disabled={isLaunching}
+            className={`px-6 py-3 text-white rounded-lg flex items-center gap-2 transition-colors ${
+              isLaunching
+                ? 'bg-gray-500 cursor-not-allowed'
+                : 'bg-red-600 hover:bg-red-700'
+            }`}
           >
             <XCircle size={20} />
             Reject & Edit
@@ -316,10 +331,27 @@ export default function CampaignApprovalScreen({
 
           <button
             onClick={handleApprove}
-            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+            disabled={isLaunching}
+            className={`px-6 py-3 text-white rounded-lg flex items-center gap-2 transition-colors ${
+              isLaunching
+                ? 'bg-gray-500 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700'
+            }`}
           >
-            <CheckCircle size={20} />
-            Approve & Launch
+            {isLaunching ? (
+              <>
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Launching...
+              </>
+            ) : (
+              <>
+                <CheckCircle size={20} />
+                Approve & Launch
+              </>
+            )}
           </button>
         </div>
       </div>
