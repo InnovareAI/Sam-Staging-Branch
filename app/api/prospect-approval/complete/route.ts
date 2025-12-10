@@ -52,14 +52,18 @@ export async function POST(request: NextRequest) {
     if (updateError) throw updateError
 
     // Generate final approved prospects list
-    const { data: approvedProspects } = await supabase
+    // FIX: Use approval_status directly instead of JOIN (no FK relationship exists)
+    const { data: approvedProspects, error: approvedError } = await supabase
       .from('prospect_approval_data')
-      .select(`
-        *,
-        prospect_approval_decisions!inner(decision)
-      `)
+      .select('*')
       .eq('session_id', session_id)
-      .eq('prospect_approval_decisions.decision', 'approved')
+      .eq('approval_status', 'approved')
+
+    if (approvedError) {
+      console.error('Error fetching approved prospects:', approvedError);
+    }
+
+    console.log(`Found ${approvedProspects?.length || 0} approved prospects for session ${session_id}`);
 
     // Create final prospect export record
     const { data: exportRecord, error: exportError } = await supabase
