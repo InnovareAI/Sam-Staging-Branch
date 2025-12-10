@@ -4,23 +4,19 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   MessageSquare,
-  Target,
-  CheckCircle2,
   Clock,
-  TrendingUp,
-  Users,
   Plus,
   Settings,
-  BarChart3,
   AlertCircle,
   Loader2,
   ExternalLink,
-  Eye,
-  UserCircle2,
   Hash,
   Building2,
   User,
-  Search
+  UserCircle2,
+  Target,
+  CheckCircle2,
+  BarChart3
 } from 'lucide-react';
 import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import CommentingAgentSettings from '@/app/components/CommentingAgentSettings';
@@ -33,15 +29,6 @@ interface DashboardStats {
   posted_this_week: number;
   engagement_rate: number;
   profiles_monitored: number;
-}
-
-interface RecentActivity {
-  id: string;
-  type: 'posted' | 'pending' | 'discovered';
-  post_author: string;
-  post_snippet: string;
-  comment_snippet?: string;
-  timestamp: string;
 }
 
 interface Monitor {
@@ -69,7 +56,6 @@ export default function CommentingAgentDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [agentEnabled, setAgentEnabled] = useState(false);
@@ -86,7 +72,7 @@ export default function CommentingAgentDashboard() {
     loadDashboardData();
   }, [workspaceId]);
 
-  // Categorize monitors by type based on hashtags array content
+  // Categorize monitors by type based on hashtags array prefixes
   const categorizeMonitors = (monitors: Monitor[]): MonitorsByType => {
     const result: MonitorsByType = {
       keywords: [],
@@ -98,13 +84,12 @@ export default function CommentingAgentDashboard() {
 
     monitors.forEach(monitor => {
       // Check hashtags array for type prefixes
-      const hasKeywordPrefix = monitor.hashtags?.some(h => h.startsWith('KEYWORD:'));
-      const hasHashtagPrefix = monitor.hashtags?.some(h => h.startsWith('HASHTAG:') || h.startsWith('#'));
-      const hasProfilePrefix = monitor.hashtags?.some(h => h.startsWith('PROFILE:'));
-      const hasCompanyPrefix = monitor.hashtags?.some(h => h.startsWith('COMPANY:'));
       const isMyProfile = monitor.hashtags?.some(h => h.startsWith('MY_PROFILE:'));
       const isMyCompany = monitor.hashtags?.some(h => h.startsWith('MY_COMPANY:'));
-      const hasKeywordsArray = monitor.keywords && monitor.keywords.length > 0;
+      const hasCompanyPrefix = monitor.hashtags?.some(h => h.startsWith('COMPANY:'));
+      const hasProfilePrefix = monitor.hashtags?.some(h => h.startsWith('PROFILE:'));
+      const hasKeywordPrefix = monitor.hashtags?.some(h => h.startsWith('KEYWORD:'));
+      const hasHashtagPrefix = monitor.hashtags?.some(h => h.startsWith('HASHTAG:') || h.startsWith('#'));
 
       if (isMyProfile) {
         result.myProfile.push(monitor);
@@ -114,8 +99,7 @@ export default function CommentingAgentDashboard() {
         result.companies.push(monitor);
       } else if (hasProfilePrefix) {
         result.profiles.push(monitor);
-      } else if (hasKeywordPrefix || hasHashtagPrefix || hasKeywordsArray) {
-        // Keywords and hashtags go to same bucket
+      } else if (hasKeywordPrefix || hasHashtagPrefix) {
         result.keywords.push(monitor);
       } else {
         // Default to keywords if no clear type
@@ -129,10 +113,8 @@ export default function CommentingAgentDashboard() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch dashboard stats, activity, settings, and monitors
-      const [statsRes, activityRes, settingsRes, monitorsRes] = await Promise.all([
+      const [statsRes, settingsRes, monitorsRes] = await Promise.all([
         fetch(`/api/linkedin-commenting/stats?workspace_id=${workspaceId}`),
-        fetch(`/api/linkedin-commenting/recent-activity?workspace_id=${workspaceId}&limit=5`),
         fetch(`/api/linkedin-commenting/settings?workspace_id=${workspaceId}`),
         fetch(`/api/linkedin-commenting/monitors?workspace_id=${workspaceId}`)
       ]);
@@ -140,11 +122,6 @@ export default function CommentingAgentDashboard() {
       if (statsRes.ok) {
         const data = await statsRes.json();
         setStats(data);
-      }
-
-      if (activityRes.ok) {
-        const data = await activityRes.json();
-        setRecentActivity(data.activities || []);
       }
 
       if (settingsRes.ok) {
@@ -163,129 +140,6 @@ export default function CommentingAgentDashboard() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const StatCard = ({ icon: Icon, label, value, subtext, color }: {
-    icon: any;
-    label: string;
-    value: string | number;
-    subtext?: string;
-    color: string;
-  }) => (
-    <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
-      <div className="flex items-center justify-between mb-3">
-        <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center`}>
-          <Icon size={20} className="text-white" />
-        </div>
-      </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-sm text-gray-400">{label}</p>
-      {subtext && <p className="text-xs text-gray-500 mt-1">{subtext}</p>}
-    </div>
-  );
-
-  const QuickActionButton = ({ icon: Icon, label, onClick, variant = 'default' }: {
-    icon: any;
-    label: string;
-    onClick: () => void;
-    variant?: 'default' | 'primary';
-  }) => (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors ${
-        variant === 'primary'
-          ? 'bg-pink-600 hover:bg-pink-700 text-white'
-          : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-      }`}
-    >
-      <Icon size={16} />
-      {label}
-    </button>
-  );
-
-  // Monitor Section Card Component
-  const MonitorSection = ({
-    title,
-    description,
-    icon: Icon,
-    monitors,
-    color,
-    onAdd,
-    emptyText
-  }: {
-    title: string;
-    description: string;
-    icon: any;
-    monitors: Monitor[];
-    color: string;
-    onAdd: () => void;
-    emptyText: string;
-  }) => {
-    const activeCount = monitors.filter(m => m.status === 'active').length;
-
-    return (
-      <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-        <div className="p-4 border-b border-gray-700">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center`}>
-                <Icon size={20} className="text-white" />
-              </div>
-              <div>
-                <h3 className="text-white font-semibold">{title}</h3>
-                <p className="text-gray-400 text-sm">{description}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-400">{activeCount} active</span>
-              <button
-                onClick={onAdd}
-                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                title={`Add ${title}`}
-              >
-                <Plus size={16} className="text-gray-300" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4">
-          {monitors.length === 0 ? (
-            <div className="text-center py-6">
-              <Icon size={32} className="mx-auto text-gray-600 mb-2" />
-              <p className="text-gray-500 text-sm">{emptyText}</p>
-              <button
-                onClick={onAdd}
-                className="mt-3 text-pink-400 hover:text-pink-300 text-sm transition-colors"
-              >
-                + Add your first one
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-[200px] overflow-y-auto">
-              {monitors.map((monitor) => (
-                <div
-                  key={monitor.id}
-                  onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${monitor.id}`)}
-                  className="flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-2 h-2 rounded-full ${monitor.status === 'active' ? 'bg-green-400' : 'bg-gray-500'}`} />
-                    <span className="text-white text-sm truncate group-hover:text-pink-400 transition-colors">
-                      {monitor.name || 'Unnamed Monitor'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>{monitor.posts_count || 0} posts</span>
-                    <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
   };
 
   if (loading) {
@@ -310,17 +164,20 @@ export default function CommentingAgentDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <QuickActionButton
-            icon={Settings}
-            label="Settings"
+          <button
             onClick={() => setShowSettingsModal(true)}
-          />
-          <QuickActionButton
-            icon={Plus}
-            label="Add Profile"
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors"
+          >
+            <Settings size={16} />
+            Settings
+          </button>
+          <button
             onClick={() => setShowCampaignModal(true)}
-            variant="primary"
-          />
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-pink-600 hover:bg-pink-700 text-white transition-colors"
+          >
+            <Plus size={16} />
+            Add Monitor
+          </button>
         </div>
       </div>
 
@@ -343,142 +200,398 @@ export default function CommentingAgentDashboard() {
         </div>
       )}
 
-      {/* Section 1: Pending Approvals - Full Width Banner */}
-      <div
-        onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/approve`)}
-        className="mb-6 bg-gradient-to-r from-amber-900/40 to-orange-900/40 rounded-xl p-5 border border-amber-700/50 cursor-pointer hover:border-amber-600 transition-colors group"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-amber-600 rounded-xl flex items-center justify-center">
-              <Clock size={28} className="text-white" />
+      {/* Stats Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center">
+              <Target size={16} className="text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                Pending Approvals
-                {(stats?.pending_comments || 0) > 0 && (
-                  <span className="px-2 py-0.5 bg-amber-500 text-white text-sm rounded-full animate-pulse">
-                    {stats?.pending_comments}
-                  </span>
-                )}
-              </h2>
-              <p className="text-amber-200/70">Review AI-generated comments before posting</p>
+              <p className="text-2xl font-bold text-white">{monitors.filter(m => m.status === 'active').length}</p>
+              <p className="text-xs text-gray-400">Active Monitors</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-2xl font-bold text-white">{stats?.pending_comments || 0}</p>
-              <p className="text-amber-200/70 text-sm">awaiting review</p>
+          <p className="text-xs text-gray-500">{monitors.length} total</p>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center">
+              <Clock size={16} className="text-white" />
             </div>
-            <ExternalLink size={20} className="text-amber-400 group-hover:text-amber-300 transition-colors" />
+            <div>
+              <p className="text-2xl font-bold text-white">{stats?.pending_comments || 0}</p>
+              <p className="text-xs text-gray-400">Pending Approval</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">Awaiting review</p>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+              <CheckCircle2 size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-white">{stats?.posted_today || 0}</p>
+              <p className="text-xs text-gray-400">Posted Today</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">{stats?.posted_this_week || 0} this week</p>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <BarChart3 size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-white">{stats?.engagement_rate || 0}%</p>
+              <p className="text-xs text-gray-400">Engagement Rate</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">Average</p>
+        </div>
+      </div>
+
+      {/* Section 1: Pending Approvals */}
+      <div className="mb-8">
+        <div
+          onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/approve`)}
+          className="bg-amber-900/30 rounded-lg p-5 border border-amber-700/50 cursor-pointer hover:border-amber-600 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-amber-600 rounded-lg flex items-center justify-center">
+                <Clock size={24} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  1. Pending Approvals
+                  {(stats?.pending_comments || 0) > 0 && (
+                    <span className="px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full">
+                      {stats?.pending_comments}
+                    </span>
+                  )}
+                </h2>
+                <p className="text-amber-200/70 text-sm">Review AI-generated comments before posting</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-2xl font-bold text-white">{stats?.pending_comments || 0}</p>
+                <p className="text-amber-200/70 text-xs">awaiting</p>
+              </div>
+              <ExternalLink size={20} className="text-amber-400" />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Section Header: Comment on Others' Posts */}
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Target size={20} className="text-pink-500" />
-          Comment on Others' Posts
-        </h2>
-        <p className="text-gray-400 text-sm">Monitor profiles, companies & keywords to engage with their content</p>
+      {/* Section 2: Monitored Keywords */}
+      <div className="mb-8">
+        <div className="bg-gray-800 rounded-lg border border-gray-700">
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+                <Hash size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">2. Monitored Keywords</h2>
+                <p className="text-gray-400 text-sm">Track hashtags & keywords across LinkedIn</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400">
+                {monitorsByType.keywords.filter(m => m.status === 'active').length} active
+              </span>
+              <button
+                onClick={() => setShowCampaignModal(true)}
+                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <Plus size={16} className="text-gray-300" />
+              </button>
+            </div>
+          </div>
+          <div className="p-4">
+            {monitorsByType.keywords.length === 0 ? (
+              <div className="text-center py-8">
+                <Hash size={32} className="mx-auto text-gray-600 mb-2" />
+                <p className="text-gray-500 text-sm mb-2">No keyword monitors yet</p>
+                <button
+                  onClick={() => setShowCampaignModal(true)}
+                  className="text-pink-400 hover:text-pink-300 text-sm transition-colors"
+                >
+                  + Add your first keyword monitor
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {monitorsByType.keywords.map((monitor) => (
+                  <div
+                    key={monitor.id}
+                    onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${monitor.id}`)}
+                    className="flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${monitor.status === 'active' ? 'bg-green-400' : 'bg-gray-500'}`} />
+                      <span className="text-white text-sm">{monitor.name || 'Unnamed Monitor'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>{monitor.posts_count || 0} posts</span>
+                      <ExternalLink size={12} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Sections 2-4: Monitored Keywords, Profiles, Companies */}
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
-        <MonitorSection
-          title="Monitored Keywords"
-          description="Track hashtags & keywords"
-          icon={Hash}
-          monitors={monitorsByType.keywords}
-          color="bg-purple-600"
-          onAdd={() => setShowCampaignModal(true)}
-          emptyText="No keyword monitors yet"
-        />
-
-        <MonitorSection
-          title="Monitored Profiles"
-          description="Follow specific people"
-          icon={User}
-          monitors={monitorsByType.profiles}
-          color="bg-pink-600"
-          onAdd={() => setShowCampaignModal(true)}
-          emptyText="No profile monitors yet"
-        />
-
-        <MonitorSection
-          title="Monitored Companies"
-          description="Track company pages"
-          icon={Building2}
-          monitors={monitorsByType.companies}
-          color="bg-blue-600"
-          onAdd={() => setShowCampaignModal(true)}
-          emptyText="No company monitors yet"
-        />
+      {/* Section 3: Monitored Profiles */}
+      <div className="mb-8">
+        <div className="bg-gray-800 rounded-lg border border-gray-700">
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-pink-600 rounded-lg flex items-center justify-center">
+                <User size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">3. Monitored Profiles</h2>
+                <p className="text-gray-400 text-sm">Follow and engage with specific LinkedIn profiles</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400">
+                {monitorsByType.profiles.filter(m => m.status === 'active').length} active
+              </span>
+              <button
+                onClick={() => setShowCampaignModal(true)}
+                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <Plus size={16} className="text-gray-300" />
+              </button>
+            </div>
+          </div>
+          <div className="p-4">
+            {monitorsByType.profiles.length === 0 ? (
+              <div className="text-center py-8">
+                <User size={32} className="mx-auto text-gray-600 mb-2" />
+                <p className="text-gray-500 text-sm mb-2">No profile monitors yet</p>
+                <button
+                  onClick={() => setShowCampaignModal(true)}
+                  className="text-pink-400 hover:text-pink-300 text-sm transition-colors"
+                >
+                  + Add your first profile monitor
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {monitorsByType.profiles.map((monitor) => (
+                  <div
+                    key={monitor.id}
+                    onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${monitor.id}`)}
+                    className="flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${monitor.status === 'active' ? 'bg-green-400' : 'bg-gray-500'}`} />
+                      <span className="text-white text-sm">{monitor.name || 'Unnamed Monitor'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>{monitor.posts_count || 0} posts</span>
+                      <ExternalLink size={12} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Section Header: My Posts & Companies */}
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <UserCircle2 size={20} className="text-cyan-500" />
-          My Posts & Companies
-        </h2>
-        <p className="text-gray-400 text-sm">Auto-reply to comments on your own posts and company pages</p>
+      {/* Section 4: Monitored Companies */}
+      <div className="mb-8">
+        <div className="bg-gray-800 rounded-lg border border-gray-700">
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Building2 size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">4. Monitored Companies</h2>
+                <p className="text-gray-400 text-sm">Track and engage with company pages</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400">
+                {monitorsByType.companies.filter(m => m.status === 'active').length} active
+              </span>
+              <button
+                onClick={() => setShowCampaignModal(true)}
+                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <Plus size={16} className="text-gray-300" />
+              </button>
+            </div>
+          </div>
+          <div className="p-4">
+            {monitorsByType.companies.length === 0 ? (
+              <div className="text-center py-8">
+                <Building2 size={32} className="mx-auto text-gray-600 mb-2" />
+                <p className="text-gray-500 text-sm mb-2">No company monitors yet</p>
+                <button
+                  onClick={() => setShowCampaignModal(true)}
+                  className="text-pink-400 hover:text-pink-300 text-sm transition-colors"
+                >
+                  + Add your first company monitor
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {monitorsByType.companies.map((monitor) => (
+                  <div
+                    key={monitor.id}
+                    onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${monitor.id}`)}
+                    className="flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${monitor.status === 'active' ? 'bg-green-400' : 'bg-gray-500'}`} />
+                      <span className="text-white text-sm">{monitor.name || 'Unnamed Monitor'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>{monitor.posts_count || 0} posts</span>
+                      <ExternalLink size={12} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Sections 5-6: My Profile, My Companies */}
-      <div className="grid md:grid-cols-2 gap-4 mb-8">
-        <MonitorSection
-          title="My Profile"
-          description="Auto-reply to your post comments"
-          icon={UserCircle2}
-          monitors={monitorsByType.myProfile}
-          color="bg-cyan-600"
-          onAdd={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
-          emptyText="No personal post monitors yet"
-        />
-
-        <MonitorSection
-          title="My Companies"
-          description="Manage your company page comments"
-          icon={Building2}
-          monitors={monitorsByType.myCompanies}
-          color="bg-teal-600"
-          onAdd={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
-          emptyText="No company page monitors yet"
-        />
+      {/* Section 5: My Profile */}
+      <div className="mb-8">
+        <div className="bg-gray-800 rounded-lg border border-gray-700">
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-cyan-600 rounded-lg flex items-center justify-center">
+                <UserCircle2 size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">5. My Profile</h2>
+                <p className="text-gray-400 text-sm">Auto-reply to comments on your own posts</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400">
+                {monitorsByType.myProfile.filter(m => m.status === 'active').length} active
+              </span>
+              <button
+                onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
+                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <Plus size={16} className="text-gray-300" />
+              </button>
+            </div>
+          </div>
+          <div className="p-4">
+            {monitorsByType.myProfile.length === 0 ? (
+              <div className="text-center py-8">
+                <UserCircle2 size={32} className="mx-auto text-gray-600 mb-2" />
+                <p className="text-gray-500 text-sm mb-2">No personal post monitors yet</p>
+                <button
+                  onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
+                  className="text-pink-400 hover:text-pink-300 text-sm transition-colors"
+                >
+                  + Monitor your profile posts
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {monitorsByType.myProfile.map((monitor) => (
+                  <div
+                    key={monitor.id}
+                    onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${monitor.id}`)}
+                    className="flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${monitor.status === 'active' ? 'bg-green-400' : 'bg-gray-500'}`} />
+                      <span className="text-white text-sm">{monitor.name || 'Unnamed Monitor'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>{monitor.posts_count || 0} posts</span>
+                      <ExternalLink size={12} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          icon={Target}
-          label="Active Monitors"
-          value={monitors.filter(m => m.status === 'active').length}
-          subtext={`${monitors.length} total`}
-          color="bg-pink-600"
-        />
-        <StatCard
-          icon={Clock}
-          label="Pending Approval"
-          value={stats?.pending_comments || 0}
-          subtext="Comments awaiting review"
-          color="bg-amber-600"
-        />
-        <StatCard
-          icon={CheckCircle2}
-          label="Posted Today"
-          value={stats?.posted_today || 0}
-          subtext={`${stats?.posted_this_week || 0} this week`}
-          color="bg-green-600"
-        />
-        <StatCard
-          icon={BarChart3}
-          label="Engagement Rate"
-          value={`${stats?.engagement_rate || 0}%`}
-          subtext="Average across monitors"
-          color="bg-blue-600"
-        />
+      {/* Section 6: My Companies */}
+      <div className="mb-8">
+        <div className="bg-gray-800 rounded-lg border border-gray-700">
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center">
+                <Building2 size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">6. My Companies</h2>
+                <p className="text-gray-400 text-sm">Manage and respond to company page comments</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400">
+                {monitorsByType.myCompanies.filter(m => m.status === 'active').length} active
+              </span>
+              <button
+                onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
+                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <Plus size={16} className="text-gray-300" />
+              </button>
+            </div>
+          </div>
+          <div className="p-4">
+            {monitorsByType.myCompanies.length === 0 ? (
+              <div className="text-center py-8">
+                <Building2 size={32} className="mx-auto text-gray-600 mb-2" />
+                <p className="text-gray-500 text-sm mb-2">No company page monitors yet</p>
+                <button
+                  onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
+                  className="text-pink-400 hover:text-pink-300 text-sm transition-colors"
+                >
+                  + Monitor your company pages
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {monitorsByType.myCompanies.map((monitor) => (
+                  <div
+                    key={monitor.id}
+                    onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${monitor.id}`)}
+                    className="flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${monitor.status === 'active' ? 'bg-green-400' : 'bg-gray-500'}`} />
+                      <span className="text-white text-sm">{monitor.name || 'Unnamed Monitor'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <span>{monitor.posts_count || 0} posts</span>
+                      <ExternalLink size={12} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Modals */}
