@@ -147,7 +147,10 @@ class AirtableService {
     try {
       console.log(`📊 Syncing LinkedIn lead to Airtable: ${data.name}`);
 
-      const status = data.intent ? INTENT_TO_STATUS[data.intent] || 'Interested' : 'Interested';
+      // Sanitize intent - strip any quotes that might have been added during JSON serialization
+      const cleanIntent = data.intent?.replace(/^["']|["']$/g, '').toLowerCase();
+      const status = cleanIntent ? INTENT_TO_STATUS[cleanIntent] || 'Interested' : 'Interested';
+      console.log(`   Intent: "${data.intent}" -> cleanIntent: "${cleanIntent}" -> status: "${status}"`);
 
       const fields: Record<string, any> = {
         'Name of Interested Lead': data.name,
@@ -202,7 +205,9 @@ class AirtableService {
     try {
       console.log(`📊 Syncing email lead to Airtable: ${data.email}`);
 
-      const status = data.intent ? INTENT_TO_STATUS[data.intent] || 'Interested' : undefined;
+      // Sanitize intent - strip any quotes that might have been added during JSON serialization
+      const cleanIntent = data.intent?.replace(/^["']|["']$/g, '').toLowerCase();
+      const status = cleanIntent ? INTENT_TO_STATUS[cleanIntent] || 'Interested' : undefined;
 
       // Extract domain from email
       const emailDomain = data.email.split('@')[1] || '';
