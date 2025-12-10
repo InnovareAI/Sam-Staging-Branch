@@ -1,5 +1,5 @@
 # SAM AI Knowledge Base
-Version: v4.4 | Last Updated: 2025-09-09
+Version: v4.5 | Last Updated: 2025-12-11
 
 ## Overview
 This knowledge base contains all training data and conversational patterns for SAM AI, organized for easy reference and integration.
@@ -21,6 +21,18 @@ This knowledge base contains all training data and conversational patterns for S
 - `objection-handling.md` - Common objections and proven responses
 - `case-studies.md` - Success stories and ROI metrics
 
+### Reply Agent (`/reply-agent/`)
+- `reply-agent-training.md` - Complete training framework for SAM's Reply Agent
+  - Research-first methodology
+  - Response framework (Acknowledge → Reframe → Next Step)
+  - Intent classification and handling strategies
+  - Before/after examples with corrections
+  - Tone guidelines and length constraints
+  - Industry-specific hooks
+  - Objection handling
+  - Special scenarios (graceful exits, referrals, hostile responses)
+  - Multilingual support
+
 ### Verticals (`/verticals/`)
 - `industry-bursts.md` - Industry-specific conversation starters and pain points
 
@@ -30,3 +42,4 @@ This knowledge base is designed to be referenced by SAM AI for:
 - Context-aware response generation
 - Objection handling and sales conversation flow
 - Industry-specific positioning and messaging
+- **Reply Agent training** - LinkedIn DM response generation with research-first methodology
