@@ -1,5 +1,5 @@
 # SAM AI Knowledge Base
-Version: v4.5 | Last Updated: 2025-12-11
+Version: v4.6 | Last Updated: 2025-12-11
 
 ## Overview
 This knowledge base contains all training data and conversational patterns for SAM AI, organized for easy reference and integration.
@@ -33,6 +33,18 @@ This knowledge base contains all training data and conversational patterns for S
   - Special scenarios (graceful exits, referrals, hostile responses)
   - Multilingual support
 
+### Follow-Up Agent (`/followup-agent/`)
+- `followup-agent-training.md` - Complete training framework for SAM's Follow-Up Agent
+  - Follow-up philosophy (silence ≠ rejection)
+  - Cadence framework by scenario (no reply, went silent, no-show, post-demo)
+  - 4-touch sequence templates (light bump → add value → different angle → breakup)
+  - Scenario-specific sequences with timing and messaging
+  - Prospect lifecycle management (archive vs nurture vs active)
+  - Channel-specific guidance (LinkedIn, Email, InMail)
+  - Multi-channel follow-up strategy
+  - Timing best practices and holiday handling
+  - Integration with Reply Agent (handoff protocol)
+
 ### Verticals (`/verticals/`)
 - `industry-bursts.md` - Industry-specific conversation starters and pain points
 
@@ -43,3 +55,4 @@ This knowledge base is designed to be referenced by SAM AI for:
 - Objection handling and sales conversation flow
 - Industry-specific positioning and messaging
 - **Reply Agent training** - LinkedIn DM response generation with research-first methodology
+- **Follow-Up Agent training** - Proactive re-engagement sequences for silent prospects
