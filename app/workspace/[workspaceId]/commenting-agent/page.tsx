@@ -16,7 +16,11 @@ import {
   Loader2,
   ExternalLink,
   Eye,
-  UserCircle2
+  UserCircle2,
+  Hash,
+  Building2,
+  User,
+  Search
 } from 'lucide-react';
 import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import CommentingAgentSettings from '@/app/components/CommentingAgentSettings';
@@ -40,6 +44,24 @@ interface RecentActivity {
   timestamp: string;
 }
 
+interface Monitor {
+  id: string;
+  name: string;
+  hashtags: string[];
+  keywords: string[];
+  status: 'active' | 'paused' | 'draft';
+  created_at: string;
+  posts_count?: number;
+}
+
+interface MonitorsByType {
+  keywords: Monitor[];
+  profiles: Monitor[];
+  companies: Monitor[];
+  myProfile: Monitor[];
+  myCompanies: Monitor[];
+}
+
 export default function CommentingAgentDashboard() {
   const params = useParams();
   const router = useRouter();
@@ -51,19 +73,65 @@ export default function CommentingAgentDashboard() {
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [agentEnabled, setAgentEnabled] = useState(false);
+  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [monitorsByType, setMonitorsByType] = useState<MonitorsByType>({
+    keywords: [],
+    profiles: [],
+    companies: [],
+    myProfile: [],
+    myCompanies: []
+  });
 
   useEffect(() => {
     loadDashboardData();
   }, [workspaceId]);
 
+  // Categorize monitors by type based on hashtags array content
+  const categorizeMonitors = (monitors: Monitor[]): MonitorsByType => {
+    const result: MonitorsByType = {
+      keywords: [],
+      profiles: [],
+      companies: [],
+      myProfile: [],
+      myCompanies: []
+    };
+
+    monitors.forEach(monitor => {
+      const hasKeywords = monitor.keywords && monitor.keywords.length > 0;
+      const hasProfiles = monitor.hashtags?.some(h => h.startsWith('PROFILE:'));
+      const hasCompanies = monitor.hashtags?.some(h => h.startsWith('COMPANY:'));
+      const hasHashtags = monitor.hashtags?.some(h => h.startsWith('HASHTAG:') || h.startsWith('#'));
+      const isMyProfile = monitor.hashtags?.some(h => h.startsWith('MY_PROFILE:'));
+      const isMyCompany = monitor.hashtags?.some(h => h.startsWith('MY_COMPANY:'));
+
+      if (isMyProfile) {
+        result.myProfile.push(monitor);
+      } else if (isMyCompany) {
+        result.myCompanies.push(monitor);
+      } else if (hasKeywords || hasHashtags) {
+        result.keywords.push(monitor);
+      } else if (hasCompanies) {
+        result.companies.push(monitor);
+      } else if (hasProfiles) {
+        result.profiles.push(monitor);
+      } else {
+        // Default to keywords if no clear type
+        result.keywords.push(monitor);
+      }
+    });
+
+    return result;
+  };
+
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch dashboard stats
-      const [statsRes, activityRes, settingsRes] = await Promise.all([
+      // Fetch dashboard stats, activity, settings, and monitors
+      const [statsRes, activityRes, settingsRes, monitorsRes] = await Promise.all([
         fetch(`/api/linkedin-commenting/stats?workspace_id=${workspaceId}`),
         fetch(`/api/linkedin-commenting/recent-activity?workspace_id=${workspaceId}&limit=5`),
-        fetch(`/api/linkedin-commenting/settings?workspace_id=${workspaceId}`)
+        fetch(`/api/linkedin-commenting/settings?workspace_id=${workspaceId}`),
+        fetch(`/api/linkedin-commenting/monitors?workspace_id=${workspaceId}`)
       ]);
 
       if (statsRes.ok) {
@@ -79,6 +147,13 @@ export default function CommentingAgentDashboard() {
       if (settingsRes.ok) {
         const data = await settingsRes.json();
         setAgentEnabled(data.enabled || false);
+      }
+
+      if (monitorsRes.ok) {
+        const data = await monitorsRes.json();
+        const fetchedMonitors = data.monitors || [];
+        setMonitors(fetchedMonitors);
+        setMonitorsByType(categorizeMonitors(fetchedMonitors));
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -124,6 +199,91 @@ export default function CommentingAgentDashboard() {
       {label}
     </button>
   );
+
+  // Monitor Section Card Component
+  const MonitorSection = ({
+    title,
+    description,
+    icon: Icon,
+    monitors,
+    color,
+    onAdd,
+    emptyText
+  }: {
+    title: string;
+    description: string;
+    icon: any;
+    monitors: Monitor[];
+    color: string;
+    onAdd: () => void;
+    emptyText: string;
+  }) => {
+    const activeCount = monitors.filter(m => m.status === 'active').length;
+
+    return (
+      <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+        <div className="p-4 border-b border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center`}>
+                <Icon size={20} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">{title}</h3>
+                <p className="text-gray-400 text-sm">{description}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400">{activeCount} active</span>
+              <button
+                onClick={onAdd}
+                className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                title={`Add ${title}`}
+              >
+                <Plus size={16} className="text-gray-300" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4">
+          {monitors.length === 0 ? (
+            <div className="text-center py-6">
+              <Icon size={32} className="mx-auto text-gray-600 mb-2" />
+              <p className="text-gray-500 text-sm">{emptyText}</p>
+              <button
+                onClick={onAdd}
+                className="mt-3 text-pink-400 hover:text-pink-300 text-sm transition-colors"
+              >
+                + Add your first one
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {monitors.map((monitor) => (
+                <div
+                  key={monitor.id}
+                  onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${monitor.id}`)}
+                  className="flex items-center justify-between p-3 bg-gray-700/50 hover:bg-gray-700 rounded-lg cursor-pointer transition-colors group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-2 h-2 rounded-full ${monitor.status === 'active' ? 'bg-green-400' : 'bg-gray-500'}`} />
+                    <span className="text-white text-sm truncate group-hover:text-pink-400 transition-colors">
+                      {monitor.name || 'Unnamed Monitor'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span>{monitor.posts_count || 0} posts</span>
+                    <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -180,13 +340,119 @@ export default function CommentingAgentDashboard() {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      {/* Section 1: Pending Approvals - Full Width Banner */}
+      <div
+        onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/approve`)}
+        className="mb-6 bg-gradient-to-r from-amber-900/40 to-orange-900/40 rounded-xl p-5 border border-amber-700/50 cursor-pointer hover:border-amber-600 transition-colors group"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-amber-600 rounded-xl flex items-center justify-center">
+              <Clock size={28} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                Pending Approvals
+                {(stats?.pending_comments || 0) > 0 && (
+                  <span className="px-2 py-0.5 bg-amber-500 text-white text-sm rounded-full animate-pulse">
+                    {stats?.pending_comments}
+                  </span>
+                )}
+              </h2>
+              <p className="text-amber-200/70">Review AI-generated comments before posting</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-2xl font-bold text-white">{stats?.pending_comments || 0}</p>
+              <p className="text-amber-200/70 text-sm">awaiting review</p>
+            </div>
+            <ExternalLink size={20} className="text-amber-400 group-hover:text-amber-300 transition-colors" />
+          </div>
+        </div>
+      </div>
+
+      {/* Section Header: Comment on Others' Posts */}
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <Target size={20} className="text-pink-500" />
+          Comment on Others' Posts
+        </h2>
+        <p className="text-gray-400 text-sm">Monitor profiles, companies & keywords to engage with their content</p>
+      </div>
+
+      {/* Sections 2-4: Monitored Keywords, Profiles, Companies */}
+      <div className="grid md:grid-cols-3 gap-4 mb-8">
+        <MonitorSection
+          title="Monitored Keywords"
+          description="Track hashtags & keywords"
+          icon={Hash}
+          monitors={monitorsByType.keywords}
+          color="bg-purple-600"
+          onAdd={() => setShowCampaignModal(true)}
+          emptyText="No keyword monitors yet"
+        />
+
+        <MonitorSection
+          title="Monitored Profiles"
+          description="Follow specific people"
+          icon={User}
+          monitors={monitorsByType.profiles}
+          color="bg-pink-600"
+          onAdd={() => setShowCampaignModal(true)}
+          emptyText="No profile monitors yet"
+        />
+
+        <MonitorSection
+          title="Monitored Companies"
+          description="Track company pages"
+          icon={Building2}
+          monitors={monitorsByType.companies}
+          color="bg-blue-600"
+          onAdd={() => setShowCampaignModal(true)}
+          emptyText="No company monitors yet"
+        />
+      </div>
+
+      {/* Section Header: My Posts & Companies */}
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <UserCircle2 size={20} className="text-cyan-500" />
+          My Posts & Companies
+        </h2>
+        <p className="text-gray-400 text-sm">Auto-reply to comments on your own posts and company pages</p>
+      </div>
+
+      {/* Sections 5-6: My Profile, My Companies */}
+      <div className="grid md:grid-cols-2 gap-4 mb-8">
+        <MonitorSection
+          title="My Profile"
+          description="Auto-reply to your post comments"
+          icon={UserCircle2}
+          monitors={monitorsByType.myProfile}
+          color="bg-cyan-600"
+          onAdd={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
+          emptyText="No personal post monitors yet"
+        />
+
+        <MonitorSection
+          title="My Companies"
+          description="Manage your company page comments"
+          icon={Building2}
+          monitors={monitorsByType.myCompanies}
+          color="bg-teal-600"
+          onAdd={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
+          emptyText="No company page monitors yet"
+        />
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard
           icon={Target}
-          label="Active Profiles"
-          value={stats?.active_profiles || 0}
-          subtext={`${stats?.total_profiles || 0} total`}
+          label="Active Monitors"
+          value={monitors.filter(m => m.status === 'active').length}
+          subtext={`${monitors.length} total`}
           color="bg-pink-600"
         />
         <StatCard
@@ -204,225 +470,12 @@ export default function CommentingAgentDashboard() {
           color="bg-green-600"
         />
         <StatCard
-          icon={Users}
-          label="Profiles Monitored"
-          value={stats?.profiles_monitored || 0}
-          subtext="LinkedIn profiles"
+          icon={BarChart3}
+          label="Engagement Rate"
+          value={`${stats?.engagement_rate || 0}%`}
+          subtext="Average across monitors"
           color="bg-blue-600"
         />
-      </div>
-
-      {/* Two Main Sections */}
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
-        {/* Section 1: Comment on Others' Posts */}
-        <div className="bg-gradient-to-br from-pink-900/40 to-purple-900/40 rounded-xl p-6 border border-pink-700/50">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-pink-600 rounded-xl flex items-center justify-center">
-              <Target size={24} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">Comment on Others' Posts</h2>
-              <p className="text-gray-400 text-sm">Monitor profiles, companies & hashtags</p>
-            </div>
-          </div>
-          <p className="text-gray-300 text-sm mb-4">
-            Discover posts from people you want to engage with. AI generates comments for your approval before posting.
-          </p>
-          <div className="space-y-2">
-            <button
-              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/profiles`)}
-              className="w-full flex items-center justify-between p-3 bg-gray-800/50 hover:bg-gray-800 rounded-lg transition-colors group"
-            >
-              <span className="text-white font-medium">Manage Monitors</span>
-              <span className="text-gray-400 text-sm">{stats?.active_profiles || 0} active →</span>
-            </button>
-            <button
-              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/approve`)}
-              className="w-full flex items-center justify-between p-3 bg-gray-800/50 hover:bg-gray-800 rounded-lg transition-colors group"
-            >
-              <span className="text-white font-medium">Review Comments</span>
-              <span className="text-amber-400 text-sm">{stats?.pending_comments || 0} pending →</span>
-            </button>
-          </div>
-          <button
-            onClick={() => setShowCampaignModal(true)}
-            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors font-medium"
-          >
-            <Plus size={18} />
-            Add Profile / Company / Hashtag
-          </button>
-        </div>
-
-        {/* Section 2: My Posts (Auto-Reply) */}
-        <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 rounded-xl p-6 border border-blue-700/50">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
-              <UserCircle2 size={24} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">My Posts & Company Page</h2>
-              <p className="text-gray-400 text-sm">Auto-reply to comments on YOUR posts</p>
-            </div>
-          </div>
-          <p className="text-gray-300 text-sm mb-4">
-            Monitor your own LinkedIn posts for new comments. AI generates personalized replies and captures leads.
-          </p>
-          <div className="space-y-2">
-            <button
-              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
-              className="w-full flex items-center justify-between p-3 bg-gray-800/50 hover:bg-gray-800 rounded-lg transition-colors group"
-            >
-              <span className="text-white font-medium">My Post Monitors</span>
-              <span className="text-gray-400 text-sm">View all →</span>
-            </button>
-          </div>
-          <button
-            onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
-            className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-          >
-            <Plus size={18} />
-            Add My Post to Monitor
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* Quick Actions */}
-        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
-          <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
-          <div className="space-y-3">
-            <button
-              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/approve`)}
-              className="w-full flex items-center justify-between p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-amber-600/20 rounded-lg flex items-center justify-center">
-                  <Eye size={16} className="text-amber-400" />
-                </div>
-                <div className="text-left">
-                  <p className="text-white font-medium">Review Comments</p>
-                  <p className="text-gray-400 text-sm">{stats?.pending_comments || 0} pending</p>
-                </div>
-              </div>
-              <ExternalLink size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
-            </button>
-
-            <button
-              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/profiles`)}
-              className="w-full flex items-center justify-between p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-pink-600/20 rounded-lg flex items-center justify-center">
-                  <Target size={16} className="text-pink-400" />
-                </div>
-                <div className="text-left">
-                  <p className="text-white font-medium">Manage Monitors</p>
-                  <p className="text-gray-400 text-sm">{stats?.active_profiles || 0} active</p>
-                </div>
-              </div>
-              <ExternalLink size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
-            </button>
-
-            <button
-              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/analytics`)}
-              className="w-full flex items-center justify-between p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                  <BarChart3 size={16} className="text-blue-400" />
-                </div>
-                <div className="text-left">
-                  <p className="text-white font-medium">View Analytics</p>
-                  <p className="text-gray-400 text-sm">Performance metrics</p>
-                </div>
-              </div>
-              <ExternalLink size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
-            </button>
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="md:col-span-2 bg-gray-800 rounded-xl p-5 border border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
-            <button
-              onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/approve`)}
-              className="text-sm text-pink-400 hover:text-pink-300 transition-colors"
-            >
-              View all
-            </button>
-          </div>
-
-          {recentActivity.length === 0 ? (
-            <div className="text-center py-8">
-              <MessageSquare size={40} className="mx-auto text-gray-600 mb-3" />
-              <p className="text-gray-400">No recent activity</p>
-              <p className="text-gray-500 text-sm mt-1">
-                Add profiles to start discovering posts
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentActivity.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="p-3 bg-gray-700/50 rounded-lg border border-gray-600/50"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      activity.type === 'posted' ? 'bg-green-600/20' :
-                      activity.type === 'pending' ? 'bg-amber-600/20' : 'bg-blue-600/20'
-                    }`}>
-                      {activity.type === 'posted' ? (
-                        <CheckCircle2 size={14} className="text-green-400" />
-                      ) : activity.type === 'pending' ? (
-                        <Clock size={14} className="text-amber-400" />
-                      ) : (
-                        <Target size={14} className="text-blue-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-white font-medium truncate">{activity.post_author}</p>
-                        <span className="text-xs text-gray-500 flex-shrink-0">
-                          {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-gray-400 text-sm truncate">{activity.post_snippet}</p>
-                      {activity.comment_snippet && (
-                        <p className="text-gray-500 text-xs mt-1 truncate italic">
-                          "{activity.comment_snippet}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* How It Works Section */}
-      <div className="mt-8 bg-gradient-to-r from-pink-900/30 to-purple-900/30 rounded-xl p-6 border border-pink-800/30">
-        <h2 className="text-lg font-semibold text-white mb-4">How It Works</h2>
-        <div className="grid md:grid-cols-4 gap-4">
-          {[
-            { step: 1, title: 'Add Profiles', desc: 'Add LinkedIn profiles to monitor' },
-            { step: 2, title: 'Discover Posts', desc: 'Agent finds new posts from profiles' },
-            { step: 3, title: 'Generate Comments', desc: 'AI creates relevant, on-brand comments' },
-            { step: 4, title: 'Review & Post', desc: 'Approve or edit before posting' },
-          ].map((item) => (
-            <div key={item.step} className="text-center">
-              <div className="w-10 h-10 bg-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white font-bold">
-                {item.step}
-              </div>
-              <p className="text-white font-medium">{item.title}</p>
-              <p className="text-gray-400 text-sm mt-1">{item.desc}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Modals */}
