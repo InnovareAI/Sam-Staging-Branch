@@ -199,3 +199,16 @@
 # Alerts to Google Chat immediately on critical issues
 # [functions."realtime-error-monitor"]
 #   schedule = "*/5 * * * *"
+
+# ============================================
+# ORPHAN PROSPECT RECOVERY (Dec 10, 2025)
+# ============================================
+
+# Orphan Prospect Recovery: Auto-fix approved prospects that weren't added to campaigns
+# Runs every hour to find and recover "orphan" prospects from last 7 days
+# Root cause: Supabase bulk insert fails ALL records if ANY has constraint violation
+# This agent detects orphans by comparing prospect_approval_data vs campaign_prospects
+# Automatically adds missing prospects to campaign_prospects and send_queue
+# Sends Google Chat summary when recoveries are made
+[functions."recover-orphan-prospects"]
+  schedule = "0 * * * *"
