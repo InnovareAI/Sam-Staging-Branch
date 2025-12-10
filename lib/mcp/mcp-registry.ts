@@ -1,10 +1,9 @@
 /**
  * MCP Server Registry for SAM AI Platform
- * 
+ *
  * Centralized management of all MCP servers and tools
  */
 
-import { BrightDataMCPServer } from './bright-data-mcp'
 import { ApifyMCPServer } from './apify-mcp'
 import { WebSearchMCPServer, WebSearchMCPConfig } from './websearch-mcp'
 import { UnipileMCPServer } from './unipile-mcp'
@@ -21,7 +20,6 @@ import {
   MCPTool,
   MCPCallToolRequest,
   MCPCallToolResult,
-  BrightDataMCPConfig,
   ApifyMCPConfig,
   UnipileMCPConfig,
   N8NMCPConfig,
@@ -33,7 +31,6 @@ import {
 import { GPT5MCPConfig } from './gpt5-mcp'
 
 export interface MCPServerConfig {
-  brightData?: BrightDataMCPConfig
   apify?: ApifyMCPConfig
   webSearch?: WebSearchMCPConfig
   unipile?: UnipileMCPConfig
@@ -46,7 +43,6 @@ export interface MCPServerConfig {
 }
 
 export class MCPRegistry {
-  private brightDataServer?: BrightDataMCPServer
   private apifyServer?: ApifyMCPServer
   private webSearchServer?: WebSearchMCPServer
   private unipileServer?: UnipileMCPServer
@@ -61,12 +57,6 @@ export class MCPRegistry {
   async initialize(config: MCPServerConfig): Promise<{ success: boolean; message: string; servers: string[] }> {
     try {
       const initializedServers: string[] = []
-
-      // Initialize Bright Data MCP Server
-      if (config.brightData) {
-        this.brightDataServer = new BrightDataMCPServer(config.brightData)
-        initializedServers.push('Bright Data MCP')
-      }
 
       // Initialize Apify MCP Server
       if (config.apify) {
@@ -134,13 +124,6 @@ export class MCPRegistry {
 
   async listAllTools(): Promise<{ tools: Array<MCPTool & { server: string }> }> {
     const allTools: Array<MCPTool & { server: string }> = []
-
-    if (this.brightDataServer) {
-      const brightDataTools = await this.brightDataServer.listTools()
-      brightDataTools.tools.forEach(tool => {
-        allTools.push({ ...tool, server: 'bright-data' })
-      })
-    }
 
     if (this.apifyServer) {
       const apifyTools = await this.apifyServer.listTools()
@@ -255,18 +238,6 @@ export class MCPRegistry {
     const effectiveRequest: MCPCallToolRequest & { server?: string } = request
 
     switch (server) {
-      case 'bright-data':
-        if (!this.brightDataServer) {
-          return {
-            content: [{
-              type: 'text',
-              text: 'Bright Data MCP server not available'
-            }],
-            isError: true
-          }
-        }
-        return await this.brightDataServer.callTool(effectiveRequest)
-
       case 'apify':
         if (!this.apifyServer) {
           return {
@@ -351,15 +322,7 @@ export class MCPRegistry {
   }
 
   private detectServerFromTool(toolName: string): string {
-    // Bright Data tools
-    const brightDataTools = [
-      'research_prospect',
-      'analyze_company', 
-      'generate_strategic_insights',
-      'check_system_health'
-    ]
-
-    // Apify tools (updated)
+    // Apify tools
     const apifyTools = [
       'research_linkedin_prospect',
       'search_linkedin_prospects',
@@ -420,10 +383,6 @@ export class MCPRegistry {
       'mcp__sam__split_prospects_between_campaigns'
     ]
 
-    if (brightDataTools.includes(toolName)) {
-      return 'bright-data'
-    }
-    
     if (apifyTools.includes(toolName)) {
       return 'apify'
     }
@@ -646,11 +605,7 @@ export class MCPRegistry {
 
   private getAvailableServers(): string[] {
     const servers: string[] = []
-    
-    if (this.brightDataServer) {
-      servers.push('bright-data')
-    }
-    
+
     if (this.apifyServer) {
       servers.push('apify')
     }
@@ -681,7 +636,6 @@ export class MCPRegistry {
   }
 
   async getServerStatus(): Promise<{
-    brightData: { available: boolean; tools: number }
     apify: { available: boolean; tools: number }
     webSearch: { available: boolean; tools: number }
     unipile: { available: boolean; tools: number }
@@ -692,7 +646,6 @@ export class MCPRegistry {
     samAI: { available: boolean; tools: number }
     total: { servers: number; tools: number }
   }> {
-    const brightDataTools = this.brightDataServer ? (await this.brightDataServer.listTools()).tools.length : 0
     const apifyTools = this.apifyServer ? (await this.apifyServer.listTools()).tools.length : 0
     const webSearchTools = this.webSearchServer ? (await this.webSearchServer.listTools()).tools.length : 0
     const unipileTools = this.unipileServer ? (await this.unipileServer.listTools()).tools.length : 0
@@ -703,7 +656,6 @@ export class MCPRegistry {
     const samAITools = 16 // 9 template + 4 mistral + 3 campaign tools
 
     return {
-      brightData: { available: !!this.brightDataServer, tools: brightDataTools },
       apify: { available: !!this.apifyServer, tools: apifyTools },
       webSearch: { available: !!this.webSearchServer, tools: webSearchTools },
       unipile: { available: !!this.unipileServer, tools: unipileTools },
@@ -714,7 +666,7 @@ export class MCPRegistry {
       samAI: { available: true, tools: samAITools },
       total: {
         servers: this.getAvailableServers().length,
-        tools: brightDataTools + apifyTools + webSearchTools + unipileTools + n8nTools + reachInboxTools + replyTools + crmTools + samAITools
+        tools: apifyTools + webSearchTools + unipileTools + n8nTools + reachInboxTools + replyTools + crmTools + samAITools
       }
     }
   }
@@ -732,7 +684,7 @@ export class MCPRegistry {
     const budget = request.budget || 100
 
     try {
-      // If explicit profile URL(s) provided, prefer Apify lightweight research
+      // If explicit profile URL(s) provided, use Apify lightweight research
       if (request.profileUrls?.length) {
         if (this.apifyServer) {
           return await this.apifyServer.callTool({
@@ -744,20 +696,6 @@ export class MCPRegistry {
                 maxResults: 1,
                 extractEmails: true,
                 extractPhones: false
-              }
-            }
-          })
-        }
-
-        if (this.brightDataServer) {
-          return await this.brightDataServer.callTool({
-            method: 'tools/call',
-            params: {
-              name: 'research_prospect',
-              arguments: {
-                profileUrls: request.profileUrls,
-                depth: request.urgency === 'high' ? 'comprehensive' : 'standard',
-                maxResults: 1
               }
             }
           })
@@ -850,15 +788,6 @@ export const mcpRegistry = new MCPRegistry()
 // Configuration helpers
 export function createMCPConfig(): MCPServerConfig {
   return {
-    brightData: {
-      username: process.env.BRIGHT_DATA_USERNAME || 'mock-username',
-      password: process.env.BRIGHT_DATA_PASSWORD || 'mock-password',
-      endpoint: process.env.BRIGHT_DATA_ENDPOINT || 'brd.superproxy.io',
-      port: parseInt(process.env.BRIGHT_DATA_PORT || '22225'),
-      organizationId: process.env.ORGANIZATION_ID || 'default-org',
-      userId: process.env.USER_ID || 'default-user'
-    },
-    
     apify: {
       apiToken: process.env.APIFY_API_TOKEN || 'mock-api-token',
       organizationId: process.env.ORGANIZATION_ID || 'default-org',

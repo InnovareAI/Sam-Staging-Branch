@@ -50,37 +50,6 @@ export interface MCPCallToolResult {
   isError?: boolean
 }
 
-// Bright Data specific types
-export interface BrightDataMCPConfig {
-  username?: string
-  password?: string
-  endpoint?: string
-  port?: number
-  apiToken?: string
-  baseUrl?: string
-  defaultCollectorId?: string
-  defaultWaitSeconds?: number
-  organizationId: string
-  userId: string
-}
-
-export interface BrightDataProspectRequest {
-  collectorId?: string
-  datasetId?: string
-  profileUrls?: string[]
-  searchCriteria?: {
-    jobTitles: string[]
-    companies: string[]
-    industries: string[]
-    locations: string[]
-    keywords: string[]
-  }
-  depth: 'quick' | 'standard' | 'comprehensive'
-  maxResults?: number
-  payload?: Record<string, unknown>
-  waitForResultsSeconds?: number
-}
-
 // Apify specific types
 export interface ApifyMCPConfig {
   apiToken: string
