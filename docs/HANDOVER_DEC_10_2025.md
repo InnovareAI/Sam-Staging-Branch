@@ -4,6 +4,79 @@
 
 ### Completed Tasks
 
+#### 0. CRITICAL: Fixed Orphan Prospect Bug & Built Auto-Recovery Agent
+
+**Problem:** Stan's campaign had only 28/41 prospects - 13 approved prospects were NEVER transferred to `campaign_prospects` table.
+
+**Root Cause:** Two bugs in `/app/api/prospect-approval/complete/route.ts`:
+
+1. **Bug 1: `linkedin_user_id` not set**
+   - Code used `prospect.linkedin_user_id` which was always null
+   - Should use `contact.linkedin_url` as fallback
+   - Without `linkedin_user_id`, prospects can't be added to send queue
+
+2. **Bug 2: Silent bulk insert failure (CRITICAL)**
+   - Supabase bulk insert fails ALL records if ANY has a constraint violation
+   - Example: If prospect #15 has duplicate email, prospects #1-41 ALL fail silently
+   - No error thrown, no records inserted
+
+**Fixes Applied:**
+
+1. **Code Fix (complete/route.ts):**
+```typescript
+// Line 132 - Fixed linkedin_user_id assignment
+linkedin_user_id: prospect.linkedin_user_id || linkedinUrl || null,
+
+// Lines 143-168 - Changed from bulk to one-by-one insert
+for (const prospect of campaignProspects) {
+  const { error: singleInsertError } = await supabase
+    .from('campaign_prospects')
+    .insert(prospect);
+  if (singleInsertError) {
+    errorCount++;
+    console.warn(`⚠️ Failed: ${singleInsertError.message}`);
+  } else {
+    successCount++;
+  }
+}
+```
+
+2. **Stan's Campaign (Manual Fix):**
+   - Added 13 missing prospects via API
+   - Updated all 41 with proper `linkedin_user_id`
+   - Added 13 to send_queue
+
+3. **Auto-Recovery Agent (NEW):**
+   - Created hourly cron job that auto-fixes orphan prospects
+   - Files:
+     - `/app/api/agents/recover-orphan-prospects/route.ts` - API endpoint
+     - `/netlify/functions/recover-orphan-prospects.ts` - Scheduled trigger
+     - `netlify.toml` - Schedule config (hourly at :00)
+   - What it does:
+     1. Finds sessions from last 7 days with campaigns
+     2. Compares `prospect_approval_data` vs `campaign_prospects`
+     3. Adds missing "orphan" prospects to campaign
+     4. Queues them for sending if campaign is active
+     5. Sends Google Chat summary of recoveries
+
+**Key IDs:**
+- Stan's workspace: `5b81ee67-4d41-4997-b5a4-e1432e060d12`
+- Stan's campaign: `04776c85-5afc-4225-8905-a18365d50fee`
+- Approval session: `b6da2c42-de6a-4c5f-88db-71951908bc87`
+
+**Monitoring:**
+```bash
+# View logs
+netlify logs --function recover-orphan-prospects --tail
+
+# Manual trigger
+curl -X POST 'https://app.meet-sam.com/api/agents/recover-orphan-prospects' \
+  -H 'x-cron-secret: <CRON_SECRET>' \
+  -H 'Content-Type: application/json'
+```
+
+---
+
 #### 1. Fixed Campaign Dropdown in Prospect Approval (Latest)
 **Problem:** The "Add to Existing Campaign" dropdown in DataCollectionHub was showing empty even when workspace had campaigns.
 
