@@ -127,7 +127,9 @@ export async function POST(request: NextRequest) {
           title: prospect.title || '',
           location: prospect.location || null,
           linkedin_url: linkedinUrl,
-          linkedin_user_id: prospect.linkedin_user_id || null,  // Preserve LinkedIn provider_id
+          // CRITICAL FIX (Dec 10): linkedin_user_id must be set for queue processing
+          // Priority: 1. explicit linkedin_user_id, 2. contact.linkedin_url (same value works for both)
+          linkedin_user_id: prospect.linkedin_user_id || linkedinUrl || null,
           connection_degree: connectionDegreeStr,  // CRITICAL: Store connection degree for campaign type validation
           status: 'approved',  // FIX: These prospects were already approved in the workflow
           personalization_data: {
@@ -138,16 +140,34 @@ export async function POST(request: NextRequest) {
         };
       });
 
-      const { data: insertedProspects, error: insertError } = await supabase
-        .from('campaign_prospects')
-        .insert(campaignProspects)
-        .select('id');
+      // CRITICAL FIX (Dec 10): Insert prospects one by one to handle partial failures
+      // Bulk insert fails ALL records if ANY has a constraint violation
+      let successCount = 0;
+      let errorCount = 0;
+      const insertErrors: string[] = [];
 
-      if (insertError) {
-        console.error('Error adding prospects to campaign:', insertError);
-        // Don't throw - still complete the session but log the error
-      } else {
-        addedToCampaign = insertedProspects?.length || 0;
+      for (const prospect of campaignProspects) {
+        const { error: singleInsertError } = await supabase
+          .from('campaign_prospects')
+          .insert(prospect);
+
+        if (singleInsertError) {
+          errorCount++;
+          insertErrors.push(`${prospect.first_name} ${prospect.last_name}: ${singleInsertError.message}`);
+          console.warn(`⚠️ Failed to add prospect ${prospect.first_name} ${prospect.last_name}:`, singleInsertError.message);
+        } else {
+          successCount++;
+        }
+      }
+
+      addedToCampaign = successCount;
+      console.log(`✅ Prospect insert complete: ${successCount} added, ${errorCount} failed`);
+
+      if (errorCount > 0) {
+        console.error(`⚠️ ${errorCount} prospects failed to insert:`, insertErrors.slice(0, 5));
+      }
+
+      if (successCount > 0) {
         console.log(`✅ Successfully added ${addedToCampaign} prospects to campaign`);
 
         // Mark prospects as transferred to campaign in approval database
