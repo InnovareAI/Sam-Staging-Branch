@@ -97,23 +97,26 @@ export default function CommentingAgentDashboard() {
     };
 
     monitors.forEach(monitor => {
-      const hasKeywords = monitor.keywords && monitor.keywords.length > 0;
-      const hasProfiles = monitor.hashtags?.some(h => h.startsWith('PROFILE:'));
-      const hasCompanies = monitor.hashtags?.some(h => h.startsWith('COMPANY:'));
-      const hasHashtags = monitor.hashtags?.some(h => h.startsWith('HASHTAG:') || h.startsWith('#'));
+      // Check hashtags array for type prefixes
+      const hasKeywordPrefix = monitor.hashtags?.some(h => h.startsWith('KEYWORD:'));
+      const hasHashtagPrefix = monitor.hashtags?.some(h => h.startsWith('HASHTAG:') || h.startsWith('#'));
+      const hasProfilePrefix = monitor.hashtags?.some(h => h.startsWith('PROFILE:'));
+      const hasCompanyPrefix = monitor.hashtags?.some(h => h.startsWith('COMPANY:'));
       const isMyProfile = monitor.hashtags?.some(h => h.startsWith('MY_PROFILE:'));
       const isMyCompany = monitor.hashtags?.some(h => h.startsWith('MY_COMPANY:'));
+      const hasKeywordsArray = monitor.keywords && monitor.keywords.length > 0;
 
       if (isMyProfile) {
         result.myProfile.push(monitor);
       } else if (isMyCompany) {
         result.myCompanies.push(monitor);
-      } else if (hasKeywords || hasHashtags) {
-        result.keywords.push(monitor);
-      } else if (hasCompanies) {
+      } else if (hasCompanyPrefix) {
         result.companies.push(monitor);
-      } else if (hasProfiles) {
+      } else if (hasProfilePrefix) {
         result.profiles.push(monitor);
+      } else if (hasKeywordPrefix || hasHashtagPrefix || hasKeywordsArray) {
+        // Keywords and hashtags go to same bucket
+        result.keywords.push(monitor);
       } else {
         // Default to keywords if no clear type
         result.keywords.push(monitor);
