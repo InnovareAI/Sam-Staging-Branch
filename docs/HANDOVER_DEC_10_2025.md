@@ -76,6 +76,39 @@ const campaignsList = data.data?.campaigns || data.campaigns || []
 
 **Note:** Current Slack integration is ONE-WAY ONLY (notifications). Full two-way app is on the todo list.
 
+#### 7. CRITICAL BUG FIX: Prospect Approval Completion (Irish Campaign 5)
+**Problem:** 50 prospects uploaded and approved in Irish Campaign 5, but campaign showed 0 prospects. User reported: "I uploaded 50 data in her campaign and it says all 50 are approved and goes to the campaign, but when I check its no data in this campaign."
+
+**Root Cause:** The `/api/prospect-approval/complete/route.ts` was using a JOIN query:
+```javascript
+// BROKEN - No FK relationship exists!
+.select(`*, prospect_approval_decisions!inner(decision)`)
+.eq('prospect_approval_decisions.decision', 'approved')
+```
+This failed silently because **no foreign key relationship exists** between `prospect_approval_data` and `prospect_approval_decisions`. Supabase returned 0 results without error.
+
+**Solution:** Changed to query `approval_status` directly:
+```javascript
+// FIXED - Query approval_status directly
+.select('*')
+.eq('session_id', session_id)
+.eq('approval_status', 'approved')
+```
+
+**Manual Data Recovery for Irish Campaign 5:**
+1. Added 50 prospects manually to `campaign_prospects` table
+2. Created send queue with 50 items scheduled:
+   - Schedule: Dec 11-17, 2025
+   - Daily limit: 10
+   - Spacing: 30 minutes
+   - Hours: 8 AM - 12:30 PM Pacific
+
+**Files Modified:**
+- `app/api/prospect-approval/complete/route.ts` - Fixed query and added logging
+
+**Files Created:**
+- `scripts/js/create-irish5-send-queue.mjs` - One-time script to create queue
+
 ### Database Changes
 
 Created new table `workspace_integrations`:
@@ -172,6 +205,18 @@ CREATE TABLE workspace_integrations (
 - **Spacing:** 30 minutes
 - **Timezone:** US/Eastern (8:00 AM - 12:30 PM)
 
+### Irish Campaign 5 (Pacific)
+- **Campaign ID:** `987dec20-b23d-465f-a8c7-0b9e8bac4f24`
+- **Workspace ID:** `96c03b38-a2f4-40de-9e16-43098599e1d4`
+- **LinkedIn Account:** `39f006f6-737f-4716-8530-94900626c671` (Irish Maguad)
+- **Total Prospects:** 50
+- **Sent:** 0
+- **Pending:** 50
+- **Schedule:** Dec 11-17, 2025
+- **Daily Limit:** 10 messages
+- **Spacing:** 30 minutes
+- **Timezone:** America/Los_Angeles (8:00 AM - 12:30 PM Pacific)
+
 ---
 
 ## Deployment Status
@@ -179,6 +224,7 @@ CREATE TABLE workspace_integrations (
 - **Production:** https://app.meet-sam.com
 - **Last Deploy:** December 10, 2025
 - **Commits:**
+  - `8619906a` - Fix prospect approval completion query (CRITICAL)
   - `c223b914` - Fix campaign dropdown in prospect approval
   - `4b0be938` - Fix duplicate campaign creation
   - `1c81e90c` - Add Slack integration to UI
