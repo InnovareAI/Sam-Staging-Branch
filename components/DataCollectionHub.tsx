@@ -969,7 +969,9 @@ export default function DataCollectionHub({
 
         const data = await response.json()
         // Filter for active and draft campaigns only (not archived)
-        const activeCampaigns = (data.campaigns || []).filter(
+        // API returns { success, data: { campaigns } } via apiSuccess()
+        const campaignsList = data.data?.campaigns || data.campaigns || []
+        const activeCampaigns = campaignsList.filter(
           (c: any) => c.status === 'active' || c.status === 'draft' || c.status === 'paused'
         )
         setAvailableCampaigns(activeCampaigns)

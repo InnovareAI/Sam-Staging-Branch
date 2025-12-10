@@ -80,7 +80,8 @@ export default function ThreadedChatInterface() {
       const response = await fetch('/api/campaigns?status=pending_approval,ready,draft')
       if (response.ok) {
         const data = await response.json()
-        setAvailableCampaigns(data.campaigns || [])
+        // API returns { success, data: { campaigns } } via apiSuccess()
+        setAvailableCampaigns(data.data?.campaigns || data.campaigns || [])
       }
     } catch (error) {
       console.error('Failed to load campaigns:', error)
