@@ -58,6 +58,28 @@ export async function GET(request: NextRequest) {
         })
         .eq('id', draft.id);
 
+      // Store in linkedin_messages for unified message history
+      await supabase
+        .from('linkedin_messages')
+        .insert({
+          workspace_id: draft.workspace_id,
+          campaign_id: draft.campaign_id,
+          prospect_id: draft.prospect_id,
+          direction: 'outgoing',
+          message_type: 'reply',
+          content: draft.edited_text || draft.draft_text,
+          unipile_message_id: sendResult.messageId,
+          recipient_name: draft.prospect_name,
+          recipient_linkedin_id: draft.campaign_prospects?.linkedin_user_id,
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          metadata: {
+            source: 'reply_agent',
+            draft_id: draft.id,
+            inbound_message_id: draft.inbound_message_id
+          }
+        });
+
       return redirectWithMessage('success', `Reply sent to ${draft.prospect_name}!`);
     } else {
       await supabase
@@ -216,6 +238,28 @@ export async function POST(request: NextRequest) {
             outbound_message_id: sendResult.messageId
           })
           .eq('id', draftId);
+
+        // Store in linkedin_messages for unified message history
+        await supabase
+          .from('linkedin_messages')
+          .insert({
+            workspace_id: draft.workspace_id,
+            campaign_id: draft.campaign_id,
+            prospect_id: draft.prospect_id,
+            direction: 'outgoing',
+            message_type: 'reply',
+            content: draft.edited_text || draft.draft_text,
+            unipile_message_id: sendResult.messageId,
+            recipient_name: draft.prospect_name,
+            recipient_linkedin_id: draft.campaign_prospects?.linkedin_user_id,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+            metadata: {
+              source: 'reply_agent',
+              draft_id: draft.id,
+              inbound_message_id: draft.inbound_message_id
+            }
+          });
 
         return NextResponse.json({ success: true, status: 'sent' });
       } else {

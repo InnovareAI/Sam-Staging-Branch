@@ -206,6 +206,32 @@ export async function POST(req: NextRequest) {
           })
           .eq('id', draft.id);
 
+        // Store in linkedin_messages for unified message history
+        await supabase
+          .from('linkedin_messages')
+          .insert({
+            workspace_id: campaign.workspace_id,
+            campaign_id: draft.campaign_id,
+            prospect_id: prospect.id,
+            direction: 'outgoing',
+            message_type: 'follow_up',
+            content: draft.message,
+            recipient_linkedin_url: prospect.linkedin_url,
+            recipient_name: prospectName,
+            recipient_linkedin_id: prospect.linkedin_user_id,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+            metadata: {
+              source: 'follow_up_agent',
+              draft_id: draft.id,
+              touch_number: draft.touch_number,
+              scenario: draft.scenario,
+              channel: draft.channel
+            }
+          });
+
+        console.log(`💾 Stored follow-up message in linkedin_messages`);
+
         // Update prospect's follow-up tracking
         const nextFollowUpDate = calculateNextFollowUpDate(
           draft.scenario as FollowUpScenario,
