@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS linkedin_messages (
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     campaign_id UUID REFERENCES campaigns(id) ON DELETE SET NULL,
     prospect_id UUID REFERENCES campaign_prospects(id) ON DELETE SET NULL,
-    linkedin_account_id UUID REFERENCES linkedin_accounts(id) ON DELETE SET NULL,
+    linkedin_account_id UUID REFERENCES workspace_accounts(id) ON DELETE SET NULL,
 
     -- Message details
     direction VARCHAR(20) NOT NULL CHECK (direction IN ('outgoing', 'incoming')),
@@ -71,7 +71,7 @@ ALTER TABLE linkedin_messages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view messages in their workspace" ON linkedin_messages
     FOR SELECT USING (
         workspace_id IN (
-            SELECT workspace_id FROM workspace_users WHERE user_id = auth.uid()
+            SELECT workspace_id FROM workspace_members WHERE user_id = auth.uid()
         )
     );
 
