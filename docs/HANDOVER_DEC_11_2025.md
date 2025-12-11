@@ -440,9 +440,81 @@ curl -s -X POST 'https://app.meet-sam.com/api/agents/recover-orphan-prospects' \
 - `docs/HANDOVER_DEC_11_2025.md`
 
 ### Modified
-- `lib/airtable.ts` - Fixed quote stripping
+- `lib/airtable.ts` - Fixed quote stripping (enhanced Dec 11 PM)
 - `app/components/AIConfiguration.tsx` - Added InboxAgentModal, FollowUpAgent
 - `app/api/prospect-approval/complete/route.ts` - Fixed bulk insert
 - `app/api/linkedin-commenting/*.ts` - Anti-detection system
 - `app/api/cron/process-comment-queue/route.ts` - Warmup mode
 - `netlify.toml` - Added scheduled functions
+
+---
+
+## Session Update - December 11, 2025 (Evening)
+
+### 11. Enhanced Airtable Quote Stripping Fix
+
+**Commit:** `cf91927` - Fix Airtable double-quote issue with aggressive quote stripping
+
+**Problem:** Daily sync still failing with 422 errors:
+```
+Insufficient permissions to create new select option "\"Interested\""
+```
+
+The previous fix wasn't catching all quote variants. Intent values had double-escaped quotes (`"\"Interested\""`) being sent to Airtable's dropdown field.
+
+**Enhanced Fix in `lib/airtable.ts`:**
+```typescript
+// Aggressively strip all quote variants from raw intent
+const cleanIntent = rawIntent
+  .replace(/\\+"/g, '')     // Remove any escaped quotes (\" or \\")
+  .replace(/["'`]/g, '')    // Remove all quote characters
+  .replace(/&quot;/gi, '')  // Remove HTML entities
+  .trim()
+  .toLowerCase();
+
+// FINAL SAFETY: Strip any quotes from the final status value
+status = status.replace(/["'`\\]/g, '').trim();
+```
+
+**Files Modified:**
+- `lib/airtable.ts` - Lines 150-170 (syncLinkedInLead), Lines 213-230 (syncEmailLead)
+
+---
+
+### 12. ActiveCampaign Credentials - PENDING ACTION REQUIRED
+
+**Issue:** Daily sync showing `ActiveCampaign API credentials not configured`
+
+**Root Cause:** Environment variables not set in Netlify production, only in local `.env` files.
+
+**Credentials (from `.env.local.prod`):**
+- `ACTIVECAMPAIGN_BASE_URL` = `https://innovareai.api-us1.com`
+- `ACTIVECAMPAIGN_API_KEY` = `453675737b6accc1d499c5c7da2c86baedf1af829c2f29b605b16d2dbb8940a98a2d5e0d`
+
+**ACTION REQUIRED - Set via Netlify Dashboard:**
+1. Go to https://app.netlify.com → Select site → Site configuration → Environment variables
+2. Add `ACTIVECAMPAIGN_BASE_URL` = `https://innovareai.api-us1.com`
+3. Add `ACTIVECAMPAIGN_API_KEY` = `453675737b6accc1d499c5c7da2c86baedf1af829c2f29b605b16d2dbb8940a98a2d5e0d`
+4. Trigger a new deploy
+
+**Status:** ⚠️ PENDING - Requires manual action in Netlify Dashboard
+
+---
+
+## Updated Daily Sync Status
+
+| Issue | Status |
+|-------|--------|
+| Airtable `"\"Interested\""` double-quote error | ✅ Fixed (commit `cf91927`) |
+| ActiveCampaign credentials not configured | ⚠️ PENDING - Set env vars in Netlify |
+
+---
+
+## Latest Commits
+
+| Commit | Description |
+|--------|-------------|
+| `cf91927` | Fix Airtable double-quote issue with aggressive quote stripping |
+| `01d17e8` | Update handover with complete Dec 9-11 work summary |
+| `c2c0c32` | Add handover document for December 11, 2025 |
+| `7390d8b` | Fix Airtable double-quoting issue and add Inbox Agent |
