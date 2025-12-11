@@ -149,6 +149,9 @@ export async function POST(
       // These can be from workspace_prospects (UUIDs) or prospect_approval_data (string IDs like csv_xxx)
       const { prospect_ids } = body;
 
+      console.log(`📋 Add to campaign: Received ${prospect_ids.length} prospect IDs`);
+      console.log(`📋 Sample IDs:`, prospect_ids.slice(0, 3));
+
       // First, try to find prospects in prospect_approval_data (from CSV approval flow)
       // These IDs are stored in the 'id' column as UUIDs, but the prospect_id field contains the csv_xxx IDs
       const { data: approvalProspects, error: approvalError } = await supabase
@@ -156,6 +159,7 @@ export async function POST(
         .select('*')
         .in('id', prospect_ids);
 
+      console.log(`📋 Found in prospect_approval_data: ${approvalProspects?.length || 0}`);
       if (approvalError) {
         console.error('Failed to query prospect_approval_data:', approvalError);
       }
