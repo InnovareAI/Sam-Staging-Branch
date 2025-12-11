@@ -253,9 +253,45 @@ async function handleEmailSent(webhook: ReachInboxWebhook) {
         }
       });
 
-    // Sync to Airtable with "No Response" status
+    // Also store in linkedin_messages for unified message history
+    // Note: We don't have workspace_id from ReachInbox, so we'll try to find it via email account mapping
     const country = getCountryForAccount(webhook.email_account);
     if (country) {
+      // Find Innovare workspace for this region
+      const { data: workspace } = await supabaseAdmin
+        .from('workspaces')
+        .select('id')
+        .ilike('name', '%innovare%')
+        .limit(1)
+        .single();
+
+      if (workspace) {
+        await supabaseAdmin
+          .from('linkedin_messages')
+          .insert({
+            workspace_id: workspace.id,
+            direction: 'outgoing',
+            message_type: 'email',
+            content: webhook.email_sent_body || `[ReachInbox Step ${webhook.step_number}]`,
+            unipile_message_id: webhook.message_id,
+            recipient_name: leadName,
+            status: 'sent',
+            sent_at: webhook.timestamp,
+            metadata: {
+              source: 'reachinbox',
+              reachinbox_campaign_id: webhook.campaign_id,
+              reachinbox_campaign_name: webhook.campaign_name,
+              reachinbox_lead_id: webhook.lead_id,
+              step_number: webhook.step_number,
+              email_account: webhook.email_account,
+              recipient_email: webhook.lead_email,
+              region: country
+            }
+          });
+        console.log(`💾 Stored ReachInbox email in linkedin_messages`);
+      }
+
+      // Sync to Airtable with "No Response" status
       try {
         await airtableService.syncEmailLead({
           email: webhook.lead_email,

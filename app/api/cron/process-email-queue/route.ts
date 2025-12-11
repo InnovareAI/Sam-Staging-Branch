@@ -172,9 +172,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Find next email to send (scheduled_for <= NOW, status = pending)
+    // Include campaign data for workspace_id
     const { data: nextEmail, error: fetchError } = await supabase
       .from('email_send_queue')
-      .select('*')
+      .select(`
+        *,
+        campaigns!campaign_id (
+          workspace_id
+        ),
+        campaign_prospects!prospect_id (
+          first_name,
+          last_name
+        )
+      `)
       .eq('status', 'pending')
       .lte('scheduled_for', new Date().toISOString())
       .order('scheduled_for', { ascending: true })
@@ -272,6 +282,37 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString()
       })
       .eq('id', nextEmail.id);
+
+    // Store in linkedin_messages for unified message history
+    const campaign = nextEmail.campaigns as any;
+    const prospectData = nextEmail.campaign_prospects as any;
+    const recipientName = prospectData
+      ? `${prospectData.first_name || ''} ${prospectData.last_name || ''}`.trim()
+      : nextEmail.recipient_email.split('@')[0];
+
+    await supabase
+      .from('linkedin_messages')
+      .insert({
+        workspace_id: campaign?.workspace_id,
+        campaign_id: nextEmail.campaign_id,
+        prospect_id: nextEmail.prospect_id,
+        direction: 'outgoing',
+        message_type: 'email',
+        subject: nextEmail.subject,
+        content: nextEmail.body,
+        unipile_message_id: sendResult.message_id,
+        recipient_name: recipientName,
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+        metadata: {
+          source: 'email_queue',
+          queue_id: nextEmail.id,
+          email_account_id: nextEmail.email_account_id,
+          recipient_email: nextEmail.recipient_email
+        }
+      });
+
+    console.log(`💾 Stored email in linkedin_messages`);
 
     // Update prospect status
     await supabase
