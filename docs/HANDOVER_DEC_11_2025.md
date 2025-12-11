@@ -578,10 +578,88 @@ if (approvalProspects.length === 0) {
 
 ---
 
+## Session Update - December 11, 2025 (Late Evening)
+
+### 14. Company Name Missing Bug - FIXED
+
+**Commit:** `74be1d6` - fix: add company name normalization to prospects API
+
+**Problem:** Stan scraped Sales Navigator data and 13 out of 41 prospects had empty company names, despite the source data having company information.
+
+**Investigation Findings:**
+
+1. **Two batches of prospects added at different times:**
+   - Batch 1 (21:08:37 - 21:09:34): 28 prospects WITH company names ✅
+   - Batch 2 (21:26:25 - 21:26:27): 13 prospects with EMPTY company names ❌
+
+2. **Different code paths used:**
+   - Batch 1: `personalization_data.source = 'upload_prospects'` (used upload endpoint)
+   - Batch 2: `personalization_data = {}` (used direct add endpoint)
+
+3. **Root Cause:** Mode 2 in `/api/campaigns/[id]/prospects/route.ts` didn't handle nested company objects from Sales Navigator:
+   - Sales Navigator returns: `company: { name: "Actifio" }`
+   - Code only checked: `prospect.company_name` (flat field)
+   - Nested company names were lost
+
+**Fixes Applied:**
+
+1. **Handle nested company objects** (line 381-385):
+```typescript
+// BEFORE (broken):
+company_name: prospect.company_name || null,
+
+// AFTER (fixed):
+const rawCompanyName = prospect.company_name || prospect.company?.name || prospect.company || null;
+```
+
+2. **Add company name normalization**:
+```typescript
+import { normalizeCompanyName } from '@/lib/prospect-normalization';
+
+// Normalize: "Goldman Sachs Group, Inc." → "Goldman Sachs"
+const normalizedCompany = rawCompanyName ? normalizeCompanyName(rawCompanyName) : null;
+```
+
+**Files Modified:**
+- `app/api/campaigns/[id]/prospects/route.ts`:
+  - Added `normalizeCompanyName` import
+  - Mode 1 (approval flow): Now normalizes company names
+  - Mode 2 (direct add): Now handles nested objects + normalizes
+
+**Normalization Library:**
+
+The `lib/prospect-normalization.ts` library was already built but wasn't being used consistently. It removes 100+ international legal suffixes:
+
+| Before | After |
+|--------|-------|
+| Goldman Sachs Group, Inc. | Goldman Sachs |
+| Chevron Phillips Chemical Company | Chevron Phillips Chemical |
+| Mercedes-Benz GmbH | Mercedes-Benz |
+| Apple Pty Ltd | Apple |
+
+**Where Normalization Is Now Used:**
+
+| Endpoint | Status |
+|----------|--------|
+| `/api/campaigns/[id]/prospects` | ✅ Now uses normalization |
+| `/api/prospect-approval/upload-csv` | ✅ Already had normalization |
+| `/api/prospect-approval/upload-prospects` | ✅ Already had normalization |
+| `/api/cron/reply-agent-process` | ✅ Already had normalization |
+
+**Backfill Completed:**
+- Updated Stan's 13 missing company names from `prospect_approval_data` source
+
+**Other Campaigns Checked:**
+- Only Asphericon had 379 prospects with empty company names
+- Root cause: Source CSV had no company data (not a code bug)
+
+---
+
 ## Latest Commits
 
 | Commit | Description |
 |--------|-------------|
+| `74be1d6` | fix: add company name normalization to prospects API |
 | `68ae568` | fix: support both UUID and csv_xxx ID formats for prospect lookup |
 | `673a969` | fix: use service role client for prospect_approval_data queries |
 | `bdde5f6` | fix: add debug logging and force redeploy for workspace_id issue |
