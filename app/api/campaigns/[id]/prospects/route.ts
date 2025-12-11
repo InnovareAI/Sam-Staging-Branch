@@ -157,18 +157,36 @@ export async function POST(
 
       console.log(`📋 Add to campaign: Received ${prospect_ids.length} prospect IDs`);
       console.log(`📋 Sample IDs:`, prospect_ids.slice(0, 3));
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(prospect_ids[0]);
+      console.log(`📋 ID format check: First ID is UUID? ${isUUID}`);
 
       // First, try to find prospects in prospect_approval_data (from CSV approval flow)
       // CRITICAL: Use supabaseAdmin to bypass RLS - prospect_approval_data has restrictive RLS policies
-      // These IDs are stored in the 'id' column as UUIDs, but the prospect_id field contains the csv_xxx IDs
-      const { data: approvalProspects, error: approvalError } = await supabaseAdmin
-        .from('prospect_approval_data')
-        .select('*')
-        .in('id', prospect_ids);
+      let approvalProspects: any[] = [];
 
-      console.log(`📋 Found in prospect_approval_data: ${approvalProspects?.length || 0}`);
-      if (approvalError) {
-        console.error('Failed to query prospect_approval_data:', approvalError);
+      if (isUUID) {
+        // Try UUID lookup first (new flow)
+        const { data, error } = await supabaseAdmin
+          .from('prospect_approval_data')
+          .select('*')
+          .in('id', prospect_ids);
+
+        console.log(`📋 Found in prospect_approval_data by UUID: ${data?.length || 0}`);
+        if (error) console.error('UUID lookup error:', error);
+        if (data) approvalProspects = data;
+      }
+
+      // Also try matching by prospect_id (csv_xxx format) if UUID lookup fails or IDs aren't UUIDs
+      if (approvalProspects.length === 0) {
+        console.log(`📋 Trying prospect_id field lookup...`);
+        const { data, error } = await supabaseAdmin
+          .from('prospect_approval_data')
+          .select('*')
+          .in('prospect_id', prospect_ids);
+
+        console.log(`📋 Found by prospect_id: ${data?.length || 0}`);
+        if (error) console.error('prospect_id lookup error:', error);
+        if (data && data.length > 0) approvalProspects = data;
       }
 
       // If we found prospects in approval data, add them directly to campaign_prospects
