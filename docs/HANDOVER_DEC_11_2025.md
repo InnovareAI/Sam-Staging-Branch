@@ -1,63 +1,125 @@
 # Handover Document - December 11, 2025
 
-## Session Summary
+## Executive Summary
 
-### Completed Tasks
+This document covers all work completed December 9-11, 2025 across multiple sessions. Major accomplishments include:
 
-#### 1. Fixed Airtable Double-Quote Sync Error
+1. **AI Search Agent** - Full SEO/GEO analysis with email reports
+2. **Follow-Up Agent** - HITL approval workflow for follow-up messages
+3. **Reply Agent Training v2.0** - Multi-channel framework with 11+ industry verticals
+4. **Anti-Detection System** - Warmup mode, skip days, comment scheduling
+5. **Inbox Agent** - AI-powered message categorization
+6. **Orphan Prospect Recovery** - Auto-fix missing campaign prospects
+7. **Critical Bug Fixes** - Airtable sync, ActiveCampaign, prospect approval
 
-**Problem:** Daily sync report showed Airtable API error 422:
-```
-Failed to sync: Airtable API error (422): {"error":{"type":"INVALID_MULTIPLE_CHOICE_OPTIONS","message":"Insufficient permissions to create new select option \"\"Interested\"\""}}
-```
+---
 
-The `"\"Interested\""` value contained escaped quotes that Airtable rejected as an invalid dropdown option.
+## Completed Tasks (Dec 9-11)
 
-**Root Cause:** Intent values were being passed with extra escaped quotes from JSON serialization somewhere upstream.
+### 1. AI Search Agent (Dec 10-11)
 
-**Solution:** Enhanced quote stripping in `lib/airtable.ts`:
-```typescript
-// Before (only stripped outer quotes)
-const cleanIntent = data.intent?.replace(/^["']|["']$/g, '').toLowerCase();
+Built complete AI-powered search agent for SEO/GEO analysis and content strategy.
 
-// After (strips escaped quotes AND regular quotes)
-const cleanIntent = data.intent
-  ?.replace(/\\"/g, '')  // Remove escaped quotes \"
-  .replace(/["']/g, '')   // Remove regular quotes
-  .trim()
-  .toLowerCase();
-```
+**Commits:**
+- `b76bce9d` - Add AI Search Agent for SEO/GEO analysis and content strategy
+- `efab00fa` - Add email report feature to AI Search Agent
+- `6cdddde5` - Add website_url and learning columns to AI search config migration
+- `189f88d5` - Fix JSONB parsing in send-report email template
+
+**Features:**
+- Website analysis with SEO/GEO scoring
+- Competitive landscape analysis
+- Content strategy recommendations
+- Email report delivery to workspace owner
+- Per-workspace configuration via `workspace_ai_search_config` table
+
+**Files Created:**
+- `app/api/ai-search/analyze/route.ts` - Analysis endpoint
+- `app/api/ai-search/send-report/route.ts` - Email report delivery
+- `sql/migrations/040-create-ai-search-config.sql` - Config table
+
+---
+
+### 2. Follow-Up Agent with HITL (Dec 10-11)
+
+Implemented enhanced Follow-Up Agent with human-in-the-loop approval workflow.
+
+**Commits:**
+- `68e53b5f` - Add enhanced Follow-Up Agent with HITL approval workflow
+- `d0954aa7` - Add Follow-Up Agent to AI Configuration settings
+- `20924f13` - Add dedicated Follow-Up Agent training document to knowledge base
+
+**Features:**
+- Dedicated follow-up drafts table (`follow_up_drafts`)
+- AI-generated follow-up messages based on conversation history
+- Human approval/edit/reject workflow
+- Auto-scheduling for approved follow-ups
+- Training document with conversation patterns
+
+**Files Created:**
+- `app/api/follow-up-agent/generate/route.ts` - Generate follow-up draft
+- `app/api/follow-up-agent/approve/route.ts` - Approve/edit/reject workflow
+- `lib/services/follow-up-agent.ts` - Core follow-up logic
+- `knowledge-base/follow-up-agent-training.md` - Training document
+
+---
+
+### 3. Reply Agent Training v2.0 (Dec 10)
+
+Major update to Reply Agent with multi-channel framework and industry expertise.
+
+**Commits:**
+- `791b87f7` - Update Reply Agent training to v2.0 - Multi-Channel Framework
+- `77a4ce7c` - Add Reply Agent training document to knowledge base
+- `3a06a21d` - Add industry expertise section - 11+ trained verticals with regulatory awareness
+- `1fd33b25` - Add compliance certifications: SOC 2, HIPAA, GDPR, CCPA
+
+**Features:**
+- Multi-channel support (LinkedIn, Email, WhatsApp)
+- 11+ industry verticals with regulatory awareness:
+  - Technology/SaaS, Healthcare, Financial Services, Legal, Real Estate
+  - Manufacturing, Education, Media/Entertainment, Nonprofit, Government, Energy
+- Compliance certifications integration (SOC 2, HIPAA, GDPR, CCPA)
+- Tone calibration by channel
+- Response templates by intent
 
 **Files Modified:**
-- `lib/airtable.ts` - Lines 150-158 (syncLinkedInLead) and 209-214 (syncEmailLead)
+- `knowledge-base/reply-agent-training.md` - Complete rewrite
 
 ---
 
-#### 2. Configured ActiveCampaign Integration
+### 4. Anti-Detection System (Dec 10)
 
-**Problem:** Daily sync showed:
-```
-Error syncing nevina.kishun@msaresearch.com: ActiveCampaign API credentials not configured
-Error syncing Chetaspatel1345@gmail.com: ActiveCampaign API credentials not configured
-```
+Comprehensive anti-detection system for LinkedIn commenting to avoid platform restrictions.
 
-**Solution:** Set environment variables via Netlify CLI:
-```bash
-netlify env:set ACTIVECAMPAIGN_BASE_URL "https://innovareai.api-us1.com"
-netlify env:set ACTIVECAMPAIGN_API_KEY "453675737b6accc1d499c5c7da2c86baedf1af829c2f29b605b16d2dbb8940a98a2d5e0d"
-```
+**Commits:**
+- `6069a8ed` - Add comprehensive anti-detection system for LinkedIn commenting
+- `2cb0baaf` - Update warmup mode: cap at 5 comments/day, 20% skip days
+- `55411f96` - Add comprehensive anti-detection system documentation
 
-**Note:** The code uses `ACTIVECAMPAIGN_BASE_URL` (not `ACTIVECAMPAIGN_API_URL`). Check `lib/activecampaign.ts` for the service implementation.
+**Features:**
+- **Warmup Mode**: New accounts start with 5 comments/day max
+- **Skip Days**: 20% random skip days (mimics human behavior)
+- **Smart Scheduling**: Natural timing with randomization
+- **Activity Limits**: Daily/weekly caps based on account age
+- **Engagement Rotation**: Varies comment styles
+
+**Files Modified:**
+- `app/api/linkedin-commenting/discover-posts-hashtag/route.ts`
+- `app/api/cron/process-comment-queue/route.ts`
+- `docs/ANTI_DETECTION_SYSTEM.md` (created)
 
 ---
 
-#### 3. Implemented Inbox Agent (Full Feature)
+### 5. Inbox Agent (Dec 11)
 
 Built complete Inbox Agent for AI-powered message categorization and intent detection.
 
+**Commit:** `7390d8b7`
+
 **Database Migration:** `sql/migrations/041-create-inbox-agent-tables.sql`
 
-Tables created:
+**Tables created:**
 - `workspace_inbox_agent_config` - Per-workspace agent settings
 - `inbox_message_categories` - System + custom categories (10 built-in)
 - `inbox_message_tags` - Message categorization history with AI reasoning
@@ -77,97 +139,148 @@ Tables created:
 | Uncategorized | `uncategorized` | reply |
 
 **Files Created:**
-- `app/components/InboxAgentModal.tsx` - Configuration modal with Settings and Categories tabs
-- `app/api/inbox-agent/config/route.ts` - GET/POST config endpoint
-- `app/api/inbox-agent/categories/route.ts` - GET/POST/DELETE categories endpoint
-- `app/api/inbox-agent/categorize/route.ts` - POST to categorize messages with AI
-- `lib/services/inbox-agent.ts` - Core categorization service
+- `app/components/InboxAgentModal.tsx` - Configuration modal
+- `app/api/inbox-agent/config/route.ts` - GET/POST config
+- `app/api/inbox-agent/categories/route.ts` - CRUD categories
+- `app/api/inbox-agent/categorize/route.ts` - AI categorization
+- `lib/services/inbox-agent.ts` - Core service
+
+---
+
+### 6. Orphan Prospect Recovery Agent (Dec 10)
+
+Auto-recovery system for prospects that fail to transfer from approval to campaign.
+
+**Commits:**
+- `595e6d83` - Add orphan prospect recovery agent
+- `6deba531` - Fix missing prospects when adding to campaign
+- `18f24e19` - Update handover doc with orphan recovery agent details
+
+**Problem Solved:**
+- Stan's campaign had 28/41 prospects - 13 approved prospects were never transferred
+- Root cause: Supabase bulk insert fails ALL records if ANY has constraint violation
+- Silent failure meant no error was thrown
+
+**Solution:**
+- Created hourly cron job that auto-detects and fixes orphan prospects
+- Changed bulk insert to one-by-one with error handling
+- Sends Google Chat summary of recoveries
+
+**Files Created:**
+- `app/api/agents/recover-orphan-prospects/route.ts`
+- `netlify/functions/recover-orphan-prospects.ts`
 
 **Files Modified:**
-- `app/components/AIConfiguration.tsx` - Added InboxAgentModal import and state
+- `app/api/prospect-approval/complete/route.ts` - Fixed bulk insert
+- `netlify.toml` - Added scheduled function
 
-**API Endpoints:**
-```
-GET  /api/inbox-agent/config?workspace_id=...     # Get config
-POST /api/inbox-agent/config                       # Create/update config
-GET  /api/inbox-agent/categories?workspace_id=... # List categories
-POST /api/inbox-agent/categories                   # Create custom category
-DELETE /api/inbox-agent/categories?id=...&workspace_id=... # Delete custom category
-POST /api/inbox-agent/categorize                   # Categorize a message
-```
+---
 
-**Categorize Request Example:**
-```json
-{
-  "workspace_id": "uuid",
-  "message": {
-    "id": "msg-123",
-    "content": "I'm interested in learning more about your product",
-    "sender_name": "John Doe",
-    "sender_email": "john@example.com",
-    "source": "linkedin"
-  }
-}
+### 7. Airtable Double-Quote Fix (Dec 11)
+
+**Commit:** `7390d8b7`
+
+**Problem:** Daily sync showed Airtable API error 422:
+```
+{"error":{"type":"INVALID_MULTIPLE_CHOICE_OPTIONS","message":"Insufficient permissions to create new select option \"\"Interested\"\""}}
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "message_id": "msg-123",
-    "categorization": {
-      "category_slug": "interested",
-      "category_name": "Interested",
-      "detected_intent": "Prospect wants product information",
-      "confidence_score": 0.92,
-      "ai_reasoning": "Message explicitly states interest...",
-      "suggested_response": "Thanks for your interest! I'd love to..."
-    }
-  }
-}
+**Root Cause:** Intent values had escaped quotes from JSON serialization.
+
+**Solution:** Enhanced quote stripping in `lib/airtable.ts`:
+```typescript
+// Before (only stripped outer quotes)
+const cleanIntent = data.intent?.replace(/^["']|["']$/g, '').toLowerCase();
+
+// After (strips escaped quotes AND regular quotes)
+const cleanIntent = data.intent
+  ?.replace(/\\"/g, '')  // Remove escaped quotes \"
+  .replace(/["']/g, '')   // Remove regular quotes
+  .trim()
+  .toLowerCase();
 ```
 
 ---
 
-### Database Changes
+### 8. ActiveCampaign Integration (Dec 11)
 
-**New Tables (run migration 041):**
+**Problem:** Daily sync showed `ActiveCampaign API credentials not configured`
+
+**Solution:** Set environment variables via Netlify CLI:
+```bash
+netlify env:set ACTIVECAMPAIGN_BASE_URL "https://innovareai.api-us1.com"
+netlify env:set ACTIVECAMPAIGN_API_KEY "453675737b6accc1d499c5c7da2c86baedf1af829c2f29b605b16d2dbb8940a98a2d5e0d"
+```
+
+**Note:** Code uses `ACTIVECAMPAIGN_BASE_URL` (not `ACTIVECAMPAIGN_API_URL`).
+
+---
+
+### 9. Other Bug Fixes (Dec 9-10)
+
+| Commit | Description |
+|--------|-------------|
+| `8619906a` | Fix prospect approval completion - query approval_status directly |
+| `c223b914` | Fix campaign dropdown in prospect approval |
+| `4b0be938` | Fix duplicate campaign creation - add loading state |
+| `dde4f5f0` | Validate LinkedIn account exists before queue creation |
+| `187765c7` | Fix comments API - use correct column names |
+| `71b8c823` | Add status filter to comment approval page |
+| `25fcedf1` | Auto-trigger post discovery when comments rejected |
+| `b0ce6523` | Remove Bright Data and Google CSE integrations |
+| `48d01309` | Fix: Add prospects to existing campaign from approval flow |
+
+---
+
+### 10. Slack Integration (Dec 10)
+
+**Commit:** `1c81e90c`
+
+Added one-way Slack integration to Integrations & Tools modal.
+
+**Files Created:**
+- `app/components/SlackModal.tsx`
+- `app/api/integrations/slack/status/route.ts`
+- `app/api/integrations/slack/connect/route.ts`
+- `app/api/integrations/slack/disconnect/route.ts`
+- `app/api/integrations/slack/test/route.ts`
+- `sql/migrations/016_workspace_integrations.sql`
+
+**Note:** Current implementation is one-way (notifications only). Full two-way Slack app is on the roadmap.
+
+---
+
+## Database Changes
+
+### New Tables
+
+| Table | Migration | Purpose |
+|-------|-----------|---------|
+| `workspace_inbox_agent_config` | 041 | Inbox agent settings |
+| `inbox_message_categories` | 041 | Message categories |
+| `inbox_message_tags` | 041 | Categorization history |
+| `workspace_ai_search_config` | 040 | AI search agent config |
+| `workspace_integrations` | 016 | Slack/Teams integrations |
+| `follow_up_drafts` | (in code) | Follow-up HITL drafts |
+
+### Migrations to Run
+
 ```sql
--- Already run by user
-CREATE TABLE workspace_inbox_agent_config (...)
-CREATE TABLE inbox_message_categories (...)
-CREATE TABLE inbox_message_tags (...)
+-- If Inbox Agent modal doesn't load categories:
+-- Run sql/migrations/041-create-inbox-agent-tables.sql
+
+-- If AI Search Agent config missing:
+-- Run sql/migrations/040-create-ai-search-config.sql
 ```
 
-### Environment Variables Added
+---
 
-| Variable | Value | Context |
+## Environment Variables Added
+
+| Variable | Value | Purpose |
 |----------|-------|---------|
-| `ACTIVECAMPAIGN_BASE_URL` | `https://innovareai.api-us1.com` | All |
-| `ACTIVECAMPAIGN_API_KEY` | `453675737b...` (redacted) | All |
-
----
-
-## Deployment Status
-
-- **Production:** https://app.meet-sam.com
-- **Last Deploy:** December 11, 2025
-- **Commits:**
-  - `7390d8b7` - Fix Airtable double-quoting issue and add Inbox Agent
-
----
-
-## Daily Sync Status
-
-The daily sync cron job runs at 6:00 AM CET. Previous issues:
-
-| Issue | Status |
-|-------|--------|
-| Airtable `"\"Interested\""` double-quote error | ✅ Fixed |
-| ActiveCampaign credentials not configured | ✅ Fixed |
-| 3 LinkedIn records failed to sync | ✅ Will retry next run |
-| 2 email records failed AC sync | ✅ Will retry next run |
+| `ACTIVECAMPAIGN_BASE_URL` | `https://innovareai.api-us1.com` | AC API base |
+| `ACTIVECAMPAIGN_API_KEY` | `453675737b...` (redacted) | AC authentication |
 
 ---
 
@@ -194,34 +307,88 @@ The daily sync cron job runs at 6:00 AM CET. Previous issues:
 
 ---
 
+## Daily Sync Status
+
+The daily sync cron job runs at 6:00 AM CET.
+
+| Issue | Status |
+|-------|--------|
+| Airtable `"\"Interested\""` double-quote error | Fixed |
+| ActiveCampaign credentials not configured | Fixed |
+| LinkedIn records sync | Will retry next run |
+| Email records AC sync | Will retry next run |
+
+---
+
+## Deployment Status
+
+- **Production:** https://app.meet-sam.com
+- **Last Deploy:** December 11, 2025
+- **Total Commits (Dec 9-11):** 40+
+
+---
+
 ## Next Agent Instructions
 
-1. **If Inbox Agent modal doesn't load categories:**
-   - Run migration `041-create-inbox-agent-tables.sql` in Supabase
-   - The system categories are inserted by the migration
+### 1. If Inbox Agent modal doesn't load categories
+Run migration `041-create-inbox-agent-tables.sql` in Supabase.
 
-2. **If daily sync still shows Airtable errors:**
-   - Check Airtable field "Status of the Lead" has these options:
-     - Interested, Info Requested, Meeting Booked, Not Interested, Went Silent
-   - Or enable "Allow adding new options via API" in field settings
+### 2. If daily sync still shows Airtable errors
+Check Airtable field "Status of the Lead" has these options:
+- Interested, Info Requested, Meeting Booked, Not Interested, Went Silent
+- Or enable "Allow adding new options via API" in field settings
 
-3. **If ActiveCampaign sync fails:**
-   - Verify API key at https://innovareai.api-us1.com → Settings → Developer
-   - Check `lib/activecampaign.ts` for service implementation
+### 3. If ActiveCampaign sync fails
+Verify API key at https://innovareai.api-us1.com -> Settings -> Developer
 
-4. **To test Inbox Agent categorization:**
-   ```bash
-   curl -X POST 'https://app.meet-sam.com/api/inbox-agent/categorize' \
-     -H 'Content-Type: application/json' \
-     -d '{
-       "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
-       "message": {
-         "id": "test-1",
-         "content": "Yes, I would like to schedule a demo",
-         "source": "linkedin"
-       }
-     }'
-   ```
+### 4. To test Inbox Agent
+```bash
+curl -X POST 'https://app.meet-sam.com/api/inbox-agent/categorize' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "message": {
+      "id": "test-1",
+      "content": "Yes, I would like to schedule a demo",
+      "source": "linkedin"
+    }
+  }'
+```
+
+### 5. To test AI Search Agent
+```bash
+curl -X POST 'https://app.meet-sam.com/api/ai-search/analyze' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "website_url": "https://example.com"
+  }'
+```
+
+### 6. To check orphan prospect recovery
+```bash
+# View logs
+netlify logs --function recover-orphan-prospects --tail
+
+# Manual trigger
+curl -X POST 'https://app.meet-sam.com/api/agents/recover-orphan-prospects' \
+  -H 'x-cron-secret: <CRON_SECRET>' \
+  -H 'Content-Type: application/json'
+```
+
+---
+
+## Pending Tasks
+
+### High Priority - Integrations
+1. Build full Slack App with two-way communication
+2. Build Microsoft Teams App with two-way communication
+3. Build Zapier integration
+4. Build Make.com integration
+
+### Medium Priority - Bug Fixes
+1. Fix Campaign Hub buttons (View Messages, View Prospects, Edit, Pause/Resume)
+2. Fix Commenting Agent UI cache issue (6 sections not showing)
 
 ---
 
@@ -240,21 +407,42 @@ netlify env:list
 
 # Deploy to production
 npm run build && git add -A && git commit -m "message" && git push origin main && netlify deploy --prod
+
+# Trigger orphan recovery
+CRON_SECRET="792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0" \
+curl -s -X POST 'https://app.meet-sam.com/api/agents/recover-orphan-prospects' \
+  -H "x-cron-secret: $CRON_SECRET" -H 'Content-Type: application/json'
 ```
 
 ---
 
-## Files Changed This Session
+## Files Changed (Dec 9-11)
 
 ### Created
 - `app/components/InboxAgentModal.tsx`
+- `app/components/SlackModal.tsx`
 - `app/api/inbox-agent/config/route.ts`
 - `app/api/inbox-agent/categories/route.ts`
 - `app/api/inbox-agent/categorize/route.ts`
+- `app/api/ai-search/analyze/route.ts`
+- `app/api/ai-search/send-report/route.ts`
+- `app/api/follow-up-agent/generate/route.ts`
+- `app/api/follow-up-agent/approve/route.ts`
+- `app/api/integrations/slack/*.ts`
+- `app/api/agents/recover-orphan-prospects/route.ts`
 - `lib/services/inbox-agent.ts`
+- `lib/services/follow-up-agent.ts`
+- `sql/migrations/040-create-ai-search-config.sql`
 - `sql/migrations/041-create-inbox-agent-tables.sql`
+- `knowledge-base/reply-agent-training.md`
+- `knowledge-base/follow-up-agent-training.md`
+- `docs/ANTI_DETECTION_SYSTEM.md`
 - `docs/HANDOVER_DEC_11_2025.md`
 
 ### Modified
 - `lib/airtable.ts` - Fixed quote stripping
-- `app/components/AIConfiguration.tsx` - Added InboxAgentModal
+- `app/components/AIConfiguration.tsx` - Added InboxAgentModal, FollowUpAgent
+- `app/api/prospect-approval/complete/route.ts` - Fixed bulk insert
+- `app/api/linkedin-commenting/*.ts` - Anti-detection system
+- `app/api/cron/process-comment-queue/route.ts` - Warmup mode
+- `netlify.toml` - Added scheduled functions
