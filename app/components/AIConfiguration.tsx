@@ -7,6 +7,7 @@ import ReplyAgentModal from '@/app/components/ReplyAgentModal';
 import FollowUpAgentModal from '@/app/components/FollowUpAgentModal';
 import CommentingAgentModal from '@/app/components/CommentingAgentModal';
 import AISearchAgentModal from '@/app/components/AISearchAgentModal';
+import InboxAgentModal from '@/app/components/InboxAgentModal';
 import { TileCard } from '@/components/TileCard';
 
 interface AIConfigurationProps {
@@ -31,6 +32,7 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
   const [showFollowUpAgentModal, setShowFollowUpAgentModal] = useState(false);
   const [showCommentingAgentModal, setShowCommentingAgentModal] = useState(false);
   const [showAISearchAgentModal, setShowAISearchAgentModal] = useState(false);
+  const [showInboxAgentModal, setShowInboxAgentModal] = useState(false);
 
   const agents: Agent[] = [
     {
@@ -84,9 +86,8 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
       description: 'Monitor and categorize incoming messages from prospects',
       icon: Search,
       status: 'active',
-      badge: 'upgrade',
       color: 'yellow',
-      onClick: () => {}, // TODO: Link to inbox agent config
+      onClick: () => setShowInboxAgentModal(true),
     },
     {
       id: 'ai-search-agent',
@@ -202,6 +203,14 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
         <AISearchAgentModal
           isOpen={showAISearchAgentModal}
           onClose={() => setShowAISearchAgentModal(false)}
+          workspaceId={workspaceId}
+        />
+      )}
+
+      {showInboxAgentModal && workspaceId && (
+        <InboxAgentModal
+          isOpen={showInboxAgentModal}
+          onClose={() => setShowInboxAgentModal(false)}
           workspaceId={workspaceId}
         />
       )}
