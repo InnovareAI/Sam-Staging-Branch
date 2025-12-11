@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
+// Increase timeout for large prospect batches
+export const maxDuration = 30; // 30 seconds
+
 /**
  * Pre-flight Check for Campaign Prospects
  *
