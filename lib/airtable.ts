@@ -147,8 +147,13 @@ class AirtableService {
     try {
       console.log(`📊 Syncing LinkedIn lead to Airtable: ${data.name}`);
 
-      // Sanitize intent - strip any quotes that might have been added during JSON serialization
-      const cleanIntent = data.intent?.replace(/^["']|["']$/g, '').toLowerCase();
+      // Sanitize intent - strip ALL quotes (including escaped quotes) that might have been added during JSON serialization
+      // The error "\"Interested\"" shows escaped quotes need to be removed too
+      const cleanIntent = data.intent
+        ?.replace(/\\"/g, '')  // Remove escaped quotes \"
+        .replace(/["']/g, '')   // Remove regular quotes
+        .trim()
+        .toLowerCase();
       const status = cleanIntent ? INTENT_TO_STATUS[cleanIntent] || 'Interested' : 'Interested';
       console.log(`   Intent: "${data.intent}" -> cleanIntent: "${cleanIntent}" -> status: "${status}"`);
 
@@ -205,8 +210,12 @@ class AirtableService {
     try {
       console.log(`📊 Syncing email lead to Airtable: ${data.email}`);
 
-      // Sanitize intent - strip any quotes that might have been added during JSON serialization
-      const cleanIntent = data.intent?.replace(/^["']|["']$/g, '').toLowerCase();
+      // Sanitize intent - strip ALL quotes (including escaped quotes) that might have been added during JSON serialization
+      const cleanIntent = data.intent
+        ?.replace(/\\"/g, '')  // Remove escaped quotes \"
+        .replace(/["']/g, '')   // Remove regular quotes
+        .trim()
+        .toLowerCase();
       const status = cleanIntent ? INTENT_TO_STATUS[cleanIntent] || 'Interested' : undefined;
 
       // Extract domain from email
