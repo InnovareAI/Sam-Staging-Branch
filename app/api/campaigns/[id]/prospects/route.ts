@@ -371,19 +371,25 @@ export async function POST(
       }
 
       // Insert prospects directly into campaign_prospects
+      // FIX (Dec 11, 2025): Handle multiple company name formats from different data sources
       const campaignProspects = prospects.map(prospect => ({
         campaign_id: campaignId,
         first_name: prospect.first_name || '',
         last_name: prospect.last_name || '',
-        email: prospect.email || null,
-        company_name: prospect.company_name || null,
+        email: prospect.email || prospect.contact?.email || null,
+        // FIX: Handle nested company object from Sales Navigator data
+        company_name: prospect.company_name || prospect.company?.name || prospect.company || null,
         linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url || null,
         title: prospect.title || null,
-        phone: prospect.phone || null,
+        phone: prospect.phone || prospect.contact?.phone || null,
         location: prospect.location || null,
-        industry: prospect.industry || null,
+        industry: prospect.industry || prospect.company?.industry?.[0] || null,
         status: prospect.status || 'approved',
-        personalization_data: prospect.personalization_data || {},
+        personalization_data: {
+          ...(prospect.personalization_data || {}),
+          source: prospect.personalization_data?.source || 'direct_add',
+          added_at: new Date().toISOString()
+        },
         created_at: new Date().toISOString()
       }));
 
