@@ -329,9 +329,50 @@ async function handleMessagingWebhook(event: any) {
       console.log(`💼 Found ${prospects.length} LinkedIn prospects matching ${senderLinkedInId}`);
     }
 
+    // Store the incoming message in linkedin_messages table
+    const messageContent = message?.text || message?.body || message?.content || '';
+    const messageId = message?.id || data.message_id;
+
     if (prospects.length > 0) {
       // Update all matching prospects to 'replied' and STOP sequences
       for (const prospect of prospects) {
+        // Get prospect details for message storage
+        const { data: prospectDetails } = await supabase
+          .from('campaign_prospects')
+          .select('first_name, last_name, linkedin_url, campaign_id, campaigns!inner(workspace_id)')
+          .eq('id', prospect.id)
+          .single();
+
+        // Store the incoming message
+        if (prospectDetails && messageContent) {
+          const workspaceId = (prospectDetails.campaigns as any)?.workspace_id;
+
+          await supabase
+            .from('linkedin_messages')
+            .insert({
+              workspace_id: workspaceId,
+              campaign_id: prospect.campaign_id,
+              prospect_id: prospect.id,
+              direction: 'incoming',
+              message_type: isEmail ? 'email' : 'message',
+              content: messageContent,
+              unipile_message_id: messageId,
+              unipile_chat_id: chat_id,
+              sender_linkedin_url: prospectDetails.linkedin_url,
+              sender_name: `${prospectDetails.first_name || ''} ${prospectDetails.last_name || ''}`.trim(),
+              sender_linkedin_id: senderLinkedInId,
+              status: 'received',
+              sent_at: new Date().toISOString(),
+              metadata: {
+                raw_sender: sender,
+                account_id: account_id,
+                is_email: isEmail
+              }
+            });
+
+          console.log(`💾 Stored incoming message from ${prospectDetails.first_name} ${prospectDetails.last_name}`);
+        }
+
         await supabase
           .from('campaign_prospects')
           .update({
@@ -355,6 +396,39 @@ async function handleMessagingWebhook(event: any) {
       }
 
       console.log(`✅ Updated ${prospects.length} prospects to replied status, stopped follow-up sequences, and cancelled pending emails`);
+    } else if (messageContent) {
+      // Store message even if no prospect found (for audit purposes)
+      console.log(`⚠️ No prospect found, but storing message for audit`);
+
+      // Try to find workspace from account
+      const { data: accountData } = await supabase
+        .from('workspace_accounts')
+        .select('workspace_id')
+        .eq('unipile_account_id', account_id)
+        .single();
+
+      if (accountData?.workspace_id) {
+        await supabase
+          .from('linkedin_messages')
+          .insert({
+            workspace_id: accountData.workspace_id,
+            direction: 'incoming',
+            message_type: isEmail ? 'email' : 'message',
+            content: messageContent,
+            unipile_message_id: messageId,
+            unipile_chat_id: chat_id,
+            sender_linkedin_id: senderLinkedInId,
+            sender_name: sender?.name || sender?.display_name,
+            status: 'received',
+            sent_at: new Date().toISOString(),
+            metadata: {
+              raw_sender: sender,
+              account_id: account_id,
+              is_email: isEmail,
+              no_prospect_match: true
+            }
+          });
+      }
     }
 
     return NextResponse.json({

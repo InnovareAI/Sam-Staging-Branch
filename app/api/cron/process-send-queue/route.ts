@@ -595,6 +595,36 @@ export async function POST(req: NextRequest) {
         console.log('📝 Message stored in campaign_messages table');
       }
 
+      // 3.6. Also store in linkedin_messages table for unified message history
+      const linkedinMessageRecord = {
+        workspace_id: campaign.workspace_id,
+        campaign_id: queueItem.campaign_id,
+        prospect_id: prospect.id,
+        linkedin_account_id: linkedinAccount.id,
+        direction: 'outgoing',
+        message_type: isConnectionRequest ? 'connection_request' : (isMessengerMessage ? 'message' : 'follow_up'),
+        content: queueItem.message,
+        recipient_linkedin_url: prospect.linkedin_url,
+        recipient_name: `${prospect.first_name} ${prospect.last_name}`,
+        recipient_linkedin_id: queueItem.linkedin_user_id,
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+        metadata: {
+          queue_id: queueItem.id,
+          sender_account: linkedinAccount.account_name
+        }
+      };
+
+      const { error: linkedinMsgError } = await supabase
+        .from('linkedin_messages')
+        .insert(linkedinMessageRecord);
+
+      if (linkedinMsgError) {
+        console.error('⚠️  Failed to store in linkedin_messages:', linkedinMsgError);
+      } else {
+        console.log('📝 Message stored in linkedin_messages table');
+      }
+
       // 4. Update prospect record
       if (isConnectionRequest) {
         // Connection request sent - wait for acceptance before scheduling follow-ups
