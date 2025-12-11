@@ -9,6 +9,10 @@ CREATE TABLE IF NOT EXISTS public.workspace_ai_search_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
 
+  -- Website URL (LOCKED after first setup)
+  website_url TEXT NOT NULL,
+  website_locked BOOLEAN DEFAULT true,
+
   -- Agent settings
   enabled BOOLEAN DEFAULT true,
   auto_analyze_prospects BOOLEAN DEFAULT false, -- Auto-analyze prospect company websites
@@ -26,6 +30,10 @@ CREATE TABLE IF NOT EXISTS public.workspace_ai_search_config (
   check_entity_clarity BOOLEAN DEFAULT true,
   check_fact_density BOOLEAN DEFAULT true,
   check_citation_readiness BOOLEAN DEFAULT true,
+
+  -- Learning settings
+  learn_from_outreach BOOLEAN DEFAULT true,
+  learn_from_comments BOOLEAN DEFAULT true,
 
   -- Notification settings
   send_analysis_reports BOOLEAN DEFAULT true,
