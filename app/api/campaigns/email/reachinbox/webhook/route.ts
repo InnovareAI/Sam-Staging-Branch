@@ -107,7 +107,8 @@ const SYNC_ALL_ACCOUNTS = false;
  * Example: "InnovareAI - Financial US", "InnovareAI - SMEs DACH"
  */
 const CAMPAIGN_WHITELIST_PATTERNS = [
-  'InnovareAI',               // All InnovareAI campaigns (new naming convention)
+  'InnovareAI',               // Full name (e.g., "InnovareAI - Financial US")
+  'IAI',                      // Short form (e.g., "IAI - SMEs DACH")
   'AI Sales Automation/',     // Legacy campaigns (existing)
 ];
 
