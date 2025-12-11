@@ -4,9 +4,15 @@
  *
  * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  * Updated Dec 7, 2025: Switched to Haiku 4.5 for cost optimization
+ * Updated Dec 11, 2025: Added comment variance for anti-detection
  */
 
 import { claudeClient, CLAUDE_MODELS } from '@/lib/llm/claude-client';
+import {
+  getCommentVarianceContext,
+  buildVariancePromptInstructions,
+  type CommentVarianceContext
+} from '@/lib/anti-detection/comment-variance';
 
 export interface LinkedInPost {
   id: string;
@@ -164,10 +170,19 @@ export async function generateLinkedInComment(
 ): Promise<GeneratedComment> {
   const startTime = Date.now();
 
+  // ANTI-DETECTION: Get variance context for this comment
+  // This randomizes length, type, and timing to avoid bot patterns
+  const varianceContext = getCommentVarianceContext();
+
   console.log('💬 Generating LinkedIn comment:', {
     post_id: context.post.id,
     author: context.post.author.name,
-    is_prospect: context.prospect?.is_prospect || false
+    is_prospect: context.prospect?.is_prospect || false,
+    variance: {
+      targetLength: varianceContext.targetLength,
+      category: varianceContext.lengthCategory,
+      type: varianceContext.commentType
+    }
   });
 
   // CRITICAL SAFETY CHECK: Never generate comment for posts without content
@@ -178,9 +193,9 @@ export async function generateLinkedInComment(
     throw new Error('POST_CONTENT_MISSING: Cannot generate comment for post without content. This prevents garbage comments.');
   }
 
-  // Build AI prompt
-  const systemPrompt = buildCommentSystemPrompt(context);
-  const userPrompt = buildCommentUserPrompt(context.post);
+  // Build AI prompt with variance instructions
+  const systemPrompt = buildCommentSystemPrompt(context, varianceContext);
+  const userPrompt = buildCommentUserPrompt(context.post, varianceContext);
 
   // Generate comment via Claude Direct API (GDPR compliant)
   // Using Haiku 4.5 for fast, cost-effective comment generation
@@ -269,8 +284,9 @@ export async function generateLinkedInComment(
 /**
  * Build system prompt for comment generation
  * Uses comprehensive brand guidelines when available
+ * Updated Dec 11, 2025: Added variance context for anti-detection
  */
-function buildCommentSystemPrompt(context: CommentGenerationContext): string {
+function buildCommentSystemPrompt(context: CommentGenerationContext, varianceContext?: CommentVarianceContext): string {
   const { workspace, prospect, post } = context;
   const bg = workspace.brand_guidelines;
   const legacySettings = workspace.commenting_agent_settings;
@@ -545,6 +561,8 @@ ${bg.competitors_never_mention.join(', ')}`;
 - NEVER reference technical issues with viewing the post
 - If you don't have the post content to work with, return { "skip": true } - DO NOT MAKE SOMETHING UP
 
+${varianceContext ? buildVariancePromptInstructions(varianceContext) : ''}
+
 ## Output Format (JSON ONLY)
 
 Return ONLY a JSON object with this structure:
@@ -617,12 +635,32 @@ Return ONLY a JSON object:
 
 /**
  * Build user prompt with post content
+ * Updated Dec 11, 2025: Added variance context for anti-detection
  */
-function buildCommentUserPrompt(post: LinkedInPost): string {
+function buildCommentUserPrompt(post: LinkedInPost, varianceContext?: CommentVarianceContext): string {
   // Take meaningful snippet of post (not just first few words)
   const postSnippet = post.post_text.length > 300
     ? post.post_text.substring(0, 300) + '...'
     : post.post_text;
+
+  // Build length instruction based on variance
+  let lengthInstruction = 'Make it 2-3 sentences, conversational, specific.';
+  if (varianceContext) {
+    const lengthMap: Record<string, string> = {
+      'very_short': `Keep it VERY SHORT (${varianceContext.targetLength} chars) - just 1 quick sentence or reaction.`,
+      'short': `Keep it SHORT (around ${varianceContext.targetLength} chars) - 1-2 brief sentences.`,
+      'medium': `Medium length (around ${varianceContext.targetLength} chars) - 2-3 sentences.`,
+      'long': `Write a LONGER comment (around ${varianceContext.targetLength} chars) - 3-4 sentences with detail.`,
+      'very_long': `Write a DETAILED comment (around ${varianceContext.targetLength} chars) - share a mini-story or deep insight.`
+    };
+    lengthInstruction = lengthMap[varianceContext.lengthCategory] || lengthInstruction;
+  }
+
+  // Build type instruction based on variance
+  let typeInstruction = '';
+  if (varianceContext) {
+    typeInstruction = `\n7. ${varianceContext.typePrompt}`;
+  }
 
   return `Generate a thoughtful LinkedIn comment for this post by ${post.author.name}${post.author.title ? ` (${post.author.title})` : ''}:
 
@@ -636,7 +674,7 @@ CRITICAL RULES:
 3. DO NOT mention "B2B space" or "enterprise customers" unless the post is about that
 4. DO reference a SPECIFIC idea, claim, or point from the post
 5. Add YOUR perspective - agree, disagree, expand, share experience
-6. Sound like a real person having a conversation, not a bot
+6. Sound like a real person having a conversation, not a bot${typeInstruction}
 
 EXAMPLES OF BAD COMMENTS (DO NOT DO THIS):
 - "Great insights on [topic]! This aligns perfectly with..."
@@ -648,7 +686,7 @@ EXAMPLES OF GOOD COMMENTS:
 - "I'd push back slightly on the idea that... because in practice..."
 - "This is why I've been telling my team to focus on..."
 
-Return JSON with comment_text. Make it 2-3 sentences, conversational, specific.`;
+Return JSON with comment_text. ${lengthInstruction}`;
 }
 
 /**

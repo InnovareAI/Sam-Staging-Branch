@@ -4,6 +4,8 @@
  *
  * Runs every 30 minutes via Netlify scheduled function
  * Finds discovered posts without comments and generates AI comments
+ *
+ * Updated Dec 11, 2025: Added anti-detection variance for daily volume and skip days
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,6 +13,14 @@ import { createClient } from '@supabase/supabase-js';
 import { generateLinkedInComment, generateCommentReply } from '@/lib/services/linkedin-commenting-agent';
 import type { CommentGenerationContext, CommentReplyGenerationContext } from '@/lib/services/linkedin-commenting-agent';
 import { fetchPostComments, shouldReplyToComment } from '@/lib/services/linkedin-comment-replies';
+import {
+  getRandomDailyLimit,
+  shouldSkipToday,
+  getRandomCommentGap,
+  getRandomPostingHour,
+  getRandomPostingMinute,
+  DAILY_VOLUME_CONFIG
+} from '@/lib/anti-detection/comment-variance';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for batch generation
@@ -35,7 +45,44 @@ export async function POST(request: NextRequest) {
   console.log('🤖 Auto-Generate Comments Cron Starting...');
   console.log(`   Time: ${new Date().toISOString()}`);
 
+  // ============================================
+  // ANTI-DETECTION: Check if we should skip today entirely
+  // Humans don't post every single day - we randomly skip ~15% of days
+  // ============================================
+  const dayOfWeek = new Date().getDay();
+  const skipCheck = shouldSkipToday(dayOfWeek);
+  if (skipCheck.skip) {
+    console.log(`   🎲 SKIPPING TODAY: ${skipCheck.reason}`);
+    return NextResponse.json({
+      success: true,
+      message: `Skip day activated: ${skipCheck.reason}`,
+      posts_processed: 0,
+      comments_generated: 0,
+      skipped_reason: 'anti_detection_skip_day',
+      duration_ms: Date.now() - startTime
+    });
+  }
+
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+  // ============================================
+  // ANTI-DETECTION: Get random daily limit for this run
+  // This varies the number of comments per day (3-12, avg ~7)
+  // ============================================
+  const dailyLimit = getRandomDailyLimit();
+  console.log(`   📊 Daily comment limit for today: ${dailyLimit} (range: ${DAILY_VOLUME_CONFIG.baseMin}-${DAILY_VOLUME_CONFIG.baseMax})`);
+
+  if (dailyLimit === 0) {
+    console.log(`   🎲 Daily limit is 0 - taking a break today`);
+    return NextResponse.json({
+      success: true,
+      message: 'Daily limit is 0 - taking a break today',
+      posts_processed: 0,
+      comments_generated: 0,
+      skipped_reason: 'anti_detection_daily_limit_zero',
+      duration_ms: Date.now() - startTime
+    });
+  }
 
   try {
     // Find discovered posts that don't have comments yet
@@ -43,6 +90,50 @@ export async function POST(request: NextRequest) {
     // IMPORTANT: Only process posts that have passed their comment_eligible_at time (randomizer)
     // This ensures we never comment immediately - posts must "age" 1-4 hours first
     const now = new Date().toISOString();
+
+    // ============================================
+    // ANTI-DETECTION: Check how many comments we've already generated today (per workspace)
+    // This respects the daily volume variance
+    // ============================================
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const { data: todaysComments } = await supabase
+      .from('linkedin_post_comments')
+      .select('workspace_id')
+      .gte('generated_at', todayStart.toISOString());
+
+    // Count comments per workspace today
+    const commentsPerWorkspaceToday: Record<string, number> = {};
+    for (const comment of todaysComments || []) {
+      commentsPerWorkspaceToday[comment.workspace_id] = (commentsPerWorkspaceToday[comment.workspace_id] || 0) + 1;
+    }
+
+    const totalCommentsToday = todaysComments?.length || 0;
+    console.log(`   📊 Comments generated today: ${totalCommentsToday} (limit: ${dailyLimit})`);
+
+    if (totalCommentsToday >= dailyLimit) {
+      console.log(`   ✅ Daily limit reached (${totalCommentsToday}/${dailyLimit}) - stopping for today`);
+      return NextResponse.json({
+        success: true,
+        message: `Daily limit reached: ${totalCommentsToday}/${dailyLimit} comments`,
+        posts_processed: 0,
+        comments_generated: 0,
+        daily_limit: dailyLimit,
+        comments_today: totalCommentsToday,
+        skipped_reason: 'anti_detection_daily_limit_reached',
+        duration_ms: Date.now() - startTime
+      });
+    }
+
+    // Calculate how many more we can generate
+    const remainingQuota = dailyLimit - totalCommentsToday;
+    console.log(`   📊 Remaining quota: ${remainingQuota} comments`);
+
+    // Limit posts to remaining quota (but never more than MAX_POSTS_PER_RUN)
+    const effectiveLimit = Math.min(remainingQuota, MAX_POSTS_PER_RUN);
+    console.log(`   📊 Effective limit for this run: ${effectiveLimit} (min of quota ${remainingQuota} and max ${MAX_POSTS_PER_RUN})`);
+
     const { data: posts, error: postsError } = await supabase
       .from('linkedin_posts_discovered')
       .select(`
@@ -74,7 +165,7 @@ export async function POST(request: NextRequest) {
       // Posts without comment_eligible_at (legacy) are immediately eligible
       .or(`comment_eligible_at.is.null,comment_eligible_at.lte.${now}`)
       .order('created_at', { ascending: false })
-      .limit(MAX_POSTS_PER_RUN);
+      .limit(effectiveLimit);
 
     if (postsError) {
       console.error('❌ Error fetching posts:', postsError);
@@ -642,24 +733,38 @@ export async function POST(request: NextRequest) {
         if (monitor?.auto_approve_enabled) {
           commentStatus = 'scheduled';
 
-          // Calculate scheduled time (spread throughout business hours)
+          // ============================================
+          // ANTI-DETECTION: Use random posting times
+          // Instead of fixed 36-min intervals, we use variance:
+          // - Random gaps between comments (30-180 min)
+          // - Posting hours weighted toward business hours
+          // ============================================
           const now = new Date();
-          const tz = brandGuideline?.timezone || 'America/Los_Angeles';
 
-          // Count already scheduled comments today
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const { count: scheduledToday } = await supabase
+          // Get the last scheduled comment for this workspace
+          const { data: lastScheduled } = await supabase
             .from('linkedin_post_comments')
-            .select('id', { count: 'exact', head: true })
+            .select('scheduled_post_time')
             .eq('workspace_id', post.workspace_id)
             .eq('status', 'scheduled')
-            .gte('scheduled_post_time', today.toISOString());
+            .order('scheduled_post_time', { ascending: false })
+            .limit(1)
+            .single();
 
-          // 36 minutes between posts (fills 6 AM - 6 PM with 20 posts)
-          const minutesBetween = 36;
-          const scheduled = new Date(now.getTime() + (scheduledToday || 0) * minutesBetween * 60 * 1000);
-          scheduledPostTime = scheduled.toISOString();
+          if (lastScheduled?.scheduled_post_time) {
+            // Schedule after the last scheduled comment with random gap
+            const lastTime = new Date(lastScheduled.scheduled_post_time);
+            const gapMinutes = getRandomCommentGap();
+            const scheduled = new Date(lastTime.getTime() + gapMinutes * 60 * 1000);
+            scheduledPostTime = scheduled.toISOString();
+            console.log(`   🎲 Scheduled ${gapMinutes}min after last (variance gap)`);
+          } else {
+            // No pending scheduled comments - schedule for a random future time
+            const gapMinutes = getRandomCommentGap();
+            const scheduled = new Date(now.getTime() + gapMinutes * 60 * 1000);
+            scheduledPostTime = scheduled.toISOString();
+            console.log(`   🎲 Scheduled ${gapMinutes}min from now (variance start)`);
+          }
 
           console.log(`   🤖 Auto-approved, scheduled for ${scheduledPostTime}`);
         }

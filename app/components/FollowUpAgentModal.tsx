@@ -32,31 +32,25 @@ export default function FollowUpAgentModal({ isOpen, onClose, workspaceId }: Fol
     default_channel: 'linkedin',
     business_hours_only: true,
     ai_model: 'claude-sonnet-4-5-20250929',
-    follow_up_guidelines: `## FOLLOW-UP STRATEGY
+    follow_up_guidelines: `## RE-ENGAGEMENT STRATEGY
 
-### Scenario-Based Approach
-- **No Reply to CR**: Light bump after 3 days, value-add at 7 days
-- **Replied Then Silent**: Reference their last message, offer next step
-- **No Show to Call**: Same day acknowledgment, reschedule offer
-- **Post-Demo Silence**: Recap value, address potential concerns
-- **Check Back Later**: Honor their timeline, bring fresh insight
+### When to Trigger
+- Prospect replied but then went silent (3+ days)
+- No-show to scheduled call
+- Post-demo silence
+- Said "check back later" and date arrived
 
-### Tone Progression
-1. **Touch 1 (Light Bump)**: Friendly, assume busy
-2. **Touch 2 (Value Add)**: Provide resource or insight
-3. **Touch 3 (Different Angle)**: Try new approach or channel
-4. **Touch 4 (Breakup)**: Graceful exit, leave door open
-
-### Channel Strategy
-- LinkedIn DM first (higher response rate)
-- Switch to email for touch 3+ if no response
-- Cross-channel acknowledgment when switching
+### Tone Guidelines
+- Acknowledge the silence without guilt-tripping
+- Reference previous conversation context
+- Provide fresh value or different angle
+- One clear, easy CTA
 
 ### Message Guidelines
 - Keep it short (2-4 sentences)
-- Reference previous conversation context
-- One clear CTA per message
-- Sound human, not templated`,
+- Sound human, not templated
+- Don't repeat previous messages
+- Graceful exit on final touch`,
   });
 
   useEffect(() => {
@@ -258,6 +252,10 @@ export default function FollowUpAgentModal({ isOpen, onClose, workspaceId }: Fol
                   <option value={4}>4 touches (Recommended)</option>
                   <option value={5}>5 touches</option>
                   <option value={6}>6 touches</option>
+                  <option value={7}>7 touches</option>
+                  <option value={8}>8 touches</option>
+                  <option value={9}>9 touches</option>
+                  <option value={10}>10 touches</option>
                 </select>
                 <p className="mt-1 text-xs text-gray-400">
                   Number of follow-up attempts before stopping outreach
@@ -335,12 +333,11 @@ export default function FollowUpAgentModal({ isOpen, onClose, workspaceId }: Fol
                 <div className="flex items-start space-x-3">
                   <Zap size={20} className="text-green-400 mt-0.5" />
                   <div>
-                    <div className="text-white font-medium mb-1">Intelligent Scenario Detection</div>
+                    <div className="text-white font-medium mb-1">Re-Engagement Scenarios</div>
                     <div className="text-gray-400 text-sm">
-                      The Follow-Up Agent automatically detects the prospect's situation and adjusts messaging:
+                      The Follow-Up Agent handles prospects who need re-engagement:
                     </div>
                     <ul className="mt-2 text-sm text-gray-400 space-y-1">
-                      <li>• <strong>No Reply to CR</strong> - Connection accepted but no response</li>
                       <li>• <strong>Replied Then Silent</strong> - Was engaged but went quiet</li>
                       <li>• <strong>No Show to Call</strong> - Missed scheduled meeting</li>
                       <li>• <strong>Post-Demo Silence</strong> - Attended demo but not responding</li>

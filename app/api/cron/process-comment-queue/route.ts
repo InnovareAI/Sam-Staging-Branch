@@ -408,9 +408,14 @@ export async function POST(req: NextRequest) {
 
         processed++;
 
-        // Rate limit: wait 3 seconds between posts
+        // ANTI-DETECTION: Random delay between actions (45-180 seconds)
+        // This mimics human behavior - nobody posts comments at exactly 3-second intervals
         if (dueComments.indexOf(comment) < dueComments.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          const minDelayMs = 45 * 1000;  // 45 seconds minimum
+          const maxDelayMs = 180 * 1000; // 3 minutes maximum
+          const randomDelayMs = minDelayMs + Math.floor(Math.random() * (maxDelayMs - minDelayMs));
+          console.log(`   ⏳ Anti-detection delay: ${Math.round(randomDelayMs / 1000)}s before next action`);
+          await new Promise(resolve => setTimeout(resolve, randomDelayMs));
         }
 
       } catch (commentError) {
