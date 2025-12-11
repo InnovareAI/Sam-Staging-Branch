@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Brain, MessageCircle, Send, TrendingUp, Search, MessageSquare, FileText, Settings, Edit, Plug } from 'lucide-react';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import ReplyAgentModal from '@/app/components/ReplyAgentModal';
+import FollowUpAgentModal from '@/app/components/FollowUpAgentModal';
 import CommentingAgentModal from '@/app/components/CommentingAgentModal';
 import { TileCard } from '@/components/TileCard';
 
@@ -26,6 +27,7 @@ interface Agent {
 export default function AIConfiguration({ workspaceId, workspaceName }: AIConfigurationProps) {
   const [showLLMModal, setShowLLMModal] = useState(false);
   const [showReplyAgentModal, setShowReplyAgentModal] = useState(false);
+  const [showFollowUpAgentModal, setShowFollowUpAgentModal] = useState(false);
   const [showCommentingAgentModal, setShowCommentingAgentModal] = useState(false);
 
   const agents: Agent[] = [
@@ -70,9 +72,9 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
       name: 'Follow-Up Agent',
       description: 'Automatically send follow-up messages based on prospect behavior',
       icon: Send,
-      status: 'coming-soon',
+      status: 'active',
       color: 'green',
-      onClick: () => {},
+      onClick: () => setShowFollowUpAgentModal(true),
     },
     {
       id: 'inbox-agent',
@@ -174,6 +176,14 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
         <ReplyAgentModal
           isOpen={showReplyAgentModal}
           onClose={() => setShowReplyAgentModal(false)}
+          workspaceId={workspaceId}
+        />
+      )}
+
+      {showFollowUpAgentModal && workspaceId && (
+        <FollowUpAgentModal
+          isOpen={showFollowUpAgentModal}
+          onClose={() => setShowFollowUpAgentModal(false)}
           workspaceId={workspaceId}
         />
       )}
