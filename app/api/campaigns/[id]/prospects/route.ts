@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { normalizeCompanyName } from '@/lib/prospect-normalization';
 
 // Service role client for bypassing RLS on prospect_approval_data queries
 const supabaseAdmin = createClient(
@@ -202,13 +203,17 @@ export async function POST(
           // Extract LinkedIn URL from contact object
           const linkedinUrl = prospect.contact?.linkedin_url || null;
 
+          // Extract and normalize company name
+          const rawCompanyName = prospect.company?.name || '';
+          const normalizedCompany = rawCompanyName ? normalizeCompanyName(rawCompanyName) : '';
+
           return {
             campaign_id: campaignId,
             workspace_id: campaign.workspace_id,
             first_name: firstName,
             last_name: lastName,
             email: prospect.contact?.email || null,
-            company_name: prospect.company?.name || '',
+            company_name: normalizedCompany,
             title: prospect.title || '',
             location: prospect.location || null,
             linkedin_url: linkedinUrl,
@@ -372,26 +377,33 @@ export async function POST(
 
       // Insert prospects directly into campaign_prospects
       // FIX (Dec 11, 2025): Handle multiple company name formats from different data sources
-      const campaignProspects = prospects.map(prospect => ({
-        campaign_id: campaignId,
-        first_name: prospect.first_name || '',
-        last_name: prospect.last_name || '',
-        email: prospect.email || prospect.contact?.email || null,
-        // FIX: Handle nested company object from Sales Navigator data
-        company_name: prospect.company_name || prospect.company?.name || prospect.company || null,
-        linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url || null,
-        title: prospect.title || null,
-        phone: prospect.phone || prospect.contact?.phone || null,
-        location: prospect.location || null,
-        industry: prospect.industry || prospect.company?.industry?.[0] || null,
-        status: prospect.status || 'approved',
-        personalization_data: {
-          ...(prospect.personalization_data || {}),
-          source: prospect.personalization_data?.source || 'direct_add',
-          added_at: new Date().toISOString()
-        },
-        created_at: new Date().toISOString()
-      }));
+      // FIX (Dec 11, 2025): Apply company name normalization (removes Inc, LLC, GmbH, etc.)
+      const campaignProspects = prospects.map(prospect => {
+        // Extract raw company name from multiple possible sources
+        const rawCompanyName = prospect.company_name || prospect.company?.name || prospect.company || null;
+        // Normalize: "Goldman Sachs Group, Inc." → "Goldman Sachs"
+        const normalizedCompany = rawCompanyName ? normalizeCompanyName(rawCompanyName) : null;
+
+        return {
+          campaign_id: campaignId,
+          first_name: prospect.first_name || '',
+          last_name: prospect.last_name || '',
+          email: prospect.email || prospect.contact?.email || null,
+          company_name: normalizedCompany,
+          linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url || null,
+          title: prospect.title || null,
+          phone: prospect.phone || prospect.contact?.phone || null,
+          location: prospect.location || null,
+          industry: prospect.industry || prospect.company?.industry?.[0] || null,
+          status: prospect.status || 'approved',
+          personalization_data: {
+            ...(prospect.personalization_data || {}),
+            source: prospect.personalization_data?.source || 'direct_add',
+            added_at: new Date().toISOString()
+          },
+          created_at: new Date().toISOString()
+        };
+      });
 
       const { data: addedProspects, error: insertError } = await supabase
         .from('campaign_prospects')
