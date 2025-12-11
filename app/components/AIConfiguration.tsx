@@ -6,6 +6,7 @@ import LLMConfigModal from '@/components/LLMConfigModal';
 import ReplyAgentModal from '@/app/components/ReplyAgentModal';
 import FollowUpAgentModal from '@/app/components/FollowUpAgentModal';
 import CommentingAgentModal from '@/app/components/CommentingAgentModal';
+import AISearchAgentModal from '@/app/components/AISearchAgentModal';
 import { TileCard } from '@/components/TileCard';
 
 interface AIConfigurationProps {
@@ -29,6 +30,7 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
   const [showReplyAgentModal, setShowReplyAgentModal] = useState(false);
   const [showFollowUpAgentModal, setShowFollowUpAgentModal] = useState(false);
   const [showCommentingAgentModal, setShowCommentingAgentModal] = useState(false);
+  const [showAISearchAgentModal, setShowAISearchAgentModal] = useState(false);
 
   const agents: Agent[] = [
     {
@@ -89,11 +91,11 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
     {
       id: 'ai-search-agent',
       name: 'AI Search Agent',
-      description: 'Optimize content for AI search engines and generate search-friendly copy',
+      description: 'Optimize content for AI search engines (GEO) and generate search-friendly copy',
       icon: TrendingUp,
-      status: 'coming-soon',
+      status: 'active',
       color: 'orange',
-      onClick: () => {},
+      onClick: () => setShowAISearchAgentModal(true),
     },
     {
       id: 'commenting-agent',
@@ -192,6 +194,14 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
         <CommentingAgentModal
           isOpen={showCommentingAgentModal}
           onClose={() => setShowCommentingAgentModal(false)}
+          workspaceId={workspaceId}
+        />
+      )}
+
+      {showAISearchAgentModal && workspaceId && (
+        <AISearchAgentModal
+          isOpen={showAISearchAgentModal}
+          onClose={() => setShowAISearchAgentModal(false)}
           workspaceId={workspaceId}
         />
       )}
