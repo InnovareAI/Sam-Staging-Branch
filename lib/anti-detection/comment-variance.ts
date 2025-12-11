@@ -113,12 +113,13 @@ export interface DailyVolumeConfig {
 }
 
 // Human-like daily volume (most people don't comment same amount every day)
-// UPDATED Dec 11, 2025: Starting VERY LOW after LinkedIn detection warning
-// Will gradually increase over time as we prove the system works safely
+// UPDATED Dec 11, 2025: WARMUP MODE after LinkedIn detection warning
+// Starting conservative, will gradually increase over weeks
+// Current phase: 1-5 comments/day with 20% skip probability
 export const DAILY_VOLUME_CONFIG: DailyVolumeConfig = {
   baseMin: 1,              // Start with just 1 comment minimum
-  baseMax: 3,              // Maximum 3 comments per day initially
-  skipDayProbability: 0.25, // 25% chance to skip a day (very conservative)
+  baseMax: 5,              // Maximum 5 comments per day (cap requested by user)
+  skipDayProbability: 0.20, // 20% chance to skip a day
 };
 
 /**
