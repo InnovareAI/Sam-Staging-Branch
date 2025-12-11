@@ -349,18 +349,39 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
         approval_status: 'pending'
       }));
 
-      // Insert approval data in batches
+      // Insert approval data in batches and collect the returned IDs
+      const insertedApprovalRecords: any[] = [];
       for (let i = 0; i < approvalData.length; i += BATCH_SIZE) {
         const batch = approvalData.slice(i, i + BATCH_SIZE);
-        const { error: approvalError } = await supabaseAdmin
+        const { data: insertedBatch, error: approvalError } = await supabaseAdmin
           .from('prospect_approval_data')
-          .insert(batch);
+          .insert(batch)
+          .select('id, prospect_id, name, title, company, contact, location, connection_degree, approval_status, session_id');
 
         if (approvalError) {
           console.warn(`CSV Upload - Approval data batch ${Math.floor(i / BATCH_SIZE) + 1} error:`, approvalError.message);
+        } else if (insertedBatch) {
+          insertedApprovalRecords.push(...insertedBatch);
         }
       }
-      console.log('✅ CSV Upload - Created prospect_approval_data records:', approvalData.length);
+      console.log('✅ CSV Upload - Created prospect_approval_data records:', insertedApprovalRecords.length);
+
+      // Map the inserted records to the format expected by the frontend
+      // CRITICAL: Use the database-generated UUID as the id
+      validatedData.processed = insertedApprovalRecords.map((record: any) => ({
+        id: record.id,  // This is the UUID from the database
+        sessionId: record.session_id,
+        name: record.name,
+        title: record.title,
+        company: record.company?.name || '',
+        email: record.contact?.email || '',
+        linkedinUrl: record.contact?.linkedin_url || '',
+        phone: record.contact?.phone || '',
+        location: record.location,
+        connection_degree: record.connection_degree,
+        approvalStatus: record.approval_status,
+        confidence: 0.7
+      }));
     }
 
     return NextResponse.json({
@@ -384,7 +405,8 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
         errors: insertErrors
       },
       quota_info: quotaCheck,
-      preview_data: validatedData.processed.slice(0, 5),
+      // Return ALL prospects for the approval UI (not just preview)
+      preview_data: validatedData.processed,
       requires_approval: true,
       approval_message: 'Prospects have been saved to database. Please review and approve them in the Approval section.',
       info: {

@@ -235,7 +235,9 @@ export async function POST(
       if (prospectsError) {
         console.error('Failed to verify prospects:', prospectsError);
         return NextResponse.json({
-          error: 'Failed to verify prospects'
+          error: 'Failed to verify prospects',
+          details: prospectsError.message,
+          hint: 'Prospects may not exist in workspace_prospects table. Try using the approval flow.'
         }, { status: 500 });
       }
 
