@@ -228,9 +228,9 @@ I automatically categorize and prioritize your incoming messages:
 
 ---
 
-### 8. AI Search Agent (Lead Discovery)
+### 8. Prospect Search (Lead Discovery)
 
-I can intelligently search for and discover prospects for your campaigns:
+I can search LinkedIn to find prospects for your campaigns:
 
 | Feature | Status | What It Does |
 |---------|--------|--------------|
@@ -239,33 +239,19 @@ I can intelligently search for and discover prospects for your campaigns:
 | Location search | ✅ Working | Filter by geography (city, state, country) |
 | Industry search | ✅ Working | Filter by industry (SaaS, Healthcare, etc.) |
 | Company search | ✅ Working | Find people at specific companies |
-| Company size filter | ✅ Working | Filter by employee count |
-| Connection degree filter | ✅ Working | 1st, 2nd, or 3rd+ connections |
-| Keyword search | ✅ Working | Search by skills, interests, bio content |
 
 **How users can ask:**
 - "Find CTOs in San Francisco"
 - "Search for VPs of Sales at SaaS companies"
 - "Find marketing directors in New York"
 - "Get me leads in the healthcare industry"
-- "Find founders at Series A startups"
-- "Search for people who work at [company name]"
-- "Find [title] in [location] at companies with 50-200 employees"
 
 **What I'll return:**
 - Name and title
-- Company and company size
+- Company
 - Location
-- Industry
-- Connection degree (1st, 2nd, 3rd+)
 - LinkedIn profile link
 - Option to add to campaign
-
-**Smart search features:**
-- Expand job titles automatically (VP Sales → VP of Sales, Vice President Sales, Head of Sales)
-- Suggest related search criteria
-- Identify best prospects based on your ICP
-- Flag existing connections and past prospects
 
 **What happens next:**
 1. I find matching prospects
@@ -318,6 +304,54 @@ I sync data with your CRM:
 | Airtable | ✅ Working | Sync leads and activity to Airtable |
 | ActiveCampaign | ✅ Working | Sync leads to ActiveCampaign |
 | Slack | ⚠️ One-way | Send notifications to Slack (receive not supported yet) |
+
+---
+
+### 12. AI Search Agent (SEO & GEO)
+
+I analyze your website for both traditional SEO and GEO (Generative Engine Optimization) to help you appear in AI-generated answers.
+
+| Feature | Status | What It Does |
+|---------|--------|--------------|
+| SEO analysis | ✅ Working | Analyze meta tags, structured data, robots.txt, sitemap |
+| GEO analysis | ✅ Working | Analyze how AI engines understand your content |
+| LLM readability scoring | ✅ Working | Can AI easily parse your content? |
+| Entity clarity scoring | ✅ Working | Are people, companies, concepts clearly defined? |
+| Fact density scoring | ✅ Working | Does content contain citable facts? |
+| Citation readiness scoring | ✅ Working | Would AI confidently cite your content? |
+| Content strategy | ✅ Working | Generate recommendations based on analysis |
+| Learning from campaigns | ✅ Working | Learn what themes resonate from your outreach |
+
+**What is GEO?**
+
+GEO (Generative Engine Optimization) optimizes your content to appear in AI-generated answers from:
+- ChatGPT
+- Perplexity
+- Claude
+- Google AI Overviews
+
+**How users can ask:**
+- "Analyze my website for SEO"
+- "How does my site score for AI search?"
+- "What content should I create?"
+- "How can I improve my GEO score?"
+
+**What I'll analyze:**
+
+| Category | What I Check |
+|----------|--------------|
+| **Traditional SEO** | Meta tags, structured data, robots.txt, sitemap |
+| **GEO** | LLM readability, entity clarity, fact density, citation readiness |
+
+**What I'll return:**
+- SEO Score (0-100)
+- GEO Score (0-100)
+- Executive summary
+- Prioritized recommendations
+- Content strategy (pillars, topics, formats)
+
+**Learning feature:**
+I learn from your outreach and commenting performance to understand what themes resonate with your audience, then use those insights to improve content recommendations.
 
 ---
 
@@ -670,4 +704,4 @@ What I can help you achieve:
 
 ## Keywords for Search
 
-SAM capabilities, what can SAM do, SAM features, LinkedIn automation, email automation, commenting agent, reply agent, follow-up agent, inbox agent, campaign management, prospect search, lead generation, human in the loop, rate limits, LinkedIn limits, connection requests, messenger campaigns, outreach automation, B2B sales, sales automation, CRM integration, Airtable, ActiveCampaign, Slack notifications, industry expertise, SaaS, healthcare, financial services, legal, manufacturing, consulting, recruiting, compliance, SOC 2, HIPAA, GDPR, CCPA, multi-channel, multilingual, objection handling, follow-up sequences, buyer personas
+SAM capabilities, what can SAM do, SAM features, LinkedIn automation, email automation, commenting agent, reply agent, follow-up agent, inbox agent, campaign management, prospect search, lead generation, human in the loop, rate limits, LinkedIn limits, connection requests, messenger campaigns, outreach automation, B2B sales, sales automation, CRM integration, Airtable, ActiveCampaign, Slack notifications, industry expertise, SaaS, healthcare, financial services, legal, manufacturing, consulting, recruiting, compliance, SOC 2, HIPAA, GDPR, CCPA, multi-channel, multilingual, objection handling, follow-up sequences, buyer personas, AI Search Agent, SEO, GEO, Generative Engine Optimization, AI search, ChatGPT optimization, Perplexity optimization, Google AI Overviews, content strategy, LLM readability, citation readiness
