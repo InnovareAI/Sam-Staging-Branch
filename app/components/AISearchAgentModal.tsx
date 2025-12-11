@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, TrendingUp, Save, Loader2, Globe, Search, Sparkles, AlertTriangle, CheckCircle, Lock, BarChart3, BookOpen, RefreshCw } from 'lucide-react';
+import { X, TrendingUp, Save, Loader2, Globe, Search, Sparkles, AlertTriangle, CheckCircle, Lock, BarChart3, BookOpen, RefreshCw, Mail } from 'lucide-react';
 import { createClient } from '@/app/lib/supabase';
 
 interface AISearchAgentModalProps {
@@ -57,6 +57,9 @@ export default function AISearchAgentModal({ isOpen, onClose, workspaceId }: AIS
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingStrategy, setGeneratingStrategy] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [emailAddress, setEmailAddress] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'setup' | 'results' | 'strategy'>('setup');
 
@@ -240,6 +243,44 @@ export default function AISearchAgentModal({ isOpen, onClose, workspaceId }: AIS
       console.error('Strategy generation failed:', error);
     } finally {
       setGeneratingStrategy(false);
+    }
+  };
+
+  const sendEmailReport = async () => {
+    if (!emailAddress.trim()) {
+      setSaveMessage('Please enter an email address');
+      return;
+    }
+
+    setSendingEmail(true);
+    setSaveMessage('');
+
+    try {
+      const response = await fetch('/api/ai-search-agent/send-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          email: emailAddress.trim(),
+          analysis_id: latestAnalysis?.id
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send report');
+      }
+
+      setSaveMessage(`✓ Report sent to ${emailAddress}`);
+      setShowEmailInput(false);
+      setEmailAddress('');
+      setTimeout(() => setSaveMessage(''), 5000);
+    } catch (error) {
+      console.error('Send report failed:', error);
+      setSaveMessage(error instanceof Error ? error.message : 'Failed to send report');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -574,14 +615,55 @@ export default function AISearchAgentModal({ isOpen, onClose, workspaceId }: AIS
                     </div>
                   )}
 
-                  {/* Generate Strategy Button */}
-                  <button
-                    onClick={generateStrategy}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors font-medium"
-                  >
-                    <BookOpen size={16} />
-                    <span>Generate Content Strategy</span>
-                  </button>
+                  {/* Action Buttons */}
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={generateStrategy}
+                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors font-medium"
+                    >
+                      <BookOpen size={16} />
+                      <span>Generate Strategy</span>
+                    </button>
+                    <button
+                      onClick={() => setShowEmailInput(!showEmailInput)}
+                      className="flex items-center justify-center space-x-2 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium"
+                    >
+                      <Mail size={16} />
+                      <span>Email Report</span>
+                    </button>
+                  </div>
+
+                  {/* Email Input */}
+                  {showEmailInput && (
+                    <div className="p-4 bg-gray-700/50 rounded-lg space-y-3">
+                      <div className="flex items-center space-x-2 text-gray-300 text-sm">
+                        <Mail size={16} />
+                        <span>Send analysis report via email</span>
+                      </div>
+                      <div className="flex space-x-3">
+                        <input
+                          type="email"
+                          value={emailAddress}
+                          onChange={(e) => setEmailAddress(e.target.value)}
+                          placeholder="Enter email address"
+                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          onKeyDown={(e) => e.key === 'Enter' && sendEmailReport()}
+                        />
+                        <button
+                          onClick={sendEmailReport}
+                          disabled={sendingEmail || !emailAddress.trim()}
+                          className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center space-x-2"
+                        >
+                          {sendingEmail ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <Mail size={16} />
+                          )}
+                          <span>{sendingEmail ? 'Sending...' : 'Send'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 space-y-4">
