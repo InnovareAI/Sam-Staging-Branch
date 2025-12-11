@@ -111,7 +111,7 @@ const LEGAL_SUFFIXES = [
   'CLG',
 ];
 
-// Business descriptors (strip from end)
+// Business descriptors (strip from end) - makes company names sound human
 const BUSINESS_DESCRIPTORS = [
   'International',
   'Technologies',
@@ -121,7 +121,7 @@ const BUSINESS_DESCRIPTORS = [
   'Solutions',
   'Holdings',
   'Services',
-  'Partners',
+  // 'Partners' removed - often part of brand name (Insight Partners, Bain Partners)
   'Partnership',
   'Company',
   'Global',
@@ -129,6 +129,7 @@ const BUSINESS_DESCRIPTORS = [
   'Agency',
   'Group',
   'Enterprises',
+  'Enterprise',
   'Ventures',
   'Studios',
   'Studio',
@@ -138,20 +139,49 @@ const BUSINESS_DESCRIPTORS = [
   'Media',
   'Software',
   'Systems',
+  // Industrial/manufacturing terms that sound corporate
+  'Chemical',
+  'Chemicals',
+  'Manufacturing',
+  'Industries',
+  'Industrial',
+  'Communications',
+  'Associates',
+  'Advisors',
+  'Advisory',
+  'Management',
+  'Properties',
+  'Investments',
+  'Capital',
+  'Financial',
+  'Insurance',
+  'Logistics',
+  'Distribution',
+  'Products',
+  'Resources',
+  'Networks',
+  'Security',  // Only at end - "B&H Security & Communications" → "B&H"
+  'Education',
+  'Healthcare',
+  'Health',
+  'Foundation',
+  'Institute',
+  'Corporation',
 ];
 
 /**
- * Normalize company name by removing legal suffixes and common business descriptors
+ * Normalize company name to how humans actually say it
  * PRESERVES ORIGINAL CASING (does not lowercase)
  *
  * Examples:
- * - "ACA Tech Solutions" → "ACA"
- * - "ACA Tech Solutions Ltd." → "ACA"
- * - "PostPilot AI Technologies Inc." → "PostPilot AI"
- * - "Virginia Tech" → "Virginia Tech" (preserved - Tech is part of brand)
- * - "Tech Mahindra" → "Tech Mahindra" (preserved - Tech is at start)
  * - "Goldman Sachs Group, Inc." → "Goldman Sachs"
+ * - "Chevron Phillips Chemical Company" → "Chevron Phillips"
+ * - "B&H Security & Communications" → "B&H"
+ * - "Care Angel dba EmpowerHealth.ai" → "Care Angel"
  * - "McKinsey & Company" → "McKinsey"
+ * - "Deloitte Consulting LLP" → "Deloitte"
+ * - "Morgan Stanley & Co. LLC" → "Morgan Stanley"
+ * - "Virginia Tech" → "Virginia Tech" (preserved - part of brand)
  * - "IBM" → "IBM"
  * - "Stripe" → "Stripe"
  */
@@ -166,14 +196,29 @@ export function normalizeCompanyName(name: string): string {
   // Remove content in parentheses (often parent company names)
   result = result.replace(/\s*\([^)]*\)/g, '').trim();
 
+  // Handle "dba" (doing business as) - take FIRST part before "dba"
+  // "Care Angel dba EmpowerHealth.ai" → "Care Angel"
+  if (/\s+dba\s+/i.test(result)) {
+    result = result.split(/\s+dba\s+/i)[0].trim();
+  }
+
+  // Handle "formerly" / "fka" (formerly known as) - take FIRST part
+  if (/\s+(formerly|fka|f\/k\/a)\s+/i.test(result)) {
+    result = result.split(/\s+(formerly|fka|f\/k\/a)\s+/i)[0].trim();
+  }
+
   // Iterate: strip suffixes until no more changes
   let prevResult = '';
   while (result !== prevResult && result.length >= 2) {
     prevResult = result;
 
     // 1. Legal suffixes (always strip first)
+    // IMPORTANT: Use word boundary to avoid matching partial words
+    // e.g., "Enterprise" should NOT match "SE" (Societas Europaea)
     for (const suffix of LEGAL_SUFFIXES) {
-      const regex = new RegExp(`[,\\s]*${suffix.replace(/\./g, '\\.')}\\.?$`, 'i');
+      const escaped = suffix.replace(/\./g, '\\.');
+      // Match: comma/space + suffix at end, OR just suffix if it's the whole remaining word
+      const regex = new RegExp(`(?:^|[,\\s]+)${escaped}\\.?$`, 'i');
       result = result.replace(regex, '').trim();
     }
 
@@ -191,15 +236,43 @@ export function normalizeCompanyName(name: string): string {
       result = result.replace(regex, '').trim();
     }
 
+    // 4. Strip "& [descriptor]" patterns at end
+    // "B&H Security & Communications" → "B&H Security" → "B&H"
+    for (const descriptor of BUSINESS_DESCRIPTORS) {
+      const regex = new RegExp(`\\s*&\\s*${descriptor}$`, 'i');
+      result = result.replace(regex, '').trim();
+    }
+
     // Strip trailing punctuation
     result = result.replace(/[,.\s&]+$/, '').trim();
+
+    // Strip dangling prepositions/conjunctions at end
+    // "Insight Partners for" → "Insight Partners"
+    result = result.replace(/\s+(for|of|and|the|in|at|by|to|with|from)$/i, '').trim();
   }
 
-  // Safety: if result is too short (< 2 chars), be more conservative
-  if (result.length < 2) {
+  // Safety: if result is too short or looks incomplete, be more conservative
+  // "Mx" from "Mx Technologies" is too short - keep as "Mx Technologies"
+  // But "B&H", "IBM", "HP", "3M", "UPS" are fine (well-known abbreviations)
+  const words = result.split(/\s+/);
+  const knownShortNames = ['B&H', 'IBM', 'HP', '3M', 'UPS', 'DHL', 'SAP', 'AT&T', 'BBC', 'CNN', 'HBO', 'NFL', 'NBA', 'MLB', 'NHL'];
+  const isKnownShort = knownShortNames.some(n => n.toLowerCase() === result.toLowerCase());
+
+  // Words that are too generic to stand alone as a company name
+  const genericWords = ['american', 'british', 'french', 'german', 'european', 'asian', 'global', 'national', 'international', 'general', 'united', 'first', 'new', 'old', 'great', 'best', 'prime', 'superior', 'advanced', 'modern', 'classic', 'premier', 'elite', 'royal', 'imperial', 'federal', 'state', 'city', 'central', 'eastern', 'western', 'northern', 'southern', 'pacific', 'atlantic', 'test'];
+  const isGenericWord = words.length === 1 && genericWords.includes(result.toLowerCase());
+
+  // Too aggressive if: single word, 4 or fewer chars, and not a known abbreviation
+  // OR if it's a generic word that shouldn't stand alone
+  const tooAggressive = (words.length === 1 && result.length <= 4 && !isKnownShort) || isGenericWord;
+
+  if (tooAggressive) {
+    // Fall back to just stripping legal suffixes (more comprehensive list)
     result = name
       .replace(/^The\s+/i, '')
-      .replace(/[,\s]+(Inc\.?|LLC|Ltd\.?|Corp\.?|plc)$/i, '')
+      .replace(/\s*\([^)]*\)/g, '') // Remove parentheses
+      .replace(/\s+dba\s+.*/i, '') // Remove dba
+      .replace(/[,\s]+(Inc\.?|LLC|LLP|Ltd\.?|Corp\.?|GmbH|AG|SE|SA|SAS|SARL|B\.?V\.?|N\.?V\.?|plc|Co\.?|Pty|Pte|Pvt)$/i, '')
       .trim();
   }
 
