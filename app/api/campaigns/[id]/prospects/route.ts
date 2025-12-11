@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 
+// Service role client for bypassing RLS on prospect_approval_data queries
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -153,8 +159,9 @@ export async function POST(
       console.log(`📋 Sample IDs:`, prospect_ids.slice(0, 3));
 
       // First, try to find prospects in prospect_approval_data (from CSV approval flow)
+      // CRITICAL: Use supabaseAdmin to bypass RLS - prospect_approval_data has restrictive RLS policies
       // These IDs are stored in the 'id' column as UUIDs, but the prospect_id field contains the csv_xxx IDs
-      const { data: approvalProspects, error: approvalError } = await supabase
+      const { data: approvalProspects, error: approvalError } = await supabaseAdmin
         .from('prospect_approval_data')
         .select('*')
         .in('id', prospect_ids);
@@ -199,7 +206,7 @@ export async function POST(
           };
         });
 
-        const { data: addedProspects, error: insertError } = await supabase
+        const { data: addedProspects, error: insertError } = await supabaseAdmin
           .from('campaign_prospects')
           .insert(campaignProspects)
           .select('id');
@@ -213,7 +220,7 @@ export async function POST(
         }
 
         // Mark as transferred in approval data
-        await supabase
+        await supabaseAdmin
           .from('prospect_approval_data')
           .update({
             approval_status: 'transferred_to_campaign',
