@@ -445,6 +445,7 @@ curl -s -X POST 'https://app.meet-sam.com/api/agents/recover-orphan-prospects' \
 - `app/api/prospect-approval/complete/route.ts` - Fixed bulk insert
 - `app/api/linkedin-commenting/*.ts` - Anti-detection system
 - `app/api/cron/process-comment-queue/route.ts` - Warmup mode
+- `app/api/campaigns/[id]/prospects/route.ts` - Fixed UUID/csv_xxx ID format lookup + service role client
 - `netlify.toml` - Added scheduled functions
 
 ---
@@ -501,6 +502,73 @@ status = status.replace(/["'`\\]/g, '').trim();
 
 ---
 
+## Session Update - December 11, 2025 (Afternoon)
+
+### 13. CSV-to-Campaign Prospect Lookup Fix (CRITICAL)
+
+**Commits:**
+- `68ae568` - fix: support both UUID and csv_xxx ID formats for prospect lookup
+- `673a969` - fix: use service role client for prospect_approval_data queries
+- `bdde5f6` - fix: add debug logging and force redeploy for workspace_id issue
+- `1263aeb` - fix: CSV upload returns all prospects with database IDs
+
+**Problem:** Users uploading CSV prospects and approving them couldn't add them to campaigns. The "Add to Campaign" button would fail silently or show "Failed to verify prospects".
+
+**Root Causes (Multiple):**
+
+1. **RLS Policy Blocking Queries** - The API was using the user's session client (anon key) which respects RLS policies. The `prospect_approval_data` table has restrictive RLS that blocked queries.
+
+2. **ID Format Mismatch** - The frontend sends prospect IDs but they can be in two formats:
+   - **UUID format**: `a1b2c3d4-e5f6-...` (database-generated `id` column)
+   - **csv_xxx format**: `csv_001`, `csv_002` (stored in `prospect_id` column)
+
+   The API was only checking the `id` column (UUID), missing prospects stored with csv_xxx IDs.
+
+**Solution:**
+
+1. **Use Service Role Client** (`673a969`):
+```typescript
+// CRITICAL: Use supabaseAdmin to bypass RLS
+const { data: approvalProspects, error } = await supabaseAdmin
+  .from('prospect_approval_data')
+  .select('*')
+  .in('id', prospect_ids);
+```
+
+2. **Support Both ID Formats** (`68ae568`):
+```typescript
+// Detect ID format
+const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(prospect_ids[0]);
+
+// Try UUID lookup first
+if (isUUID) {
+  const { data } = await supabaseAdmin
+    .from('prospect_approval_data')
+    .select('*')
+    .in('id', prospect_ids);
+  if (data) approvalProspects = data;
+}
+
+// Fallback to prospect_id field (csv_xxx format)
+if (approvalProspects.length === 0) {
+  const { data } = await supabaseAdmin
+    .from('prospect_approval_data')
+    .select('*')
+    .in('prospect_id', prospect_ids);
+  if (data && data.length > 0) approvalProspects = data;
+}
+```
+
+**File Modified:**
+- `app/api/campaigns/[id]/prospects/route.ts` (lines 157-190)
+
+**Testing:**
+- Upload CSV with prospects
+- Go through approval flow
+- Click "Add to Campaign" → Should work for both UUID and csv_xxx IDs
+
+---
+
 ## Updated Daily Sync Status
 
 | Issue | Status |
@@ -514,6 +582,11 @@ status = status.replace(/["'`\\]/g, '').trim();
 
 | Commit | Description |
 |--------|-------------|
+| `68ae568` | fix: support both UUID and csv_xxx ID formats for prospect lookup |
+| `673a969` | fix: use service role client for prospect_approval_data queries |
+| `bdde5f6` | fix: add debug logging and force redeploy for workspace_id issue |
+| `3697729` | fix: better error message for stale prospect data |
+| `1263aeb` | fix: CSV upload returns all prospects with database IDs |
 | `cf91927` | Fix Airtable double-quote issue with aggressive quote stripping |
 | `01d17e8` | Update handover with complete Dec 9-11 work summary |
 | `c2c0c32` | Add handover document for December 11, 2025 |
