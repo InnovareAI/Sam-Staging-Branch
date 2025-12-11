@@ -149,12 +149,24 @@ class AirtableService {
 
       // Sanitize intent - strip ALL quotes (including escaped quotes) that might have been added during JSON serialization
       // The error "\"Interested\"" shows escaped quotes need to be removed too
-      const cleanIntent = data.intent
-        ?.replace(/\\"/g, '')  // Remove escaped quotes \"
-        .replace(/["']/g, '')   // Remove regular quotes
+      // Dec 11 fix: Also handle double-double quotes ""value"" and any JSON.stringify artifacts
+      let rawIntent = data.intent || '';
+
+      // Aggressively strip all quote variants from raw intent
+      const cleanIntent = rawIntent
+        .replace(/\\+"/g, '')     // Remove any escaped quotes (\" or \\")
+        .replace(/["'`]/g, '')    // Remove all quote characters
+        .replace(/&quot;/gi, '')  // Remove HTML entities
         .trim()
         .toLowerCase();
-      const status = cleanIntent ? INTENT_TO_STATUS[cleanIntent] || 'Interested' : 'Interested';
+
+      // Get status from lookup table, with fallback
+      let status = cleanIntent ? INTENT_TO_STATUS[cleanIntent] || 'Interested' : 'Interested';
+
+      // FINAL SAFETY: Strip any quotes from the final status value before sending to Airtable
+      // This catches edge cases where the lookup value itself somehow has quotes
+      status = status.replace(/["'`\\]/g, '').trim();
+
       console.log(`   Intent: "${data.intent}" -> cleanIntent: "${cleanIntent}" -> status: "${status}"`);
 
       const fields: Record<string, any> = {
@@ -211,12 +223,23 @@ class AirtableService {
       console.log(`📊 Syncing email lead to Airtable: ${data.email}`);
 
       // Sanitize intent - strip ALL quotes (including escaped quotes) that might have been added during JSON serialization
-      const cleanIntent = data.intent
-        ?.replace(/\\"/g, '')  // Remove escaped quotes \"
-        .replace(/["']/g, '')   // Remove regular quotes
+      // Dec 11 fix: Also handle double-double quotes ""value"" and any JSON.stringify artifacts
+      let rawIntent = data.intent || '';
+
+      const cleanIntent = rawIntent
+        .replace(/\\+"/g, '')     // Remove any escaped quotes (\" or \\")
+        .replace(/["'`]/g, '')    // Remove all quote characters
+        .replace(/&quot;/gi, '')  // Remove HTML entities
         .trim()
         .toLowerCase();
-      const status = cleanIntent ? INTENT_TO_STATUS[cleanIntent] || 'Interested' : undefined;
+
+      // Get status from lookup table, with fallback
+      let status: string | undefined = cleanIntent ? INTENT_TO_STATUS[cleanIntent] || 'Interested' : undefined;
+
+      // FINAL SAFETY: Strip any quotes from the final status value
+      if (status) {
+        status = status.replace(/["'`\\]/g, '').trim();
+      }
 
       // Extract domain from email
       const emailDomain = data.email.split('@')[1] || '';
