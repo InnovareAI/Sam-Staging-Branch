@@ -655,10 +655,61 @@ The `lib/prospect-normalization.ts` library was already built but wasn't being u
 
 ---
 
+### 15. Company Name Normalization - Human-Like Output
+
+**Commit:** `c439051` - feat: improve company name normalization to sound human
+
+**Problem:** Normalized company names sounded corporate/robotic, not how humans actually refer to companies:
+- "Chevron Phillips Chemical Company" → was staying as-is
+- "Care Angel dba EmpowerHealth.ai" → was staying as-is
+- "B&H Security & Communications" → was staying as-is
+
+**Improvements Made:**
+
+1. **Handle "dba" patterns**: Strip "doing business as" constructs
+   - "Care Angel dba EmpowerHealth.ai" → "Care Angel"
+
+2. **Strip "& [descriptor]" at end**: Remove trailing business terms after ampersand
+   - "B&H Security & Communications" → "B&H"
+
+3. **Strip dangling prepositions**: Clean up orphaned prepositions
+   - "Insight Partners for" → "Insight Partners"
+
+4. **Added 20+ business descriptors**: Chemical, Manufacturing, Education, Healthcare, Communications, Associates, Advisors, Capital, Insurance, etc.
+
+5. **Fixed word boundary bug**: "Enterprise" was incorrectly matching "SE" (Societas Europaea) suffix
+   - Now uses proper word boundaries to prevent partial matches
+
+6. **Protect against over-normalization**:
+   - Short names (≤4 chars) fall back to conservative stripping unless known abbreviation
+   - Generic words (French, American, General, etc.) don't stand alone
+   - Known abbreviations (IBM, HP, 3M, B&H, UPS, DHL) are preserved
+
+**Test Results:**
+
+| Input | Output |
+|-------|--------|
+| Goldman Sachs Group, Inc. | Goldman Sachs |
+| Chevron Phillips Chemical Company | Chevron Phillips |
+| B&H Security & Communications | B&H |
+| Care Angel dba EmpowerHealth.ai | Care Angel |
+| McKinsey & Company | McKinsey |
+| Insight Partners for Enterprise | Insight Partners |
+| KinderCare Education | KinderCare |
+| Mx Technologies | Mx Technologies (protected) |
+| French Company SA | French Company (protected) |
+| Virginia Tech | Virginia Tech (preserved) |
+
+**File Modified:**
+- `lib/prospect-normalization.ts` - Complete rewrite of normalization logic
+
+---
+
 ## Latest Commits
 
 | Commit | Description |
 |--------|-------------|
+| `c439051` | feat: improve company name normalization to sound human |
 | `74be1d6` | fix: add company name normalization to prospects API |
 | `68ae568` | fix: support both UUID and csv_xxx ID formats for prospect lookup |
 | `673a969` | fix: use service role client for prospect_approval_data queries |
