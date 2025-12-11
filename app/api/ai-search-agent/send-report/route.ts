@@ -63,12 +63,21 @@ function getScoreEmoji(score: number): string {
 }
 
 function generateEmailHtml(analysis: AnalysisResult, workspaceName: string): string {
-  const seoResults = analysis.seo_results;
-  const geoResults = analysis.geo_results;
-  const recommendations = analysis.recommendations || [];
+  // Safely parse JSONB fields
+  const seoResults = typeof analysis.seo_results === 'string'
+    ? JSON.parse(analysis.seo_results)
+    : (analysis.seo_results || {});
+  const geoResults = typeof analysis.geo_results === 'string'
+    ? JSON.parse(analysis.geo_results)
+    : (analysis.geo_results || {});
+  const recommendations = Array.isArray(analysis.recommendations)
+    ? analysis.recommendations
+    : (typeof analysis.recommendations === 'string'
+        ? JSON.parse(analysis.recommendations)
+        : []);
 
-  const highPriorityRecs = recommendations.filter(r => r.priority === 'high');
-  const mediumPriorityRecs = recommendations.filter(r => r.priority === 'medium');
+  const highPriorityRecs = recommendations.filter((r: { priority: string }) => r.priority === 'high');
+  const mediumPriorityRecs = recommendations.filter((r: { priority: string }) => r.priority === 'medium');
 
   return `
 <!DOCTYPE html>
