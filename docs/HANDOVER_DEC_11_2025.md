@@ -705,18 +705,291 @@ The `lib/prospect-normalization.ts` library was already built but wasn't being u
 
 ---
 
-## Latest Commits
+### 16. Randomized Message Scheduling (Dec 11)
 
-| Commit | Description |
-|--------|-------------|
-| `c439051` | feat: improve company name normalization to sound human |
-| `74be1d6` | fix: add company name normalization to prospects API |
-| `68ae568` | fix: support both UUID and csv_xxx ID formats for prospect lookup |
-| `673a969` | fix: use service role client for prospect_approval_data queries |
-| `bdde5f6` | fix: add debug logging and force redeploy for workspace_id issue |
-| `3697729` | fix: better error message for stale prospect data |
-| `1263aeb` | fix: CSV upload returns all prospects with database IDs |
-| `cf91927` | Fix Airtable double-quote issue with aggressive quote stripping |
-| `01d17e8` | Update handover with complete Dec 9-11 work summary |
-| `c2c0c32` | Add handover document for December 11, 2025 |
-| `7390d8b` | Fix Airtable double-quoting issue and add Inbox Agent |
+**Commit:** `8e348419` - feat: add randomized message scheduling (20-45 min intervals)
+
+**Problem:** Messages were sent at fixed intervals (exactly 30 minutes apart), making automation easily detectable by LinkedIn.
+
+**Solution:** Implemented randomized intervals between 20-45 minutes:
+```typescript
+// BEFORE: Fixed 30-minute intervals
+const minutesFromNow = prospectIndex * 30;
+
+// AFTER: Randomized 20-45 minute intervals
+const baseMinutes = 20;
+const variableMinutes = 25; // 0-25 extra minutes
+const randomDelay = Math.floor(Math.random() * variableMinutes);
+const minutesFromNow = previousTime + baseMinutes + randomDelay;
+```
+
+**Files Modified:**
+- `app/api/campaigns/direct/send-connection-requests-queued/route.ts`
+
+---
+
+### 17. Separate Daily Caps for CRs and Messages (Dec 11)
+
+**Commit:** `81decc58` - feat: add separate daily caps for CRs (20) and messages (50)
+
+**Problem:** System had a single daily limit that didn't distinguish between connection requests (high risk) and follow-up messages (lower risk).
+
+**Solution:** Implemented separate tracking:
+```typescript
+// Daily limits
+const DAILY_CR_LIMIT = 20;    // Connection requests (high scrutiny)
+const DAILY_MESSAGE_LIMIT = 50; // Follow-up messages (lower scrutiny)
+
+// Track separately
+const todaysCRs = await countTodaysCRs(campaignId);
+const todaysMessages = await countTodaysMessages(campaignId);
+```
+
+**Files Modified:**
+- `app/api/cron/process-send-queue/route.ts`
+
+---
+
+### 18. LinkedIn Messages Unified Table (Dec 11)
+
+**Commits:**
+- `a6bf4357` - Add linkedin_messages table to store all message history
+- `12a58d00` - Fix linkedin_messages migration: use correct table names
+- `3fe9bc9e` - feat: store all agent messages in unified linkedin_messages table
+- `ca83d0b6` - feat: store email messages in unified linkedin_messages table
+
+**Purpose:** Centralized storage for all outbound messages across channels for analytics and audit trail.
+
+**Table Schema:**
+```sql
+CREATE TABLE linkedin_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID REFERENCES workspaces(id),
+  campaign_id UUID REFERENCES campaigns(id),
+  prospect_id UUID REFERENCES campaign_prospects(id),
+  message_type VARCHAR(50), -- 'connection_request', 'follow_up', 'email'
+  message_content TEXT,
+  channel VARCHAR(50), -- 'linkedin', 'email'
+  sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Files Created:**
+- `sql/migrations/042-create-linkedin-messages.sql`
+
+**Files Modified:**
+- `app/api/campaigns/direct/send-connection-requests-queued/route.ts` - Logs CR messages
+- `app/api/campaigns/direct/process-follow-ups/route.ts` - Logs follow-up messages
+- `app/api/email/send/route.ts` - Logs email messages
+
+---
+
+### 19. Commenting Agent UI Redesign (Dec 10)
+
+**Commits:**
+- `e5269c8f` - Redesign Commenting Agent UI with 6 distinct sections
+- `ec6c7ae5` - Rewrite Commenting Agent UI with clear 6-section layout
+- `450c391e` - Fix monitor categorization: include KEYWORD: prefix check
+- `8d9749ba` - Force cache bust: Commenting Agent 6-section UI
+- `0a38c182` - Fix cache headers for dynamic pages
+
+**6 Sections:**
+1. **Approved & Scheduled** - Comments approved and waiting to post
+2. **Pending Approval** - AI-generated comments awaiting human review
+3. **Discovered Posts** - Posts found by hashtag/keyword monitors
+4. **Posted Comments** - Successfully posted to LinkedIn
+5. **Monitors** - Active hashtag/keyword monitors
+6. **Settings** - Workspace commenting configuration
+
+**Files Modified:**
+- `app/workspace/[workspaceId]/commenting/page.tsx` - Complete rewrite
+
+---
+
+### 20. Integrations & Tools Modal (Dec 10)
+
+**Commit:** `f42270ca` - Add IntegrationsToolsModal component
+
+**Purpose:** Unified modal for managing all workspace integrations.
+
+**Integrations Available:**
+- Slack (one-way notifications)
+- Airtable (CRM sync)
+- ActiveCampaign (CRM sync)
+- LinkedIn (via Unipile)
+- Email (via Unipile/ReachInbox)
+
+**Files Created:**
+- `app/components/IntegrationsToolsModal.tsx`
+
+---
+
+### 21. ReachInbox IAI Prefix (Dec 11)
+
+**Commit:** `3c826d0a` - feat: add IAI as short prefix for ReachInbox campaigns
+
+**Purpose:** Use shorter campaign name prefix for ReachInbox API compatibility (25 char limit).
+
+**Change:**
+```typescript
+// BEFORE
+campaignName: `SAM-${workspaceName}-${campaignType}`
+
+// AFTER
+campaignName: `IAI-${campaignType.slice(0, 15)}-${timestamp}`
+```
+
+**Files Modified:**
+- `lib/services/reachinbox.ts`
+
+---
+
+### 22. Preflight Check Improvements (Dec 11)
+
+**Commits:**
+- `62f019ed` - fix: increase preflight-check timeout to 30s for large batches
+- `9c12f9ac` - fix: better error messages for preflight verification failures
+
+**Problem:** Large prospect batches (50+) were timing out during preflight LinkedIn profile verification.
+
+**Solution:**
+- Increased timeout from 10s to 30s
+- Added clearer error messages identifying which prospects failed
+- Added retry logic for transient failures
+
+**Files Modified:**
+- `app/api/campaigns/direct/send-connection-requests-queued/route.ts`
+
+---
+
+### 23. Supabase MCP Server (Dec 9)
+
+**Commits:**
+- `4238c253` - Add Supabase MCP server configuration
+- `ce6b43e3` - Add Supabase connection test script and dependencies
+
+**Purpose:** Enable Claude Code to directly query Supabase database for debugging and data analysis.
+
+**Configuration (`.mcp.json`):**
+```json
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server"],
+      "env": {
+        "SUPABASE_URL": "...",
+        "SUPABASE_SERVICE_ROLE_KEY": "..."
+      }
+    }
+  }
+}
+```
+
+**Files Created:**
+- `scripts/test-supabase-connection.ts`
+
+---
+
+## Complete Deployment Log (Dec 9-11)
+
+| Date | Commit | Description |
+|------|--------|-------------|
+| Dec 11 | `0ea7bac` | docs: update handover with human-like normalization details |
+| Dec 11 | `c439051` | feat: improve company name normalization to sound human |
+| Dec 11 | `74be1d6` | fix: add company name normalization to prospects API |
+| Dec 11 | `aaca0b1` | fix: handle nested company object when adding prospects |
+| Dec 11 | `81deccs` | feat: add separate daily caps for CRs (20) and messages (50) |
+| Dec 11 | `8e34841` | feat: add randomized message scheduling (20-45 min intervals) |
+| Dec 11 | `fc4b243` | docs: update SAM positioning to AI Sales Development Platform |
+| Dec 11 | `7f889c2` | fix: correct AI Search Agent documentation |
+| Dec 11 | `466d11e` | docs: expand SAM capabilities document |
+| Dec 11 | `68ae568` | fix: support both UUID and csv_xxx ID formats |
+| Dec 11 | `673a969` | fix: use service role client for prospect_approval_data |
+| Dec 11 | `bdde5f6` | fix: add debug logging and force redeploy |
+| Dec 11 | `7efacdf` | chore: trigger redeploy |
+| Dec 11 | `3697729` | fix: better error message for stale prospect data |
+| Dec 11 | `a96555e` | debug: add logging to campaign prospects API |
+| Dec 11 | `1263aeb` | fix: CSV upload returns all prospects with database IDs |
+| Dec 11 | `9c12f9a` | fix: better error messages for preflight verification failures |
+| Dec 11 | `62f019e` | fix: increase preflight-check timeout to 30s |
+| Dec 11 | `3c826d0` | feat: add IAI as short prefix for ReachInbox campaigns |
+| Dec 11 | `ca83d0b` | feat: store email messages in unified linkedin_messages table |
+| Dec 11 | `3fe9bc9` | feat: store all agent messages in unified linkedin_messages table |
+| Dec 11 | `12a58d0` | Fix linkedin_messages migration: use correct table names |
+| Dec 11 | `a6bf435` | Add linkedin_messages table to store all message history |
+| Dec 11 | `977ceea` | Update handover: Airtable fix deployed, ActiveCampaign pending |
+| Dec 11 | `cf91927` | Fix Airtable double-quote issue with aggressive quote stripping |
+| Dec 11 | `01d17e8` | Update handover with complete Dec 9-11 work summary |
+| Dec 11 | `c2c0c32` | Add handover document for December 11, 2025 |
+| Dec 11 | `7390d8b` | Fix Airtable double-quoting issue and add Inbox Agent |
+| Dec 11 | `189f88d` | Fix JSONB parsing in send-report email template |
+| Dec 11 | `6cdddde` | Add website_url and learning columns to AI search config |
+| Dec 11 | `efab00f` | Add email report feature to AI Search Agent |
+| Dec 11 | `b76bce9` | Add AI Search Agent for SEO/GEO analysis |
+| Dec 11 | `55411f9` | Add comprehensive anti-detection system documentation |
+| Dec 11 | `2cb0baa` | Update warmup mode: cap at 5 comments/day, 20% skip days |
+| Dec 11 | `6069a8e` | Add comprehensive anti-detection system for LinkedIn commenting |
+| Dec 11 | `d0954aa` | Add Follow-Up Agent to AI Configuration settings |
+| Dec 11 | `68e53b5` | Add enhanced Follow-Up Agent with HITL approval workflow |
+| Dec 11 | `20924f1` | Add dedicated Follow-Up Agent training document |
+| Dec 11 | `791b87f` | Update Reply Agent training to v2.0 |
+| Dec 11 | `77a4ce7` | Add Reply Agent training document to knowledge base |
+| Dec 11 | `3a06a21` | Add industry expertise section - 11+ trained verticals |
+| Dec 11 | `1fd33b2` | Add compliance certifications: SOC 2, HIPAA, GDPR, CCPA |
+| Dec 10 | `37afb29` | Update product description with LinkedIn engagement feature |
+| Dec 10 | `18f24e1` | Update handover doc with orphan recovery agent details |
+| Dec 10 | `595e6d8` | Add orphan prospect recovery agent |
+| Dec 10 | `6deba53` | Fix missing prospects when adding to campaign |
+| Dec 10 | `dde4f5f` | CRITICAL FIX: Validate LinkedIn account exists before queue |
+| Dec 10 | `187765c` | Fix comments API - use correct column names |
+| Dec 10 | `71b8c82` | Add status filter selector to comment approval page |
+| Dec 10 | `25fcedf` | Auto-trigger post discovery when comments rejected |
+| Dec 10 | `b0ce652` | Remove Bright Data and Google CSE integrations |
+| Dec 10 | `48d0130` | Fix: Add prospects to existing campaign from approval flow |
+| Dec 10 | `2151b79` | Update handover with Irish Campaign 5 fix details |
+| Dec 10 | `8619906` | Fix prospect approval completion - query approval_status |
+| Dec 10 | `38a97aa` | Update handover doc with latest session work |
+| Dec 10 | `c223b91` | Fix campaign dropdown in prospect approval |
+| Dec 10 | `1c81e90` | Add Slack integration to Integrations & Tools modal |
+| Dec 10 | `4b0be93` | Fix duplicate campaign creation - add loading state |
+| Dec 10 | `f42270c` | Add IntegrationsToolsModal component |
+| Dec 10 | `6c236bf` | Force Netlify rebuild to purge CDN cache |
+| Dec 10 | `0a38c18` | Fix cache headers for dynamic pages |
+| Dec 10 | `8d9749b` | Force cache bust: Commenting Agent 6-section UI |
+| Dec 10 | `ec6c7ae` | Rewrite Commenting Agent UI with clear 6-section layout |
+| Dec 10 | `450c391` | Fix monitor categorization: include KEYWORD prefix check |
+| Dec 10 | `e5269c8` | Redesign Commenting Agent UI with 6 distinct sections |
+| Dec 10 | `8878902` | Fix Airtable sync: sanitize intent value |
+| Dec 9 | `ce6b43e` | Add Supabase connection test script and dependencies |
+| Dec 9 | `4238c25` | Add Supabase MCP server configuration |
+
+---
+
+## Summary Statistics (Dec 9-11)
+
+- **Total Commits:** 78
+- **Features Added:** 15+
+- **Bugs Fixed:** 20+
+- **Documentation Updates:** 10+
+- **New Tables:** 6
+- **New API Endpoints:** 15+
+
+---
+
+## Production Verification
+
+All changes deployed to https://app.meet-sam.com
+
+**To verify latest deploy:**
+```bash
+# Check Netlify deployment status
+netlify status
+
+# Tail function logs
+netlify logs --function process-send-queue --tail
+
+# Verify API is responsive
+curl -s https://app.meet-sam.com/api/health | jq
+```
