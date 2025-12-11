@@ -1707,6 +1707,9 @@ export default function DataCollectionHub({
       // FIXED: Use prospectsToAdd instead of approvedProspects
       const prospectIds = prospectsToAdd.map(p => p.id).filter(Boolean)
 
+      console.log('📋 Sending prospect IDs to campaign:', prospectIds.slice(0, 5))
+      console.log('📋 Sample prospect data:', prospectsToAdd.slice(0, 2).map(p => ({ id: p.id, name: p.name, sessionId: p.sessionId })))
+
       const response = await fetch(`/api/campaigns/${selectedCampaignId}/prospects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1723,7 +1726,12 @@ export default function DataCollectionHub({
             .join('\n')
           toastError(`Campaign conflict:\n\n${data.message}\n\n${conflictList}`)
         } else {
-          toastError(data.error || 'Failed to add prospects to campaign')
+          const errorMsg = data.error || 'Failed to add prospects to campaign'
+          if (errorMsg.includes('verify') || errorMsg.includes('not found') || errorMsg.includes('invalid')) {
+            toastError(`${errorMsg}\n\nPlease refresh the page and re-upload your CSV file.`)
+          } else {
+            toastError(errorMsg)
+          }
         }
         setLoading(false)
         return
