@@ -2165,9 +2165,10 @@ export default function DataCollectionHub({
       const data = await response.json()
       console.log('📊 Pre-flight results:', data.summary)
       setPreflightResults(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Pre-flight check failed:', error)
-      toastError('Failed to verify prospects. Please check your internet connection and try again.')
+      const errorMsg = error?.message || error?.toString() || 'Unknown error'
+      toastError(`Failed to verify prospects: ${errorMsg}. Please refresh and try again.`)
       setShowPreflightModal(false)
     } finally {
       setIsRunningPreflight(false)
@@ -3356,9 +3357,10 @@ export default function DataCollectionHub({
             const data = await response.json();
             console.log('📊 Pre-flight results:', data.summary);
             setPreflightResults(data);
-          } catch (error) {
+          } catch (error: any) {
             console.error('Pre-flight check failed:', error);
-            toastError('Failed to verify prospects. Please try again.');
+            const errorMsg = error?.message || error?.toString() || 'Network error';
+            toastError(`Failed to verify prospects: ${errorMsg}. Please refresh and try again.`);
             setShowPreflightModal(false);
           } finally {
             setIsRunningPreflight(false);
