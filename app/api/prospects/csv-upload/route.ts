@@ -330,9 +330,10 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
     // Also insert into prospect_approval_data for the approval UI to show individual records
     // =========================================================================
     if (session?.id) {
+      console.log('🔑 CSV Upload - WORKSPACE_ID being set:', workspaceId);
       const approvalData = validatedData.valid.map((p: any) => ({
         session_id: session.id,
-        workspace_id: workspaceId,
+        workspace_id: workspaceId,  // CRITICAL: This must be set for campaign assignment to work
         prospect_id: p.id,
         name: p.name,
         title: p.title || '',
