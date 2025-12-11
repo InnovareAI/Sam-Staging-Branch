@@ -213,13 +213,63 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      const SPACING_MINUTES = 2;
+      // RANDOMIZED SCHEDULING (Dec 11, 2025)
+      // Instead of fixed intervals, use random 20-45 minute gaps
+      // This looks more human-like and avoids LinkedIn detection
+      const MIN_SPACING_MINUTES = 20;
+      const MAX_SPACING_MINUTES = 45;
       const queueRecords = [];
-      const now = new Date();
+
+      // Start with a random offset (0-15 minutes from now)
+      const initialOffset = Math.floor(Math.random() * 15);
+      let currentTime = new Date(Date.now() + initialOffset * 60 * 1000);
+
+      // Helper: Get random interval between min and max
+      const getRandomInterval = () => {
+        return MIN_SPACING_MINUTES + Math.floor(Math.random() * (MAX_SPACING_MINUTES - MIN_SPACING_MINUTES + 1));
+      };
+
+      // Helper: Check if time is within business hours (9 AM - 5 PM PST = 17:00 - 01:00 UTC)
+      const isBusinessHours = (date: Date) => {
+        const hour = date.getUTCHours();
+        // Business hours: 17:00-23:59 UTC (9 AM - 5 PM PST) or 00:00-01:00 UTC (next day)
+        return (hour >= 17 || hour < 1);
+      };
+
+      // Helper: Check if date is a weekend
+      const isWeekend = (date: Date) => {
+        const day = date.getUTCDay();
+        return day === 0 || day === 6; // Sunday = 0, Saturday = 6
+      };
+
+      // Helper: Move to next business day at 9 AM PST (17:00 UTC)
+      const moveToNextBusinessDay = (date: Date) => {
+        const next = new Date(date);
+        next.setUTCHours(17, 0, 0, 0);
+        if (next <= date) {
+          next.setUTCDate(next.getUTCDate() + 1);
+        }
+        // Skip weekends
+        while (isWeekend(next)) {
+          next.setUTCDate(next.getUTCDate() + 1);
+        }
+        return next;
+      };
 
       for (let i = 0; i < unqueuedProspects.length; i++) {
         const prospect = unqueuedProspects[i];
-        const scheduledTime = new Date(now.getTime() + (i * SPACING_MINUTES * 60 * 1000));
+
+        // Skip weekends
+        while (isWeekend(currentTime)) {
+          currentTime = moveToNextBusinessDay(currentTime);
+        }
+
+        // If outside business hours, move to next business day
+        if (!isBusinessHours(currentTime)) {
+          currentTime = moveToNextBusinessDay(currentTime);
+        }
+
+        const scheduledTime = new Date(currentTime);
 
         // Full personalization - all variable formats
         const firstName = prospect.first_name || '';
@@ -267,6 +317,15 @@ export async function POST(req: NextRequest) {
           status: 'pending',
           message_type: messageType  // 'connection_request' for connector, 'direct_message_1' for messenger
         });
+
+        // Advance time by random interval (20-45 minutes)
+        const randomInterval = getRandomInterval();
+        currentTime = new Date(currentTime.getTime() + randomInterval * 60 * 1000);
+
+        // Log scheduling for first few prospects
+        if (i < 3) {
+          console.log(`  📅 Scheduled ${firstName} at ${scheduledTime.toISOString()} (next: +${randomInterval}min)`);
+        }
       }
 
       // 5. Insert queue records

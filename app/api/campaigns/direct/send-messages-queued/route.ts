@@ -59,7 +59,8 @@ function calculateNextSendTime(
   prospectIndex: number,
   messageIndex: number,
   followUpDelayDays: number[],
-  settings?: ScheduleSettings
+  settings?: ScheduleSettings,
+  cumulativeMinutes?: number // Pre-calculated cumulative random offset for this prospect
 ): Date {
   const timezone = settings?.timezone || DEFAULT_TIMEZONE;
   const startHour = settings?.working_hours_start ?? BUSINESS_HOURS.start;
@@ -67,15 +68,28 @@ function calculateNextSendTime(
   const skipWeekends = settings?.skip_weekends ?? true;
   const skipHolidays = settings?.skip_holidays ?? true;
 
-  // Base spacing: 30 minutes between prospects (same as CR campaigns)
-  const PROSPECT_SPACING_MINUTES = 30;
+  // RANDOMIZED SCHEDULING (Dec 11, 2025)
+  // Use pre-calculated cumulative minutes if provided, otherwise use deterministic random
+  // This makes timing look more human-like
 
   // Calculate initial scheduled time
   let scheduledTime = moment(baseTime).tz(timezone);
 
-  // For first message: add prospect spacing
+  // For first message: add cumulative random spacing
   if (messageIndex === 0) {
-    scheduledTime = scheduledTime.add(prospectIndex * PROSPECT_SPACING_MINUTES, 'minutes');
+    if (cumulativeMinutes !== undefined) {
+      // Use pre-calculated cumulative offset (randomized)
+      scheduledTime = scheduledTime.add(cumulativeMinutes, 'minutes');
+    } else {
+      // Fallback: deterministic pseudo-random based on prospectIndex
+      // Range: 20-45 minutes per prospect (avg 32.5 min)
+      const seed = prospectIndex * 7919; // Prime number for better distribution
+      const randomOffset = 20 + (seed % 26); // 20-45 range
+      const cumulativeOffset = prospectIndex > 0
+        ? prospectIndex * randomOffset
+        : 0;
+      scheduledTime = scheduledTime.add(cumulativeOffset, 'minutes');
+    }
   } else {
     // For follow-ups: add days based on follow-up delay
     const delayDays = followUpDelayDays[messageIndex - 1] || 3;
@@ -354,6 +368,18 @@ export async function POST(req: NextRequest) {
     const validationResults = [];
     const now = new Date();
 
+    // RANDOMIZED SCHEDULING (Dec 11, 2025)
+    // Pre-calculate cumulative random offsets for each prospect
+    // Range: 20-45 minutes per prospect (avg 32.5 min)
+    const cumulativeOffsets: number[] = [];
+    let cumulativeMinutes = Math.floor(Math.random() * 15); // Initial random offset 0-15 min
+    for (let i = 0; i < prospects.length; i++) {
+      cumulativeOffsets.push(cumulativeMinutes);
+      const randomInterval = 20 + Math.floor(Math.random() * 26); // 20-45 range
+      cumulativeMinutes += randomInterval;
+    }
+    console.log(`📅 Scheduling with random intervals (20-45 min). First 3 offsets: ${cumulativeOffsets.slice(0, 3).join(', ')} min`);
+
     for (let prospectIndex = 0; prospectIndex < prospects.length; prospectIndex++) {
       const prospect = prospects[prospectIndex];
 
@@ -491,7 +517,8 @@ export async function POST(req: NextRequest) {
             prospectIndex,
             messageIndex,
             followUpDelayDays,
-            campaign.schedule_settings
+            campaign.schedule_settings,
+            cumulativeOffsets[prospectIndex] // Randomized offset for this prospect
           );
 
           const messageType = messageIndex === 0

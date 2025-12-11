@@ -235,8 +235,15 @@ export async function POST(req: NextRequest) {
     const MAX_PER_DAY = 25;
     const BUSINESS_START_HOUR = 8;  // 8 AM UTC
     const BUSINESS_END_HOUR = 18;   // 6 PM UTC
-    const MINUTES_PER_DAY = (BUSINESS_END_HOUR - BUSINESS_START_HOUR) * 60; // 600 minutes
-    const SPACING_MINUTES = Math.floor(MINUTES_PER_DAY / MAX_PER_DAY); // ~24 minutes between each
+
+    // RANDOMIZED SCHEDULING (Dec 11, 2025)
+    // Instead of fixed intervals, use random 20-45 minute gaps
+    // This looks more human-like and avoids LinkedIn detection
+    const MIN_SPACING_MINUTES = 20;
+    const MAX_SPACING_MINUTES = 45;
+
+    // Pre-calculate random intervals for each prospect
+    const getRandomInterval = () => MIN_SPACING_MINUTES + Math.floor(Math.random() * (MAX_SPACING_MINUTES - MIN_SPACING_MINUTES + 1));
 
     const queueRecords = [];
     // CRITICAL FIX (Dec 4): Check ALL possible locations for connection message
@@ -319,9 +326,11 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Add spacing within the day (after first prospect)
+      // Add RANDOM spacing within the day (after first prospect)
+      // Range: 20-45 minutes for human-like pattern
       if (dailyCount > 0) {
-        scheduledTime = new Date(scheduledTime.getTime() + (SPACING_MINUTES * 60 * 1000));
+        const randomInterval = getRandomInterval();
+        scheduledTime = new Date(scheduledTime.getTime() + (randomInterval * 60 * 1000));
       }
 
       // A/B Testing: Assign variant (even index = A, odd index = B)
