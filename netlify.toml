@@ -82,6 +82,14 @@
 [functions."poll-message-replies"]
   schedule = "*/15 * * * *"
 
+# Scheduled function: Poll for EMAIL replies every 15 minutes
+# CRITICAL: Detects email replies for workspaces with email-only accounts (e.g., Jennifer Fleming)
+# Stops follow-up sequences when prospects reply via email
+# Triggers SAM Reply Agent for AI-generated response drafts
+# Added Dec 12, 2025
+[functions."poll-email-replies"]
+  schedule = "*/15 * * * *"
+
 # Scheduled function: Reply Agent - Generate AI drafts every 5 minutes
 # Processes drafts in pending_generation status:
 # 1. Fetches LinkedIn profile + company research
