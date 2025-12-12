@@ -2119,36 +2119,42 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
             'X-Workspace-Id': workspaceId
           };
 
-          console.log('🔍 [6/8] About to call fetch for search (ASYNC fire-and-forget)...');
+          console.log('🔍 [6/8] About to call /api/linkedin/search/simple SYNCHRONOUSLY...');
           console.log('🔍 [6a/8] Request headers:', requestHeaders);
 
-          // FIRE AND FORGET: Start search in background to avoid 26s gateway timeout
-          // The search runs async, results appear in Data Approval tab
-          fetch(searchUrl, {
+          // Call search endpoint synchronously - it saves results to approval tables
+          // Using max_pages: 3 (300 results) to fit within 26s gateway timeout
+          const searchResponse = await fetch(searchUrl, {
             method: 'POST',
             headers: requestHeaders,
             body: JSON.stringify({
               search_criteria: finalSearchCriteria,
               target_count: searchCriteria.targetCount || 500,
-              max_pages: 5 // Limit to 5 pages (500 results)
+              max_pages: 3 // Limit to 3 pages (300 results) to fit within 26s gateway timeout
             })
-          }).then(async (res) => {
-            if (res.ok) {
-              const data = await res.json();
-              console.log('✅ Background search completed:', data.count || 0, 'prospects found');
-            } else {
-              console.error('❌ Background search failed:', res.status);
-            }
-          }).catch(err => console.error('❌ Background search error:', err));
+          });
 
-          // Respond immediately with "search started" message
-          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
-            `\n\n✅ **Search Started!** Pulling ${searchCriteria.title || 'prospects'}${searchCriteria.keywords ? ` matching "${searchCriteria.keywords}"` : ''} from your ${searchCriteria.connectionDegree || '2nd'} degree network.\n\n` +
-            `Head to **Data Approval** to watch the results come through.\n\n` +
-            `📊 **Target:** Up to 500 prospects`
-          ).trim();
+          const searchData = await searchResponse.json();
+          console.log('🔍 [7/8] Search response:', {
+            success: searchData.success,
+            count: searchData.count,
+            session_id: searchData.session_id
+          });
 
-          console.log('✅ Search trigger executed (fire-and-forget), response updated');
+          if (searchData.success) {
+            aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
+              `\n\n✅ **Search Complete!** Found **${searchData.count || 0}** ${searchCriteria.title || 'prospects'}${searchCriteria.keywords ? ` matching "${searchCriteria.keywords}"` : ''} from your ${searchCriteria.connectionDegree || '2nd'} degree network.\n\n` +
+              `Head to **Data Approval** to review and approve the prospects.\n\n` +
+              `📊 **Ready to review:** ${searchData.count || 0} prospects`
+            ).trim();
+          } else {
+            console.error('❌ Search failed:', searchData.error);
+            aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
+              `\n\n⚠️ **Search issue:** ${searchData.error || 'Technical error'}. Try heading to **Data Approval** and entering criteria directly.`
+            ).trim();
+          }
+
+          console.log('✅ Search trigger executed synchronously, response updated');
         }
       } catch (error) {
         console.error('❌ ═══════════════════════════════════════════════════');
