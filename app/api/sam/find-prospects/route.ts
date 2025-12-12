@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
               yearsOfExperience: search_criteria.years_experience,
               profileLanguage: search_criteria?.profile_language || search_criteria?.profileLanguage
             },
-            target_count: search_criteria.max_results || 50
+            target_count: search_criteria.max_results || 2500 // Default to max Sales Nav limit to get all results
           })
         });
 
