@@ -7114,7 +7114,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
           // MESSENGER: Use direct_message_1/2/3 (no CR)
           // CONNECTOR: Use connection_request + follow_ups
           message_templates: approvedCampaignType === 'messenger' ? {
-            direct_message_1: finalCampaignData.messages.connection_request, // First message (no CR for messenger)
+            // CRITICAL FIX (Dec 12): For messenger campaigns, user enters "Initial Message" in alternativeMessage field
+            // NOT in connectionMessage field (which is only shown for connector campaigns)
+            direct_message_1: _executionData?.alternativeMessage || '', // User's "Initial Message" for 1st degree connections
             direct_message_2: finalCampaignData.messages.follow_up_1,
             direct_message_3: finalCampaignData.messages.follow_up_2,
             direct_message_4: finalCampaignData.messages.follow_up_3,
@@ -7470,13 +7472,18 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             workspace_id: actualWorkspaceId,
             template_name: `${finalCampaignData.name} - Template`,
             campaign_type: approvedCampaignType,
+            // CRITICAL FIX (Dec 12): Use correct message mapping
+            // connection_message = Connection Request (Message 1) for connector campaigns
+            // alternative_message = Alternative message for 1st degree connections (optional, separate from follow-ups)
+            // follow_up_messages = Follow-up messages (Message 2, 3, 4, 5, 6)
             connection_message: finalCampaignData.messages.connection_request || '',
-            alternative_message: finalCampaignData.messages.follow_up_1 || '',
+            alternative_message: _executionData?.alternativeMessage || '', // Use actual alternative message, NOT follow_up_1!
             follow_up_messages: [
-              finalCampaignData.messages.follow_up_2,
-              finalCampaignData.messages.follow_up_3,
-              finalCampaignData.messages.follow_up_4,
-              finalCampaignData.messages.follow_up_5
+              finalCampaignData.messages.follow_up_1,  // Message 2
+              finalCampaignData.messages.follow_up_2,  // Message 3
+              finalCampaignData.messages.follow_up_3,  // Message 4
+              finalCampaignData.messages.follow_up_4,  // Message 5
+              finalCampaignData.messages.follow_up_5   // Message 6
             ].filter(msg => msg?.trim())
           })
         });

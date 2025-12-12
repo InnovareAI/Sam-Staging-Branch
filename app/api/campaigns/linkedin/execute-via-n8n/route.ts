@@ -404,7 +404,9 @@ export async function POST(req: NextRequest) {
         follow_up_3: campaign.message_templates?.follow_up_messages?.[2] || '',
         follow_up_4: campaign.message_templates?.follow_up_messages?.[3] || '',
         goodbye_message: campaign.message_templates?.follow_up_messages?.[4] || '',
-        alternative_message: campaign.message_templates?.alternative_message || campaign.message_templates?.follow_up_messages?.[0] || ''
+        // CRITICAL FIX (Dec 12): Don't fallback to follow_up_messages[0] - alternative_message is separate!
+        // alternative_message is for 1st degree connections, NOT a follow-up message
+        alternative_message: campaign.message_templates?.alternative_message || ''
       },
       timing: {
         fu1_delay_days: 2,

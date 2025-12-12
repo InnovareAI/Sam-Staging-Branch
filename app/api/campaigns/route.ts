@@ -380,13 +380,19 @@ export async function POST(req: NextRequest) {
       followup_wait_days: 5,
       message_wait_days: 5,
       messages: {
+        // CRITICAL FIX (Dec 12): Correct message mapping for campaign_performance_summary
+        // connection_request = Message 1 (Connection Request)
+        // alternative_message = Separate optional message for 1st degree connections (NOT a follow-up)
+        // follow_up_1 through follow_up_5 = Follow-up messages (Message 2-6)
         connection_request: finalMessageTemplates.connection_request || null,
-        follow_up_1: finalMessageTemplates.alternative_message || finalMessageTemplates.follow_up_messages?.[0] || null,
-        follow_up_2: finalMessageTemplates.follow_up_messages?.[0] || null,
-        follow_up_3: finalMessageTemplates.follow_up_messages?.[1] || null,
-        follow_up_4: finalMessageTemplates.follow_up_messages?.[2] || null,
-        follow_up_5: finalMessageTemplates.follow_up_messages?.[3] || null,
-        goodbye: finalMessageTemplates.follow_up_messages?.[4] || null
+        follow_up_1: finalMessageTemplates.follow_up_messages?.[0] || null,  // Message 2
+        follow_up_2: finalMessageTemplates.follow_up_messages?.[1] || null,  // Message 3
+        follow_up_3: finalMessageTemplates.follow_up_messages?.[2] || null,  // Message 4
+        follow_up_4: finalMessageTemplates.follow_up_messages?.[3] || null,  // Message 5
+        follow_up_5: finalMessageTemplates.follow_up_messages?.[4] || null,  // Message 6
+        goodbye: finalMessageTemplates.follow_up_messages?.[5] || null,      // Message 7 (if exists)
+        // Store alternative_message separately (not part of follow-up sequence)
+        alternative: finalMessageTemplates.alternative_message || null
       },
       // Email subject configuration
       subjects: {
