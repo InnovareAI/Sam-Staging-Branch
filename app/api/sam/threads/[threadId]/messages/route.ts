@@ -42,44 +42,80 @@ import { needsValidation } from '@/lib/kb-confidence-calculator'
 // 🚀 DIRECT SEARCH PARSER (Dec 12, 2025)
 // Parses user messages like "find 500 C-Suite at Google 2nd degree"
 // Bypasses unreliable LLM trigger output
+// AGGRESSIVE MATCHING - catches most search requests
 // ================================================================
 function parseDirectSearchRequest(message: string): any | null {
   const lowerMsg = message.toLowerCase();
 
-  // Must contain search intent
-  const searchKeywords = ['find', 'search', 'get', 'pull', 'show me', 'looking for'];
-  if (!searchKeywords.some(k => lowerMsg.includes(k))) {
+  // AGGRESSIVE: Match if message has a number + role OR company
+  const searchKeywords = ['find', 'search', 'get', 'pull', 'show', 'looking', 'need', 'want', 'give', 'can you', 'lets', "let's", 'take'];
+  const hasSearchIntent = searchKeywords.some(k => lowerMsg.includes(k));
+
+  // Also match if there's a number followed by role-like word
+  const hasNumberRole = /\b\d+\s*(c-suite|ceo|vp|executive|director|founder|head|manager|people|prospects|employee)/i.test(message);
+
+  if (!hasSearchIntent && !hasNumberRole) {
+    console.log('🚀 parseDirectSearchRequest: No search intent found in:', message.substring(0, 50));
     return null;
   }
 
-  // Extract count (e.g., "500", "100")
-  const countMatch = message.match(/\b(\d+)\s*(of|c-suite|ceo|vp|prospects|people|executives)/i);
+  // Extract count - more flexible
+  const countMatch = message.match(/\b(\d+)\b/);
   const targetCount = countMatch ? parseInt(countMatch[1]) : 500;
 
-  // Extract title/role (C-Suite, CEO, VP, etc.)
+  // Extract title/role - EXPANDED with typo handling
   let title = '';
   const titlePatterns = [
-    /\b(c-suite|csuite)\b/i,
-    /\b(ceo|cfo|cto|cmo|coo|cro)\b/i,
-    /\b(vp|vice president)\s*(of\s+)?(sales|marketing|engineering|product|operations|finance)?\b/i,
-    /\b(director|head)\s*(of\s+)?(sales|marketing|engineering|product|operations|finance)?\b/i,
+    /\b(c-suite|csuite|c suite)\b/i,
+    /\b(ceo|cfo|cto|cmo|coo|cro|chro|ciso)\b/i,
+    /\b(vp|vice president)\s*(of\s+)?(sales|marketing|engineering|product|operations|finance|hr)?\b/i,
+    /\b(director|head)\s*(of\s+)?(sales|marketing|engineering|product|operations|finance|hr)?\b/i,
     /\b(founder|co-founder|cofounder)\b/i,
-    /\b(executive|executives)\b/i
+    /\b(executive|executives|exectuive|exectuives|exec)\b/i, // Include common typos
+    /\b(manager|managers)\b/i,
+    /\b(employee|employees)\b/i
   ];
 
   for (const pattern of titlePatterns) {
     const match = message.match(pattern);
     if (match) {
-      title = match[0].trim();
+      title = match[0].trim().replace(/exectuive/i, 'executive').replace(/exectuives/i, 'executives');
       break;
     }
   }
 
-  if (!title) return null; // Must have a title to search
+  // Extract company - MORE FLEXIBLE
+  let company = '';
+  const companyPatterns = [
+    /(?:at|from|for)\s+([A-Z][a-zA-Z0-9\s&().]+?)(?:\s+(?:in|2nd|1st|3rd|degree|their|employees?|executives?|c-suite|new\s+york|london|san\s+francisco)|$|,|\?)/i,
+    /(?:at|from|for)\s+([A-Z][a-zA-Z0-9]+(?:\s+[a-zA-Z]+)?)/i, // "from IPG new york"
+    /(\w+)'s\s+(?:c-suite|executives?|employees?|team)/i, // "Oracle's C Suite"
+    /(?:take|show|give)\s+(?:me\s+)?([A-Z][a-zA-Z]+)/i // "take Oracle"
+  ];
 
-  // Extract company (e.g., "at Google", "from Microsoft")
-  const companyMatch = message.match(/(?:at|from|for)\s+([A-Z][a-zA-Z0-9\s&]+?)(?:\s+(?:from|in|2nd|1st|3rd|degree)|$|,)/);
-  const company = companyMatch ? companyMatch[1].trim() : '';
+  for (const pattern of companyPatterns) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      company = match[1].trim();
+      // Clean up common words
+      if (['me', 'the', 'a', 'an', 'their', 'your', 'some', 'example'].includes(company.toLowerCase())) {
+        company = '';
+        continue;
+      }
+      break;
+    }
+  }
+
+  // If no title found but have company, use generic
+  if (!title && company) {
+    title = 'executive';
+  }
+
+  // Must have either title or company
+  if (!title && !company) {
+    console.log('🚀 parseDirectSearchRequest: No title or company found in:', message.substring(0, 50));
+    return null;
+  }
 
   // Extract connection degree
   let connectionDegree = '2nd'; // default
@@ -88,14 +124,18 @@ function parseDirectSearchRequest(message: string): any | null {
 
   // Generate campaign name
   const today = new Date().toISOString().slice(0,10).replace(/-/g, '');
-  const campaignName = `${today}-${title.replace(/\s+/g, '-')}${company ? `-${company}` : ''}`;
+  const campaignName = `${today}-${(title || 'prospects').replace(/\s+/g, '-')}${company ? `-${company.replace(/\s+/g, '-')}` : ''}`;
 
-  console.log('🚀 parseDirectSearchRequest result:', { title, company, targetCount, connectionDegree, campaignName });
+  console.log('🚀 ═══════════════════════════════════════════════════');
+  console.log('🚀 DIRECT SEARCH PARSER MATCHED!');
+  console.log('🚀 Input:', message);
+  console.log('🚀 Parsed:', { title, company, targetCount, connectionDegree, campaignName });
+  console.log('🚀 ═══════════════════════════════════════════════════');
 
   return {
-    title,
+    title: title || 'executive',
     company: company || undefined,
-    keywords: company || title, // Use company name as keywords if available
+    keywords: company || title || 'executive',
     targetCount,
     connectionDegree,
     campaignName
