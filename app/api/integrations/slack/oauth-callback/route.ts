@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         );
       }
       return NextResponse.redirect(
-        new URL(`/workspace/${state}/settings?slack_error=${encodeURIComponent(error)}`, request.url)
+        new URL(`/workspace/${state}?slack_error=${encodeURIComponent(error)}`, request.url)
       );
     }
 
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         );
       }
       return NextResponse.redirect(
-        new URL(`/workspace/${state}/settings?slack_error=missing_params`, request.url)
+        new URL(`/workspace/${state}?slack_error=missing_params`, request.url)
       );
     }
 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         );
       }
       return NextResponse.redirect(
-        new URL(`/workspace/${state}/settings?slack_error=server_config`, request.url)
+        new URL(`/workspace/${state}?slack_error=server_config`, request.url)
       );
     }
 
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
         );
       }
       return NextResponse.redirect(
-        new URL(`/workspace/${state}/settings?slack_error=${encodeURIComponent(tokenData.error)}`, request.url)
+        new URL(`/workspace/${state}?slack_error=${encodeURIComponent(tokenData.error)}`, request.url)
       );
     }
 
@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
     if (configError) {
       console.error('[Slack OAuth] Failed to save config:', configError);
       return NextResponse.redirect(
-        new URL(`/workspace/${workspaceId}/settings?slack_error=save_failed`, request.url)
+        new URL(`/workspace/${workspaceId}?slack_error=save_failed`, request.url)
       );
     }
 
@@ -198,9 +198,9 @@ export async function GET(request: NextRequest) {
         onConflict: 'workspace_id,integration_type',
       });
 
-    // Redirect back to settings with success
+    // Redirect back to workspace with success
     return NextResponse.redirect(
-      new URL(`/workspace/${workspaceId}/settings?slack_success=true&team_name=${encodeURIComponent(team?.name || '')}`, request.url)
+      new URL(`/workspace/${workspaceId}?slack_success=true&team_name=${encodeURIComponent(team?.name || '')}`, request.url)
     );
 
   } catch (error) {
