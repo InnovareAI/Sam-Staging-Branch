@@ -125,7 +125,7 @@ export default function SlackModal({ isOpen, onClose, workspaceId }: SlackModalP
             <div>
               <h2 className="text-lg font-bold">Slack Integration</h2>
               <p className="text-xs text-muted-foreground">
-                {connectionMode === 'app' ? 'Full two-way communication' : 'Notifications & commands'}
+                Full two-way communication
               </p>
             </div>
           </div>
