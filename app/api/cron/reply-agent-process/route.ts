@@ -1117,6 +1117,7 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
           // Slack notification
           const approveUrl = `${APP_URL}/api/reply-agent/approve?token=${updatedDraft.approval_token}&action=approve`;
           const rejectUrl = `${APP_URL}/api/reply-agent/approve?token=${updatedDraft.approval_token}&action=reject`;
+          const editUrl = `${APP_URL}/reply-agent/edit?id=${updatedDraft.id}&token=${updatedDraft.approval_token}`;
           const slackResult = await slackService.sendBotMessage(draft.workspace_id, await slackService.getDefaultChannel(draft.workspace_id), {
             text: `📬 Reply from ${updatedDraft.prospect_name}`,
             blocks: [
@@ -1126,6 +1127,7 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
               { type: 'section', text: { type: 'mrkdwn', text: `*Your Reply:*\n\`${updatedDraft.draft_text}\`` } },
               { type: 'actions', elements: [
                 { type: 'button', text: { type: 'plain_text', text: '✓ Approve & Send', emoji: true }, url: approveUrl, style: 'primary' },
+                { type: 'button', text: { type: 'plain_text', text: '✏️ Edit', emoji: true }, url: editUrl },
                 { type: 'button', text: { type: 'plain_text', text: '✗ Reject', emoji: true }, url: rejectUrl, style: 'danger' }
               ]}
             ]
