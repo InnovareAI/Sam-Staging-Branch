@@ -105,11 +105,15 @@ export async function POST(request: NextRequest) {
     const cronCheck = await checkCronJobGaps(supabase);
     allChecks.push(cronCheck);
 
+    // 3.5 CRITICAL: Stuck Campaigns (active but no progress in 2 hours)
+    const stuckCampaignCheck = await checkStuckCampaigns(supabase);
+    allChecks.push(stuckCampaignCheck);
+
     // 4. Message Status vs Unipile Sync
     const syncCheck = await checkUnipileSyncStatus(supabase);
     allChecks.push(syncCheck);
 
-    // 5. Stuck Prospects Detection
+    // 5. Stuck Prospects Detection (tightened to 6 hours for quick detection)
     const stuckCheck = await checkStuckProspects(supabase);
     allChecks.push(stuckCheck);
 
@@ -486,14 +490,14 @@ async function checkUnipileSyncStatus(supabase: any): Promise<QACheck> {
 }
 
 async function checkStuckProspects(supabase: any): Promise<QACheck> {
-  // Find prospects stuck in transitional states
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  // Find prospects stuck in transitional states - TIGHTENED to 6 hours for quick detection
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
 
   const { data: stuck } = await supabase
     .from('campaign_prospects')
     .select('id, status, updated_at, campaign_id')
-    .in('status', ['pending', 'queued', 'processing'])
-    .lt('updated_at', threeDaysAgo)
+    .in('status', ['queued', 'processing']) // 'pending' is valid - waiting for approval
+    .lt('updated_at', sixHoursAgo)
     .limit(100);
 
   const count = stuck?.length || 0;
@@ -501,13 +505,95 @@ async function checkStuckProspects(supabase: any): Promise<QACheck> {
   return {
     check_name: 'Stuck Prospects Detection',
     category: 'database',
-    status: count > 50 ? 'fail' : count > 10 ? 'warning' : 'pass',
+    status: count > 10 ? 'fail' : count > 0 ? 'warning' : 'pass', // Tighter thresholds
     details: count > 0
-      ? `${count} prospects stuck in transitional state for >3 days`
+      ? `🚨 ${count} prospects stuck in transitional state for >6 hours`
       : 'No stuck prospects detected',
     affected_records: count,
     sample_ids: stuck?.slice(0, 10).map((p: any) => p.id),
     suggested_fix: count > 0 ? `UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN (${stuck?.slice(0, 50).map((p: any) => `'${p.id}'`).join(',')})` : undefined
+  };
+}
+
+// CRITICAL: Check for stuck campaigns - active campaigns with no progress
+async function checkStuckCampaigns(supabase: any): Promise<QACheck> {
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+
+  // Find active/running campaigns that should be sending but have no recent activity
+  const { data: activeCampaigns } = await supabase
+    .from('campaigns')
+    .select(`
+      id, campaign_name, status, workspace_id,
+      workspaces(name)
+    `)
+    .in('status', ['active', 'running']);
+
+  if (!activeCampaigns || activeCampaigns.length === 0) {
+    return {
+      check_name: 'Stuck Campaigns Detection',
+      category: 'cron',
+      status: 'pass',
+      details: 'No active campaigns to check',
+      affected_records: 0
+    };
+  }
+
+  const stuckCampaigns: any[] = [];
+
+  for (const campaign of activeCampaigns) {
+    // Check for queued items that haven't been sent
+    const { data: pendingQueue } = await supabase
+      .from('send_queue')
+      .select('id, scheduled_for, status')
+      .eq('campaign_id', campaign.id)
+      .eq('status', 'pending')
+      .lt('scheduled_for', twoHoursAgo)
+      .limit(5);
+
+    // Check for prospects in "approved" status but not yet queued (stuck before queue)
+    const { data: approvedNotQueued } = await supabase
+      .from('campaign_prospects')
+      .select('id, status, updated_at')
+      .eq('campaign_id', campaign.id)
+      .eq('status', 'approved')
+      .lt('updated_at', twoHoursAgo)
+      .limit(5);
+
+    const pendingCount = pendingQueue?.length || 0;
+    const approvedCount = approvedNotQueued?.length || 0;
+
+    if (pendingCount > 0 || approvedCount > 0) {
+      stuckCampaigns.push({
+        campaign_id: campaign.id,
+        campaign_name: campaign.campaign_name,
+        workspace: campaign.workspaces?.name || 'Unknown',
+        pending_queue: pendingCount,
+        approved_not_queued: approvedCount,
+        issue: pendingCount > 0
+          ? `${pendingCount} queue items overdue >2h`
+          : `${approvedCount} approved prospects not queued >2h`
+      });
+    }
+  }
+
+  const count = stuckCampaigns.length;
+  const details = stuckCampaigns
+    .slice(0, 3)
+    .map(c => `${c.campaign_name} (${c.workspace}): ${c.issue}`)
+    .join('; ');
+
+  return {
+    check_name: 'Stuck Campaigns Detection',
+    category: 'cron',
+    status: count > 0 ? 'fail' : 'pass', // Any stuck campaign is a failure
+    details: count > 0
+      ? `🚨 CRITICAL: ${count} campaigns stuck! ${details}`
+      : 'All active campaigns processing normally',
+    affected_records: count,
+    sample_ids: stuckCampaigns.slice(0, 5).map(c => c.campaign_id),
+    suggested_fix: count > 0
+      ? 'Check Netlify scheduled functions: process-send-queue, poll-accepted-connections. May need manual queue restart.'
+      : undefined
   };
 }
 
