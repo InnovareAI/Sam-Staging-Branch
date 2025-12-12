@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { getClaudeClient } from '@/lib/llm/claude-client';
 import { sendReplyAgentHITLNotification } from '@/lib/notifications/google-chat';
+import { slackService } from '@/lib/slack';
 import { normalizeCompanyName } from '@/lib/prospect-normalization';
 
 export const dynamic = 'force-dynamic';
@@ -1097,8 +1098,9 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
           .eq('id', draft.id)
           .single();
 
-        // Send HITL notification to Google Chat
+        // Send HITL notifications (Google Chat + Slack)
         if (config.approval_mode === 'manual') {
+          // Google Chat notification
           await sendReplyAgentHITLNotification({
             draftId: updatedDraft.id,
             approvalToken: updatedDraft.approval_token,
@@ -1110,7 +1112,29 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
             intent: updatedDraft.intent_detected || 'UNCLEAR',
             appUrl: APP_URL,
           });
-          console.log(`✅ Draft ${draft.id} processed - Google Chat HITL notification sent`);
+          console.log(`✅ Draft ${draft.id} - Google Chat notification sent`);
+
+          // Slack notification
+          const approveUrl = `${APP_URL}/api/reply-agent/approve?token=${updatedDraft.approval_token}&action=approve`;
+          const rejectUrl = `${APP_URL}/api/reply-agent/approve?token=${updatedDraft.approval_token}&action=reject`;
+          const slackResult = await slackService.sendBotMessage(draft.workspace_id, await slackService.getDefaultChannel(draft.workspace_id), {
+            text: `📬 Reply from ${updatedDraft.prospect_name}`,
+            blocks: [
+              { type: 'header', text: { type: 'plain_text', text: `📬 ${updatedDraft.prospect_name || 'Unknown'}`, emoji: true } },
+              { type: 'section', text: { type: 'mrkdwn', text: `*${prospect.title || ''} at ${updatedDraft.prospect_company || 'Unknown'}*` } },
+              { type: 'section', text: { type: 'mrkdwn', text: `*Their Message:*\n${draft.inbound_message_text?.slice(0, 300) || ''}${(draft.inbound_message_text?.length || 0) > 300 ? '...' : ''}` } },
+              { type: 'section', text: { type: 'mrkdwn', text: `*Your Reply:*\n\`${updatedDraft.draft_text}\`` } },
+              { type: 'actions', elements: [
+                { type: 'button', text: { type: 'plain_text', text: '✓ Approve & Send', emoji: true }, url: approveUrl, style: 'primary' },
+                { type: 'button', text: { type: 'plain_text', text: '✗ Reject', emoji: true }, url: rejectUrl, style: 'danger' }
+              ]}
+            ]
+          });
+          if (slackResult.success) {
+            console.log(`✅ Draft ${draft.id} - Slack notification sent`);
+          } else {
+            console.log(`⚠️ Draft ${draft.id} - Slack notification failed: ${slackResult.error}`);
+          }
         } else {
           // Get LinkedIn account for auto-send
           const { data: linkedinAccount } = await supabase
