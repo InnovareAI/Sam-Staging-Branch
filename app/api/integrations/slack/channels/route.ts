@@ -57,13 +57,15 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Transform channels data
-    const channels = result.channels?.map((channel: any) => ({
-      id: channel.id,
-      name: channel.name,
-      is_private: channel.is_private,
-      is_member: channel.is_member,
-    })) || [];
+    // Transform channels data - filter out archived channels
+    const channels = result.channels
+      ?.filter((channel: any) => !channel.is_archived)
+      .map((channel: any) => ({
+        id: channel.id,
+        name: channel.name,
+        is_private: channel.is_private,
+        is_member: channel.is_member,
+      })) || [];
 
     return NextResponse.json({
       success: true,
