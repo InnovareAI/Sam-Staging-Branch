@@ -805,6 +805,18 @@ export async function POST(request: NextRequest) {
       // Update cursor for next page
       currentCursor = pageData.paging?.cursor || null;
 
+      // DEBUG: Log pagination details
+      console.log('🔵 PAGINATION DEBUG:', {
+        cursor: currentCursor ? currentCursor.substring(0, 50) + '...' : 'NO CURSOR',
+        hasCursor: !!currentCursor,
+        totalItems: allItems.length,
+        effectiveMax: effectiveMaxResults,
+        reachedMax: allItems.length >= effectiveMaxResults,
+        fetchAllEnabled: fetch_all,
+        pagesFetched,
+        willContinue: !(!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50)
+      });
+
       // Stop conditions:
       // 1. No more pages (no cursor)
       // 2. Reached target_count limit
