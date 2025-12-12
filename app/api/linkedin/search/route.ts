@@ -7,6 +7,9 @@ const UNIPILE_DSN = process.env.UNIPILE_DSN;
 // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
 const UNIPILE_BASE_URL = `https://${UNIPILE_DSN}`;
 
+// Delay helper for rate limiting
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 /**
  * LinkedIn Search API using Unipile
  * 
@@ -69,10 +72,14 @@ export async function POST(request: NextRequest) {
       // Pagination
       limit = 50, // Max 50 for classic, 100 for sales_navigator/recruiter
       cursor, // For pagination
-      
+
+      // Auto-pagination options
+      fetch_all = false, // Automatically fetch all pages (up to max_results)
+      max_results = 2500, // Maximum results to fetch when fetch_all is true
+
       // Account
       accountId, // Specific LinkedIn account to search from
-      
+
       // Options
       enrichProfiles = false, // Whether to enrich results with full profile data
     } = body;
@@ -203,52 +210,105 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Perform LinkedIn search via Unipile
-    const searchUrl = new URL(`${UNIPILE_BASE_URL}/api/v1/linkedin/search`);
-    searchUrl.searchParams.append('account_id', linkedinAccountId);
-    searchUrl.searchParams.append('limit', limit.toString());
-    if (cursor) {
-      searchUrl.searchParams.append('cursor', cursor);
+    // Calculate actual limits based on API type
+    const apiMaxPerPage = api === 'classic' ? 50 : 100;
+    const apiMaxTotal = api === 'classic' ? 1000 : 2500;
+    const effectiveMaxResults = Math.min(max_results, apiMaxTotal);
+    const perPageLimit = Math.min(limit, apiMaxPerPage);
+
+    // Auto-pagination: fetch all pages if requested
+    let allProspects: any[] = [];
+    let currentCursor = cursor;
+    let pagesFetched = 0;
+    let totalAvailable = 0;
+    let lastPaging: any = null;
+
+    console.log(`🔍 LinkedIn search starting (fetch_all: ${fetch_all}, max_results: ${effectiveMaxResults}, per_page: ${perPageLimit})`);
+
+    do {
+      // Build search URL for this page
+      const searchUrl = new URL(`${UNIPILE_BASE_URL}/api/v1/linkedin/search`);
+      searchUrl.searchParams.append('account_id', linkedinAccountId);
+      searchUrl.searchParams.append('limit', perPageLimit.toString());
+      if (currentCursor) {
+        searchUrl.searchParams.append('cursor', currentCursor);
+      }
+
+      console.log(`🔍 Fetching page ${pagesFetched + 1}...`, {
+        cursor: currentCursor ? '(has cursor)' : '(first page)',
+        currentCount: allProspects.length
+      });
+
+      const response = await fetch(searchUrl.toString(), {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(searchBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Unipile search error:', errorData);
+
+        // If we already have some results, return what we have
+        if (allProspects.length > 0) {
+          console.warn(`⚠️ Error on page ${pagesFetched + 1}, returning ${allProspects.length} results collected so far`);
+          break;
+        }
+
+        return NextResponse.json({
+          success: false,
+          error: errorData.message || 'LinkedIn search failed',
+          details: errorData
+        }, { status: response.status });
+      }
+
+      const searchResults = await response.json();
+      lastPaging = searchResults.paging;
+      totalAvailable = searchResults.paging?.total_count || 0;
+
+      // Transform and add results
+      const pageProspects = (searchResults.items || []).map((item: any) =>
+        transformLinkedInResult(item, category, api)
+      );
+
+      allProspects = allProspects.concat(pageProspects);
+      pagesFetched++;
+
+      console.log(`✅ Page ${pagesFetched}: Got ${pageProspects.length} results (total: ${allProspects.length}/${totalAvailable})`);
+
+      // Update cursor for next iteration
+      currentCursor = searchResults.paging?.cursor;
+
+      // Stop conditions:
+      // 1. No more pages (no cursor)
+      // 2. Reached max_results limit
+      // 3. Not in fetch_all mode (only fetch first page)
+      // 4. Safety limit: max 50 pages to prevent infinite loops
+      if (!currentCursor || allProspects.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50) {
+        break;
+      }
+
+      // Rate limiting: wait 500ms between requests to be respectful
+      await delay(500);
+
+    } while (true);
+
+    // Trim to max_results if we fetched more
+    if (allProspects.length > effectiveMaxResults) {
+      allProspects = allProspects.slice(0, effectiveMaxResults);
     }
 
-    console.log('🔍 Unipile LinkedIn search:', {
-      url: searchUrl.toString(),
-      body: searchBody
-    });
-
-    const response = await fetch(searchUrl.toString(), {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': UNIPILE_API_KEY,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(searchBody)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('❌ Unipile search error:', errorData);
-      
-      return NextResponse.json({
-        success: false,
-        error: errorData.message || 'LinkedIn search failed',
-        details: errorData
-      }, { status: response.status });
-    }
-
-    const searchResults = await response.json();
-
-    // Transform results to our format
-    const prospects = (searchResults.items || []).map((item: any) => 
-      transformLinkedInResult(item, category, api)
-    );
+    console.log(`🎯 Search complete: ${allProspects.length} results in ${pagesFetched} pages (${totalAvailable} total available)`);
 
     // Optionally enrich profiles with full data
-    let enrichedProspects = prospects;
-    if (enrichProfiles && category === 'people' && prospects.length > 0) {
+    let enrichedProspects = allProspects;
+    if (enrichProfiles && category === 'people' && allProspects.length > 0) {
       enrichedProspects = await enrichProspectProfiles(
-        prospects,
+        allProspects,
         linkedinAccountId,
         supabase
       );
@@ -261,9 +321,9 @@ export async function POST(request: NextRequest) {
       search_params: searchBody,
       api_type: api,
       category,
-      results_count: prospects.length,
+      results_count: enrichedProspects.length,
       prospects: enrichedProspects,
-      cursor: searchResults.paging?.cursor
+      cursor: lastPaging?.cursor
     });
 
     return NextResponse.json({
@@ -273,14 +333,15 @@ export async function POST(request: NextRequest) {
         source: 'unipile_linkedin',
         api,
         category,
-        total_found: prospects.length,
-        total_count: searchResults.paging?.total_count,
-        page_count: searchResults.paging?.page_count,
-        cursor: searchResults.paging?.cursor,
-        has_more: !!searchResults.paging?.cursor,
-        max_results: api === 'classic' ? 1000 : 2500,
-        max_per_page: api === 'classic' ? 50 : 100,
-        auto_detected: !body.api, // Was API auto-detected?
+        total_found: enrichedProspects.length,
+        total_count: totalAvailable,
+        pages_fetched: pagesFetched,
+        cursor: lastPaging?.cursor,
+        has_more: !!lastPaging?.cursor && enrichedProspects.length < totalAvailable,
+        fetch_all_enabled: fetch_all,
+        max_results: effectiveMaxResults,
+        max_per_page: apiMaxPerPage,
+        auto_detected: !body.api,
         timestamp: new Date().toISOString()
       }
     });
