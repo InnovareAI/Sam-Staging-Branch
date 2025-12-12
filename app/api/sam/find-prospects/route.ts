@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
 
+// Extend function timeout to 60 seconds for pagination across many pages
+export const maxDuration = 60;
+
 /**
  * Sam's Prospect Finding Interface
  * Integrates multiple prospect sources with template-based outreach

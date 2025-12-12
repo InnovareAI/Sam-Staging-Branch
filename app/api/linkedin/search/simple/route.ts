@@ -3,6 +3,9 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/app/lib/supabase';
 
+// Extend function timeout to 60 seconds for pagination across many pages
+export const maxDuration = 60;
+
 /**
  * SIMPLE LinkedIn Search - Minimal version that just works
  * No fancy features, just get results
@@ -831,8 +834,8 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      // Rate limiting: wait 500ms between requests
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Rate limiting: wait 200ms between requests (reduced from 500ms for faster pagination)
+      await new Promise(resolve => setTimeout(resolve, 200));
 
     } while (true);
 
