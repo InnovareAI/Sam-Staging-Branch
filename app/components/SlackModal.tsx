@@ -278,6 +278,7 @@ export default function SlackModal({ isOpen, onClose, workspaceId }: SlackModalP
               isSaving={isSaving}
               copyToClipboard={copyToClipboard}
               copied={copied}
+              workspaceId={workspaceId}
             />
           )}
         </div>
@@ -501,6 +502,7 @@ function SetupState({
   isSaving,
   copyToClipboard,
   copied,
+  workspaceId,
 }: {
   connectionMode: ConnectionMode;
   setConnectionMode: (mode: ConnectionMode) => void;
@@ -517,6 +519,7 @@ function SetupState({
   isSaving: boolean;
   copyToClipboard: (text: string, label: string) => void;
   copied: string | null;
+  workspaceId: string;
 }) {
   return (
     <div className="space-y-4">
@@ -569,6 +572,7 @@ function SetupState({
           isSaving={isSaving}
           copyToClipboard={copyToClipboard}
           copied={copied}
+          workspaceId={workspaceId}
         />
       )}
     </div>
@@ -665,6 +669,7 @@ function AppSetup({
   isSaving,
   copyToClipboard,
   copied,
+  workspaceId,
 }: {
   botToken: string;
   setBotToken: (token: string) => void;
@@ -674,92 +679,74 @@ function AppSetup({
   isSaving: boolean;
   copyToClipboard: (text: string, label: string) => void;
   copied: string | null;
+  workspaceId: string;
 }) {
+  // Slack OAuth URL with SAM's app credentials
+  const slackOAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${process.env.NEXT_PUBLIC_SLACK_CLIENT_ID || '8123456789.1234567890'}&scope=chat:write,chat:write.public,channels:read,users:read,app_mentions:read,im:history,im:read,reactions:read,commands&redirect_uri=${encodeURIComponent(`https://app.meet-sam.com/api/integrations/slack/oauth-callback`)}&state=${workspaceId}`;
+
   return (
     <>
-      <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4 space-y-3">
-        <h3 className="font-semibold text-sm text-purple-400">Create a Slack App:</h3>
-        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-          <li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">api.slack.com/apps</a></li>
-          <li>Click <strong>Create New App</strong> → <strong>From scratch</strong></li>
-          <li>Name it "SAM AI" and select your workspace</li>
-          <li>
-            Under <strong>OAuth & Permissions</strong>, add these scopes:
-            <div className="bg-muted/50 rounded p-2 mt-1 font-mono text-xs">
-              chat:write, chat:write.public, channels:read, users:read, app_mentions:read, im:history, im:read, reactions:read
-            </div>
-          </li>
-          <li>Install the app to your workspace</li>
-          <li>Copy the <strong>Bot User OAuth Token</strong> (starts with xoxb-)</li>
-          <li>Under <strong>Basic Information</strong>, copy the <strong>Signing Secret</strong></li>
-        </ol>
+      {/* Simple Add to Slack Flow */}
+      <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-6 text-center space-y-4">
+        <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto">
+          <MessageSquare className="h-8 w-8 text-purple-400" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-lg text-purple-400">Add SAM to Slack</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Click below to install SAM AI in your Slack workspace. You'll be able to receive notifications,
+            approve comments, and chat with SAM directly from Slack.
+          </p>
+        </div>
+
+        {/* Add to Slack Button */}
         <a
-          href="https://api.slack.com/start/building"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-purple-400 text-sm hover:underline"
+          href={slackOAuthUrl}
+          className="inline-flex items-center gap-2 bg-[#4A154B] hover:bg-[#611f69] text-white font-medium py-3 px-6 rounded-lg transition-colors"
         >
-          Slack App Documentation <ExternalLink className="h-3 w-3" />
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+          </svg>
+          Add to Slack
         </a>
       </div>
 
-      {/* Event Subscriptions Info */}
-      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-        <h4 className="font-medium text-sm">Event Subscriptions Setup</h4>
-        <p className="text-xs text-muted-foreground">
-          Enable Events API and set the Request URL to:
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value="https://app.meet-sam.com/api/webhooks/slack"
-            readOnly
-            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-muted-foreground font-mono"
-          />
-          <button
-            onClick={() => copyToClipboard('https://app.meet-sam.com/api/webhooks/slack', 'events')}
-            className="bg-secondary hover:bg-secondary/80 px-3 py-2 rounded-lg transition-colors"
-          >
-            {copied === 'events' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-          </button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Subscribe to: <code>message.im</code>, <code>app_mention</code>, <code>reaction_added</code>
-        </p>
+      {/* What you get */}
+      <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+        <h4 className="font-medium text-sm">What you'll get:</h4>
+        <ul className="text-sm text-muted-foreground space-y-2">
+          <li className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            Real-time notifications for new prospect replies
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            Approve/reject comments with button clicks
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            Daily campaign digest summaries
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            Use /sam-ask to chat with SAM from Slack
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            React with ✅ or ❌ for quick approvals
+          </li>
+        </ul>
       </div>
 
+      {/* After installation steps */}
       <div className="space-y-2">
-        <label className="text-sm font-medium">Bot User OAuth Token</label>
-        <input
-          type="password"
-          value={botToken}
-          onChange={(e) => setBotToken(e.target.value)}
-          placeholder="xoxb-..."
-          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary font-mono"
-        />
+        <h4 className="font-medium text-sm">After installation:</h4>
+        <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+          <li>Invite <strong>@SAM</strong> to your preferred channel</li>
+          <li>Go to the <strong>Channels</strong> tab above to select your default notification channel</li>
+          <li>Start receiving updates!</li>
+        </ol>
       </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Signing Secret (for security)</label>
-        <input
-          type="password"
-          value={signingSecret}
-          onChange={(e) => setSigningSecret(e.target.value)}
-          placeholder="Your signing secret"
-          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary font-mono"
-        />
-        <p className="text-xs text-muted-foreground">
-          Found in Basic Information → App Credentials → Signing Secret
-        </p>
-      </div>
-
-      <button
-        onClick={onSave}
-        disabled={isSaving || !botToken.trim()}
-        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isSaving ? 'Connecting...' : 'Connect Slack App'}
-      </button>
     </>
   );
 }
