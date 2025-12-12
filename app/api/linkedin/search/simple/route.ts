@@ -1050,16 +1050,35 @@ export async function POST(request: NextRequest) {
       .select('linkedin_url')
       .not('linkedin_url', 'is', null);
 
+    // DEDUP: Also exclude prospects already in prospect_approval_data (pending approval from previous searches)
+    const { data: pendingApprovalProspects } = await supabaseAdmin()
+      .from('prospect_approval_data')
+      .select('contact')
+      .not('contact', 'is', null);
+
+    // Build set of all existing LinkedIn URLs (from campaigns + pending approval)
     const existingUrls = new Set(
       (existingProspects || [])
         .map(p => p.linkedin_url?.toLowerCase())
         .filter(Boolean)
     );
 
+    // Add URLs from pending approval data (stored in contact.linkedin_url JSONB field)
+    let pendingApprovalCount = 0;
+    (pendingApprovalProspects || []).forEach((p: any) => {
+      const url = p.contact?.linkedin_url?.toLowerCase();
+      if (url) {
+        existingUrls.add(url);
+        pendingApprovalCount++;
+      }
+    });
+
+    console.log(`🔍 Dedup pool: ${existingUrls.size} URLs (${existingProspects?.length || 0} in campaigns, ${pendingApprovalCount} pending approval)`);
+
     const validProspects = prospectsWithUrls.filter((p: any) => {
       const url = p.linkedinUrl?.toLowerCase();
       if (existingUrls.has(url)) {
-        console.log(`   🔄 Skipping (already contacted): ${p.firstName} ${p.lastName}`);
+        console.log(`   🔄 Skipping (duplicate): ${p.firstName} ${p.lastName}`);
         return false;
       }
       return true;
@@ -1067,7 +1086,7 @@ export async function POST(request: NextRequest) {
 
     const skippedCount = prospectsWithUrls.length - validProspects.length;
     if (skippedCount > 0) {
-      console.log(`🔍 Excluded ${skippedCount} prospects already in campaigns`);
+      console.log(`🔍 Excluded ${skippedCount} duplicate prospects (already in campaigns or pending approval)`);
     }
     console.log(`🔵 Valid NEW prospects: ${validProspects.length}`);
 
