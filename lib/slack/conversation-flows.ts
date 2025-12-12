@@ -1001,6 +1001,469 @@ async function createCampaign(workspaceId: string, data: {
 }
 
 // =============================================================================
+// ANALYZE & STRATEGY FLOW
+// =============================================================================
+
+export interface AnalyzeResponse {
+  message: string;
+  blocks?: any[];
+}
+
+export async function handleAnalyzeFlow(
+  workspaceId: string,
+  channelId: string,
+  userId: string,
+  input: string
+): Promise<AnalyzeResponse> {
+  const lower = input.toLowerCase();
+
+  // Get comprehensive analytics data
+  const analytics = await getWorkspaceAnalytics(workspaceId);
+
+  // Determine what type of analysis to show
+  if (lower.includes('message') || lower.includes('template') || lower.includes('copy')) {
+    return generateMessageAnalysis(analytics);
+  }
+
+  if (lower.includes('time') || lower.includes('when') || lower.includes('schedule')) {
+    return generateTimingAnalysis(analytics);
+  }
+
+  if (lower.includes('industry') || lower.includes('segment') || lower.includes('icp')) {
+    return generateSegmentAnalysis(analytics);
+  }
+
+  // Default: Show overview with options
+  return generateOverviewAnalysis(analytics, workspaceId);
+}
+
+async function getWorkspaceAnalytics(workspaceId: string): Promise<any> {
+  // Get campaigns with stats
+  const { data: campaigns } = await supabaseAdmin()
+    .from('campaigns')
+    .select('id, name, status, created_at, message_templates')
+    .eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  // Get prospect stats by status
+  const { data: prospects } = await supabaseAdmin()
+    .from('campaign_prospects')
+    .select('status, campaign_id, contacted_at, responded_at, company_name, title')
+    .eq('workspace_id', workspaceId);
+
+  // Get recent replies
+  const { data: replies } = await supabaseAdmin()
+    .from('campaign_prospects')
+    .select('first_name, last_name, company_name, title, responded_at, campaign_id')
+    .eq('workspace_id', workspaceId)
+    .eq('status', 'replied')
+    .order('responded_at', { ascending: false })
+    .limit(20);
+
+  // Calculate stats
+  const stats = {
+    totalProspects: prospects?.length || 0,
+    sent: prospects?.filter(p => ['connection_request_sent', 'connected', 'replied', 'follow_up_sent'].includes(p.status)).length || 0,
+    connected: prospects?.filter(p => ['connected', 'replied', 'follow_up_sent'].includes(p.status)).length || 0,
+    replied: prospects?.filter(p => p.status === 'replied').length || 0,
+    pending: prospects?.filter(p => p.status === 'pending').length || 0,
+  };
+
+  stats.acceptanceRate = stats.sent > 0 ? ((stats.connected / stats.sent) * 100).toFixed(1) : '0';
+  stats.replyRate = stats.connected > 0 ? ((stats.replied / stats.connected) * 100).toFixed(1) : '0';
+  stats.overallConversion = stats.sent > 0 ? ((stats.replied / stats.sent) * 100).toFixed(1) : '0';
+
+  // Group by campaign
+  const campaignStats: Record<string, any> = {};
+  campaigns?.forEach(c => {
+    const campaignProspects = prospects?.filter(p => p.campaign_id === c.id) || [];
+    campaignStats[c.id] = {
+      name: c.name,
+      status: c.status,
+      total: campaignProspects.length,
+      sent: campaignProspects.filter(p => ['connection_request_sent', 'connected', 'replied'].includes(p.status)).length,
+      connected: campaignProspects.filter(p => ['connected', 'replied'].includes(p.status)).length,
+      replied: campaignProspects.filter(p => p.status === 'replied').length,
+    };
+  });
+
+  // Analyze by title/role
+  const titleStats: Record<string, { total: number; replied: number }> = {};
+  prospects?.forEach(p => {
+    const title = normalizeTitle(p.title || 'Unknown');
+    if (!titleStats[title]) titleStats[title] = { total: 0, replied: 0 };
+    titleStats[title].total++;
+    if (p.status === 'replied') titleStats[title].replied++;
+  });
+
+  // Analyze by industry/company
+  const industryStats: Record<string, { total: number; replied: number }> = {};
+  prospects?.forEach(p => {
+    const industry = extractIndustry(p.company_name || 'Unknown');
+    if (!industryStats[industry]) industryStats[industry] = { total: 0, replied: 0 };
+    industryStats[industry].total++;
+    if (p.status === 'replied') industryStats[industry].replied++;
+  });
+
+  return {
+    campaigns,
+    campaignStats,
+    stats,
+    titleStats,
+    industryStats,
+    replies,
+    prospects,
+  };
+}
+
+function normalizeTitle(title: string): string {
+  const lower = title.toLowerCase();
+  if (lower.includes('ceo') || lower.includes('chief executive')) return 'CEO/Founder';
+  if (lower.includes('cto') || lower.includes('chief technology')) return 'CTO';
+  if (lower.includes('cmo') || lower.includes('chief marketing')) return 'CMO';
+  if (lower.includes('vp') || lower.includes('vice president')) return 'VP';
+  if (lower.includes('director')) return 'Director';
+  if (lower.includes('head of')) return 'Head of';
+  if (lower.includes('manager')) return 'Manager';
+  if (lower.includes('founder') || lower.includes('owner')) return 'CEO/Founder';
+  return 'Other';
+}
+
+function extractIndustry(company: string): string {
+  const lower = company.toLowerCase();
+  if (lower.includes('tech') || lower.includes('software') || lower.includes('saas')) return 'Tech/SaaS';
+  if (lower.includes('finance') || lower.includes('bank') || lower.includes('capital')) return 'Finance';
+  if (lower.includes('health') || lower.includes('medical') || lower.includes('pharma')) return 'Healthcare';
+  if (lower.includes('retail') || lower.includes('commerce') || lower.includes('shop')) return 'Retail';
+  if (lower.includes('consult') || lower.includes('advisory')) return 'Consulting';
+  if (lower.includes('agency') || lower.includes('marketing')) return 'Marketing/Agency';
+  return 'Other';
+}
+
+function generateOverviewAnalysis(analytics: any, workspaceId: string): AnalyzeResponse {
+  const { stats, campaignStats, titleStats, replies } = analytics;
+
+  // Find best performing title
+  let bestTitle = { title: 'N/A', rate: 0 };
+  Object.entries(titleStats).forEach(([title, data]: [string, any]) => {
+    if (data.total >= 3) {
+      const rate = (data.replied / data.total) * 100;
+      if (rate > bestTitle.rate) {
+        bestTitle = { title, rate };
+      }
+    }
+  });
+
+  // Find best performing campaign
+  let bestCampaign = { name: 'N/A', rate: 0 };
+  Object.values(campaignStats).forEach((c: any) => {
+    if (c.sent >= 5) {
+      const rate = (c.replied / c.sent) * 100;
+      if (rate > bestCampaign.rate) {
+        bestCampaign = { name: c.name, rate };
+      }
+    }
+  });
+
+  // Generate AI insights
+  const insights: string[] = [];
+
+  if (parseFloat(stats.acceptanceRate) > 30) {
+    insights.push('✅ Your acceptance rate is strong! Your ICP targeting is working well.');
+  } else if (parseFloat(stats.acceptanceRate) < 15) {
+    insights.push('⚠️ Low acceptance rate. Consider refining your ICP or personalizing connection requests more.');
+  }
+
+  if (parseFloat(stats.replyRate) > 20) {
+    insights.push('✅ Great reply rate! Your follow-up messages are resonating.');
+  } else if (parseFloat(stats.replyRate) < 10 && stats.connected > 10) {
+    insights.push('💡 Reply rate could improve. Try adding more value or asking engaging questions in follow-ups.');
+  }
+
+  if (bestTitle.rate > 25) {
+    insights.push(`🎯 *${bestTitle.title}* titles respond best (${bestTitle.rate.toFixed(0)}% reply rate). Focus more here.`);
+  }
+
+  // Recent wins
+  const recentReplies = replies?.slice(0, 3).map((r: any) =>
+    `• ${r.first_name} ${r.last_name} (${r.title || 'Unknown'} at ${r.company_name || 'Unknown'})`
+  ).join('\n') || '_No recent replies_';
+
+  return {
+    message: `📈 *Performance Overview*`,
+    blocks: [
+      { type: 'header', text: { type: 'plain_text', text: '📈 Performance Overview', emoji: true } },
+      { type: 'divider' },
+      {
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: `*Total Prospects*\n${stats.totalProspects}` },
+          { type: 'mrkdwn', text: `*CRs Sent*\n${stats.sent}` },
+          { type: 'mrkdwn', text: `*Connected*\n${stats.connected} (${stats.acceptanceRate}%)` },
+          { type: 'mrkdwn', text: `*Replied*\n${stats.replied} (${stats.replyRate}%)` },
+        ],
+      },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*🏆 Best Performing*\n• Campaign: ${bestCampaign.name} (${bestCampaign.rate.toFixed(0)}% conversion)\n• Title: ${bestTitle.title} (${bestTitle.rate.toFixed(0)}% reply rate)` },
+      },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*🔥 Recent Replies*\n${recentReplies}` },
+      },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*💡 AI Insights*\n${insights.length > 0 ? insights.join('\n') : '_Not enough data yet for insights._'}` },
+      },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: '*Dive Deeper:*' },
+      },
+      {
+        type: 'actions',
+        elements: [
+          { type: 'button', text: { type: 'plain_text', text: '📝 Message Analysis' }, action_id: 'analyze_messages' },
+          { type: 'button', text: { type: 'plain_text', text: '⏰ Best Times' }, action_id: 'analyze_timing' },
+          { type: 'button', text: { type: 'plain_text', text: '🎯 Segment Analysis' }, action_id: 'analyze_segments' },
+          { type: 'button', text: { type: 'plain_text', text: '💡 Get Recommendations' }, action_id: 'get_recommendations' },
+        ],
+      },
+    ],
+  };
+}
+
+function generateMessageAnalysis(analytics: any): AnalyzeResponse {
+  const { campaigns, campaignStats } = analytics;
+
+  // Analyze message lengths and patterns
+  const messageAnalysis: any[] = [];
+
+  campaigns?.forEach((c: any) => {
+    const stats = campaignStats[c.id];
+    const templates = c.message_templates || {};
+    const cr = templates.connection_request || '';
+    const replyRate = stats.sent > 0 ? ((stats.replied / stats.sent) * 100).toFixed(1) : '0';
+
+    messageAnalysis.push({
+      campaign: c.name,
+      crLength: cr.length,
+      hasQuestion: cr.includes('?'),
+      hasPersonalization: cr.includes('{{') || cr.toLowerCase().includes('noticed'),
+      replyRate: parseFloat(replyRate),
+    });
+  });
+
+  // Generate insights
+  const insights: string[] = [];
+
+  const avgLength = messageAnalysis.reduce((acc, m) => acc + m.crLength, 0) / messageAnalysis.length || 0;
+  if (avgLength > 250) {
+    insights.push('📏 Your messages are a bit long. Try keeping CRs under 200 characters for better acceptance.');
+  } else if (avgLength < 100) {
+    insights.push('✅ Nice! Short, punchy messages tend to perform better.');
+  }
+
+  const withQuestions = messageAnalysis.filter(m => m.hasQuestion);
+  const withoutQuestions = messageAnalysis.filter(m => !m.hasQuestion);
+  if (withQuestions.length > 0 && withoutQuestions.length > 0) {
+    const avgWithQ = withQuestions.reduce((acc, m) => acc + m.replyRate, 0) / withQuestions.length;
+    const avgWithoutQ = withoutQuestions.reduce((acc, m) => acc + m.replyRate, 0) / withoutQuestions.length;
+    if (avgWithQ > avgWithoutQ) {
+      insights.push('❓ Messages with questions get better replies. Keep asking engaging questions!');
+    }
+  }
+
+  const personalizedMsgs = messageAnalysis.filter(m => m.hasPersonalization);
+  if (personalizedMsgs.length < messageAnalysis.length / 2) {
+    insights.push('✨ Try adding more personalization ({{first_name}}, company references) to boost engagement.');
+  }
+
+  return {
+    message: '📝 *Message Analysis*',
+    blocks: [
+      { type: 'header', text: { type: 'plain_text', text: '📝 Message Analysis', emoji: true } },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Message Stats*\n• Average CR length: ${avgLength.toFixed(0)} characters\n• Messages with questions: ${messageAnalysis.filter(m => m.hasQuestion).length}/${messageAnalysis.length}\n• Personalized messages: ${messageAnalysis.filter(m => m.hasPersonalization).length}/${messageAnalysis.length}`,
+        },
+      },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*💡 Recommendations*\n${insights.length > 0 ? insights.join('\n') : '_Keep testing different approaches!_'}` },
+      },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: '*Best Practices:*\n• Keep CRs under 200 characters\n• Always include {{first_name}}\n• End with a soft question\n• Reference something specific about them' },
+      },
+      {
+        type: 'actions',
+        elements: [
+          { type: 'button', text: { type: 'plain_text', text: '← Back to Overview' }, action_id: 'start_analyze' },
+          { type: 'button', text: { type: 'plain_text', text: '✨ Generate New CR' }, action_id: 'generate_cr_suggestion' },
+        ],
+      },
+    ],
+  };
+}
+
+function generateTimingAnalysis(analytics: any): AnalyzeResponse {
+  const { prospects, replies } = analytics;
+
+  // Analyze response times by day of week
+  const dayStats: Record<string, { sent: number; replied: number }> = {
+    'Monday': { sent: 0, replied: 0 },
+    'Tuesday': { sent: 0, replied: 0 },
+    'Wednesday': { sent: 0, replied: 0 },
+    'Thursday': { sent: 0, replied: 0 },
+    'Friday': { sent: 0, replied: 0 },
+  };
+
+  prospects?.forEach((p: any) => {
+    if (p.contacted_at) {
+      const day = new Date(p.contacted_at).toLocaleDateString('en-US', { weekday: 'long' });
+      if (dayStats[day]) {
+        dayStats[day].sent++;
+        if (p.status === 'replied') dayStats[day].replied++;
+      }
+    }
+  });
+
+  // Find best day
+  let bestDay = { day: 'N/A', rate: 0 };
+  Object.entries(dayStats).forEach(([day, data]) => {
+    if (data.sent >= 5) {
+      const rate = (data.replied / data.sent) * 100;
+      if (rate > bestDay.rate) {
+        bestDay = { day, rate };
+      }
+    }
+  });
+
+  const dayBreakdown = Object.entries(dayStats)
+    .map(([day, data]) => {
+      const rate = data.sent > 0 ? ((data.replied / data.sent) * 100).toFixed(0) : '0';
+      const bar = '█'.repeat(Math.min(Math.round(parseFloat(rate) / 10), 10));
+      return `${day.substring(0, 3)}: ${bar} ${rate}% (${data.sent} sent)`;
+    })
+    .join('\n');
+
+  return {
+    message: '⏰ *Timing Analysis*',
+    blocks: [
+      { type: 'header', text: { type: 'plain_text', text: '⏰ Best Times to Send', emoji: true } },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*🏆 Best Day: ${bestDay.day}*\n${bestDay.rate.toFixed(0)}% reply rate` },
+      },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*Reply Rates by Day*\n\`\`\`\n${dayBreakdown}\n\`\`\`` },
+      },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '*💡 Recommendations*\n• Tuesday-Thursday typically perform best\n• Avoid Monday mornings (inbox overload)\n• Friday afternoons see lower engagement\n• Send between 9-11 AM local time',
+        },
+      },
+      {
+        type: 'actions',
+        elements: [
+          { type: 'button', text: { type: 'plain_text', text: '← Back to Overview' }, action_id: 'start_analyze' },
+        ],
+      },
+    ],
+  };
+}
+
+function generateSegmentAnalysis(analytics: any): AnalyzeResponse {
+  const { titleStats, industryStats, stats } = analytics;
+
+  // Sort titles by reply rate
+  const sortedTitles = Object.entries(titleStats)
+    .filter(([_, data]: [string, any]) => data.total >= 3)
+    .map(([title, data]: [string, any]) => ({
+      title,
+      total: data.total,
+      replied: data.replied,
+      rate: (data.replied / data.total) * 100,
+    }))
+    .sort((a, b) => b.rate - a.rate);
+
+  // Sort industries by reply rate
+  const sortedIndustries = Object.entries(industryStats)
+    .filter(([_, data]: [string, any]) => data.total >= 3)
+    .map(([industry, data]: [string, any]) => ({
+      industry,
+      total: data.total,
+      replied: data.replied,
+      rate: (data.replied / data.total) * 100,
+    }))
+    .sort((a, b) => b.rate - a.rate);
+
+  const titleBreakdown = sortedTitles.slice(0, 5).map(t =>
+    `• *${t.title}*: ${t.rate.toFixed(0)}% reply rate (${t.total} contacted)`
+  ).join('\n') || '_Not enough data_';
+
+  const industryBreakdown = sortedIndustries.slice(0, 5).map(i =>
+    `• *${i.industry}*: ${i.rate.toFixed(0)}% reply rate (${i.total} contacted)`
+  ).join('\n') || '_Not enough data_';
+
+  // Generate recommendations
+  const recommendations: string[] = [];
+  if (sortedTitles.length > 0 && sortedTitles[0].rate > 20) {
+    recommendations.push(`🎯 Focus on *${sortedTitles[0].title}* titles - they're your best responders!`);
+  }
+  if (sortedIndustries.length > 0 && sortedIndustries[0].rate > 20) {
+    recommendations.push(`🏢 *${sortedIndustries[0].industry}* companies engage most with your outreach.`);
+  }
+  if (sortedTitles.length > 2 && sortedTitles[sortedTitles.length - 1].rate < 5) {
+    recommendations.push(`⚠️ Consider removing *${sortedTitles[sortedTitles.length - 1].title}* from your ICP - very low engagement.`);
+  }
+
+  return {
+    message: '🎯 *Segment Analysis*',
+    blocks: [
+      { type: 'header', text: { type: 'plain_text', text: '🎯 Segment Performance', emoji: true } },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*By Job Title*\n${titleBreakdown}` },
+      },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*By Industry*\n${industryBreakdown}` },
+      },
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*💡 Recommendations*\n${recommendations.length > 0 ? recommendations.join('\n') : '_Need more data to generate recommendations_'}` },
+      },
+      {
+        type: 'actions',
+        elements: [
+          { type: 'button', text: { type: 'plain_text', text: '← Back to Overview' }, action_id: 'start_analyze' },
+          { type: 'button', text: { type: 'plain_text', text: '⚙️ Update ICP' }, action_id: 'start_icp_setup' },
+        ],
+      },
+    ],
+  };
+}
+
+// =============================================================================
 // START MENU
 // =============================================================================
 
@@ -1058,6 +1521,15 @@ export function getStartMenu(): StartMenuResponse {
           action_id: 'view_campaign_status',
         },
       },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: '*📈 Analyze & Strategy*\nPerformance insights & AI recommendations' },
+        accessory: {
+          type: 'button',
+          text: { type: 'plain_text', text: 'Analyze' },
+          action_id: 'start_analyze',
+        },
+      },
       { type: 'divider' },
       {
         type: 'context',
@@ -1093,6 +1565,7 @@ export type ConversationIntent =
   | 'campaign_create'
   | 'quick_campaign'
   | 'campaign_status'
+  | 'analyze'
   | 'start_menu'
   | 'general'
   | 'continue_flow';
@@ -1157,6 +1630,20 @@ export function detectIntent(input: string, currentFlow: string | null): Convers
     lower.includes('campaign') && (lower.includes('status') || lower.includes('stats') || lower.includes('how'))
   ) {
     return 'campaign_status';
+  }
+
+  // Analyze triggers
+  if (
+    lower.includes('analyze') ||
+    lower.includes('analytics') ||
+    lower.includes('performance') ||
+    lower.includes('insights') ||
+    lower.includes('strategy') ||
+    lower.includes('how am i doing') ||
+    lower.includes('results') ||
+    lower.includes('metrics')
+  ) {
+    return 'analyze';
   }
 
   return 'general';

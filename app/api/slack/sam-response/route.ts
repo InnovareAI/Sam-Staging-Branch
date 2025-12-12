@@ -6,6 +6,7 @@ import {
   handleICPSetupFlow,
   handleSearchFlow,
   handleCampaignCreateFlow,
+  handleAnalyzeFlow,
   clearConversationState,
   getStartMenu,
 } from '@/lib/slack/conversation-flows';
@@ -140,6 +141,16 @@ export async function POST(request: NextRequest) {
         response: result.message,
         blocks: result.blocks,
         flow_active: !result.completed,
+      });
+    }
+
+    if (intent === 'analyze') {
+      const result = await handleAnalyzeFlow(workspace_id, channel_id || 'default', user_id || 'default', question);
+      return NextResponse.json({
+        success: true,
+        response: result.message,
+        blocks: result.blocks,
+        flow_active: false,
       });
     }
 

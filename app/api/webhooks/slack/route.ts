@@ -288,6 +288,26 @@ async function handleBlockActions(body: any): Promise<NextResponse> {
         await triggerFlow(workspace.id, channel.id, user.id, 'show campaigns');
         break;
 
+      case 'start_analyze':
+        await triggerFlow(workspace.id, channel.id, user.id, 'analyze performance');
+        break;
+
+      case 'analyze_messages':
+        await triggerFlow(workspace.id, channel.id, user.id, 'analyze messages');
+        break;
+
+      case 'analyze_timing':
+        await triggerFlow(workspace.id, channel.id, user.id, 'analyze timing');
+        break;
+
+      case 'analyze_segments':
+        await triggerFlow(workspace.id, channel.id, user.id, 'analyze segments');
+        break;
+
+      case 'get_recommendations':
+        await triggerFlow(workspace.id, channel.id, user.id, 'give me strategy recommendations');
+        break;
+
       // ========== ICP SETUP ACTIONS ==========
       case 'icp_size_1_50':
       case 'icp_size_51_200':
