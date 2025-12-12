@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       throw new Error(`Invalid JSON in request body: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`);
     }
 
-    const { search_criteria, target_count = 50, fetch_all = true } = requestBody; // fetch_all defaults to true to get all results
+    const { search_criteria, target_count = 2500, fetch_all = true } = requestBody; // Default to max Sales Nav limit (2500) to fetch all results
 
     console.log('🔵 [SEARCH-4/6] Received search_criteria:', JSON.stringify(search_criteria));
     console.log('🔵 [SEARCH-4a/6] Target count:', target_count);
