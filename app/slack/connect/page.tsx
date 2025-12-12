@@ -266,7 +266,7 @@ function SlackConnectContent() {
           Install the SAM app in your Slack workspace to receive campaign updates and interact with SAM directly.
         </p>
         <a
-          href={`https://slack.com/oauth/v2/authorize?client_id=${process.env.NEXT_PUBLIC_SLACK_CLIENT_ID}&scope=channels:read,chat:write,commands,users:read&redirect_uri=${encodeURIComponent('https://app.meet-sam.com/api/integrations/slack/oauth-callback')}&state=slack_direct`}
+          href={`https://slack.com/oauth/v2/authorize?client_id=${process.env.NEXT_PUBLIC_SLACK_CLIENT_ID}&scope=app_mentions:read,channels:history,channels:read,chat:write,commands,im:history,im:read,im:write,users:read&redirect_uri=${encodeURIComponent('https://app.meet-sam.com/api/integrations/slack/oauth-callback')}&state=slack_direct`}
           className="w-full bg-[#4A154B] text-white py-3 rounded-lg font-medium hover:opacity-90 inline-flex items-center justify-center gap-2"
         >
           <Slack className="h-5 w-5" />
