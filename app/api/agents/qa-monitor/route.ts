@@ -49,7 +49,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  console.log('🔍 QA Monitor Agent starting comprehensive scan with auto-fix...');
+  // Parse request body for quick_check mode
+  let quickCheck = false;
+  try {
+    const body = await request.json();
+    quickCheck = body.quick_check === true;
+  } catch {
+    // No body or invalid JSON - default to full check
+  }
+
+  console.log(`🔍 QA Monitor Agent starting ${quickCheck ? 'QUICK CHECK' : 'DETAILED SCAN'} with auto-fix...`);
 
   const supabase = supabaseAdmin();
   const allChecks: QACheck[] = [];
@@ -231,23 +240,54 @@ export async function POST(request: NextRequest) {
       ? `\n\n🔧 Auto-fixes applied: ${autoFixes.filter(f => f.success).length}/${autoFixes.length} successful`
       : '';
 
-    // Send Google Chat notification
-    await sendHealthCheckNotification({
-      type: 'qa-monitor',
-      status: overallStatus as 'healthy' | 'warning' | 'critical',
-      summary: (aiAnalysis?.summary || `QA Monitor: ${allChecks.filter(c => c.status === 'pass').length}/${allChecks.length} checks passed`) + fixesSummary,
-      checks: allChecks.map(c => ({
-        name: c.check_name,
-        status: c.status,
-        details: c.details,
-      })),
-      recommendations: aiAnalysis?.recommendations || [],
-      auto_fixes: autoFixes,
-      duration_ms: Date.now() - startTime,
-      timestamp: new Date().toISOString(),
-    });
+    // Determine if we should send notification
+    // - Quick check mode: Only send if there are problems (warnings or failures)
+    // - Full check mode: Always send detailed report
+    const hasProblems = failedChecks.length > 0 || warningChecks.length > 0;
+    const shouldNotify = !quickCheck || hasProblems;
+
+    if (shouldNotify) {
+      // Build appropriate summary based on mode
+      let notificationSummary: string;
+      if (quickCheck && hasProblems) {
+        // Quick check with problems - show brief problem summary
+        notificationSummary = `⚠️ HOURLY CHECK: ${failedChecks.length} failures, ${warningChecks.length} warnings detected` + fixesSummary;
+      } else if (quickCheck && !hasProblems) {
+        // Quick check, no problems - this won't be sent, but for completeness
+        notificationSummary = `✅ HOURLY CHECK: All systems running normally`;
+      } else {
+        // Full detailed report (6 AM run)
+        notificationSummary = `📊 DAILY REPORT (6 AM CET): ${(aiAnalysis?.summary || `${allChecks.filter(c => c.status === 'pass').length}/${allChecks.length} checks passed`)}` + fixesSummary;
+      }
+
+      // Send Google Chat notification
+      await sendHealthCheckNotification({
+        type: 'qa-monitor',
+        status: overallStatus as 'healthy' | 'warning' | 'critical',
+        summary: notificationSummary,
+        checks: quickCheck && hasProblems
+          ? allChecks.filter(c => c.status !== 'pass').map(c => ({
+              name: c.check_name,
+              status: c.status,
+              details: c.details,
+            }))
+          : allChecks.map(c => ({
+              name: c.check_name,
+              status: c.status,
+              details: c.details,
+            })),
+        recommendations: aiAnalysis?.recommendations || [],
+        auto_fixes: autoFixes,
+        duration_ms: Date.now() - startTime,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      console.log('✅ Quick check: All systems healthy - no notification sent');
+    }
 
     console.log('✅ QA Monitor complete:', {
+      mode: quickCheck ? 'quick_check' : 'detailed',
+      notification_sent: shouldNotify,
       total_checks: allChecks.length,
       passed: allChecks.filter(c => c.status === 'pass').length,
       warnings: warningChecks.length,
@@ -259,6 +299,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      mode: quickCheck ? 'quick_check' : 'detailed',
+      notification_sent: shouldNotify,
       summary: {
         total_checks: allChecks.length,
         passed: allChecks.filter(c => c.status === 'pass').length,

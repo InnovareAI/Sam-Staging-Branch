@@ -1,30 +1,24 @@
 /**
- * Netlify Scheduled Function: QA Monitor
+ * Netlify Scheduled Function: QA Monitor Weekend
  *
- * Weekdays (Mon-Fri): Runs every hour from 5 AM - 6 PM UTC (6 AM - 7 PM CET)
- * - 5 AM UTC (6 AM CET): Full detailed report
- * - Other hours: Quick health check (only reports problems)
+ * Weekends (Sat-Sun): Single detailed run at 5 AM UTC (6 AM CET)
  *
- * Schedule: 0 5-18 * * 1-5 (weekdays 5 AM - 6 PM UTC)
+ * Schedule: 0 5 * * 0,6 (Saturday and Sunday at 5 AM UTC)
  *
- * Checks:
+ * Full detailed report including:
  * - Queue-prospect consistency
  * - Orphaned records
  * - Cron job gaps
  * - Stuck prospects
+ * - All workspace checks
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  const now = new Date();
-  const utcHour = now.getUTCHours();
-  const isDetailedRun = utcHour === 5; // 5 AM UTC = 6 AM CET
-
-  console.log('📅 QA Monitor scheduled function triggered');
-  console.log(`   Time: ${now.toISOString()}`);
-  console.log(`   UTC Hour: ${utcHour}`);
-  console.log(`   Mode: ${isDetailedRun ? 'DETAILED (6 AM CET)' : 'QUICK CHECK'}`);
+  console.log('📅 QA Monitor Weekend (detailed) scheduled function triggered');
+  console.log(`   Time: ${new Date().toISOString()}`);
+  console.log(`   Mode: DETAILED (Weekend 6 AM CET run)`);
 
   try {
     const apiUrl = process.env.URL || process.env.DEPLOY_URL || 'http://localhost:3000';
@@ -44,14 +38,14 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         'x-cron-secret': cronSecret
       },
       body: JSON.stringify({
-        quick_check: !isDetailedRun // true for hourly checks, false for 6 AM detailed run
+        quick_check: false // Weekend = always full detailed report
       })
     });
 
     const result = await response.json();
 
-    console.log('✅ QA Monitor result:', {
-      mode: isDetailedRun ? 'detailed' : 'quick_check',
+    console.log('✅ QA Monitor Weekend result:', {
+      mode: 'detailed',
       status: response.status,
       total_checks: result.summary?.total_checks,
       passed: result.summary?.passed,
@@ -62,10 +56,10 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     return { statusCode: response.status, body: JSON.stringify(result) };
 
   } catch (error) {
-    console.error('❌ QA Monitor error:', error);
+    console.error('❌ QA Monitor Weekend error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'QA Monitor failed', details: error instanceof Error ? error.message : 'Unknown' })
+      body: JSON.stringify({ error: 'QA Monitor Weekend failed', details: error instanceof Error ? error.message : 'Unknown' })
     };
   }
 };
