@@ -649,21 +649,35 @@ async function handleRejectFollowUp(
 async function findWorkspaceBySlackTeam(teamId: string): Promise<{ id: string; name: string } | null> {
   if (!teamId) return null;
 
-  const { data } = await supabaseAdmin
+  // First get the workspace_id from slack_app_config
+  const { data: config, error: configError } = await supabaseAdmin
     .from('slack_app_config')
-    .select('workspace_id, workspaces!inner(id, name)')
+    .select('workspace_id')
     .eq('slack_team_id', teamId)
     .eq('status', 'active')
     .single();
 
-  if (data?.workspaces) {
-    return {
-      id: (data.workspaces as any).id,
-      name: (data.workspaces as any).name,
-    };
+  if (configError || !config?.workspace_id) {
+    console.log('[Slack] No config found for team:', teamId, configError?.message);
+    return null;
   }
 
-  return null;
+  // Then get the workspace details
+  const { data: workspace, error: wsError } = await supabaseAdmin
+    .from('workspaces')
+    .select('id, name')
+    .eq('id', config.workspace_id)
+    .single();
+
+  if (wsError || !workspace) {
+    console.log('[Slack] No workspace found for id:', config.workspace_id, wsError?.message);
+    return null;
+  }
+
+  return {
+    id: workspace.id,
+    name: workspace.name,
+  };
 }
 
 async function getActiveCampaigns(workspaceId: string): Promise<any[]> {
