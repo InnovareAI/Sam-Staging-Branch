@@ -7121,7 +7121,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             direct_message_5: finalCampaignData.messages.follow_up_4
           } : {
             connection_request: finalCampaignData.messages.connection_request,
-            alternative_message: _executionData?.alternativeMessage || finalCampaignData.messages.follow_up_1,
+            alternative_message: _executionData?.alternativeMessage || '', // Don't fallback to follow_up_1 - that's wrong!
             follow_up_messages: [
               finalCampaignData.messages.follow_up_1,
               finalCampaignData.messages.follow_up_2,
