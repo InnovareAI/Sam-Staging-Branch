@@ -101,7 +101,9 @@ export async function POST(request: NextRequest) {
       throw new Error(`Invalid JSON in request body: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`);
     }
 
-    const { search_criteria, target_count = 2500, fetch_all = true } = requestBody; // Default to max Sales Nav limit (2500) to fetch all results
+    // max_pages: Limit pagination to avoid gateway timeouts (default 10 pages = 1000 results)
+    // When called via SAM chat, use lower max_pages to fit within 26s gateway timeout
+    const { search_criteria, target_count = 2500, fetch_all = true, max_pages = 10 } = requestBody;
 
     console.log('🔵 [SEARCH-4/6] Received search_criteria:', JSON.stringify(search_criteria));
     console.log('🔵 [SEARCH-4a/6] Target count:', target_count);
@@ -829,8 +831,12 @@ export async function POST(request: NextRequest) {
       // 1. No more pages (no cursor)
       // 2. Reached target_count limit
       // 3. Not in fetch_all mode (only fetch first page)
-      // 4. Safety limit: max 50 pages
-      if (!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50) {
+      // 4. Reached max_pages limit (configurable, default 10, max safety 50)
+      const effectiveMaxPages = Math.min(max_pages, 50); // Safety cap at 50
+      if (!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= effectiveMaxPages) {
+        if (pagesFetched >= effectiveMaxPages && currentCursor) {
+          console.log(`⚠️ Stopped at page ${pagesFetched} due to max_pages limit (more results available)`);
+        }
         break;
       }
 

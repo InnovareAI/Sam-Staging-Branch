@@ -127,7 +127,8 @@ export async function POST(request: NextRequest) {
               yearsOfExperience: search_criteria.years_experience,
               profileLanguage: search_criteria?.profile_language || search_criteria?.profileLanguage
             },
-            target_count: search_criteria.max_results || 2500 // Default to max Sales Nav limit to get all results
+            target_count: search_criteria.max_results || 2500, // Default to max Sales Nav limit to get all results
+            max_pages: 5 // Limit to 5 pages (500 results) when called from SAM to avoid 26s gateway timeout
           })
         });
 
