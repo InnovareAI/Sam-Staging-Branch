@@ -726,25 +726,59 @@ If users want to run full campaigns from Slack, guide them to use:
 2. "search" to find prospects
 3. "create campaign" to launch outreach`;
 
-  // Use Claude SDK directly for fastest responses
-  try {
-    const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+  // Try Claude SDK first, fall back to OpenRouter if ANTHROPIC_API_KEY not set
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022',  // Using Haiku for speed (cheaper + faster)
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: question }],
-    });
+  if (anthropicKey) {
+    try {
+      const { default: Anthropic } = await import('@anthropic-ai/sdk');
+      const anthropic = new Anthropic({ apiKey: anthropicKey });
 
-    const content = response.content[0];
-    if (content.type === 'text') {
-      return content.text;
+      const response = await anthropic.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: question }],
+      });
+
+      const content = response.content[0];
+      if (content.type === 'text') {
+        return content.text;
+      }
+    } catch (error) {
+      console.error('[Slack SAM] Claude SDK error:', error);
     }
-    return "I couldn't generate a response. Please try rephrasing your question.";
-  } catch (error) {
-    console.error('[Slack SAM] Claude SDK error:', error);
-    return "I'm sorry, I encountered an error. Please try again.";
   }
+
+  // Fallback to OpenRouter
+  if (openrouterKey) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openrouterKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://app.meet-sam.com',
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-3-5-haiku-20241022',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: question },
+          ],
+          max_tokens: 1000,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.choices?.[0]?.message?.content) {
+        return result.choices[0].message.content;
+      }
+    } catch (error) {
+      console.error('[Slack SAM] OpenRouter error:', error);
+    }
+  }
+
+  return "I'm sorry, I couldn't process your request. Please try again.";
 }

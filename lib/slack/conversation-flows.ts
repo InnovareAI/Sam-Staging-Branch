@@ -888,27 +888,61 @@ async function generateMessageDraft(workspaceId: string, type: 'connection_reque
 
   const systemPrompt = 'You are a professional sales copywriter. Write concise, personalized outreach messages.';
 
-  // Use Claude SDK directly for fastest responses
-  try {
-    const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+  // Try Claude SDK first, fall back to OpenRouter if ANTHROPIC_API_KEY not set
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022',  // Using Haiku for speed
-      max_tokens: 300,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: prompt }],
-    });
+  if (anthropicKey) {
+    try {
+      const { default: Anthropic } = await import('@anthropic-ai/sdk');
+      const anthropic = new Anthropic({ apiKey: anthropicKey });
 
-    const content = response.content[0];
-    if (content.type === 'text') {
-      return content.text;
+      const response = await anthropic.messages.create({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 300,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      const content = response.content[0];
+      if (content.type === 'text') {
+        return content.text;
+      }
+    } catch (error) {
+      console.error('[Draft] Claude SDK error:', error);
     }
-    return defaultMessages[type];
-  } catch (error) {
-    console.error('[Draft] Claude SDK error:', error);
-    return defaultMessages[type];
   }
+
+  // Fallback to OpenRouter
+  if (openrouterKey) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openrouterKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://app.meet-sam.com',
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-3-5-haiku-20241022',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 300,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.choices?.[0]?.message?.content) {
+        return result.choices[0].message.content;
+      }
+    } catch (error) {
+      console.error('[Draft] OpenRouter error:', error);
+    }
+  }
+
+  return defaultMessages[type];
 }
 
 async function createCampaign(workspaceId: string, data: {
