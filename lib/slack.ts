@@ -99,7 +99,7 @@ class SlackService {
    * Get Slack app config for a workspace
    */
   async getAppConfig(workspaceId: string): Promise<SlackAppConfig | null> {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin()
       .from('slack_app_config')
       .select('bot_token, signing_secret, slack_team_id, slack_team_name')
       .eq('workspace_id', workspaceId)
@@ -355,7 +355,7 @@ class SlackService {
     workspaceId: string,
     message: SlackMessage
   ): Promise<{ success: boolean; error?: string }> {
-    const { data } = await supabaseAdmin
+    const { data } = await supabaseAdmin()
       .from('workspace_integrations')
       .select('config')
       .eq('workspace_id', workspaceId)
@@ -404,7 +404,7 @@ class SlackService {
     }
   ): Promise<void> {
     try {
-      await supabaseAdmin.from('slack_messages').upsert({
+      await supabaseAdmin().from('slack_messages').upsert({
         workspace_id: workspaceId,
         channel_id: message.channel_id,
         message_ts: message.message_ts,
@@ -509,7 +509,7 @@ class SlackService {
 
     // Store pending action for button handling
     if (botResult.success && botResult.ts) {
-      await supabaseAdmin.from('slack_pending_actions').insert({
+      await supabaseAdmin().from('slack_pending_actions').insert({
         workspace_id: workspaceId,
         action_type: 'approve_comment',
         resource_type: 'comment',
@@ -604,6 +604,253 @@ class SlackService {
     return botResult;
   }
 
+  /**
+   * Notify when a LinkedIn connection is accepted
+   */
+  async notifyConnectionAccepted(
+    workspaceId: string,
+    prospectName: string,
+    prospectTitle: string,
+    prospectCompany: string,
+    campaignName: string,
+    prospectId: string
+  ) {
+    const message: SlackMessage = {
+      text: `Connection accepted: ${prospectName}`,
+      blocks: [
+        { type: 'header', text: { type: 'plain_text', text: 'Connection Accepted!', emoji: true } },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*${prospectName}*\n${prospectTitle} at ${prospectCompany}\n\nCampaign: _${campaignName}_`,
+          },
+        },
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'View Prospect', emoji: true },
+              url: `https://app.meet-sam.com/workspace/${workspaceId}/prospects?id=${prospectId}`,
+            },
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Send Follow-up Now', emoji: true },
+              action_id: 'quick_followup',
+              value: prospectId,
+              style: 'primary',
+            },
+          ],
+        },
+      ],
+    };
+
+    const channel = await this.getDefaultChannel(workspaceId);
+    return this.sendBotMessage(workspaceId, channel, message);
+  }
+
+  /**
+   * Notify when a LinkedIn reply is received (with quick actions)
+   */
+  async notifyReplyWithActions(
+    workspaceId: string,
+    prospectName: string,
+    prospectTitle: string,
+    campaignName: string,
+    messagePreview: string,
+    messageId: string,
+    prospectId: string
+  ) {
+    const message: SlackMessage = {
+      text: `New reply from ${prospectName}`,
+      blocks: [
+        { type: 'header', text: { type: 'plain_text', text: 'New LinkedIn Reply!', emoji: true } },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*${prospectName}*\n${prospectTitle}\nCampaign: _${campaignName}_`,
+          },
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `> ${messagePreview.slice(0, 300)}${messagePreview.length > 300 ? '...' : ''}`,
+          },
+        },
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'View & Reply', emoji: true },
+              url: `https://app.meet-sam.com/workspace/${workspaceId}/messages?prospect=${prospectId}`,
+              style: 'primary',
+            },
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Mark as Hot Lead', emoji: true },
+              action_id: 'mark_hot_lead',
+              value: prospectId,
+            },
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Archive', emoji: true },
+              action_id: 'archive_conversation',
+              value: messageId,
+              style: 'danger',
+            },
+          ],
+        },
+      ],
+    };
+
+    const channel = await this.getDefaultChannel(workspaceId);
+    return this.sendBotMessage(workspaceId, channel, message);
+  }
+
+  /**
+   * Send daily digest summary
+   */
+  async sendDailyDigest(
+    workspaceId: string,
+    stats: {
+      crSent: number;
+      crAccepted: number;
+      repliesReceived: number;
+      followUpsSent: number;
+      activeCampaigns: number;
+      hotLeads: number;
+      topCampaign?: { name: string; acceptRate: number };
+      pendingActions: number;
+    }
+  ) {
+    const acceptRate = stats.crSent > 0 ? ((stats.crAccepted / stats.crSent) * 100).toFixed(1) : '0';
+
+    const message: SlackMessage = {
+      text: 'Daily SAM Digest',
+      blocks: [
+        { type: 'header', text: { type: 'plain_text', text: 'Daily SAM Digest', emoji: true } },
+        { type: 'divider' },
+        {
+          type: 'section',
+          fields: [
+            { type: 'mrkdwn', text: `*Connection Requests Sent*\n${stats.crSent}` },
+            { type: 'mrkdwn', text: `*Connections Accepted*\n${stats.crAccepted} (${acceptRate}%)` },
+            { type: 'mrkdwn', text: `*Replies Received*\n${stats.repliesReceived}` },
+            { type: 'mrkdwn', text: `*Follow-ups Sent*\n${stats.followUpsSent}` },
+          ],
+        },
+        { type: 'divider' },
+        {
+          type: 'section',
+          fields: [
+            { type: 'mrkdwn', text: `*Active Campaigns*\n${stats.activeCampaigns}` },
+            { type: 'mrkdwn', text: `*Hot Leads*\n${stats.hotLeads}` },
+          ],
+        },
+        ...(stats.topCampaign ? [{
+          type: 'section' as const,
+          text: {
+            type: 'mrkdwn' as const,
+            text: `*Top Performing Campaign:* ${stats.topCampaign.name} (${stats.topCampaign.acceptRate.toFixed(1)}% accept rate)`,
+          },
+        }] : []),
+        ...(stats.pendingActions > 0 ? [{
+          type: 'section' as const,
+          text: {
+            type: 'mrkdwn' as const,
+            text: `*Action Required:* ${stats.pendingActions} items awaiting your approval`,
+          },
+        }] : []),
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Open Dashboard', emoji: true },
+              url: `https://app.meet-sam.com/workspace/${workspaceId}`,
+              style: 'primary',
+            },
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'View All Campaigns', emoji: true },
+              url: `https://app.meet-sam.com/workspace/${workspaceId}/campaign-hub`,
+            },
+          ],
+        },
+      ],
+    };
+
+    const channel = await this.getDefaultChannel(workspaceId);
+    return this.sendBotMessage(workspaceId, channel, message);
+  }
+
+  /**
+   * Send campaign milestone notification
+   */
+  async notifyCampaignMilestone(
+    workspaceId: string,
+    campaignName: string,
+    milestone: string,
+    details: string
+  ) {
+    const message: SlackMessage = {
+      text: `Campaign milestone: ${campaignName}`,
+      blocks: [
+        { type: 'header', text: { type: 'plain_text', text: 'Campaign Milestone!', emoji: true } },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*${campaignName}*\n\n${milestone}\n${details}`,
+          },
+        },
+      ],
+    };
+
+    const channel = await this.getDefaultChannel(workspaceId);
+    return this.sendBotMessage(workspaceId, channel, message);
+  }
+
+  /**
+   * Send a message to a specific user via DM
+   */
+  async sendDirectMessage(
+    workspaceId: string,
+    slackUserId: string,
+    message: SlackMessage
+  ): Promise<{ success: boolean; ts?: string; error?: string }> {
+    const config = await this.getAppConfig(workspaceId);
+    if (!config) {
+      return { success: false, error: 'Slack not configured for this workspace' };
+    }
+
+    try {
+      // Open a DM channel with the user
+      const openResponse = await fetch('https://slack.com/api/conversations.open', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.bot_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ users: slackUserId }),
+      });
+
+      const openResult = await openResponse.json();
+      if (!openResult.ok) {
+        return { success: false, error: openResult.error };
+      }
+
+      // Send the message to the DM channel
+      return this.sendBotMessage(workspaceId, openResult.channel.id, message);
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
   // ==========================================================================
   // CHANNEL HELPERS
   // ==========================================================================
@@ -612,7 +859,7 @@ class SlackService {
    * Get the default channel for a workspace
    */
   async getDefaultChannel(workspaceId: string): Promise<string> {
-    const { data } = await supabaseAdmin
+    const { data } = await supabaseAdmin()
       .from('slack_channels')
       .select('channel_id')
       .eq('workspace_id', workspaceId)
@@ -624,7 +871,7 @@ class SlackService {
     }
 
     // Fall back to config in workspace_integrations
-    const { data: integration } = await supabaseAdmin
+    const { data: integration } = await supabaseAdmin()
       .from('workspace_integrations')
       .select('config')
       .eq('workspace_id', workspaceId)
@@ -639,13 +886,13 @@ class SlackService {
    */
   async setDefaultChannel(workspaceId: string, channelId: string, channelName?: string): Promise<void> {
     // Remove default from existing
-    await supabaseAdmin
+    await supabaseAdmin()
       .from('slack_channels')
       .update({ is_default: false })
       .eq('workspace_id', workspaceId);
 
     // Set new default
-    await supabaseAdmin
+    await supabaseAdmin()
       .from('slack_channels')
       .upsert({
         workspace_id: workspaceId,

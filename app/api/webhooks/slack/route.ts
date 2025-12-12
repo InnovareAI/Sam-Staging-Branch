@@ -102,21 +102,44 @@ async function handleSlashCommand(body: any): Promise<NextResponse> {
     return NextResponse.json({
       response_type: 'ephemeral',
       blocks: [
-        { type: 'header', text: { type: 'plain_text', text: 'SAM Commands', emoji: true } },
+        { type: 'header', text: { type: 'plain_text', text: 'SAM AI Assistant', emoji: true } },
         {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: '*Available Commands:*\n' +
+            text: '*Slash Commands:*\n' +
               '`/sam-status` - Check SAM connection status\n' +
               '`/sam-campaigns` - View active campaigns\n' +
-              '`/sam-ask [question]` - Ask SAM a question\n' +
-              '`/sam-help` - Show this help message\n\n' +
+              '`/sam-ask [question]` - Ask SAM anything\n' +
+              '`/sam-help` - Show this help message',
+          },
+        },
+        { type: 'divider' },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: '*Campaign Management (via /sam-ask):*\n' +
+              '`show messages for [campaign]` - View message sequence\n' +
+              '`pause campaign [name]` - Pause a campaign\n' +
+              '`resume campaign [name]` - Resume a campaign\n' +
+              '`archive campaign [name]` - Archive a campaign\n' +
+              '`show stats for [campaign]` - View campaign stats\n' +
+              '`update message 2 with [text]` - Update a message',
+          },
+        },
+        { type: 'divider' },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: '*Prospect Management:*\n' +
+              '`show prospects` - List all recent prospects\n' +
+              '`show prospects for [campaign]` - Filter by campaign\n\n' +
               '*Interactive Features:*\n' +
-              'You can also:\n' +
-              '- Approve/reject comments and follow-ups via buttons\n' +
-              '- Get real-time notifications for new replies\n' +
-              '- Receive daily campaign summaries',
+              '- Approve/reject via buttons\n' +
+              '- Real-time reply notifications\n' +
+              '- Daily campaign digest',
           },
         },
       ],
@@ -253,6 +276,18 @@ async function handleBlockActions(body: any): Promise<NextResponse> {
 
       case 'reject_followup':
         await handleRejectFollowUp(workspace.id, value, user.id, channel.id, message.ts);
+        break;
+
+      case 'mark_hot_lead':
+        await handleMarkHotLead(workspace.id, value, user.id, channel.id, message.ts);
+        break;
+
+      case 'archive_conversation':
+        await handleArchiveConversation(workspace.id, value, user.id, channel.id, message.ts);
+        break;
+
+      case 'quick_followup':
+        await handleQuickFollowup(workspace.id, value, user.id, channel.id, message.ts);
         break;
 
       default:
@@ -642,6 +677,123 @@ async function handleRejectFollowUp(
       ],
     });
   }
+}
+
+async function handleMarkHotLead(
+  workspaceId: string,
+  prospectId: string,
+  userId: string,
+  channelId: string,
+  messageTs: string
+): Promise<void> {
+  console.log(`[Slack] Marking prospect ${prospectId} as hot lead`);
+
+  const { error } = await supabaseAdmin()
+    .from('campaign_prospects')
+    .update({
+      status: 'hot_lead',
+      lead_score: 90,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', prospectId)
+    .eq('workspace_id', workspaceId);
+
+  if (error) {
+    console.error('[Slack] Failed to mark hot lead:', error);
+    return;
+  }
+
+  await slackService.updateMessage(workspaceId, channelId, messageTs, {
+    text: 'Marked as hot lead',
+    blocks: [
+      { type: 'section', text: { type: 'mrkdwn', text: '*Marked as Hot Lead* by <@' + userId + '>' } },
+      { type: 'context', elements: [{ type: 'mrkdwn', text: 'This prospect has been flagged for priority follow-up.' }] },
+    ],
+  });
+}
+
+async function handleArchiveConversation(
+  workspaceId: string,
+  messageId: string,
+  userId: string,
+  channelId: string,
+  messageTs: string
+): Promise<void> {
+  console.log(`[Slack] Archiving conversation for message ${messageId}`);
+
+  // Archive the message/conversation
+  await supabaseAdmin()
+    .from('linkedin_messages')
+    .update({
+      status: 'archived',
+      metadata: { archived_by: userId, archived_at: new Date().toISOString() },
+    })
+    .eq('id', messageId)
+    .eq('workspace_id', workspaceId);
+
+  await slackService.updateMessage(workspaceId, channelId, messageTs, {
+    text: 'Conversation archived',
+    blocks: [
+      { type: 'section', text: { type: 'mrkdwn', text: '*Conversation Archived* by <@' + userId + '>' } },
+      { type: 'context', elements: [{ type: 'mrkdwn', text: 'This conversation has been archived.' }] },
+    ],
+  });
+}
+
+async function handleQuickFollowup(
+  workspaceId: string,
+  prospectId: string,
+  userId: string,
+  channelId: string,
+  messageTs: string
+): Promise<void> {
+  console.log(`[Slack] Triggering quick follow-up for prospect ${prospectId}`);
+
+  // Get prospect and campaign details
+  const { data: prospect } = await supabaseAdmin()
+    .from('campaign_prospects')
+    .select('*, campaigns!inner(name, message_templates)')
+    .eq('id', prospectId)
+    .eq('workspace_id', workspaceId)
+    .single();
+
+  if (!prospect) {
+    await slackService.replyInThread(workspaceId, channelId, messageTs, {
+      text: 'Could not find prospect details.',
+    });
+    return;
+  }
+
+  // Queue the follow-up for immediate sending
+  const { error } = await supabaseAdmin()
+    .from('campaign_prospects')
+    .update({
+      follow_up_due_at: new Date().toISOString(), // Set to now for immediate processing
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', prospectId);
+
+  if (error) {
+    console.error('[Slack] Failed to queue follow-up:', error);
+    await slackService.replyInThread(workspaceId, channelId, messageTs, {
+      text: `Failed to queue follow-up: ${error.message}`,
+    });
+    return;
+  }
+
+  await slackService.updateMessage(workspaceId, channelId, messageTs, {
+    text: 'Follow-up queued',
+    blocks: [
+      { type: 'section', text: { type: 'mrkdwn', text: '*Follow-Up Queued* by <@' + userId + '>' } },
+      {
+        type: 'context',
+        elements: [{
+          type: 'mrkdwn',
+          text: `Follow-up for *${prospect.first_name} ${prospect.last_name}* has been queued for immediate sending.`,
+        }],
+      },
+    ],
+  });
 }
 
 // ============================================================================

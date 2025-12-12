@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { slackService } from '@/lib/slack';
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -248,6 +249,34 @@ async function handleUsersWebhook(event: any) {
           console.log(`   ⏭️  Already processed (polling cron beat us to it)`);
         } else {
           console.log(`   📅 First follow-up scheduled for: ${followUpDueAt.toLocaleString()}`);
+
+          // Send Slack notification for connection accepted
+          try {
+            // Get prospect details for notification
+            const { data: prospectDetails } = await supabase
+              .from('campaign_prospects')
+              .select('first_name, last_name, title, company, campaigns!inner(name)')
+              .eq('id', prospect.id)
+              .single();
+
+            if (prospectDetails) {
+              const prospectName = `${prospectDetails.first_name || ''} ${prospectDetails.last_name || ''}`.trim() || name;
+              const campaignName = (prospectDetails.campaigns as any)?.name || 'Unknown Campaign';
+
+              await slackService.notifyConnectionAccepted(
+                account.workspace_id,
+                prospectName,
+                prospectDetails.title || 'Unknown Title',
+                prospectDetails.company || 'Unknown Company',
+                campaignName,
+                prospect.id
+              );
+              console.log(`   📱 Slack notification sent for ${prospectName}`);
+            }
+          } catch (slackError) {
+            console.error(`   ⚠️ Slack notification failed:`, slackError);
+            // Don't fail the webhook if Slack notification fails
+          }
         }
       }
 
@@ -347,7 +376,7 @@ async function handleMessagingWebhook(event: any) {
         if (prospectDetails && messageContent) {
           const workspaceId = (prospectDetails.campaigns as any)?.workspace_id;
 
-          await supabase
+          const { data: insertedMessage } = await supabase
             .from('linkedin_messages')
             .insert({
               workspace_id: workspaceId,
@@ -368,9 +397,38 @@ async function handleMessagingWebhook(event: any) {
                 account_id: account_id,
                 is_email: isEmail
               }
-            });
+            })
+            .select()
+            .single();
 
           console.log(`💾 Stored incoming message from ${prospectDetails.first_name} ${prospectDetails.last_name}`);
+
+          // Send Slack notification for new reply
+          if (workspaceId) {
+            try {
+              // Get campaign name
+              const { data: campaignData } = await supabase
+                .from('campaigns')
+                .select('name')
+                .eq('id', prospect.campaign_id)
+                .single();
+
+              const prospectName = `${prospectDetails.first_name || ''} ${prospectDetails.last_name || ''}`.trim();
+
+              await slackService.notifyReplyWithActions(
+                workspaceId,
+                prospectName,
+                (prospectDetails as any).title || 'Unknown Title',
+                campaignData?.name || 'Unknown Campaign',
+                messageContent,
+                insertedMessage?.id || messageId,
+                prospect.id
+              );
+              console.log(`📱 Slack reply notification sent for ${prospectName}`);
+            } catch (slackError) {
+              console.error(`⚠️ Slack notification failed:`, slackError);
+            }
+          }
         }
 
         await supabase
