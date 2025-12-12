@@ -39,6 +39,9 @@ function cleanCookieValue(value: string): string {
  * }
  * ```
  */
+// Alias for backward compatibility
+export const createClient = createCleanRouteHandlerClient;
+
 export async function createCleanRouteHandlerClient() {
   const cookieStore = await cookies()
   
