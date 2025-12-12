@@ -2119,101 +2119,36 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
             'X-Workspace-Id': workspaceId
           };
 
-          console.log('🔍 [6/8] About to call fetch for search...');
+          console.log('🔍 [6/8] About to call fetch for search (ASYNC fire-and-forget)...');
           console.log('🔍 [6a/8] Request headers:', requestHeaders);
 
-          const searchResponse = await fetch(searchUrl, {
+          // FIRE AND FORGET: Start search in background to avoid 26s gateway timeout
+          // The search runs async, results appear in Data Approval tab
+          fetch(searchUrl, {
             method: 'POST',
             headers: requestHeaders,
             body: JSON.stringify({
               search_criteria: finalSearchCriteria,
-              target_count: searchCriteria.targetCount || 50 // Simple route limited to 50
+              target_count: searchCriteria.targetCount || 500,
+              max_pages: 5 // Limit to 5 pages (500 results)
             })
-          });
-
-          console.log('🔍 [7/8] Search API response status:', searchResponse.status);
-
-        if (!searchResponse.ok) {
-          const errorText = await searchResponse.text();
-          console.error('❌ [7a/8] Search API HTTP error:', { status: searchResponse.status, body: errorText });
-          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
-            `\n\n❌ **Search Failed:** HTTP ${searchResponse.status}\n\n${errorText.substring(0, 200)}`
-          ).trim();
-        } else {
-          console.log('🔍 [8a/8] Attempting to parse JSON response...');
-          let searchData: any = null;
-          try {
-            searchData = await searchResponse.json()
-          } catch (jsonErr) {
-            console.error('❌ [8a2/8] Failed to parse search response JSON:', jsonErr instanceof Error ? jsonErr.message : String(jsonErr));
-            throw new Error(`Search response parse error: ${jsonErr instanceof Error ? jsonErr.message : String(jsonErr)}`);
-          }
-
-          console.log('🔍 [8b/8] Search API response:', JSON.stringify(searchData, null, 2));
-          console.log('🔍 [8b2/8] Response success flag:', searchData?.success);
-          console.log('🔍 [8b3/8] Response error:', searchData?.error);
-          console.log('🔍 [8b4/8] Response details:', searchData?.details);
-          console.log('🔍 [8b5/8] AI response BEFORE trigger replacement:', aiResponse.substring(0, 500));
-
-          if (searchData.success) {
-          const prospectCount = searchData.count || 0
-          const targetCount = searchCriteria.targetCount || 100
-
-          // Replace trigger in AI response with success message
-          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
-            `\n\n✅ **Search Complete!** I found **${prospectCount} ${searchCriteria.title || 'prospects'}**${searchCriteria.keywords ? ` matching "${searchCriteria.keywords}"` : ''}.\n\n` +
-            `**Next Step:** Head to the **Data Approval** tab (left sidebar) to review and approve the prospects.\n\n` +
-            `📊 **Ready to review:** ${prospectCount} prospects waiting for your approval`
-          ).trim()
-        } else {
-          // Replace trigger with error message including details
-          let errorMsg = `\n\n❌ **Search Failed:** ${searchData.error || 'Unable to complete the search.'}`
-
-          // Add detailed error information if available
-          if (searchData.details) {
-            if (Array.isArray(searchData.details)) {
-              errorMsg += `\n\n**Error Details:**\n${searchData.details.map((d: string) => `• ${d}`).join('\n')}`
-            } else if (typeof searchData.details === 'string') {
-              errorMsg += `\n\n**Details:** ${searchData.details}`
+          }).then(async (res) => {
+            if (res.ok) {
+              const data = await res.json();
+              console.log('✅ Background search completed:', data.count || 0, 'prospects found');
+            } else {
+              console.error('❌ Background search failed:', res.status);
             }
-          }
+          }).catch(err => console.error('❌ Background search error:', err));
 
-          // Include debug info if available (will help diagnose Unipile failures)
-          if (searchData.debug) {
-            errorMsg += `\n\n**Debug Info:**\n`;
-            if (searchData.debug.status) errorMsg += `- Status: ${searchData.debug.status}\n`;
-            if (searchData.debug.url) errorMsg += `- URL: ${searchData.debug.url}\n`;
-          }
+          // Respond immediately with "search started" message
+          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
+            `\n\n✅ **Search Started!** Pulling ${searchCriteria.title || 'prospects'}${searchCriteria.keywords ? ` matching "${searchCriteria.keywords}"` : ''} from your ${searchCriteria.connectionDegree || '2nd'} degree network.\n\n` +
+            `Head to **Data Approval** to watch the results come through.\n\n` +
+            `📊 **Target:** Up to 500 prospects`
+          ).trim();
 
-          if (searchData.action === 'connect_linkedin') {
-            errorMsg += `\n\n**Action needed:** Please connect your LinkedIn account in Settings > Integrations first.`
-          }
-
-          // Log full error for debugging
-          console.error('❌ [8c/8] Search failed with error response:', JSON.stringify(searchData, null, 2));
-          console.error('❌ [8c2/8] Search error details:', {
-            error: searchData.error,
-            details: searchData.details,
-            errorType: typeof searchData.error,
-            statusCode: searchData.statusCode,
-            action: searchData.action,
-            debugInfo: searchData.debug
-          });
-
-          console.log('🔍 [8c3/8] Error message to insert:', errorMsg.substring(0, 300));
-          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim()
-          console.log('🔍 [8c4/8] AI response AFTER trigger replacement:', aiResponse.substring(0, 500));
-
-          // Remove contradictory "Head to Data Approval" text when search fails
-          console.log('🔍 [8c5/8] Cleaning up contradictory success text...');
-          aiResponse = aiResponse.replace(/Head to.*Data Approval.*to (watch|see).*(\.|!)/gi, '').trim()
-          console.log('🔍 [8c6/8] After first regex:', aiResponse.substring(0, 500));
-          aiResponse = aiResponse.replace(/Campaign:\s*\d+-[A-Z]+-[^\n]+\n*/gi, '').trim()
-          console.log('🔍 [8c7/8] After campaign cleanup:', aiResponse.substring(0, 500));
-          }
-
-          console.log('✅ Search trigger executed, response updated')
-        }
+          console.log('✅ Search trigger executed (fire-and-forget), response updated');
         }
       } catch (error) {
         console.error('❌ ═══════════════════════════════════════════════════');
