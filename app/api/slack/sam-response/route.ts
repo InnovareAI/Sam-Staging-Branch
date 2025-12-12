@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
+import {
+  detectIntent,
+  getConversationState,
+  handleICPSetupFlow,
+  handleSearchFlow,
+  handleCampaignCreateFlow,
+  clearConversationState,
+  getStartMenu,
+} from '@/lib/slack/conversation-flows';
 
 /**
  * SAM Response API for Slack
@@ -12,6 +21,11 @@ import { supabaseAdmin } from '@/app/lib/supabase';
  * - Show prospects and their status
  * - Archive campaign
  * - Change campaign settings
+ *
+ * Conversation Flows (multi-turn):
+ * - "set up my ICP" - Interactive ICP definition
+ * - "find/search" - LinkedIn prospect search
+ * - "create campaign" - Full campaign creation wizard
  */
 
 // Command patterns for intent detection
@@ -35,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { workspace_id, question, thread_id, channel_id } = body;
+    const { workspace_id, question, thread_id, channel_id, user_id } = body;
 
     if (!workspace_id || !question) {
       return NextResponse.json({ error: 'Missing workspace_id or question' }, { status: 400 });
@@ -43,7 +57,93 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Slack SAM] Processing question for workspace ${workspace_id}: "${question.substring(0, 50)}..."`);
 
-    // Get workspace context
+    // Check if user is in an active conversation flow
+    const currentState = getConversationState(workspace_id, channel_id || 'default', user_id || 'default');
+    const intent = detectIntent(question, currentState?.flow || null);
+
+    console.log(`[Slack SAM] Intent: ${intent}, Current flow: ${currentState?.flow || 'none'}`);
+
+    // Handle conversation flows
+    if (intent === 'continue_flow' && currentState?.flow) {
+      let flowResult;
+
+      switch (currentState.flow) {
+        case 'icp_setup':
+          flowResult = await handleICPSetupFlow(workspace_id, channel_id || 'default', user_id || 'default', question);
+          break;
+        case 'search':
+          flowResult = await handleSearchFlow(workspace_id, channel_id || 'default', user_id || 'default', question);
+          break;
+        case 'campaign_create':
+          flowResult = await handleCampaignCreateFlow(workspace_id, channel_id || 'default', user_id || 'default', question);
+          break;
+      }
+
+      if (flowResult) {
+        return NextResponse.json({
+          success: true,
+          response: flowResult.message,
+          blocks: flowResult.blocks,
+          flow_active: !flowResult.completed,
+        });
+      }
+    }
+
+    // Handle cancel/exit commands
+    if (question.toLowerCase().includes('cancel') || question.toLowerCase().includes('exit') || question.toLowerCase().includes('start over')) {
+      if (currentState?.flow) {
+        clearConversationState(workspace_id, channel_id || 'default', user_id || 'default');
+        return NextResponse.json({
+          success: true,
+          response: "Okay, I've cancelled that. What would you like to do?",
+        });
+      }
+    }
+
+    // Show start menu
+    if (intent === 'start_menu') {
+      const menu = getStartMenu();
+      return NextResponse.json({
+        success: true,
+        response: menu.message,
+        blocks: menu.blocks,
+        flow_active: false,
+      });
+    }
+
+    // Start new flows based on intent
+    if (intent === 'icp_setup') {
+      const result = await handleICPSetupFlow(workspace_id, channel_id || 'default', user_id || 'default', question);
+      return NextResponse.json({
+        success: true,
+        response: result.message,
+        blocks: result.blocks,
+        flow_active: true,
+      });
+    }
+
+    if (intent === 'search') {
+      const result = await handleSearchFlow(workspace_id, channel_id || 'default', user_id || 'default', question);
+      return NextResponse.json({
+        success: true,
+        response: result.message,
+        blocks: result.blocks,
+        prospects: result.prospects,
+        flow_active: false,
+      });
+    }
+
+    if (intent === 'campaign_create') {
+      const result = await handleCampaignCreateFlow(workspace_id, channel_id || 'default', user_id || 'default', question);
+      return NextResponse.json({
+        success: true,
+        response: result.message,
+        blocks: result.blocks,
+        flow_active: !result.completed,
+      });
+    }
+
+    // Get workspace context for general responses
     const { data: workspace } = await supabaseAdmin()
       .from('workspaces')
       .select('id, name, industry, company_description')
@@ -582,7 +682,12 @@ Guidelines:
 - Provide actionable advice when appropriate
 - Use Slack-friendly markdown (bold with *, code with \`)
 
-You can EXECUTE these commands directly (just tell users to try):
+INTERACTIVE WIZARDS (multi-turn conversations):
+- "set up my ICP" - Define your Ideal Customer Profile step-by-step
+- "search" or "find [criteria]" - Search for LinkedIn prospects
+- "create campaign" - Full campaign creation wizard with message drafting
+
+QUICK COMMANDS (execute immediately):
 - "show messages for [campaign name]" - displays the message sequence
 - "pause campaign [name]" - pauses a campaign
 - "resume campaign [name]" - resumes a campaign
@@ -596,7 +701,12 @@ You can also help with:
 - Prospect engagement advice
 - Message template suggestions
 - Sales strategy recommendations
-- Troubleshooting issues`;
+- Troubleshooting issues
+
+If users want to run full campaigns from Slack, guide them to use:
+1. "set up my ICP" first to define targeting
+2. "search" to find prospects
+3. "create campaign" to launch outreach`;
 
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {

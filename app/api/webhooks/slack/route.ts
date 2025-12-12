@@ -102,7 +102,7 @@ async function handleSlashCommand(body: any): Promise<NextResponse> {
     return NextResponse.json({
       response_type: 'ephemeral',
       blocks: [
-        { type: 'header', text: { type: 'plain_text', text: 'SAM AI Assistant', emoji: true } },
+        { type: 'header', text: { type: 'plain_text', text: '🤖 SAM AI Assistant', emoji: true } },
         {
           type: 'section',
           text: {
@@ -119,13 +119,11 @@ async function handleSlashCommand(body: any): Promise<NextResponse> {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: '*Campaign Management (via /sam-ask):*\n' +
-              '`show messages for [campaign]` - View message sequence\n' +
-              '`pause campaign [name]` - Pause a campaign\n' +
-              '`resume campaign [name]` - Resume a campaign\n' +
-              '`archive campaign [name]` - Archive a campaign\n' +
-              '`show stats for [campaign]` - View campaign stats\n' +
-              '`update message 2 with [text]` - Update a message',
+            text: '*🚀 Interactive Wizards (DM @SAM or use /sam-ask):*\n' +
+              '`set up my ICP` - Define your Ideal Customer Profile step-by-step\n' +
+              '`search` or `find CTOs in Berlin` - Search LinkedIn for prospects\n' +
+              '`create campaign` - Full campaign wizard with AI message drafting\n\n' +
+              '_These are multi-turn conversations - SAM will guide you through each step!_',
           },
         },
         { type: 'divider' },
@@ -133,13 +131,24 @@ async function handleSlashCommand(body: any): Promise<NextResponse> {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: '*Prospect Management:*\n' +
-              '`show prospects` - List all recent prospects\n' +
-              '`show prospects for [campaign]` - Filter by campaign\n\n' +
-              '*Interactive Features:*\n' +
-              '- Approve/reject via buttons\n' +
-              '- Real-time reply notifications\n' +
-              '- Daily campaign digest',
+            text: '*⚡ Quick Commands:*\n' +
+              '`show messages for [campaign]` - View message sequence\n' +
+              '`pause campaign [name]` - Pause a campaign\n' +
+              '`resume campaign [name]` - Resume a campaign\n' +
+              '`show stats for [campaign]` - View campaign stats\n' +
+              '`show prospects` - List prospects by status',
+          },
+        },
+        { type: 'divider' },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: '*📊 Notifications & Actions:*\n' +
+              '• Reply notifications with Approve/Edit/Reject buttons\n' +
+              '• Connection acceptance alerts\n' +
+              '• Daily campaign digest\n' +
+              '• React with ✅ or ❌ to approve/reject',
           },
         },
       ],
@@ -262,6 +271,90 @@ async function handleBlockActions(body: any): Promise<NextResponse> {
     const value = action.value;
 
     switch (actionId) {
+      // ========== START MENU ACTIONS ==========
+      case 'start_icp_setup':
+        await triggerFlow(workspace.id, channel.id, user.id, 'set up my ICP');
+        break;
+
+      case 'start_search':
+        await triggerFlow(workspace.id, channel.id, user.id, 'search for prospects');
+        break;
+
+      case 'start_campaign':
+        await triggerFlow(workspace.id, channel.id, user.id, 'create campaign');
+        break;
+
+      case 'view_campaign_status':
+        await triggerFlow(workspace.id, channel.id, user.id, 'show campaigns');
+        break;
+
+      // ========== ICP SETUP ACTIONS ==========
+      case 'icp_size_1_50':
+      case 'icp_size_51_200':
+      case 'icp_size_201_500':
+      case 'icp_size_500_plus':
+        await triggerFlow(workspace.id, channel.id, user.id, value);
+        break;
+
+      // ========== SEARCH ACTIONS ==========
+      case 'search_from_icp':
+        await triggerFlow(workspace.id, channel.id, user.id, 'search');
+        break;
+
+      case 'add_to_campaign':
+        await triggerFlow(workspace.id, channel.id, user.id, 'add to campaign');
+        break;
+
+      case 'quick_campaign':
+        await triggerFlow(workspace.id, channel.id, user.id, 'create quick campaign');
+        break;
+
+      // ========== CAMPAIGN CREATION ACTIONS ==========
+      case 'channel_linkedin':
+      case 'channel_email':
+      case 'channel_both':
+        await triggerFlow(workspace.id, channel.id, user.id, value);
+        break;
+
+      case 'target_icp':
+        await triggerFlow(workspace.id, channel.id, user.id, 'use my ICP');
+        break;
+
+      case 'target_search':
+        await triggerFlow(workspace.id, channel.id, user.id, 'search');
+        break;
+
+      case 'use_all_prospects':
+        await triggerFlow(workspace.id, channel.id, user.id, `use all ${value}`);
+        break;
+
+      case 'draft_cr':
+      case 'draft_fu':
+        await triggerFlow(workspace.id, channel.id, user.id, 'yes, draft it');
+        break;
+
+      case 'use_draft_cr':
+      case 'use_draft_fu':
+        await triggerFlow(workspace.id, channel.id, user.id, 'use this');
+        break;
+
+      case 'skip_fu':
+        await triggerFlow(workspace.id, channel.id, user.id, 'skip');
+        break;
+
+      case 'schedule_aggressive':
+        await triggerFlow(workspace.id, channel.id, user.id, 'aggressive');
+        break;
+
+      case 'schedule_normal':
+        await triggerFlow(workspace.id, channel.id, user.id, 'normal');
+        break;
+
+      case 'schedule_conservative':
+        await triggerFlow(workspace.id, channel.id, user.id, 'conservative');
+        break;
+
+      // ========== EXISTING ACTIONS ==========
       case 'approve_comment':
         await handleApproveComment(workspace.id, value, user.id, channel.id, message.ts);
         break;
@@ -296,6 +389,36 @@ async function handleBlockActions(body: any): Promise<NextResponse> {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+// Helper to trigger conversation flows from button clicks
+async function triggerFlow(workspaceId: string, channelId: string, userId: string, input: string): Promise<void> {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/api/slack/sam-response`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-secret': process.env.INTERNAL_API_SECRET || '',
+      },
+      body: JSON.stringify({
+        workspace_id: workspaceId,
+        question: input,
+        channel_id: channelId,
+        user_id: userId,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.success && result.response) {
+      await slackService.postMessage(workspaceId, channelId, {
+        text: result.response,
+        blocks: result.blocks,
+      });
+    }
+  } catch (error) {
+    console.error('[Slack] Error triggering flow:', error);
+  }
 }
 
 // ============================================================================
