@@ -103,10 +103,12 @@
 # AI AGENT SCHEDULED FUNCTIONS (Nov 29, 2025)
 # ============================================
 
-# QA Monitor: Daily pipeline health check at 6 AM UTC
+# QA Monitor: Hourly pipeline health check (every 60 minutes)
 # Checks queue consistency, orphaned records, cron gaps, stuck prospects
+# Covers ALL workspaces, clients, and customers
+# Changed from daily to hourly Dec 12, 2025 - faster detection of stuck campaigns
 [functions."qa-monitor"]
-  schedule = "0 6 * * *"
+  schedule = "0 * * * *"
 
 # Daily Health Check: Comprehensive system health at 7 AM UTC
 # Checks database, campaigns, queue, Unipile accounts, error rates
