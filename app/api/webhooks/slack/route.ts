@@ -141,7 +141,7 @@ async function handleSlashCommand(body: any): Promise<NextResponse> {
             elements: [{
               type: 'button',
               text: { type: 'plain_text', text: 'View All Campaigns', emoji: true },
-              url: `https://app.meet-sam.com/workspace/${workspace.id}/campaigns`,
+              url: `https://app.meet-sam.com/workspace/${workspace.id}/campaign-hub`,
             }],
           },
         ],
