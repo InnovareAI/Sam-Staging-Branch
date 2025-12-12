@@ -725,14 +725,15 @@ class SlackService {
       hotLeads: number;
       topCampaign?: { name: string; acceptRate: number };
       pendingActions: number;
-    }
+    },
+    targetChannel?: string // Optional: specify channel name or ID
   ) {
     const acceptRate = stats.crSent > 0 ? ((stats.crAccepted / stats.crSent) * 100).toFixed(1) : '0';
 
     const message: SlackMessage = {
       text: 'Daily SAM Digest',
       blocks: [
-        { type: 'header', text: { type: 'plain_text', text: 'Daily SAM Digest', emoji: true } },
+        { type: 'header', text: { type: 'plain_text', text: '📊 Daily SAM Digest', emoji: true } },
         { type: 'divider' },
         {
           type: 'section',
@@ -755,14 +756,14 @@ class SlackService {
           type: 'section' as const,
           text: {
             type: 'mrkdwn' as const,
-            text: `*Top Performing Campaign:* ${stats.topCampaign.name} (${stats.topCampaign.acceptRate.toFixed(1)}% accept rate)`,
+            text: `🏆 *Top Performing Campaign:* ${stats.topCampaign.name} (${stats.topCampaign.acceptRate.toFixed(1)}% accept rate)`,
           },
         }] : []),
         ...(stats.pendingActions > 0 ? [{
           type: 'section' as const,
           text: {
             type: 'mrkdwn' as const,
-            text: `*Action Required:* ${stats.pendingActions} items awaiting your approval`,
+            text: `⚠️ *Action Required:* ${stats.pendingActions} items awaiting your approval`,
           },
         }] : []),
         {
@@ -784,7 +785,20 @@ class SlackService {
       ],
     };
 
-    const channel = await this.getDefaultChannel(workspaceId);
+    // Determine channel - use specified, find by name, or fall back to default
+    let channel: string;
+    if (targetChannel) {
+      // Check if it's a channel ID (starts with C) or a name
+      if (targetChannel.startsWith('C')) {
+        channel = targetChannel;
+      } else {
+        const foundChannel = await this.findChannelByName(workspaceId, targetChannel);
+        channel = foundChannel || await this.getDefaultChannel(workspaceId);
+      }
+    } else {
+      channel = await this.getDefaultChannel(workspaceId);
+    }
+
     return this.sendBotMessage(workspaceId, channel, message);
   }
 
@@ -854,6 +868,40 @@ class SlackService {
   // ==========================================================================
   // CHANNEL HELPERS
   // ==========================================================================
+
+  /**
+   * Find channel by name using Slack API
+   */
+  async findChannelByName(workspaceId: string, channelName: string): Promise<string | null> {
+    const config = await this.getAppConfig(workspaceId);
+    if (!config) {
+      return null;
+    }
+
+    try {
+      // List all channels and find by name
+      const response = await fetch('https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=200', {
+        headers: {
+          'Authorization': `Bearer ${config.bot_token}`,
+        },
+      });
+
+      const result = await response.json();
+      if (!result.ok) {
+        console.error('Failed to list channels:', result.error);
+        return null;
+      }
+
+      // Normalize channel name (remove # if present)
+      const normalizedName = channelName.replace(/^#/, '').toLowerCase();
+      const channel = result.channels?.find((c: any) => c.name.toLowerCase() === normalizedName);
+
+      return channel?.id || null;
+    } catch (error) {
+      console.error('Error finding channel:', error);
+      return null;
+    }
+  }
 
   /**
    * Get the default channel for a workspace

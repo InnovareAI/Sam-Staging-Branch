@@ -472,15 +472,10 @@ function ConnectedState({
       )}
 
       {activeTab === 'channels' && (
-        <div className="space-y-4">
-          <div className="text-sm text-muted-foreground">
-            <p>Channel configuration coming soon. Currently, notifications are sent to the default channel configured during setup.</p>
-          </div>
-          <div className="bg-muted/50 rounded-lg p-4">
-            <h4 className="text-sm font-medium mb-2">Current Channel</h4>
-            <p className="text-sm text-muted-foreground">{config.channel_name || 'Default channel'}</p>
-          </div>
-        </div>
+        <ChannelSelector
+          workspaceId={workspaceId}
+          currentChannel={config.channel_name}
+        />
       )}
     </div>
   );
@@ -779,6 +774,199 @@ function FeatureBadge({ icon: Icon, label, enabled }: { icon: any; label: string
       <Icon className={`h-4 w-4 ${enabled ? 'text-green-500' : 'text-muted-foreground'}`} />
       <span className={`text-xs ${enabled ? 'text-green-500' : 'text-muted-foreground'}`}>{label}</span>
       {enabled && <CheckCircle className="h-3 w-3 text-green-500 ml-auto" />}
+    </div>
+  );
+}
+
+// ============================================================================
+// CHANNEL SELECTOR COMPONENT
+// ============================================================================
+
+interface SlackChannel {
+  id: string;
+  name: string;
+  is_private: boolean;
+  is_member: boolean;
+}
+
+function ChannelSelector({ workspaceId, currentChannel }: { workspaceId: string; currentChannel?: string }) {
+  const [channels, setChannels] = useState<SlackChannel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedChannel, setSelectedChannel] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+
+  useEffect(() => {
+    fetchChannels();
+  }, [workspaceId]);
+
+  const fetchChannels = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/integrations/slack/channels?workspace_id=${workspaceId}`);
+      const data = await response.json();
+
+      if (data.success && data.channels) {
+        setChannels(data.channels);
+        // Set the default channel if available
+        if (data.default_channel) {
+          setSelectedChannel(data.default_channel);
+        } else if (currentChannel) {
+          const match = data.channels.find((c: SlackChannel) => c.name === currentChannel.replace('#', ''));
+          if (match) setSelectedChannel(match.id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch channels:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveChannel = async () => {
+    if (!selectedChannel) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/integrations/slack/set-channel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: workspaceId,
+          channel_id: selectedChannel,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toastSuccess('Default channel updated!');
+      } else {
+        toastError(data.error || 'Failed to update channel');
+      }
+    } catch (error) {
+      toastError('Failed to update channel');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleTestDigest = async () => {
+    if (!selectedChannel) {
+      toastError('Please select a channel first');
+      return;
+    }
+
+    setIsTesting(true);
+    try {
+      const channelName = channels.find(c => c.id === selectedChannel)?.name || selectedChannel;
+      const response = await fetch('/api/cron/slack-daily-digest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId,
+          channel: channelName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toastSuccess('Daily digest sent to channel!');
+      } else {
+        toastError(data.error || 'Failed to send digest');
+      }
+    } catch (error) {
+      toastError('Failed to send digest');
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <svg className="animate-spin h-6 w-6 text-primary" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Default Channel for Notifications</label>
+        <p className="text-xs text-muted-foreground">
+          Select which channel SAM should use for campaign updates, daily digests, and reply notifications.
+        </p>
+        <select
+          value={selectedChannel}
+          onChange={(e) => setSelectedChannel(e.target.value)}
+          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="">Select a channel...</option>
+          {channels.filter(c => c.is_member).map((channel) => (
+            <option key={channel.id} value={channel.id}>
+              {channel.is_private ? '🔒' : '#'} {channel.name}
+            </option>
+          ))}
+        </select>
+        {channels.filter(c => !c.is_member).length > 0 && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Note: Only showing channels where the SAM bot is a member. Invite @SAM to other channels to use them.
+          </p>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={handleSaveChannel}
+          disabled={isSaving || !selectedChannel}
+          className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50"
+        >
+          {isSaving ? 'Saving...' : 'Save Channel'}
+        </button>
+        <button
+          onClick={handleTestDigest}
+          disabled={isTesting || !selectedChannel}
+          className="flex-1 bg-secondary hover:bg-secondary/80 font-medium py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50"
+        >
+          {isTesting ? 'Sending...' : 'Send Test Digest'}
+        </button>
+      </div>
+
+      {/* Channel List */}
+      <div className="space-y-2 mt-4">
+        <h4 className="text-sm font-medium">Available Channels</h4>
+        <div className="max-h-40 overflow-y-auto space-y-1 bg-muted/30 rounded-lg p-2">
+          {channels.filter(c => c.is_member).length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-2">
+              No channels available. Invite SAM bot to a channel first.
+            </p>
+          ) : (
+            channels.filter(c => c.is_member).map((channel) => (
+              <div
+                key={channel.id}
+                onClick={() => setSelectedChannel(channel.id)}
+                className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                  selectedChannel === channel.id
+                    ? 'bg-primary/20 text-primary'
+                    : 'hover:bg-muted/50'
+                }`}
+              >
+                <Hash className="h-4 w-4" />
+                <span className="text-sm">{channel.name}</span>
+                {channel.is_private && <span className="text-xs text-muted-foreground">(private)</span>}
+                {selectedChannel === channel.id && (
+                  <CheckCircle className="h-4 w-4 text-primary ml-auto" />
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }

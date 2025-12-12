@@ -11,28 +11,45 @@ import { slackService } from '@/lib/slack';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify cron secret
+    // Verify cron secret (skip for manual triggers with channel param)
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET || process.env.INTERNAL_API_SECRET;
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // Parse body for manual trigger params
+    let body: { channel?: string; workspaceId?: string } = {};
+    try {
+      body = await request.json();
+    } catch {
+      // No body, that's fine for cron triggers
+    }
+
+    const isManualTrigger = body.channel || body.workspaceId;
+
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}` && !isManualTrigger) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('[Daily Digest] Starting daily digest generation...');
+    console.log('[Daily Digest] Starting daily digest generation...', { isManualTrigger, channel: body.channel });
 
     // Get all workspaces with active Slack app config
-    const { data: slackConfigs, error: configError } = await supabaseAdmin()
+    const query = supabaseAdmin()
       .from('slack_app_config')
-      .select('workspace_id, slack_team_name')
+      .select('workspace_id, slack_team_name, default_channel')
       .eq('status', 'active');
+
+    // If specific workspace requested, filter to it
+    if (body.workspaceId) {
+      query.eq('workspace_id', body.workspaceId);
+    }
+
+    const { data: slackConfigs, error: configError } = await query;
 
     if (configError || !slackConfigs?.length) {
       console.log('[Daily Digest] No active Slack integrations found');
       return NextResponse.json({ success: true, message: 'No active Slack integrations' });
     }
 
-    const results: { workspaceId: string; success: boolean; error?: string }[] = [];
+    const results: { workspaceId: string; success: boolean; error?: string; channel?: string }[] = [];
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     yesterday.setHours(0, 0, 0, 0);
@@ -43,18 +60,22 @@ export async function POST(request: NextRequest) {
     for (const config of slackConfigs) {
       try {
         const workspaceId = config.workspace_id;
-        console.log(`[Daily Digest] Processing workspace: ${workspaceId}`);
+        // Use provided channel, or workspace's default channel
+        const targetChannel = body.channel || config.default_channel;
+
+        console.log(`[Daily Digest] Processing workspace: ${workspaceId}, channel: ${targetChannel || 'default'}`);
 
         // Gather stats for the last 24 hours
         const stats = await gatherDailyStats(workspaceId, yesterday, today);
 
-        // Send the digest
-        const result = await slackService.sendDailyDigest(workspaceId, stats);
+        // Send the digest to the specified channel
+        const result = await slackService.sendDailyDigest(workspaceId, stats, targetChannel);
 
         results.push({
           workspaceId,
           success: result.success,
           error: result.error,
+          channel: targetChannel,
         });
 
         console.log(`[Daily Digest] Workspace ${workspaceId}: ${result.success ? 'sent' : result.error}`);
