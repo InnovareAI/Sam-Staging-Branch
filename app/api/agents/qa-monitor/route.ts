@@ -523,7 +523,7 @@ async function checkStuckCampaigns(supabase: any): Promise<QACheck> {
   const { data: activeCampaigns } = await supabase
     .from('campaigns')
     .select(`
-      id, campaign_name, status, workspace_id,
+      id, name, status, workspace_id,
       workspaces(name)
     `)
     .in('status', ['active', 'running']);
@@ -565,7 +565,7 @@ async function checkStuckCampaigns(supabase: any): Promise<QACheck> {
     if (pendingCount > 0 || approvedCount > 0) {
       stuckCampaigns.push({
         campaign_id: campaign.id,
-        campaign_name: campaign.campaign_name,
+        campaign_name: campaign.name,
         workspace: campaign.workspaces?.name || 'Unknown',
         pending_queue: pendingCount,
         approved_not_queued: approvedCount,
