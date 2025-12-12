@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await supabaseAdmin()
       .from('slack_app_config')
       .update({
-        default_channel_id: channel_id,
+        default_channel: channel_id,
         updated_at: new Date().toISOString(),
       })
       .eq('workspace_id', workspace_id);

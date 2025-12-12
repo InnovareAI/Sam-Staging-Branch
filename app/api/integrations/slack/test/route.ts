@@ -16,14 +16,14 @@ export async function POST(request: NextRequest) {
     // First check for App mode (slack_app_config with bot token)
     const { data: appConfig } = await supabaseAdmin()
       .from('slack_app_config')
-      .select('bot_token, default_channel_id, slack_team_name')
+      .select('bot_token, default_channel, slack_team_name')
       .eq('workspace_id', workspace_id)
       .eq('status', 'active')
       .single();
 
     if (appConfig?.bot_token) {
       // Use Bot API to send test message
-      const channelId = appConfig.default_channel_id;
+      const channelId = appConfig.default_channel;
 
       if (!channelId) {
         return NextResponse.json(
