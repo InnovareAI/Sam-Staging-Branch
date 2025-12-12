@@ -367,6 +367,22 @@ function ConnectedState({
       {/* Tab Content */}
       {activeTab === 'setup' && (
         <div className="space-y-4">
+          {/* Quick Start */}
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <h3 className="text-sm font-semibold">Quick Start</h3>
+            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+              <li>
+                Invite SAM to your channel: <code className="bg-muted px-1.5 py-0.5 rounded text-xs">/invite @SAM</code>
+              </li>
+              <li>
+                Go to the <strong>Channels</strong> tab to select your notification channel
+              </li>
+              <li>
+                Done! SAM will send updates to your selected channel
+              </li>
+            </ol>
+          </div>
+
           {/* Features enabled */}
           <div className="space-y-2">
             <h3 className="text-sm font-semibold">Enabled Features</h3>
@@ -376,28 +392,6 @@ function ConnectedState({
               <FeatureBadge icon={MessageSquare} label="Two-Way Chat" enabled={connectionMode === 'app'} />
               <FeatureBadge icon={Settings} label="Interactive Buttons" enabled={connectionMode === 'app'} />
             </div>
-          </div>
-
-          {/* Webhook Endpoint */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">SAM Webhook Endpoint</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value="https://app.meet-sam.com/api/webhooks/slack"
-                readOnly
-                className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm text-muted-foreground"
-              />
-              <button
-                onClick={() => copyToClipboard('https://app.meet-sam.com/api/webhooks/slack', 'webhook')}
-                className="bg-secondary hover:bg-secondary/80 px-3 py-2 rounded-lg transition-colors"
-              >
-                {copied === 'webhook' ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Use this URL for slash commands and event subscriptions in your Slack app settings
-            </p>
           </div>
 
           {/* Actions */}
@@ -681,34 +675,37 @@ function AppSetup({
   copied: string | null;
   workspaceId: string;
 }) {
-  // Slack OAuth URL with SAM's app credentials
-  const slackOAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${process.env.NEXT_PUBLIC_SLACK_CLIENT_ID || '8123456789.1234567890'}&scope=chat:write,chat:write.public,channels:read,users:read,app_mentions:read,im:history,im:read,reactions:read,commands&redirect_uri=${encodeURIComponent(`https://app.meet-sam.com/api/integrations/slack/oauth-callback`)}&state=${workspaceId}`;
-
   return (
     <>
-      {/* Simple Add to Slack Flow */}
-      <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-6 text-center space-y-4">
-        <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto">
-          <MessageSquare className="h-8 w-8 text-purple-400" />
-        </div>
-        <div>
-          <h3 className="font-semibold text-lg text-purple-400">Add SAM to Slack</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Click below to install SAM AI in your Slack workspace. You'll be able to receive notifications,
-            approve comments, and chat with SAM directly from Slack.
-          </p>
+      {/* Simple Setup Instructions */}
+      <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-purple-600/20 rounded-full flex items-center justify-center">
+            <MessageSquare className="h-6 w-6 text-purple-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-lg text-purple-400">Connect SAM to Slack</h3>
+            <p className="text-sm text-muted-foreground">Two simple steps to get started</p>
+          </div>
         </div>
 
-        {/* Add to Slack Button */}
-        <a
-          href={slackOAuthUrl}
-          className="inline-flex items-center gap-2 bg-[#4A154B] hover:bg-[#611f69] text-white font-medium py-3 px-6 rounded-lg transition-colors"
-        >
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
-          </svg>
-          Add to Slack
-        </a>
+        <ol className="text-sm space-y-3 list-decimal list-inside">
+          <li className="text-foreground">
+            <strong>Invite SAM to your channel:</strong>
+            <div className="ml-5 mt-1 bg-muted/50 rounded p-2 font-mono text-xs">
+              /invite @SAM
+            </div>
+            <p className="ml-5 mt-1 text-muted-foreground text-xs">
+              Type this in any Slack channel where you want to receive SAM notifications
+            </p>
+          </li>
+          <li className="text-foreground">
+            <strong>Select your notification channel:</strong>
+            <p className="ml-5 text-muted-foreground text-xs">
+              After inviting SAM, click the <strong>Channels</strong> tab above to choose your default channel
+            </p>
+          </li>
+        </ol>
       </div>
 
       {/* What you get */}
@@ -736,16 +733,6 @@ function AppSetup({
             React with ✅ or ❌ for quick approvals
           </li>
         </ul>
-      </div>
-
-      {/* After installation steps */}
-      <div className="space-y-2">
-        <h4 className="font-medium text-sm">After installation:</h4>
-        <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
-          <li>Invite <strong>@SAM</strong> to your preferred channel</li>
-          <li>Go to the <strong>Channels</strong> tab above to select your default notification channel</li>
-          <li>Start receiving updates!</li>
-        </ol>
       </div>
     </>
   );
