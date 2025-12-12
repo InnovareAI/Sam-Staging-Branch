@@ -38,110 +38,6 @@ import { calculateKBHealthScore, getCriticalGapsPrompt, formatKBHealthForSAM } f
 import { updateKBRealtime, getKBProgressMessage } from '@/lib/realtime-kb-updater'
 import { needsValidation } from '@/lib/kb-confidence-calculator'
 
-// ================================================================
-// 🚀 DIRECT SEARCH PARSER (Dec 12, 2025)
-// Parses user messages like "find 500 C-Suite at Google 2nd degree"
-// Bypasses unreliable LLM trigger output
-// AGGRESSIVE MATCHING - catches most search requests
-// ================================================================
-function parseDirectSearchRequest(message: string): any | null {
-  const lowerMsg = message.toLowerCase();
-
-  // AGGRESSIVE: Match if message has a number + role OR company
-  const searchKeywords = ['find', 'search', 'get', 'pull', 'show', 'looking', 'need', 'want', 'give', 'can you', 'lets', "let's", 'take'];
-  const hasSearchIntent = searchKeywords.some(k => lowerMsg.includes(k));
-
-  // Also match if there's a number followed by role-like word
-  const hasNumberRole = /\b\d+\s*(c-suite|ceo|vp|executive|director|founder|head|manager|people|prospects|employee)/i.test(message);
-
-  if (!hasSearchIntent && !hasNumberRole) {
-    console.log('🚀 parseDirectSearchRequest: No search intent found in:', message.substring(0, 50));
-    return null;
-  }
-
-  // Extract count - more flexible
-  const countMatch = message.match(/\b(\d+)\b/);
-  const targetCount = countMatch ? parseInt(countMatch[1]) : 500;
-
-  // Extract title/role - EXPANDED with typo handling
-  let title = '';
-  const titlePatterns = [
-    /\b(c-suite|csuite|c suite)\b/i,
-    /\b(ceo|cfo|cto|cmo|coo|cro|chro|ciso)\b/i,
-    /\b(vp|vice president)\s*(of\s+)?(sales|marketing|engineering|product|operations|finance|hr)?\b/i,
-    /\b(director|head)\s*(of\s+)?(sales|marketing|engineering|product|operations|finance|hr)?\b/i,
-    /\b(founder|co-founder|cofounder)\b/i,
-    /\b(executive|executives|exectuive|exectuives|exec)\b/i, // Include common typos
-    /\b(manager|managers)\b/i,
-    /\b(employee|employees)\b/i
-  ];
-
-  for (const pattern of titlePatterns) {
-    const match = message.match(pattern);
-    if (match) {
-      title = match[0].trim().replace(/exectuive/i, 'executive').replace(/exectuives/i, 'executives');
-      break;
-    }
-  }
-
-  // Extract company - MORE FLEXIBLE
-  let company = '';
-  const companyPatterns = [
-    /(?:at|from|for)\s+([A-Z][a-zA-Z0-9\s&().]+?)(?:\s+(?:in|2nd|1st|3rd|degree|their|employees?|executives?|c-suite|new\s+york|london|san\s+francisco)|$|,|\?)/i,
-    /(?:at|from|for)\s+([A-Z][a-zA-Z0-9]+(?:\s+[a-zA-Z]+)?)/i, // "from IPG new york"
-    /(\w+)'s\s+(?:c-suite|executives?|employees?|team)/i, // "Oracle's C Suite"
-    /(?:take|show|give)\s+(?:me\s+)?([A-Z][a-zA-Z]+)/i // "take Oracle"
-  ];
-
-  for (const pattern of companyPatterns) {
-    const match = message.match(pattern);
-    if (match && match[1]) {
-      company = match[1].trim();
-      // Clean up common words
-      if (['me', 'the', 'a', 'an', 'their', 'your', 'some', 'example'].includes(company.toLowerCase())) {
-        company = '';
-        continue;
-      }
-      break;
-    }
-  }
-
-  // If no title found but have company, use generic
-  if (!title && company) {
-    title = 'executive';
-  }
-
-  // Must have either title or company
-  if (!title && !company) {
-    console.log('🚀 parseDirectSearchRequest: No title or company found in:', message.substring(0, 50));
-    return null;
-  }
-
-  // Extract connection degree
-  let connectionDegree = '2nd'; // default
-  if (lowerMsg.includes('1st') || lowerMsg.includes('first')) connectionDegree = '1st';
-  if (lowerMsg.includes('3rd') || lowerMsg.includes('third')) connectionDegree = '3rd';
-
-  // Generate campaign name
-  const today = new Date().toISOString().slice(0,10).replace(/-/g, '');
-  const campaignName = `${today}-${(title || 'prospects').replace(/\s+/g, '-')}${company ? `-${company.replace(/\s+/g, '-')}` : ''}`;
-
-  console.log('🚀 ═══════════════════════════════════════════════════');
-  console.log('🚀 DIRECT SEARCH PARSER MATCHED!');
-  console.log('🚀 Input:', message);
-  console.log('🚀 Parsed:', { title, company, targetCount, connectionDegree, campaignName });
-  console.log('🚀 ═══════════════════════════════════════════════════');
-
-  return {
-    title: title || 'executive',
-    company: company || undefined,
-    keywords: company || title || 'executive',
-    targetCount,
-    connectionDegree,
-    campaignName
-  };
-}
-
 // Helper function to call LLM via router (respects customer preferences)
 async function callLLMRouter(userId: string, messages: any[], systemPrompt: string) {
   try {
@@ -2114,17 +2010,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         }))
 
         aiResponse = await callLLMRouter(user.id, messages, systemPrompt)
-
-        // 🔍 DEBUG: Log raw AI response to diagnose trigger detection issues
-        console.log('🔍 ═══════════════════════════════════════════════════');
-        console.log('🔍 RAW AI RESPONSE FROM LLM');
-        console.log('🔍 ═══════════════════════════════════════════════════');
-        console.log('🔍 Length:', aiResponse?.length || 0);
-        console.log('🔍 Contains #trigger-search:', aiResponse?.includes('#trigger-search') || false);
-        console.log('🔍 First 500 chars:', aiResponse?.substring(0, 500));
-        console.log('🔍 Last 500 chars:', aiResponse?.substring(Math.max(0, (aiResponse?.length || 0) - 500)));
-        console.log('🔍 ═══════════════════════════════════════════════════');
-
+        
         // Clean up prompt leakage
         aiResponse = aiResponse.replace(/\([^)]*script[^)]*\)/gi, '')
         aiResponse = aiResponse.replace(/\[[^\]]*script[^\]]*\]/gi, '')
@@ -2174,78 +2060,8 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         `The import continues in the background while you review. You'll see new prospects stream in every 30-45 seconds.`
     }
 
-    // ================================================================
-    // 🚀 DIRECT SEARCH EXECUTION (Dec 12, 2025)
-    // Bypass LLM trigger output - parse user message directly
-    // The LLM keeps hallucinating success messages without outputting #trigger-search
-    // ================================================================
-    const directSearchCriteria = parseDirectSearchRequest(content);
-    if (directSearchCriteria && !savedSearchMatch) {
-      console.log('🚀 ═══════════════════════════════════════════════════');
-      console.log('🚀 DIRECT SEARCH EXECUTION - Bypassing LLM trigger');
-      console.log('🚀 Parsed criteria from user message:', JSON.stringify(directSearchCriteria, null, 2));
-      console.log('🚀 ═══════════════════════════════════════════════════');
-
-      try {
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com';
-        const searchUrl = `${baseUrl}/api/linkedin/search/simple`;
-
-        const requestHeaders = {
-          'Content-Type': 'application/json',
-          'X-Internal-Auth': 'true',
-          'X-User-Id': user.id,
-          'X-Workspace-Id': workspaceId
-        };
-
-        const searchResponse = await fetch(searchUrl, {
-          method: 'POST',
-          headers: requestHeaders,
-          body: JSON.stringify({
-            search_criteria: directSearchCriteria,
-            target_count: directSearchCriteria.targetCount || 500,
-            max_pages: 5 // 500 results max to fit timeout
-          })
-        });
-
-        const searchData = await searchResponse.json();
-        console.log('🚀 Direct search result:', { success: searchData.success, count: searchData.count });
-
-        if (searchData.success) {
-          aiResponse = `✅ **Search Complete!** Found **${searchData.count || 0}** ${directSearchCriteria.title || 'prospects'}${directSearchCriteria.company ? ` at ${directSearchCriteria.company}` : ''} from your ${directSearchCriteria.connectionDegree || '2nd'} degree network.\n\n` +
-            `Head to **Data Approval** to review and approve the prospects.\n\n` +
-            `📊 **Ready to review:** ${searchData.count || 0} prospects`;
-        } else {
-          aiResponse = `⚠️ **Search issue:** ${searchData.error || 'Technical error'}. Try heading to **Data Approval** and entering criteria directly.`;
-        }
-
-        // Skip the normal LLM response processing
-        const { data: assistantMessage } = await supabase
-          .from('sam_conversation_messages')
-          .insert({
-            thread_id: resolvedParams.threadId,
-            user_id: user.id,
-            role: 'assistant',
-            content: aiResponse,
-            message_order: nextOrder + 1
-          })
-          .select()
-          .single();
-
-        return NextResponse.json({
-          success: true,
-          userMessage,
-          samMessage: assistantMessage
-        });
-      } catch (error) {
-        console.error('🚀 Direct search failed:', error);
-        // Fall through to normal LLM processing
-      }
-    }
-
     // Check if SAM's AI response contains a search trigger and execute it
-    // Use a more robust pattern that handles nested braces
-    // Match #trigger-search: followed by JSON object (handles 1 level of nesting)
-    const triggerSearchMatch = aiResponse.match(/#trigger-search:(\{(?:[^{}]|\{[^{}]*\})*\})/i)
+    const triggerSearchMatch = aiResponse.match(/#trigger-search:(\{[^}]+\})/i)
     if (triggerSearchMatch && !savedSearchMatch) {
       console.log('🔄 Detected search trigger in SAM response:', triggerSearchMatch[1])
 
@@ -2255,18 +2071,15 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         console.log('🔍 [2/8] Parsed searchCriteria from trigger:', JSON.stringify(searchCriteria, null, 2))
 
         // CRITICAL VALIDATION: Ensure campaignName and connectionDegree are present
-        // Nested-brace-aware regex for replacing triggers
-        const triggerReplaceRegex = /#trigger-search:\{(?:[^{}]|\{[^{}]*\})*\}/i;
-
         if (!searchCriteria.campaignName) {
           console.error('❌ Search trigger missing campaignName - SAM should have asked for it first')
-          aiResponse = aiResponse.replace(triggerReplaceRegex,
+          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
             '\n\n⚠️ **Oops!** I need a campaign name before I can start the search. What would you like to call this search?'
           ).trim()
           // Don't execute the search, let SAM ask for the campaign name
         } else if (!searchCriteria.connectionDegree) {
           console.error('❌ Search trigger missing connectionDegree - SAM should have asked for it first')
-          aiResponse = aiResponse.replace(triggerReplaceRegex,
+          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
             '\n\n⚠️ **Hold on!** I need to know what connection degree to target (1st, 2nd, or 3rd). Which would you like?'
           ).trim()
           // Don't execute the search, let SAM ask for connection degree
@@ -2329,14 +2142,14 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           });
 
           if (searchData.success) {
-            aiResponse = aiResponse.replace(triggerReplaceRegex,
+            aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
               `\n\n✅ **Search Complete!** Found **${searchData.count || 0}** ${searchCriteria.title || 'prospects'}${searchCriteria.keywords ? ` matching "${searchCriteria.keywords}"` : ''} from your ${searchCriteria.connectionDegree || '2nd'} degree network.\n\n` +
               `Head to **Data Approval** to review and approve the prospects.\n\n` +
               `📊 **Ready to review:** ${searchData.count || 0} prospects`
             ).trim();
           } else {
             console.error('❌ Search failed:', searchData.error);
-            aiResponse = aiResponse.replace(triggerReplaceRegex,
+            aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
               `\n\n⚠️ **Search issue:** ${searchData.error || 'Technical error'}. Try heading to **Data Approval** and entering criteria directly.`
             ).trim();
           }
@@ -2361,8 +2174,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
 
         // Replace trigger with error message
         const errorMsg = '\n\n❌ **Search Failed:** Technical error while starting the search. Try heading to the **Data Approval** tab and entering your criteria directly.';
-        const errorTriggerRegex = /#trigger-search:\{(?:[^{}]|\{[^{}]*\})*\}/i;
-        aiResponse = aiResponse.replace(errorTriggerRegex, errorMsg).trim();
+        aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim();
 
         // CRITICAL: Also remove the success text that was already added
         // Remove "Campaign: YYYYMMDD-..." lines
