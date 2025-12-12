@@ -142,6 +142,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     checkReachInboxConfig();
   }, []);
 
+  // Campaign validation state
+  const [campaignValidations, setCampaignValidations] = useState<Record<string, any>>({});
+  const [validationInProgress, setValidationInProgress] = useState(false);
+
   console.log('🏢 [CAMPAIGN HUB] Workspace ID being used:', actualWorkspaceId, 'from prop:', workspaceId);
 
   // REACT QUERY: Fetch and cache campaigns
@@ -183,6 +187,74 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
     return () => window.removeEventListener('refreshCampaigns', handleRefresh);
   }, [refetch]);
+
+  // Auto-validate campaigns when they load (runs in background, doesn't block UI)
+  useEffect(() => {
+    const validateCampaigns = async () => {
+      // Only validate active/draft campaigns, not completed ones
+      const campaignsToValidate = campaigns.filter((c: any) =>
+        ['active', 'draft', 'paused', 'scheduled'].includes(c.status)
+      );
+
+      if (campaignsToValidate.length === 0) return;
+
+      setValidationInProgress(true);
+
+      try {
+        const response = await fetch('/api/campaigns/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaignIds: campaignsToValidate.map((c: any) => c.id),
+            autoFix: true // Auto-fix issues where possible
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log(`🔍 Campaign validation: ${result.summary.total_issues} issues, ${result.summary.total_auto_fixed} auto-fixed`);
+
+          // Store validations by campaign ID
+          const validationMap: Record<string, any> = {};
+          (result.validations || []).forEach((v: any) => {
+            validationMap[v.campaign_id] = v;
+          });
+          setCampaignValidations(validationMap);
+
+          // Show toast if there are blocking errors
+          if (result.summary.has_blocking_errors) {
+            const errorCampaigns = result.validations
+              .filter((v: any) => v.issues.some((i: any) => i.type === 'error'))
+              .map((v: any) => v.campaign_name);
+
+            if (errorCampaigns.length > 0) {
+              toastWarning(
+                `${errorCampaigns.length} campaign(s) have issues: ${errorCampaigns.slice(0, 2).join(', ')}${errorCampaigns.length > 2 ? '...' : ''}`
+              );
+            }
+          }
+
+          // Show success toast if auto-fixes were applied
+          if (result.summary.total_auto_fixed > 0) {
+            toastInfo(`Auto-fixed ${result.summary.total_auto_fixed} campaign issue(s)`);
+            // Refetch campaigns to show updated data
+            refetch();
+          }
+        }
+      } catch (error) {
+        console.error('Campaign validation error:', error);
+        // Don't show error to user - validation is a background task
+      } finally {
+        setValidationInProgress(false);
+      }
+    };
+
+    // Run validation after campaigns load (with small delay to not block initial render)
+    if (campaigns.length > 0 && !loading) {
+      const timeoutId = setTimeout(validateCampaigns, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [campaigns, loading, refetch]);
 
   // REACT QUERY: Mutation for toggling campaign status
   const toggleStatusMutation = useMutation({
@@ -9212,7 +9284,31 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                         <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-purple-500"></div>
                           <div>
-                            <div className="text-white font-medium">{campaign.name}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-medium">{campaign.name}</span>
+                              {/* Validation indicator */}
+                              {campaignValidations[campaign.id] && !campaignValidations[campaign.id].is_valid && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400 cursor-help"
+                                  title={campaignValidations[campaign.id].issues
+                                    .filter((i: any) => i.type === 'error')
+                                    .map((i: any) => i.message)
+                                    .join(', ') || 'Campaign has issues'}
+                                >
+                                  <AlertTriangle size={12} />
+                                  {campaignValidations[campaign.id].issues.filter((i: any) => i.type === 'error').length} issue{campaignValidations[campaign.id].issues.filter((i: any) => i.type === 'error').length !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {campaignValidations[campaign.id]?.auto_fixed?.length > 0 && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400"
+                                  title={`Auto-fixed: ${campaignValidations[campaign.id].auto_fixed.join(', ')}`}
+                                >
+                                  <Sparkles size={12} />
+                                  Fixed
+                                </span>
+                              )}
+                            </div>
                             <div className="text-gray-400 text-sm">Created {new Date(campaign.created_at).toLocaleDateString()}</div>
                           </div>
                         </div>
