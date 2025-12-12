@@ -803,27 +803,23 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Page ${pagesFetched}: Got ${pageItems.length} results (total: ${allItems.length}/${totalAvailable})`);
 
       // Update cursor for next page
-      currentCursor = pageData.paging?.cursor || null;
+      // CRITICAL FIX: Cursor is at ROOT level of response, NOT inside paging object
+      // Response structure: { cursor: "...", items: [...], paging: {start, page_count, total_count} }
+      currentCursor = pageData.cursor || null;
 
-      // DEBUG: Log pagination details - FULL paging object from Unipile
-      console.log('🔵 PAGINATION DEBUG - Full paging object:', JSON.stringify(pageData.paging, null, 2));
+      // DEBUG: Log pagination details - ROOT level cursor + paging object
+      console.log('🔵 PAGINATION DEBUG - Root cursor:', pageData.cursor ? 'PRESENT' : 'NULL');
+      console.log('🔵 PAGINATION DEBUG - Paging object:', JSON.stringify(pageData.paging, null, 2));
       console.log('🔵 PAGINATION DEBUG:', {
         cursor: currentCursor ? currentCursor.substring(0, 50) + '...' : 'NO CURSOR',
         hasCursor: !!currentCursor,
         totalItems: allItems.length,
+        totalAvailableFromAPI: totalAvailable,
         effectiveMax: effectiveMaxResults,
         reachedMax: allItems.length >= effectiveMaxResults,
         fetchAllEnabled: fetch_all,
         pagesFetched,
-        willContinue: !(!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50),
-        // Also check alternate cursor field names that Unipile might use
-        altCursors: {
-          next_cursor: pageData.paging?.next_cursor,
-          nextCursor: pageData.paging?.nextCursor,
-          next: pageData.paging?.next,
-          continuation: pageData.paging?.continuation,
-          offset: pageData.paging?.offset
-        }
+        willContinue: !(!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50)
       });
 
       // Stop conditions:
