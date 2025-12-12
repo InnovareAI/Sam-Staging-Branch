@@ -567,17 +567,15 @@ function ChannelSelector({ workspaceId, currentChannel }: { workspaceId: string;
           className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">Select a channel...</option>
-          {channels.filter(c => c.is_member).map((channel) => (
+          {channels.map((channel) => (
             <option key={channel.id} value={channel.id}>
-              {channel.is_private ? '🔒' : '#'} {channel.name}
+              {channel.is_private ? '🔒' : '#'} {channel.name} {!channel.is_member ? '(invite @SAM first)' : ''}
             </option>
           ))}
         </select>
-        {channels.filter(c => !c.is_member).length > 0 && (
-          <p className="text-xs text-muted-foreground mt-2">
-            Note: Only showing channels where the SAM bot is a member. Invite @SAM to other channels to use them.
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground mt-2">
+          SAM will auto-join public channels when posting. For private channels, invite @SAM first.
+        </p>
       </div>
 
       <div className="flex gap-2">
@@ -601,12 +599,12 @@ function ChannelSelector({ workspaceId, currentChannel }: { workspaceId: string;
       <div className="space-y-2 mt-4">
         <h4 className="text-sm font-medium">Available Channels</h4>
         <div className="max-h-40 overflow-y-auto space-y-1 bg-muted/30 rounded-lg p-2">
-          {channels.filter(c => c.is_member).length === 0 ? (
+          {channels.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-2">
-              No channels available. Invite SAM bot to a channel first.
+              No channels found in your Slack workspace.
             </p>
           ) : (
-            channels.filter(c => c.is_member).map((channel) => (
+            channels.map((channel) => (
               <div
                 key={channel.id}
                 onClick={() => setSelectedChannel(channel.id)}
@@ -619,6 +617,7 @@ function ChannelSelector({ workspaceId, currentChannel }: { workspaceId: string;
                 <Hash className="h-4 w-4" />
                 <span className="text-sm">{channel.name}</span>
                 {channel.is_private && <span className="text-xs text-muted-foreground">(private)</span>}
+                {channel.is_member && <span className="text-xs text-green-500">(joined)</span>}
                 {selectedChannel === channel.id && (
                   <CheckCircle className="h-4 w-4 text-primary ml-auto" />
                 )}
