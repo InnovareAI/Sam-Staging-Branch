@@ -805,7 +805,8 @@ export async function POST(request: NextRequest) {
       // Update cursor for next page
       currentCursor = pageData.paging?.cursor || null;
 
-      // DEBUG: Log pagination details
+      // DEBUG: Log pagination details - FULL paging object from Unipile
+      console.log('🔵 PAGINATION DEBUG - Full paging object:', JSON.stringify(pageData.paging, null, 2));
       console.log('🔵 PAGINATION DEBUG:', {
         cursor: currentCursor ? currentCursor.substring(0, 50) + '...' : 'NO CURSOR',
         hasCursor: !!currentCursor,
@@ -814,7 +815,15 @@ export async function POST(request: NextRequest) {
         reachedMax: allItems.length >= effectiveMaxResults,
         fetchAllEnabled: fetch_all,
         pagesFetched,
-        willContinue: !(!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50)
+        willContinue: !(!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50),
+        // Also check alternate cursor field names that Unipile might use
+        altCursors: {
+          next_cursor: pageData.paging?.next_cursor,
+          nextCursor: pageData.paging?.nextCursor,
+          next: pageData.paging?.next,
+          continuation: pageData.paging?.continuation,
+          offset: pageData.paging?.offset
+        }
       });
 
       // Stop conditions:
