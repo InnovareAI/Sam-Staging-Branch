@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiError, handleApiError } from '@/lib/api-error-handler';
 
+// Extend function timeout to 60 seconds for AI generation
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const { message } = await req.json();

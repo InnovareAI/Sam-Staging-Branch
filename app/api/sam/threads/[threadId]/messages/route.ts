@@ -1,9 +1,12 @@
 /**
  * SAM AI Thread Messages API
- * 
+ *
  * Handles messages within conversation threads with enhanced prospect intelligence
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// Extend function timeout to 60 seconds for AI generation and prospect search
+export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
