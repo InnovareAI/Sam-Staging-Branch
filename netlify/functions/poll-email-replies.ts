@@ -6,7 +6,7 @@
  * Triggers SAM Reply Agent for AI-generated response drafts
  *
  * Runs every 15 minutes
- * Schedule: "*/15 * * * *" (see netlify.toml)
+ * Schedule: every 15 minutes (see netlify.toml)
  */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
