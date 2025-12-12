@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin } from '@/app/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,8 +13,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update integration status to inactive
-    const { error } = await supabase
+    // Update slack_app_config status to inactive (this is the main table used for status checks)
+    const { error: appConfigError } = await supabaseAdmin()
+      .from('slack_app_config')
+      .update({
+        status: 'inactive',
+        updated_at: new Date().toISOString()
+      })
+      .eq('workspace_id', workspace_id);
+
+    if (appConfigError) {
+      console.error('Error disconnecting Slack app config:', appConfigError);
+    }
+
+    // Also update workspace_integrations for backward compatibility
+    const { error: integrationError } = await supabaseAdmin()
       .from('workspace_integrations')
       .update({
         status: 'inactive',
@@ -29,9 +37,8 @@ export async function POST(request: NextRequest) {
       .eq('workspace_id', workspace_id)
       .eq('integration_type', 'slack');
 
-    if (error) {
-      console.error('Error disconnecting Slack:', error);
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    if (integrationError) {
+      console.error('Error disconnecting workspace integration:', integrationError);
     }
 
     return NextResponse.json({

@@ -675,9 +675,14 @@ function AppSetup({
   copied: string | null;
   workspaceId: string;
 }) {
+  const slackClientId = process.env.NEXT_PUBLIC_SLACK_CLIENT_ID;
+  const redirectUri = 'https://app.meet-sam.com/api/integrations/slack/oauth-callback';
+  const scopes = 'channels:read,chat:write,commands,users:read,groups:read,im:read,mpim:read';
+  const oauthUrl = `https://slack.com/oauth/v2/authorize?client_id=${slackClientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${workspaceId}`;
+
   return (
     <>
-      {/* Simple Setup Instructions */}
+      {/* Add to Slack Button */}
       <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-purple-600/20 rounded-full flex items-center justify-center">
@@ -685,27 +690,23 @@ function AppSetup({
           </div>
           <div>
             <h3 className="font-semibold text-lg text-purple-400">Connect SAM to Slack</h3>
-            <p className="text-sm text-muted-foreground">Two simple steps to get started</p>
+            <p className="text-sm text-muted-foreground">One click to get started</p>
           </div>
         </div>
 
-        <ol className="text-sm space-y-3 list-decimal list-inside">
-          <li className="text-foreground">
-            <strong>Invite SAM to your channel:</strong>
-            <div className="ml-5 mt-1 bg-muted/50 rounded p-2 font-mono text-xs">
-              /invite @SAM
-            </div>
-            <p className="ml-5 mt-1 text-muted-foreground text-xs">
-              Type this in any Slack channel where you want to receive SAM notifications
-            </p>
-          </li>
-          <li className="text-foreground">
-            <strong>Select your notification channel:</strong>
-            <p className="ml-5 text-muted-foreground text-xs">
-              After inviting SAM, click the <strong>Channels</strong> tab above to choose your default channel
-            </p>
-          </li>
-        </ol>
+        <a
+          href={oauthUrl}
+          className="w-full bg-[#4A154B] hover:bg-[#3a1039] text-white font-medium py-3 px-4 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+        >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+          </svg>
+          Add to Slack
+        </a>
+
+        <p className="text-xs text-muted-foreground text-center">
+          You'll be redirected to Slack to authorize SAM for your workspace
+        </p>
       </div>
 
       {/* What you get */}
