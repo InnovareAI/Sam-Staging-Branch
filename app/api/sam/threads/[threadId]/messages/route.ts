@@ -2061,7 +2061,9 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
     }
 
     // Check if SAM's AI response contains a search trigger and execute it
-    const triggerSearchMatch = aiResponse.match(/#trigger-search:(\{[^}]+\})/i)
+    // Use a more robust pattern that handles nested braces
+    // Match #trigger-search: followed by JSON object (handles 1 level of nesting)
+    const triggerSearchMatch = aiResponse.match(/#trigger-search:(\{(?:[^{}]|\{[^{}]*\})*\})/i)
     if (triggerSearchMatch && !savedSearchMatch) {
       console.log('🔄 Detected search trigger in SAM response:', triggerSearchMatch[1])
 
@@ -2071,15 +2073,18 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         console.log('🔍 [2/8] Parsed searchCriteria from trigger:', JSON.stringify(searchCriteria, null, 2))
 
         // CRITICAL VALIDATION: Ensure campaignName and connectionDegree are present
+        // Nested-brace-aware regex for replacing triggers
+        const triggerReplaceRegex = /#trigger-search:\{(?:[^{}]|\{[^{}]*\})*\}/i;
+
         if (!searchCriteria.campaignName) {
           console.error('❌ Search trigger missing campaignName - SAM should have asked for it first')
-          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
+          aiResponse = aiResponse.replace(triggerReplaceRegex,
             '\n\n⚠️ **Oops!** I need a campaign name before I can start the search. What would you like to call this search?'
           ).trim()
           // Don't execute the search, let SAM ask for the campaign name
         } else if (!searchCriteria.connectionDegree) {
           console.error('❌ Search trigger missing connectionDegree - SAM should have asked for it first')
-          aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
+          aiResponse = aiResponse.replace(triggerReplaceRegex,
             '\n\n⚠️ **Hold on!** I need to know what connection degree to target (1st, 2nd, or 3rd). Which would you like?'
           ).trim()
           // Don't execute the search, let SAM ask for connection degree
@@ -2142,14 +2147,14 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           });
 
           if (searchData.success) {
-            aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
+            aiResponse = aiResponse.replace(triggerReplaceRegex,
               `\n\n✅ **Search Complete!** Found **${searchData.count || 0}** ${searchCriteria.title || 'prospects'}${searchCriteria.keywords ? ` matching "${searchCriteria.keywords}"` : ''} from your ${searchCriteria.connectionDegree || '2nd'} degree network.\n\n` +
               `Head to **Data Approval** to review and approve the prospects.\n\n` +
               `📊 **Ready to review:** ${searchData.count || 0} prospects`
             ).trim();
           } else {
             console.error('❌ Search failed:', searchData.error);
-            aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i,
+            aiResponse = aiResponse.replace(triggerReplaceRegex,
               `\n\n⚠️ **Search issue:** ${searchData.error || 'Technical error'}. Try heading to **Data Approval** and entering criteria directly.`
             ).trim();
           }
@@ -2174,7 +2179,8 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
 
         // Replace trigger with error message
         const errorMsg = '\n\n❌ **Search Failed:** Technical error while starting the search. Try heading to the **Data Approval** tab and entering your criteria directly.';
-        aiResponse = aiResponse.replace(/#trigger-search:\{[^}]+\}/i, errorMsg).trim();
+        const errorTriggerRegex = /#trigger-search:\{(?:[^{}]|\{[^{}]*\})*\}/i;
+        aiResponse = aiResponse.replace(errorTriggerRegex, errorMsg).trim();
 
         // CRITICAL: Also remove the success text that was already added
         // Remove "Campaign: YYYYMMDD-..." lines
