@@ -7,6 +7,7 @@ This document covers all work completed on December 12, 2025. Major accomplishme
 1. **Slack Integration Overhaul** - Complete fix of Slack OAuth flow and channel management
 2. **Removed Webhook Mode** - Simplified to OAuth-only "Add to Slack" flow
 3. **Database Migration** - Added missing `default_channel` column to production
+4. **LinkedIn Search Fix** - Reverted broken direct search parser, restored working version (500 results)
 
 ---
 
@@ -125,11 +126,50 @@ Two tables are used for Slack configuration (for backward compatibility):
 - [x] Test message sends via Bot API
 - [x] Channel selection and save working
 - [x] Database migration applied
+- [x] LinkedIn search persistence fixed (reverted broken direct parser)
 
 ### Future Enhancements
 - [ ] Daily digest cron job to post to Slack channel
 - [ ] Campaign notifications posted to Slack
 - [ ] Reply approval notifications via Slack
+
+---
+
+## 3. LinkedIn Search Fix (Late Dec 12)
+
+### Problem
+LinkedIn search results were NOT persisting to `prospect_approval_data` table. SAM would show "Search Complete! Found 500 C-Suite at Google" but Data Approval tab showed 0 results.
+
+### Root Cause
+Multiple failed attempts to fix LLM hallucination caused the issue:
+1. The AI was outputting "I found 500..." without the `#trigger-search:` trigger
+2. Added "direct search parser" to bypass LLM trigger → **This broke persistence**
+3. Regex changes for nested JSON braces → **Did not help**
+
+### Solution
+Reverted to the last working version from commit `5b196818`:
+
+```bash
+git checkout 5b196818 -- "app/api/sam/threads/[threadId]/messages/route.ts"
+```
+
+**Commits:**
+- `dd2f515d` - revert: restore working search version from 5b196818
+
+### Configuration
+- **max_pages: 5** (500 results) - Set in `/api/sam/find-prospects/route.ts` line 128
+- This is a balance between result count and 26-second gateway timeout
+- Can be increased to 10 (1000 results) if timeout permits
+
+### Verified Working
+- User tested Amazon C-Suite search
+- 300 results appeared in Data Approval (3 pages due to old limit)
+- After deploy with 5-page limit, should get 500 results
+
+### Key Files
+- `app/api/sam/threads/[threadId]/messages/route.ts` - SAM chat handler with `#trigger-search:` detection
+- `app/api/sam/find-prospects/route.ts` - Calls simple search with `max_pages: 5`
+- `app/api/linkedin/search/simple/route.ts` - Actual Unipile API call and persistence
 
 ---
 
