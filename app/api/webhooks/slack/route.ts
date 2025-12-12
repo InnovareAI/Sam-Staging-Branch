@@ -97,7 +97,33 @@ async function handleSlashCommand(body: any): Promise<NextResponse> {
 
   console.log(`[Slack] Slash command: ${command} "${text}" from ${userId}`);
 
-  // Find workspace by Slack team ID
+  // Handle /sam-help immediately without DB lookup (for speed)
+  if (command === '/sam-help') {
+    return NextResponse.json({
+      response_type: 'ephemeral',
+      blocks: [
+        { type: 'header', text: { type: 'plain_text', text: 'SAM Commands', emoji: true } },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: '*Available Commands:*\n' +
+              '`/sam-status` - Check SAM connection status\n' +
+              '`/sam-campaigns` - View active campaigns\n' +
+              '`/sam-ask [question]` - Ask SAM a question\n' +
+              '`/sam-help` - Show this help message\n\n' +
+              '*Interactive Features:*\n' +
+              'You can also:\n' +
+              '- Approve/reject comments and follow-ups via buttons\n' +
+              '- Get real-time notifications for new replies\n' +
+              '- Receive daily campaign summaries',
+          },
+        },
+      ],
+    });
+  }
+
+  // Find workspace by Slack team ID (for commands that need it)
   const workspace = await findWorkspaceBySlackTeam(teamId);
 
   switch (command) {
@@ -175,30 +201,6 @@ async function handleSlashCommand(body: any): Promise<NextResponse> {
           {
             type: 'context',
             elements: [{ type: 'mrkdwn', text: 'SAM is thinking... Reply will appear in this thread.' }],
-          },
-        ],
-      });
-
-    case '/sam-help':
-      return NextResponse.json({
-        response_type: 'ephemeral',
-        blocks: [
-          { type: 'header', text: { type: 'plain_text', text: 'SAM Commands', emoji: true } },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: '*Available Commands:*\n' +
-                '`/sam-status` - Check SAM connection status\n' +
-                '`/sam-campaigns` - View active campaigns\n' +
-                '`/sam-ask [question]` - Ask SAM a question\n' +
-                '`/sam-help` - Show this help message\n\n' +
-                '*Interactive Features:*\n' +
-                'You can also:\n' +
-                '- Approve/reject comments and follow-ups via buttons\n' +
-                '- Get real-time notifications for new replies\n' +
-                '- Receive daily campaign summaries',
-            },
           },
         ],
       });
