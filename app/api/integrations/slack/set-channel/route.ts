@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
       console.error('Error updating default channel:', updateError);
       return NextResponse.json({
         success: false,
-        error: 'Failed to update default channel',
+        error: `Failed to update default channel: ${updateError.message}`,
+        details: updateError,
       }, { status: 500 });
     }
 
