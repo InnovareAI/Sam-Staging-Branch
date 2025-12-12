@@ -38,6 +38,70 @@ import { calculateKBHealthScore, getCriticalGapsPrompt, formatKBHealthForSAM } f
 import { updateKBRealtime, getKBProgressMessage } from '@/lib/realtime-kb-updater'
 import { needsValidation } from '@/lib/kb-confidence-calculator'
 
+// ================================================================
+// 🚀 DIRECT SEARCH PARSER (Dec 12, 2025)
+// Parses user messages like "find 500 C-Suite at Google 2nd degree"
+// Bypasses unreliable LLM trigger output
+// ================================================================
+function parseDirectSearchRequest(message: string): any | null {
+  const lowerMsg = message.toLowerCase();
+
+  // Must contain search intent
+  const searchKeywords = ['find', 'search', 'get', 'pull', 'show me', 'looking for'];
+  if (!searchKeywords.some(k => lowerMsg.includes(k))) {
+    return null;
+  }
+
+  // Extract count (e.g., "500", "100")
+  const countMatch = message.match(/\b(\d+)\s*(of|c-suite|ceo|vp|prospects|people|executives)/i);
+  const targetCount = countMatch ? parseInt(countMatch[1]) : 500;
+
+  // Extract title/role (C-Suite, CEO, VP, etc.)
+  let title = '';
+  const titlePatterns = [
+    /\b(c-suite|csuite)\b/i,
+    /\b(ceo|cfo|cto|cmo|coo|cro)\b/i,
+    /\b(vp|vice president)\s*(of\s+)?(sales|marketing|engineering|product|operations|finance)?\b/i,
+    /\b(director|head)\s*(of\s+)?(sales|marketing|engineering|product|operations|finance)?\b/i,
+    /\b(founder|co-founder|cofounder)\b/i,
+    /\b(executive|executives)\b/i
+  ];
+
+  for (const pattern of titlePatterns) {
+    const match = message.match(pattern);
+    if (match) {
+      title = match[0].trim();
+      break;
+    }
+  }
+
+  if (!title) return null; // Must have a title to search
+
+  // Extract company (e.g., "at Google", "from Microsoft")
+  const companyMatch = message.match(/(?:at|from|for)\s+([A-Z][a-zA-Z0-9\s&]+?)(?:\s+(?:from|in|2nd|1st|3rd|degree)|$|,)/);
+  const company = companyMatch ? companyMatch[1].trim() : '';
+
+  // Extract connection degree
+  let connectionDegree = '2nd'; // default
+  if (lowerMsg.includes('1st') || lowerMsg.includes('first')) connectionDegree = '1st';
+  if (lowerMsg.includes('3rd') || lowerMsg.includes('third')) connectionDegree = '3rd';
+
+  // Generate campaign name
+  const today = new Date().toISOString().slice(0,10).replace(/-/g, '');
+  const campaignName = `${today}-${title.replace(/\s+/g, '-')}${company ? `-${company}` : ''}`;
+
+  console.log('🚀 parseDirectSearchRequest result:', { title, company, targetCount, connectionDegree, campaignName });
+
+  return {
+    title,
+    company: company || undefined,
+    keywords: company || title, // Use company name as keywords if available
+    targetCount,
+    connectionDegree,
+    campaignName
+  };
+}
+
 // Helper function to call LLM via router (respects customer preferences)
 async function callLLMRouter(userId: string, messages: any[], systemPrompt: string) {
   try {
@@ -2010,7 +2074,17 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         }))
 
         aiResponse = await callLLMRouter(user.id, messages, systemPrompt)
-        
+
+        // 🔍 DEBUG: Log raw AI response to diagnose trigger detection issues
+        console.log('🔍 ═══════════════════════════════════════════════════');
+        console.log('🔍 RAW AI RESPONSE FROM LLM');
+        console.log('🔍 ═══════════════════════════════════════════════════');
+        console.log('🔍 Length:', aiResponse?.length || 0);
+        console.log('🔍 Contains #trigger-search:', aiResponse?.includes('#trigger-search') || false);
+        console.log('🔍 First 500 chars:', aiResponse?.substring(0, 500));
+        console.log('🔍 Last 500 chars:', aiResponse?.substring(Math.max(0, (aiResponse?.length || 0) - 500)));
+        console.log('🔍 ═══════════════════════════════════════════════════');
+
         // Clean up prompt leakage
         aiResponse = aiResponse.replace(/\([^)]*script[^)]*\)/gi, '')
         aiResponse = aiResponse.replace(/\[[^\]]*script[^\]]*\]/gi, '')
@@ -2058,6 +2132,74 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         `💡 **You can start reviewing immediately** - no need to wait for all prospects!\n\n` +
         `[→ Open Data Approval Tab](${streamUrl})\n\n` +
         `The import continues in the background while you review. You'll see new prospects stream in every 30-45 seconds.`
+    }
+
+    // ================================================================
+    // 🚀 DIRECT SEARCH EXECUTION (Dec 12, 2025)
+    // Bypass LLM trigger output - parse user message directly
+    // The LLM keeps hallucinating success messages without outputting #trigger-search
+    // ================================================================
+    const directSearchCriteria = parseDirectSearchRequest(content);
+    if (directSearchCriteria && !savedSearchMatch) {
+      console.log('🚀 ═══════════════════════════════════════════════════');
+      console.log('🚀 DIRECT SEARCH EXECUTION - Bypassing LLM trigger');
+      console.log('🚀 Parsed criteria from user message:', JSON.stringify(directSearchCriteria, null, 2));
+      console.log('🚀 ═══════════════════════════════════════════════════');
+
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com';
+        const searchUrl = `${baseUrl}/api/linkedin/search/simple`;
+
+        const requestHeaders = {
+          'Content-Type': 'application/json',
+          'X-Internal-Auth': 'true',
+          'X-User-Id': user.id,
+          'X-Workspace-Id': workspaceId
+        };
+
+        const searchResponse = await fetch(searchUrl, {
+          method: 'POST',
+          headers: requestHeaders,
+          body: JSON.stringify({
+            search_criteria: directSearchCriteria,
+            target_count: directSearchCriteria.targetCount || 500,
+            max_pages: 5 // 500 results max to fit timeout
+          })
+        });
+
+        const searchData = await searchResponse.json();
+        console.log('🚀 Direct search result:', { success: searchData.success, count: searchData.count });
+
+        if (searchData.success) {
+          aiResponse = `✅ **Search Complete!** Found **${searchData.count || 0}** ${directSearchCriteria.title || 'prospects'}${directSearchCriteria.company ? ` at ${directSearchCriteria.company}` : ''} from your ${directSearchCriteria.connectionDegree || '2nd'} degree network.\n\n` +
+            `Head to **Data Approval** to review and approve the prospects.\n\n` +
+            `📊 **Ready to review:** ${searchData.count || 0} prospects`;
+        } else {
+          aiResponse = `⚠️ **Search issue:** ${searchData.error || 'Technical error'}. Try heading to **Data Approval** and entering criteria directly.`;
+        }
+
+        // Skip the normal LLM response processing
+        const { data: assistantMessage } = await supabase
+          .from('sam_conversation_messages')
+          .insert({
+            thread_id: resolvedParams.threadId,
+            user_id: user.id,
+            role: 'assistant',
+            content: aiResponse,
+            message_order: nextOrder + 1
+          })
+          .select()
+          .single();
+
+        return NextResponse.json({
+          success: true,
+          userMessage,
+          samMessage: assistantMessage
+        });
+      } catch (error) {
+        console.error('🚀 Direct search failed:', error);
+        // Fall through to normal LLM processing
+      }
     }
 
     // Check if SAM's AI response contains a search trigger and execute it
