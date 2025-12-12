@@ -4825,15 +4825,15 @@ Would you like me to adjust these or create more variations?`
             </p>
 
             {followUpMessages.map((message, index) => {
-              // Helper function to get message label and requirements
+              // Helper function to get message label
               const getMessageLabel = () => {
-                if (index === 0) return 'Message 2 - Must start with "Hello {first_name},"';
-                if (index === 4) return 'Message 6 - Goodbye message (no first name)';
-                return `Message ${index + 2} (no first name)`;
+                if (index === 0) return 'Message 2 (First Follow-up)';
+                if (index === 4) return 'Message 6 (Goodbye message)';
+                return `Message ${index + 2}`;
               };
 
               const getMessagePlaceholder = () => {
-                if (index === 0) return 'Hello {first_name}, [your message here]...';
+                if (index === 0) return 'Your first follow-up message...';
                 if (index === 4) return 'Polite goodbye message leaving door open for future connection...';
                 return `Follow-up message ${index + 2}...`;
               };
@@ -4913,7 +4913,7 @@ Would you like me to adjust these or create more variations?`
                           try {
                             toastInfo(`SAM is improving message ${index + 2}...`);
 
-                            const messageType = index === 0 ? 'Message 2 (must start with "Hello {first_name},")' :
+                            const messageType = index === 0 ? 'Message 2 (first follow-up)' :
                                               index === 4 ? 'Message 6 (goodbye message)' :
                                               `Message ${index + 2}`;
 
@@ -4925,7 +4925,7 @@ Would you like me to adjust these or create more variations?`
                                 campaign_name: name,
                                 campaign_type: 'connector',
                                 prospect_count: csvData.length,
-                                user_input: `Please improve this follow-up message (${messageType}). ${index === 0 ? 'It MUST start with "Hello {first_name},"' : index === 4 ? 'This is a goodbye message - keep it polite and leave the door open.' : 'Make it engaging and valuable.'}\n\nCurrent message:\n"${message}"\n\nMake it more effective while maintaining personalization placeholders.`,
+                                user_input: `Please improve this follow-up message (${messageType}). ${index === 4 ? 'This is a goodbye message - keep it polite and leave the door open.' : 'Make it engaging and valuable.'}\n\nCurrent message:\n"${message}"\n\nMake it more effective while optionally using personalization placeholders like {first_name}, {company_name}, {title}.`,
                                 conversation_history: [],
                                 prospect_sample: csvData.slice(0, 3)
                               })
@@ -5215,15 +5215,15 @@ Would you like me to adjust these or create more variations?`
             </p>
 
             {followUpMessages.map((message, index) => {
-              // Helper function to get message label and requirements
+              // Helper function to get message label
               const getMessageLabel = () => {
-                if (index === 0) return 'Message 2 - Must start with "Hello {first_name},"';
-                if (index === 4) return 'Message 6 - Goodbye message (no first name)';
-                return `Message ${index + 2} (no first name)`;
+                if (index === 0) return 'Message 2 (First Follow-up)';
+                if (index === 4) return 'Message 6 (Goodbye message)';
+                return `Message ${index + 2}`;
               };
 
               const getMessagePlaceholder = () => {
-                if (index === 0) return 'Hello {first_name}, [your message here]...';
+                if (index === 0) return 'Your first follow-up message...';
                 if (index === 4) return 'Polite goodbye message leaving door open for future connection...';
                 return `Follow-up message ${index + 2}...`;
               };
@@ -5303,7 +5303,7 @@ Would you like me to adjust these or create more variations?`
                           try {
                             toastInfo(`SAM is improving message ${index + 2}...`);
 
-                            const messageType = index === 0 ? 'Message 2 (must start with "Hello {first_name},")' :
+                            const messageType = index === 0 ? 'Message 2 (first follow-up)' :
                                               index === 4 ? 'Message 6 (goodbye message)' :
                                               `Message ${index + 2}`;
 
@@ -5315,7 +5315,7 @@ Would you like me to adjust these or create more variations?`
                                 campaign_name: name,
                                 campaign_type: 'messenger',
                                 prospect_count: csvData.length,
-                                user_input: `Please improve this follow-up message for messenger campaign (${messageType}). ${index === 0 ? 'It MUST start with "Hello {first_name},"' : index === 4 ? 'This is a goodbye message - keep it polite and leave the door open.' : 'Make it engaging and valuable.'}\n\nCurrent message:\n"${message}"\n\nMake it more effective while maintaining personalization placeholders.`,
+                                user_input: `Please improve this follow-up message for messenger campaign (${messageType}). ${index === 4 ? 'This is a goodbye message - keep it polite and leave the door open.' : 'Make it engaging and valuable.'}\n\nCurrent message:\n"${message}"\n\nMake it more effective while optionally using personalization placeholders like {first_name}, {company_name}, {title}.`,
                                 conversation_history: [],
                                 prospect_sample: csvData.slice(0, 3)
                               })
