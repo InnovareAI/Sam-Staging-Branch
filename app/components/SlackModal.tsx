@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Hash, CheckCircle, ExternalLink, Copy, Check, Settings, MessageSquare, Bell, Zap } from 'lucide-react';
+import { X, Hash, CheckCircle, Settings, MessageSquare, Bell, Zap } from 'lucide-react';
 import { toastSuccess, toastError } from '@/lib/toast';
 
 interface SlackModalProps {
@@ -10,14 +10,9 @@ interface SlackModalProps {
   workspaceId: string;
 }
 
-type ConnectionMode = 'webhook' | 'app';
-
 interface SlackConfig {
-  mode: ConnectionMode;
-  webhook_url?: string;
+  mode: 'app';
   channel_name?: string;
-  bot_token?: string;
-  signing_secret?: string;
   team_name?: string;
   features_enabled?: {
     notifications: boolean;
@@ -30,17 +25,10 @@ interface SlackConfig {
 export default function SlackModal({ isOpen, onClose, workspaceId }: SlackModalProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [connectionMode, setConnectionMode] = useState<ConnectionMode>('webhook');
-  const [config, setConfig] = useState<SlackConfig>({ mode: 'webhook' });
+  const [config, setConfig] = useState<SlackConfig>({ mode: 'app' });
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'setup' | 'features' | 'channels'>('setup');
-
-  // Form fields
-  const [webhookUrl, setWebhookUrl] = useState('');
-  const [channelName, setChannelName] = useState('');
-  const [botToken, setBotToken] = useState('');
-  const [signingSecret, setSigningSecret] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -56,17 +44,12 @@ export default function SlackModal({ isOpen, onClose, workspaceId }: SlackModalP
 
       if (data.success && data.connected) {
         setIsConnected(true);
-        setConnectionMode(data.mode || 'webhook');
         setConfig({
-          mode: data.mode || 'webhook',
-          webhook_url: data.webhook_url,
+          mode: 'app',
           channel_name: data.channel_name,
-          bot_token: data.has_bot_token ? '••••••••' : undefined,
           team_name: data.team_name,
           features_enabled: data.features_enabled,
         });
-        setWebhookUrl(data.webhook_url || '');
-        setChannelName(data.channel_name || '');
       } else {
         setIsConnected(false);
       }
@@ -74,90 +57,6 @@ export default function SlackModal({ isOpen, onClose, workspaceId }: SlackModalP
       console.error('Failed to check Slack connection:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleSaveWebhook = async () => {
-    if (!webhookUrl.trim()) {
-      toastError('Please enter a Slack webhook URL');
-      return;
-    }
-
-    if (!webhookUrl.includes('hooks.slack.com')) {
-      toastError('Invalid Slack webhook URL');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const response = await fetch('/api/integrations/slack/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspace_id: workspaceId,
-          mode: 'webhook',
-          webhook_url: webhookUrl,
-          channel_name: channelName || '#general'
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setIsConnected(true);
-        setConnectionMode('webhook');
-        toastSuccess('Slack webhook connected!');
-      } else {
-        toastError(data.error || 'Failed to connect Slack');
-      }
-    } catch (error) {
-      toastError('Failed to connect Slack');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveApp = async () => {
-    if (!botToken.trim()) {
-      toastError('Please enter your Bot User OAuth Token');
-      return;
-    }
-
-    if (!botToken.startsWith('xoxb-')) {
-      toastError('Invalid bot token. It should start with xoxb-');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const response = await fetch('/api/integrations/slack/connect-app', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspace_id: workspaceId,
-          mode: 'app',
-          bot_token: botToken,
-          signing_secret: signingSecret,
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setIsConnected(true);
-        setConnectionMode('app');
-        setConfig({
-          ...config,
-          team_name: data.team_name,
-        });
-        toastSuccess('Slack App connected successfully!');
-      } else {
-        toastError(data.error || 'Failed to connect Slack App');
-      }
-    } catch (error) {
-      toastError('Failed to connect Slack App');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -174,11 +73,7 @@ export default function SlackModal({ isOpen, onClose, workspaceId }: SlackModalP
 
       if (data.success) {
         setIsConnected(false);
-        setConfig({ mode: 'webhook' });
-        setWebhookUrl('');
-        setChannelName('');
-        setBotToken('');
-        setSigningSecret('');
+        setConfig({ mode: 'app' });
         toastSuccess('Slack disconnected');
       } else {
         toastError(data.error || 'Failed to disconnect Slack');
@@ -251,7 +146,6 @@ export default function SlackModal({ isOpen, onClose, workspaceId }: SlackModalP
           ) : isConnected ? (
             <ConnectedState
               config={config}
-              connectionMode={connectionMode}
               activeTab={activeTab}
               setActiveTab={setActiveTab}
               onTest={handleTestMessage}
@@ -262,24 +156,7 @@ export default function SlackModal({ isOpen, onClose, workspaceId }: SlackModalP
               workspaceId={workspaceId}
             />
           ) : (
-            <SetupState
-              connectionMode={connectionMode}
-              setConnectionMode={setConnectionMode}
-              webhookUrl={webhookUrl}
-              setWebhookUrl={setWebhookUrl}
-              channelName={channelName}
-              setChannelName={setChannelName}
-              botToken={botToken}
-              setBotToken={setBotToken}
-              signingSecret={signingSecret}
-              setSigningSecret={setSigningSecret}
-              onSaveWebhook={handleSaveWebhook}
-              onSaveApp={handleSaveApp}
-              isSaving={isSaving}
-              copyToClipboard={copyToClipboard}
-              copied={copied}
-              workspaceId={workspaceId}
-            />
+            <SetupState workspaceId={workspaceId} />
           )}
         </div>
 
@@ -303,7 +180,6 @@ export default function SlackModal({ isOpen, onClose, workspaceId }: SlackModalP
 
 function ConnectedState({
   config,
-  connectionMode,
   activeTab,
   setActiveTab,
   onTest,
@@ -314,7 +190,6 @@ function ConnectedState({
   workspaceId,
 }: {
   config: SlackConfig;
-  connectionMode: ConnectionMode;
   activeTab: 'setup' | 'features' | 'channels';
   setActiveTab: (tab: 'setup' | 'features' | 'channels') => void;
   onTest: () => void;
@@ -330,21 +205,15 @@ function ConnectedState({
       <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 flex items-center gap-3">
         <CheckCircle className="h-5 w-5 text-green-500" />
         <div className="flex-1">
-          <div className="font-medium text-green-500">
-            {connectionMode === 'app' ? 'Slack App Connected' : 'Slack Webhook Connected'}
-          </div>
+          <div className="font-medium text-green-500">Slack App Connected</div>
           <div className="text-xs text-muted-foreground">
             {config.team_name && `Team: ${config.team_name} • `}
             {config.channel_name || 'Channel not specified'}
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          {connectionMode === 'app' && (
-            <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded-full">
-              Two-Way
-            </span>
-          )}
-        </div>
+        <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded-full">
+          Two-Way
+        </span>
       </div>
 
       {/* Tabs */}
@@ -389,8 +258,8 @@ function ConnectedState({
             <div className="grid grid-cols-2 gap-2">
               <FeatureBadge icon={Bell} label="Notifications" enabled />
               <FeatureBadge icon={Zap} label="Slash Commands" enabled />
-              <FeatureBadge icon={MessageSquare} label="Two-Way Chat" enabled={connectionMode === 'app'} />
-              <FeatureBadge icon={Settings} label="Interactive Buttons" enabled={connectionMode === 'app'} />
+              <FeatureBadge icon={MessageSquare} label="Two-Way Chat" enabled />
+              <FeatureBadge icon={Settings} label="Interactive Buttons" enabled />
             </div>
           </div>
 
@@ -441,28 +310,24 @@ function ConnectedState({
             </ul>
           </div>
 
-          {connectionMode === 'app' && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">Slash Commands</h3>
-              <div className="bg-muted/50 rounded-lg p-3 space-y-1">
-                <code className="text-xs text-primary block">/sam-status</code>
-                <code className="text-xs text-primary block">/sam-campaigns</code>
-                <code className="text-xs text-primary block">/sam-ask [question]</code>
-                <code className="text-xs text-primary block">/sam-help</code>
-              </div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Slash Commands</h3>
+            <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+              <code className="text-xs text-primary block">/sam-status</code>
+              <code className="text-xs text-primary block">/sam-campaigns</code>
+              <code className="text-xs text-primary block">/sam-ask [question]</code>
+              <code className="text-xs text-primary block">/sam-help</code>
             </div>
-          )}
+          </div>
 
-          {connectionMode === 'app' && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold">Interactive Actions</h3>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>Approve/reject comments with buttons</li>
-                <li>Approve/reject follow-ups with buttons</li>
-                <li>Quick approve with reactions</li>
-              </ul>
-            </div>
-          )}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">Interactive Actions</h3>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>Approve/reject comments with buttons</li>
+              <li>Approve/reject follow-ups with buttons</li>
+              <li>Quick approve with reactions</li>
+            </ul>
+          </div>
         </div>
       )}
 
@@ -481,172 +346,12 @@ function ConnectedState({
 // ============================================================================
 
 function SetupState({
-  connectionMode,
-  setConnectionMode,
-  webhookUrl,
-  setWebhookUrl,
-  channelName,
-  setChannelName,
-  botToken,
-  setBotToken,
-  signingSecret,
-  setSigningSecret,
-  onSaveWebhook,
-  onSaveApp,
-  isSaving,
-  copyToClipboard,
-  copied,
   workspaceId,
 }: {
-  connectionMode: ConnectionMode;
-  setConnectionMode: (mode: ConnectionMode) => void;
-  webhookUrl: string;
-  setWebhookUrl: (url: string) => void;
-  channelName: string;
-  setChannelName: (name: string) => void;
-  botToken: string;
-  setBotToken: (token: string) => void;
-  signingSecret: string;
-  setSigningSecret: (secret: string) => void;
-  onSaveWebhook: () => void;
-  onSaveApp: () => void;
-  isSaving: boolean;
-  copyToClipboard: (text: string, label: string) => void;
-  copied: string | null;
   workspaceId: string;
 }) {
   return (
-    <div className="space-y-4">
-      {/* Mode Selection */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => setConnectionMode('webhook')}
-          className={`p-4 rounded-lg border-2 transition-all text-left ${
-            connectionMode === 'webhook'
-              ? 'border-primary bg-primary/5'
-              : 'border-border hover:border-primary/50'
-          }`}
-        >
-          <Bell className="h-5 w-5 mb-2 text-primary" />
-          <div className="font-medium text-sm">Simple Webhook</div>
-          <div className="text-xs text-muted-foreground">One-way notifications only</div>
-        </button>
-        <button
-          onClick={() => setConnectionMode('app')}
-          className={`p-4 rounded-lg border-2 transition-all text-left ${
-            connectionMode === 'app'
-              ? 'border-primary bg-primary/5'
-              : 'border-border hover:border-primary/50'
-          }`}
-        >
-          <MessageSquare className="h-5 w-5 mb-2 text-purple-500" />
-          <div className="font-medium text-sm">Full Slack App</div>
-          <div className="text-xs text-muted-foreground">Two-way messaging & actions</div>
-        </button>
-      </div>
-
-      {connectionMode === 'webhook' ? (
-        <WebhookSetup
-          webhookUrl={webhookUrl}
-          setWebhookUrl={setWebhookUrl}
-          channelName={channelName}
-          setChannelName={setChannelName}
-          onSave={onSaveWebhook}
-          isSaving={isSaving}
-          copyToClipboard={copyToClipboard}
-          copied={copied}
-        />
-      ) : (
-        <AppSetup
-          botToken={botToken}
-          setBotToken={setBotToken}
-          signingSecret={signingSecret}
-          setSigningSecret={setSigningSecret}
-          onSave={onSaveApp}
-          isSaving={isSaving}
-          copyToClipboard={copyToClipboard}
-          copied={copied}
-          workspaceId={workspaceId}
-        />
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
-// WEBHOOK SETUP COMPONENT
-// ============================================================================
-
-function WebhookSetup({
-  webhookUrl,
-  setWebhookUrl,
-  channelName,
-  setChannelName,
-  onSave,
-  isSaving,
-  copyToClipboard,
-  copied,
-}: {
-  webhookUrl: string;
-  setWebhookUrl: (url: string) => void;
-  channelName: string;
-  setChannelName: (name: string) => void;
-  onSave: () => void;
-  isSaving: boolean;
-  copyToClipboard: (text: string, label: string) => void;
-  copied: string | null;
-}) {
-  return (
-    <>
-      <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-        <h3 className="font-semibold text-sm">Setup Instructions:</h3>
-        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-          <li>Go to your Slack workspace settings</li>
-          <li>Navigate to <strong>Apps</strong> → <strong>Manage</strong> → <strong>Custom Integrations</strong></li>
-          <li>Click <strong>Incoming WebHooks</strong> → <strong>Add Configuration</strong></li>
-          <li>Select the channel for notifications</li>
-          <li>Copy the Webhook URL and paste it below</li>
-        </ol>
-        <a
-          href="https://api.slack.com/messaging/webhooks"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-primary text-sm hover:underline"
-        >
-          Slack Webhooks Documentation <ExternalLink className="h-3 w-3" />
-        </a>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Slack Webhook URL</label>
-        <input
-          type="url"
-          value={webhookUrl}
-          onChange={(e) => setWebhookUrl(e.target.value)}
-          placeholder="https://hooks.slack.com/services/..."
-          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Channel Name (optional)</label>
-        <input
-          type="text"
-          value={channelName}
-          onChange={(e) => setChannelName(e.target.value)}
-          placeholder="#sam-notifications"
-          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-      </div>
-
-      <button
-        onClick={onSave}
-        disabled={isSaving || !webhookUrl.trim()}
-        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isSaving ? 'Connecting...' : 'Connect Webhook'}
-      </button>
-    </>
+    <AppSetup workspaceId={workspaceId} />
   );
 }
 
@@ -654,27 +359,7 @@ function WebhookSetup({
 // APP SETUP COMPONENT
 // ============================================================================
 
-function AppSetup({
-  botToken,
-  setBotToken,
-  signingSecret,
-  setSigningSecret,
-  onSave,
-  isSaving,
-  copyToClipboard,
-  copied,
-  workspaceId,
-}: {
-  botToken: string;
-  setBotToken: (token: string) => void;
-  signingSecret: string;
-  setSigningSecret: (secret: string) => void;
-  onSave: () => void;
-  isSaving: boolean;
-  copyToClipboard: (text: string, label: string) => void;
-  copied: string | null;
-  workspaceId: string;
-}) {
+function AppSetup({ workspaceId }: { workspaceId: string }) {
   const slackClientId = process.env.NEXT_PUBLIC_SLACK_CLIENT_ID;
   const redirectUri = 'https://app.meet-sam.com/api/integrations/slack/oauth-callback';
   const scopes = 'channels:read,chat:write,commands,users:read,groups:read,im:read,mpim:read';
