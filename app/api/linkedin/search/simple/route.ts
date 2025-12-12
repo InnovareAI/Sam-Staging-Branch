@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       throw new Error(`Invalid JSON in request body: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`);
     }
 
-    const { search_criteria, target_count = 50 } = requestBody;
+    const { search_criteria, target_count = 50, fetch_all = true } = requestBody; // fetch_all defaults to true to get all results
 
     console.log('🔵 [SEARCH-4/6] Received search_criteria:', JSON.stringify(search_criteria));
     console.log('🔵 [SEARCH-4a/6] Target count:', target_count);
@@ -716,79 +716,127 @@ export async function POST(request: NextRequest) {
       delete unipilePayload.school;
     }
 
+    // Calculate actual limits based on API type and target_count
+    const apiMaxPerPage = api === 'classic' ? 50 : 100;
+    const apiMaxTotal = api === 'classic' ? 1000 : 2500;
+    const effectiveMaxResults = Math.min(target_count, apiMaxTotal);
+    const perPageLimit = Math.min(target_count, apiMaxPerPage);
+
+    // Auto-pagination: fetch all pages if requested
+    let allItems: any[] = [];
+    let currentCursor: string | null = null;
+    let pagesFetched = 0;
+    let totalAvailable = 0;
+
     console.log('🔵 ═══════════════════════════════════════════════════');
     console.log('🔵 UNIPILE SEARCH REQUEST');
     console.log('🔵 API Type:', api);
-    console.log('🔵 URL:', `${unipileUrl}?${params}`);
+    console.log(`🔵 Auto-pagination: ${fetch_all ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`🔵 Target count: ${target_count}, Effective max: ${effectiveMaxResults}`);
     console.log('🔵 Full Payload:', JSON.stringify(unipilePayload, null, 2));
     console.log('🔵 ═══════════════════════════════════════════════════');
 
-    const response = await fetch(`${unipileUrl}?${params}`, {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': process.env.UNIPILE_API_KEY!,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'  // Per Unipile docs
-      },
-      body: JSON.stringify(unipilePayload)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ ═══════════════════════════════════════════════════');
-      console.error('❌ UNIPILE API ERROR DETAILS');
-      console.error('❌ Status:', response.status);
-      console.error('❌ Status Text:', response.statusText);
-      console.error('❌ Error Body:', errorText);
-      console.error('❌ Request URL:', `${unipileUrl}?${params}`);
-      console.error('❌ Request Payload:', JSON.stringify(unipilePayload, null, 2));
-      console.error('❌ API Key (first 10 chars):', process.env.UNIPILE_API_KEY?.substring(0, 10));
-      console.error('❌ ═══════════════════════════════════════════════════');
-
-      // Parse error if it's JSON
-      let errorDetails = errorText;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorDetails = errorJson.message || errorJson.error || errorText;
-        console.error('❌ Parsed Error:', errorJson);
-      } catch {
-        // Not JSON, use raw text
+    // Pagination loop
+    do {
+      // Build params for this page
+      const pageParams = new URLSearchParams({
+        account_id: linkedinAccount.unipile_account_id,
+        limit: String(perPageLimit)
+      });
+      if (currentCursor) {
+        pageParams.append('cursor', currentCursor);
       }
 
-      return NextResponse.json({
-        success: false,
-        error: `LinkedIn search failed: ${response.status}`,
-        details: errorDetails,
-        debug: {
-          url: `${unipileUrl}?${params}`,
-          payload: unipilePayload,
-          status: response.status
+      console.log(`🔍 Fetching page ${pagesFetched + 1}... (current items: ${allItems.length})`);
+
+      const response = await fetch(`${unipileUrl}?${pageParams}`, {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': process.env.UNIPILE_API_KEY!,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(unipilePayload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ UNIPILE API ERROR on page', pagesFetched + 1);
+        console.error('❌ Status:', response.status, response.statusText);
+        console.error('❌ Error Body:', errorText);
+
+        // If we already have some results, return what we have
+        if (allItems.length > 0) {
+          console.warn(`⚠️ Error on page ${pagesFetched + 1}, returning ${allItems.length} results collected so far`);
+          break;
         }
-      }, { status: 500 });
+
+        // Parse error if it's JSON
+        let errorDetails = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorDetails = errorJson.message || errorJson.error || errorText;
+        } catch {
+          // Not JSON, use raw text
+        }
+
+        return NextResponse.json({
+          success: false,
+          error: `LinkedIn search failed: ${response.status}`,
+          details: errorDetails,
+          debug: {
+            url: `${unipileUrl}?${pageParams}`,
+            payload: unipilePayload,
+            status: response.status
+          }
+        }, { status: 500 });
+      }
+
+      const pageData = await response.json();
+      pagesFetched++;
+      totalAvailable = pageData.paging?.total_count || totalAvailable;
+
+      // Add items from this page
+      const pageItems = pageData.items || [];
+      allItems = allItems.concat(pageItems);
+
+      console.log(`✅ Page ${pagesFetched}: Got ${pageItems.length} results (total: ${allItems.length}/${totalAvailable})`);
+
+      // Update cursor for next page
+      currentCursor = pageData.paging?.cursor || null;
+
+      // Stop conditions:
+      // 1. No more pages (no cursor)
+      // 2. Reached target_count limit
+      // 3. Not in fetch_all mode (only fetch first page)
+      // 4. Safety limit: max 50 pages
+      if (!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50) {
+        break;
+      }
+
+      // Rate limiting: wait 500ms between requests
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+    } while (true);
+
+    // Trim to max results if we fetched more
+    if (allItems.length > effectiveMaxResults) {
+      allItems = allItems.slice(0, effectiveMaxResults);
     }
 
-    const data = await response.json();
     console.log('🔵 ═══════════════════════════════════════════════════');
-    console.log('🔵 UNIPILE RESPONSE');
-    console.log('🔵 Status:', response.status);
-    console.log('🔵 Items returned:', data.items?.length || 0);
-    console.log('🔵 Response preview:', JSON.stringify(data).substring(0, 500));
+    console.log('🔵 PAGINATION COMPLETE');
+    console.log(`🔵 Total items: ${allItems.length} in ${pagesFetched} page(s)`);
+    console.log(`🔵 Total available: ${totalAvailable}`);
     console.log('🔵 ═══════════════════════════════════════════════════');
-    
+
+    // Use allItems as data.items for the rest of the processing
+    const data = { items: allItems, paging: { total_count: totalAvailable, pages_fetched: pagesFetched } };
+
     // Log sample item structure to debug data issues
     if (data.items && data.items.length > 0) {
       console.log('🔵 Sample prospect structure:', JSON.stringify(data.items[0], null, 2));
       console.log('🔵 Available fields in first item:', Object.keys(data.items[0]));
-      console.log('🔵 All prospect connection degrees:', data.items.map((item: any, idx: number) => ({
-        index: idx,
-        name: item.name || `${item.first_name} ${item.last_name}`,
-        company: item.company || item.company_name || item.current_positions?.[0]?.company || 'N/A',
-        industry: item.industry || item.current_positions?.[0]?.industry || 'N/A',
-        headline: item.headline?.substring(0, 50) || 'N/A',
-        network: item.network,
-        distance: item.distance,
-        network_distance: item.network_distance
-      })));
     }
 
     // Keep networkToNumber for parsing response data
@@ -1270,6 +1318,9 @@ export async function POST(request: NextRequest) {
       prospects: validProspects,
       count: validProspects.length,
       total_found: prospects.length,
+      total_available: totalAvailable,
+      pages_fetched: pagesFetched,
+      fetch_all_enabled: fetch_all,
       api: api,
       session_id: sessionId,
       persistence_warnings: persistenceErrors.length > 0 ? persistenceErrors : undefined,
