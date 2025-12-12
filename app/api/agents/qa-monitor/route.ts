@@ -109,6 +109,13 @@ export async function POST(request: NextRequest) {
     const stuckCampaignCheck = await checkStuckCampaigns(supabase);
     allChecks.push(stuckCampaignCheck);
 
+    // AUTO-FIX: Queue approved prospects that were never added to send_queue
+    if (stuckCampaignCheck.affected_records && stuckCampaignCheck.affected_records > 0) {
+      console.log(`🔧 Auto-fixing ${stuckCampaignCheck.affected_records} stuck campaigns...`);
+      const fix = await autoFixStuckCampaigns(supabase);
+      autoFixes.push(fix);
+    }
+
     // 4. Message Status vs Unipile Sync
     const syncCheck = await checkUnipileSyncStatus(supabase);
     allChecks.push(syncCheck);
@@ -1656,6 +1663,180 @@ async function autoFixMissingWorkspaceAccounts(supabase: any): Promise<AutoFixRe
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       details: 'Failed to sync missing workspace accounts'
+    };
+  }
+}
+
+/**
+ * AUTO-FIX: Fix stuck campaigns by queueing approved prospects
+ *
+ * Two types of stuck campaigns:
+ * 1. Queue items overdue (pending in send_queue but scheduled_for > 2 hours ago)
+ *    - Fix: Call process-send-queue to retry processing
+ * 2. Approved not queued (prospects approved but never added to send_queue)
+ *    - Fix: Call queue-pending-prospects to create queue records
+ */
+async function autoFixStuckCampaigns(supabase: any): Promise<AutoFixResult> {
+  try {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    let fixedCount = 0;
+    const fixDetails: string[] = [];
+
+    // 1. Find campaigns with approved prospects not in queue
+    const { data: activeCampaigns } = await supabase
+      .from('campaigns')
+      .select(`
+        id, name, campaign_name, status, linkedin_account_id,
+        message_templates, connection_message, linkedin_config, campaign_type
+      `)
+      .in('status', ['active', 'running']);
+
+    if (!activeCampaigns || activeCampaigns.length === 0) {
+      return {
+        issue: 'Stuck Campaigns',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: 'No active campaigns to fix'
+      };
+    }
+
+    for (const campaign of activeCampaigns) {
+      // Find approved prospects not in queue (stuck for >2 hours)
+      const { data: approvedProspects } = await supabase
+        .from('campaign_prospects')
+        .select('id, first_name, last_name, linkedin_url, linkedin_user_id, company_name, title')
+        .eq('campaign_id', campaign.id)
+        .eq('status', 'approved')
+        .lt('updated_at', twoHoursAgo)
+        .not('linkedin_url', 'is', null);
+
+      if (!approvedProspects || approvedProspects.length === 0) continue;
+
+      // Check which are already in queue
+      const prospectIds = approvedProspects.map((p: any) => p.id);
+      const { data: existingQueue } = await supabase
+        .from('send_queue')
+        .select('prospect_id')
+        .eq('campaign_id', campaign.id)
+        .in('prospect_id', prospectIds);
+
+      const existingIds = new Set((existingQueue || []).map((q: any) => q.prospect_id));
+      const unqueuedProspects = approvedProspects.filter((p: any) => !existingIds.has(p.id));
+
+      if (unqueuedProspects.length === 0) continue;
+
+      // Get message template
+      const linkedinConfig = campaign.linkedin_config as { connection_message?: string } | null;
+      const isMessenger = campaign.campaign_type === 'messenger';
+
+      let messageTemplate: string | null = null;
+      if (isMessenger) {
+        messageTemplate = campaign.message_templates?.direct_message_1 || null;
+      } else {
+        messageTemplate =
+          campaign.message_templates?.connection_request ||
+          campaign.connection_message ||
+          linkedinConfig?.connection_message ||
+          null;
+      }
+
+      if (!messageTemplate) {
+        console.log(`⚠️ Campaign "${campaign.campaign_name || campaign.name}" has no message template - skipping`);
+        continue;
+      }
+
+      // Queue the unqueued prospects with 30-minute spacing
+      const queueRecords = [];
+      const MIN_SPACING_MINUTES = 20;
+      const MAX_SPACING_MINUTES = 45;
+
+      let currentTime = new Date();
+
+      for (const prospect of unqueuedProspects) {
+        // Personalize message
+        let personalizedMessage = messageTemplate;
+        personalizedMessage = personalizedMessage.replace(/\{first_name\}/gi, prospect.first_name || '');
+        personalizedMessage = personalizedMessage.replace(/\{last_name\}/gi, prospect.last_name || '');
+        personalizedMessage = personalizedMessage.replace(/\{company\}/gi, prospect.company_name || '');
+        personalizedMessage = personalizedMessage.replace(/\{title\}/gi, prospect.title || '');
+
+        queueRecords.push({
+          campaign_id: campaign.id,
+          prospect_id: prospect.id,
+          linkedin_user_id: prospect.linkedin_url,
+          message: personalizedMessage.trim(),
+          scheduled_for: currentTime.toISOString(),
+          status: 'pending',
+          message_type: isMessenger ? 'direct_message_1' : 'connection_request'
+        });
+
+        // Add random spacing for next prospect
+        const spacingMinutes = MIN_SPACING_MINUTES + Math.floor(Math.random() * (MAX_SPACING_MINUTES - MIN_SPACING_MINUTES + 1));
+        currentTime = new Date(currentTime.getTime() + spacingMinutes * 60 * 1000);
+      }
+
+      // Insert queue records
+      const { data: inserted, error: insertError } = await supabase
+        .from('send_queue')
+        .insert(queueRecords)
+        .select('id');
+
+      if (insertError) {
+        console.error(`❌ Failed to queue prospects for ${campaign.campaign_name || campaign.name}:`, insertError.message);
+        fixDetails.push(`❌ ${campaign.campaign_name || campaign.name}: Insert failed - ${insertError.message}`);
+      } else {
+        const insertedCount = inserted?.length || 0;
+        fixedCount += insertedCount;
+        console.log(`✅ Queued ${insertedCount} prospects for ${campaign.campaign_name || campaign.name}`);
+        fixDetails.push(`✅ ${campaign.campaign_name || campaign.name}: Queued ${insertedCount} prospects`);
+
+        // Update prospect status to 'queued'
+        await supabase
+          .from('campaign_prospects')
+          .update({ status: 'queued', updated_at: new Date().toISOString() })
+          .in('id', unqueuedProspects.map((p: any) => p.id));
+      }
+    }
+
+    // 2. Also retry any stuck queue items (pending but scheduled_for > 2 hours ago)
+    const { data: stuckQueueItems, error: queueError } = await supabase
+      .from('send_queue')
+      .select('id, campaign_id')
+      .eq('status', 'pending')
+      .lt('scheduled_for', twoHoursAgo)
+      .limit(50);
+
+    if (!queueError && stuckQueueItems && stuckQueueItems.length > 0) {
+      // Reschedule stuck items with immediate timing
+      const now = new Date();
+      for (let i = 0; i < stuckQueueItems.length; i++) {
+        const newScheduledFor = new Date(now.getTime() + i * 2 * 60 * 1000); // 2-minute spacing
+        await supabase
+          .from('send_queue')
+          .update({ scheduled_for: newScheduledFor.toISOString() })
+          .eq('id', stuckQueueItems[i].id);
+      }
+      fixedCount += stuckQueueItems.length;
+      fixDetails.push(`⏰ Rescheduled ${stuckQueueItems.length} overdue queue items`);
+      console.log(`⏰ Rescheduled ${stuckQueueItems.length} overdue queue items`);
+    }
+
+    return {
+      issue: 'Stuck Campaigns',
+      attempted: true,
+      success: true,
+      count: fixedCount,
+      details: fixDetails.length > 0 ? fixDetails.join('; ') : 'No stuck campaigns found'
+    };
+  } catch (error) {
+    console.error('❌ Error in autoFixStuckCampaigns:', error);
+    return {
+      issue: 'Stuck Campaigns',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to fix stuck campaigns'
     };
   }
 }
