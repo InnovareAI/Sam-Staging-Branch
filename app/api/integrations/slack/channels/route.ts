@@ -17,17 +17,28 @@ export async function GET(request: NextRequest) {
     // Get the Slack app config for this workspace
     const { data: config, error: configError } = await supabaseAdmin()
       .from('slack_app_config')
-      .select('bot_token, default_channel')
+      .select('bot_token')
       .eq('workspace_id', workspaceId)
       .eq('status', 'active')
       .single();
 
     if (configError || !config?.bot_token) {
+      console.error('[Slack Channels] Config error:', configError, 'Has token:', !!config?.bot_token);
       return NextResponse.json({
         success: false,
         error: 'Slack not configured for this workspace',
       }, { status: 404 });
     }
+
+    // Get default channel from slack_channels table (backward compatible)
+    const { data: defaultChannelData } = await supabaseAdmin()
+      .from('slack_channels')
+      .select('channel_id')
+      .eq('workspace_id', workspaceId)
+      .eq('is_default', true)
+      .single();
+
+    const defaultChannel = defaultChannelData?.channel_id;
 
     // Fetch channels from Slack API
     const response = await fetch('https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=200', {
@@ -57,7 +68,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       channels,
-      default_channel: config.default_channel,
+      default_channel: defaultChannel,
     });
 
   } catch (error) {
