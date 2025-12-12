@@ -58,11 +58,36 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Slack SAM] Processing question for workspace ${workspace_id}: "${question.substring(0, 50)}..."`);
 
+    // FAST PATH: Show start menu first (no DB queries needed)
+    const questionLower = question.toLowerCase().trim();
+    if (['menu', 'start', 'help', 'hi', 'hello', 'hey', '/sam'].some(t => questionLower === t || questionLower.startsWith(t + ' '))) {
+      const menu = getStartMenu();
+      return NextResponse.json({
+        success: true,
+        response: menu.message,
+        blocks: menu.blocks,
+        flow_active: false,
+      });
+    }
+
     // Check if user is in an active conversation flow
     const currentState = getConversationState(workspace_id, channel_id || 'default', user_id || 'default');
     const intent = detectIntent(question, currentState?.flow || null);
 
     console.log(`[Slack SAM] Intent: ${intent}, Current flow: ${currentState?.flow || 'none'}`);
+
+    // FAST PATH: Handle cancel/exit commands (no DB needed)
+    if (questionLower.includes('cancel') || questionLower.includes('exit') || questionLower.includes('start over')) {
+      if (currentState?.flow) {
+        clearConversationState(workspace_id, channel_id || 'default', user_id || 'default');
+        const menu = getStartMenu();
+        return NextResponse.json({
+          success: true,
+          response: "Okay, I've cancelled that. What would you like to do?",
+          blocks: menu.blocks,
+        });
+      }
+    }
 
     // Handle conversation flows
     if (intent === 'continue_flow' && currentState?.flow) {
@@ -90,18 +115,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Handle cancel/exit commands
-    if (question.toLowerCase().includes('cancel') || question.toLowerCase().includes('exit') || question.toLowerCase().includes('start over')) {
-      if (currentState?.flow) {
-        clearConversationState(workspace_id, channel_id || 'default', user_id || 'default');
-        return NextResponse.json({
-          success: true,
-          response: "Okay, I've cancelled that. What would you like to do?",
-        });
-      }
-    }
-
-    // Show start menu
+    // Show start menu (secondary check for intent-based)
     if (intent === 'start_menu') {
       const menu = getStartMenu();
       return NextResponse.json({
@@ -154,50 +168,48 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Get workspace context for general responses
-    const { data: workspace } = await supabaseAdmin()
-      .from('workspaces')
-      .select('id, name, industry, company_description')
-      .eq('id', workspace_id)
-      .single();
+    // Get workspace context for general responses - RUN ALL QUERIES IN PARALLEL
+    const [
+      { data: workspace },
+      { data: campaigns },
+      { data: prospectStats },
+      { data: recentReplies },
+      { data: hotLeads }
+    ] = await Promise.all([
+      supabaseAdmin()
+        .from('workspaces')
+        .select('id, name, industry, company_description')
+        .eq('id', workspace_id)
+        .single(),
+      supabaseAdmin()
+        .from('campaigns')
+        .select('id, name, status, created_at')
+        .eq('workspace_id', workspace_id)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabaseAdmin()
+        .from('campaign_prospects')
+        .select('status')
+        .eq('workspace_id', workspace_id)
+        .limit(500),  // Cap to avoid huge queries
+      supabaseAdmin()
+        .from('linkedin_messages')
+        .select('content, sender_name, created_at')
+        .eq('workspace_id', workspace_id)
+        .eq('direction', 'incoming')
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabaseAdmin()
+        .from('campaign_prospects')
+        .select('first_name, last_name, company, title')
+        .eq('workspace_id', workspace_id)
+        .or('status.eq.hot_lead,lead_score.gte.80')
+        .limit(5)
+    ]);
 
     if (!workspace) {
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
-
-    // Get recent campaign data for context
-    const { data: campaigns } = await supabaseAdmin()
-      .from('campaigns')
-      .select(`
-        id, name, status, created_at,
-        campaign_prospects(count)
-      `)
-      .eq('workspace_id', workspace_id)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    // Get recent prospect stats
-    const { data: prospectStats } = await supabaseAdmin()
-      .from('campaign_prospects')
-      .select('status')
-      .eq('workspace_id', workspace_id);
-
-    // Get recent replies for context
-    const { data: recentReplies } = await supabaseAdmin()
-      .from('linkedin_messages')
-      .select('content, sender_name, created_at')
-      .eq('workspace_id', workspace_id)
-      .eq('direction', 'incoming')
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    // Get hot leads
-    const { data: hotLeads } = await supabaseAdmin()
-      .from('campaign_prospects')
-      .select('first_name, last_name, company, title')
-      .eq('workspace_id', workspace_id)
-      .or('status.eq.hot_lead,lead_score.gte.80')
-      .limit(5);
 
     const stats = {
       total: prospectStats?.length || 0,
@@ -675,11 +687,6 @@ async function generateSamResponse(
     }
   }
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return "I'm sorry, I'm not able to process your request right now. Please try again later.";
-  }
-
   const systemPrompt = `You are SAM, an AI sales development assistant. You help users manage their LinkedIn outreach campaigns and prospect relationships.
 
 You have access to the following workspace data:
@@ -719,35 +726,25 @@ If users want to run full campaigns from Slack, guide them to use:
 2. "search" to find prospects
 3. "create campaign" to launch outreach`;
 
+  // Use Claude SDK directly for fastest responses
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://app.meet-sam.com',
-        'X-Title': 'SAM AI - Slack',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: question },
-        ],
-        max_tokens: 1000,
-        temperature: 0.7,
-      }),
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-20241022',  // Using Haiku for speed (cheaper + faster)
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: question }],
     });
 
-    const result = await response.json();
-
-    if (result.choices?.[0]?.message?.content) {
-      return result.choices[0].message.content;
+    const content = response.content[0];
+    if (content.type === 'text') {
+      return content.text;
     }
-
     return "I couldn't generate a response. Please try rephrasing your question.";
   } catch (error) {
-    console.error('[Slack SAM] OpenRouter error:', error);
-    return "I encountered an error while processing your request. Please try again.";
+    console.error('[Slack SAM] Claude SDK error:', error);
+    return "I'm sorry, I encountered an error. Please try again.";
   }
 }

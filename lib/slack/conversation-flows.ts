@@ -862,58 +862,52 @@ export async function handleCampaignCreateFlow(
 // =============================================================================
 
 async function generateMessageDraft(workspaceId: string, type: 'connection_request' | 'follow_up', context: any): Promise<string> {
-  // Get workspace info for context
-  const { data: workspace } = await supabaseAdmin()
-    .from('workspaces')
-    .select('name, industry, company_description')
-    .eq('id', workspaceId)
-    .single();
+  // Get workspace and ICP info in parallel for speed
+  const [{ data: workspace }, { data: icp }] = await Promise.all([
+    supabaseAdmin()
+      .from('workspaces')
+      .select('name, industry, company_description')
+      .eq('id', workspaceId)
+      .single(),
+    supabaseAdmin()
+      .from('workspace_icp')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .eq('is_default', true)
+      .single()
+  ]);
 
-  // Get ICP for context
-  const { data: icp } = await supabaseAdmin()
-    .from('workspace_icp')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .eq('is_default', true)
-    .single();
-
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    return type === 'connection_request'
-      ? "Hi {{first_name}}, I noticed your work at {{company}} and would love to connect. Always great to meet others in the industry!"
-      : "Thanks for connecting, {{first_name}}! I'd love to learn more about what {{company}} is working on. Would you be open to a quick chat?";
-  }
+  const defaultMessages = {
+    connection_request: "Hi {{first_name}}, I noticed your work at {{company}} and would love to connect. Always great to meet others in the industry!",
+    follow_up: "Thanks for connecting, {{first_name}}! I'd love to learn more about what {{company}} is working on. Would you be open to a quick chat?"
+  };
 
   const prompt = type === 'connection_request'
     ? `Write a LinkedIn connection request for a ${icp?.titles?.[0] || 'professional'} in the ${icp?.industries?.[0] || 'technology'} industry. Keep it under 300 characters. Be genuine, not salesy. Use {{first_name}} and {{company}} variables.`
     : `Write a follow-up message after someone accepts a LinkedIn connection request. Keep it conversational and under 500 characters. Use {{first_name}} and {{company}} variables. The sender works at ${workspace?.name || 'a B2B company'}.`;
 
+  const systemPrompt = 'You are a professional sales copywriter. Write concise, personalized outreach messages.';
+
+  // Use Claude SDK directly for fastest responses
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://app.meet-sam.com',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
-        messages: [
-          { role: 'system', content: 'You are a professional sales copywriter. Write concise, personalized outreach messages.' },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 300,
-        temperature: 0.7,
-      }),
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-20241022',  // Using Haiku for speed
+      max_tokens: 300,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: prompt }],
     });
 
-    const result = await response.json();
-    return result.choices?.[0]?.message?.content || 'Hi {{first_name}}, would love to connect!';
+    const content = response.content[0];
+    if (content.type === 'text') {
+      return content.text;
+    }
+    return defaultMessages[type];
   } catch (error) {
-    console.error('[Draft] Error generating message:', error);
-    return type === 'connection_request'
-      ? "Hi {{first_name}}, I noticed your work at {{company}} and would love to connect!"
-      : "Thanks for connecting, {{first_name}}! Would love to learn more about {{company}}.";
+    console.error('[Draft] Claude SDK error:', error);
+    return defaultMessages[type];
   }
 }
 
