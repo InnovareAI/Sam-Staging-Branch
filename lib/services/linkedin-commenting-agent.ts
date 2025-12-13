@@ -10,7 +10,6 @@
 import { claudeClient, CLAUDE_MODELS } from '@/lib/llm/claude-client';
 import {
   getCommentVarianceContext,
-  getWorkspaceVarianceContext,
   buildVariancePromptInstructions,
   type CommentVarianceContext
 } from '@/lib/anti-detection/comment-variance';
@@ -171,12 +170,10 @@ export async function generateLinkedInComment(
 ): Promise<GeneratedComment> {
   const startTime = Date.now();
 
-  // ANTI-DETECTION: Get workspace-specific variance context
-  // Each workspace has unique patterns for length and type preferences
-  // This prevents detection across multiple accounts managed by SAM
-  const varianceContext = context.workspace?.workspace_id
-    ? getWorkspaceVarianceContext(context.workspace.workspace_id)
-    : getCommentVarianceContext();
+  // ANTI-DETECTION: Pure random variance for every comment
+  // No patterns - each comment is independently randomized
+  // LinkedIn cannot detect automation if there's no pattern to find
+  const varianceContext = getCommentVarianceContext();
 
   console.log('💬 Generating LinkedIn comment:', {
     post_id: context.post.id,
