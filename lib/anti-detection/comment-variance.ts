@@ -535,6 +535,101 @@ export function getProfileViewDelayMs(): number {
 }
 
 // ============================================
+// HARD LIMITS - NEVER EXCEED THESE
+// These are conservative limits to protect accounts
+// ============================================
+
+export const HARD_LIMITS = {
+  // Daily limits per LinkedIn account
+  MAX_COMMENTS_PER_DAY: 5,           // Never exceed 5 comments/day
+  MAX_LIKES_PER_DAY: 20,             // Never exceed 20 likes/day
+  MAX_PROFILE_VIEWS_PER_DAY: 30,     // Never exceed 30 profile views/day
+
+  // Weekly limits per LinkedIn account
+  MAX_COMMENTS_PER_WEEK: 25,         // Never exceed 25 comments/week
+  MAX_CONNECTION_REQUESTS_PER_WEEK: 100, // LinkedIn's known limit
+
+  // Hourly limits (burst protection)
+  MAX_COMMENTS_PER_HOUR: 2,          // Never more than 2 comments in 1 hour
+  MAX_ACTIONS_PER_HOUR: 10,          // Total actions (likes + comments + views)
+
+  // Minimum gaps between same-type actions
+  MIN_COMMENT_GAP_MINUTES: 30,       // At least 30 min between comments
+  MIN_LIKE_GAP_SECONDS: 30,          // At least 30 sec between likes
+
+  // Error thresholds
+  MAX_ERRORS_BEFORE_PAUSE: 3,        // Pause after 3 consecutive errors
+  PAUSE_DURATION_HOURS: 24,          // Pause for 24 hours after errors
+};
+
+/**
+ * Check if we've hit any hard limits
+ * Returns true if we should STOP all activity
+ */
+export function shouldStopActivity(stats: {
+  commentsToday: number;
+  commentsThisWeek: number;
+  commentsThisHour: number;
+  likesToday: number;
+  consecutiveErrors: number;
+}): { stop: boolean; reason?: string } {
+  if (stats.commentsToday >= HARD_LIMITS.MAX_COMMENTS_PER_DAY) {
+    return { stop: true, reason: `Daily comment limit reached (${stats.commentsToday}/${HARD_LIMITS.MAX_COMMENTS_PER_DAY})` };
+  }
+
+  if (stats.commentsThisWeek >= HARD_LIMITS.MAX_COMMENTS_PER_WEEK) {
+    return { stop: true, reason: `Weekly comment limit reached (${stats.commentsThisWeek}/${HARD_LIMITS.MAX_COMMENTS_PER_WEEK})` };
+  }
+
+  if (stats.commentsThisHour >= HARD_LIMITS.MAX_COMMENTS_PER_HOUR) {
+    return { stop: true, reason: `Hourly comment limit reached (${stats.commentsThisHour}/${HARD_LIMITS.MAX_COMMENTS_PER_HOUR})` };
+  }
+
+  if (stats.likesToday >= HARD_LIMITS.MAX_LIKES_PER_DAY) {
+    return { stop: true, reason: `Daily like limit reached (${stats.likesToday}/${HARD_LIMITS.MAX_LIKES_PER_DAY})` };
+  }
+
+  if (stats.consecutiveErrors >= HARD_LIMITS.MAX_ERRORS_BEFORE_PAUSE) {
+    return { stop: true, reason: `Too many errors (${stats.consecutiveErrors}), pausing for ${HARD_LIMITS.PAUSE_DURATION_HOURS}h` };
+  }
+
+  return { stop: false };
+}
+
+// ============================================
+// LINKEDIN WARNING DETECTION
+// Auto-pause if LinkedIn shows warning signs
+// ============================================
+
+const LINKEDIN_WARNING_PATTERNS = [
+  'unusual activity',
+  'temporarily restricted',
+  'security check',
+  'verify your identity',
+  'rate limit',
+  'too many requests',
+  'slow down',
+  'action blocked',
+  'try again later',
+  'suspicious activity',
+];
+
+/**
+ * Check if a LinkedIn API response indicates a warning
+ */
+export function isLinkedInWarning(responseText: string): { isWarning: boolean; pattern?: string } {
+  const lowerText = responseText.toLowerCase();
+
+  for (const pattern of LINKEDIN_WARNING_PATTERNS) {
+    if (lowerText.includes(pattern)) {
+      return { isWarning: true, pattern };
+    }
+  }
+
+  return { isWarning: false };
+}
+
+// ============================================
 // COMBINED ANTI-DETECTION CONTEXT
 // ============================================
 

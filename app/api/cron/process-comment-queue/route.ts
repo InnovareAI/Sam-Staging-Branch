@@ -18,7 +18,10 @@ import {
   getLikeToCommentDelayMs,
   shouldViewProfileFirst,
   getProfileViewDelayMs,
-  getAntiDetectionContext
+  getAntiDetectionContext,
+  HARD_LIMITS,
+  shouldStopActivity,
+  isLinkedInWarning
 } from '@/lib/anti-detection/comment-variance';
 
 export const maxDuration = 60;
@@ -182,6 +185,77 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`📋 Found ${dueComments.length} scheduled comments to post`);
+
+    // ============================================
+    // HARD LIMIT CHECK - Protect client accounts
+    // Query activity stats and check against limits
+    // ============================================
+    const comment = dueComments[0];
+    const workspaceId = comment.workspace_id;
+
+    // Get today's comment count for this workspace
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const { count: commentsToday } = await supabase
+      .from('linkedin_post_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('status', 'posted')
+      .gte('posted_at', todayStart.toISOString());
+
+    // Get this week's comment count
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+
+    const { count: commentsThisWeek } = await supabase
+      .from('linkedin_post_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('status', 'posted')
+      .gte('posted_at', weekStart.toISOString());
+
+    // Get this hour's comment count
+    const hourStart = new Date();
+    hourStart.setMinutes(0, 0, 0);
+
+    const { count: commentsThisHour } = await supabase
+      .from('linkedin_post_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .eq('status', 'posted')
+      .gte('posted_at', hourStart.toISOString());
+
+    // Check hard limits
+    const limitCheck = shouldStopActivity({
+      commentsToday: commentsToday || 0,
+      commentsThisWeek: commentsThisWeek || 0,
+      commentsThisHour: commentsThisHour || 0,
+      likesToday: 0, // Would need separate tracking
+      consecutiveErrors: 0 // Would need separate tracking
+    });
+
+    if (limitCheck.stop) {
+      console.log(`🛑 HARD LIMIT REACHED: ${limitCheck.reason}`);
+      // Reset comment to scheduled for later
+      await supabase
+        .from('linkedin_post_comments')
+        .update({
+          status: 'scheduled',
+          scheduled_post_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Retry in 1 hour
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', comment.id);
+
+      return NextResponse.json({
+        success: true,
+        processed: 0,
+        message: `Hard limit reached: ${limitCheck.reason}`,
+        skipped_reason: 'hard_limit'
+      });
+    }
+
+    console.log(`   📊 Activity stats: ${commentsToday || 0} today, ${commentsThisWeek || 0} this week, ${commentsThisHour || 0} this hour`);
 
     // CRITICAL: Claim comments immediately to prevent race conditions
     // Change status to 'posting' so other concurrent runs skip them
@@ -413,6 +487,49 @@ export async function POST(req: NextRequest) {
         if (!unipileResponse.ok) {
           const errorText = await unipileResponse.text();
           console.error(`❌ Unipile error: ${unipileResponse.status} ${errorText}`);
+
+          // ============================================
+          // LINKEDIN WARNING DETECTION
+          // Check if error indicates LinkedIn restriction
+          // If so, pause ALL commenting for this workspace
+          // ============================================
+          const warningCheck = isLinkedInWarning(errorText);
+          if (warningCheck.isWarning) {
+            console.error(`🚨 LINKEDIN WARNING DETECTED: "${warningCheck.pattern}"`);
+            console.error(`🛑 PAUSING ALL COMMENTING FOR WORKSPACE ${comment.workspace_id} FOR 24 HOURS`);
+
+            // Pause the monitor for this workspace
+            await supabase
+              .from('linkedin_post_monitors')
+              .update({
+                status: 'paused',
+                metadata: {
+                  paused_reason: `LinkedIn warning: ${warningCheck.pattern}`,
+                  paused_at: new Date().toISOString(),
+                  auto_resume_at: new Date(Date.now() + HARD_LIMITS.PAUSE_DURATION_HOURS * 60 * 60 * 1000).toISOString()
+                }
+              })
+              .eq('workspace_id', comment.workspace_id);
+
+            // Reschedule all pending comments for tomorrow
+            await supabase
+              .from('linkedin_post_comments')
+              .update({
+                status: 'scheduled',
+                scheduled_post_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('workspace_id', comment.workspace_id)
+              .in('status', ['scheduled', 'posting']);
+
+            return NextResponse.json({
+              success: false,
+              processed: 0,
+              failed: 1,
+              error: `LinkedIn warning detected: ${warningCheck.pattern}. Auto-paused for 24 hours.`,
+              warning_detected: true
+            }, { status: 503 });
+          }
 
           await supabase
             .from('linkedin_post_comments')
