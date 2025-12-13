@@ -288,6 +288,103 @@ export function getCommentVarianceContext(): CommentVarianceContext {
 }
 
 /**
+ * Simple seeded random number generator (Mulberry32)
+ */
+function seededRandom(seed: number): () => number {
+  return function() {
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Convert workspace ID to numeric seed
+ */
+function workspaceToSeed(workspaceId: string): number {
+  let hash = 0;
+  for (let i = 0; i < workspaceId.length; i++) {
+    const char = workspaceId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * Get workspace-specific variance context
+ * Each workspace gets a unique but consistent pattern:
+ * - Different type preferences (some more question-heavy, some more statement-heavy)
+ * - Different length preferences (some prefer shorter, some prefer longer)
+ */
+export function getWorkspaceVarianceContext(workspaceId: string): CommentVarianceContext {
+  // Create workspace-specific RNG
+  const baseSeed = workspaceToSeed(workspaceId);
+  const dateSeed = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const rng = seededRandom(baseSeed + parseInt(dateSeed.slice(-4)));
+
+  // Workspace-specific type bias (shifts probabilities by ±15%)
+  const typeBias = (rng() - 0.5) * 0.30; // -0.15 to +0.15
+  const adjustedTypeDistribution = { ...COMMENT_TYPE_DISTRIBUTION };
+
+  // Shift question probability for this workspace
+  const questionShift = typeBias;
+  adjustedTypeDistribution.question = Math.max(0.10, Math.min(0.40, adjustedTypeDistribution.question + questionShift));
+  adjustedTypeDistribution.statement = Math.max(0.15, Math.min(0.45, adjustedTypeDistribution.statement - questionShift * 0.5));
+
+  // Get comment type with workspace bias
+  const typeRand = rng();
+  let cumulative = 0;
+  let commentType: CommentType = 'statement';
+
+  for (const [type, probability] of Object.entries(adjustedTypeDistribution)) {
+    cumulative += probability;
+    if (typeRand <= cumulative) {
+      commentType = type as CommentType;
+      break;
+    }
+  }
+
+  // Workspace-specific length bias (some workspaces prefer shorter/longer)
+  const lengthBias = (rng() - 0.5) * 0.30;
+  const adjustedLengthDistribution = { ...COMMENT_LENGTH_DISTRIBUTION };
+
+  if (lengthBias > 0) {
+    // Prefer longer comments
+    adjustedLengthDistribution.short.probability -= lengthBias * 0.5;
+    adjustedLengthDistribution.long.probability += lengthBias * 0.5;
+  } else {
+    // Prefer shorter comments
+    adjustedLengthDistribution.short.probability += Math.abs(lengthBias) * 0.5;
+    adjustedLengthDistribution.long.probability -= Math.abs(lengthBias) * 0.5;
+  }
+
+  // Get length with workspace bias
+  const lengthRand = rng();
+  let lengthCumulative = 0;
+  let lengthCategory: CommentLengthCategory = 'medium';
+  let targetLength = 150;
+
+  for (const [category, range] of Object.entries(adjustedLengthDistribution)) {
+    lengthCumulative += range.probability;
+    if (lengthRand <= lengthCumulative) {
+      lengthCategory = category as CommentLengthCategory;
+      targetLength = range.min + Math.floor(rng() * (range.max - range.min));
+      break;
+    }
+  }
+
+  return {
+    targetLength,
+    lengthCategory,
+    commentType,
+    typePrompt: getCommentTypePrompt(commentType),
+    scheduledGapMinutes: getRandomCommentGap(),
+  };
+}
+
+/**
  * Build variance instructions for AI prompt
  */
 export function buildVariancePromptInstructions(context: CommentVarianceContext): string {
