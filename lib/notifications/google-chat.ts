@@ -413,14 +413,14 @@ export async function sendReplyAgentHITLNotification(
       ],
     });
 
-    // Add action buttons section
+    // Add action buttons section - all in one row: Approve | Edit | Reject
     finalSections.push({
       widgets: [
         {
           buttonList: {
             buttons: [
               {
-                text: '✓ Approve & Send',
+                text: '✅ Approve',
                 onClick: {
                   openLink: {
                     url: approveUrl,
@@ -434,27 +434,7 @@ export async function sendReplyAgentHITLNotification(
                 },
               },
               {
-                text: '✗ Reject',
-                onClick: {
-                  openLink: {
-                    url: rejectUrl,
-                  },
-                },
-                color: {
-                  red: 0.937,
-                  green: 0.267,
-                  blue: 0.267,
-                  alpha: 1,
-                },
-              },
-            ],
-          },
-        },
-        {
-          buttonList: {
-            buttons: [
-              {
-                text: '✏️ Edit Reply',
+                text: '✏️ Edit',
                 onClick: {
                   openLink: {
                     url: editUrl,
@@ -468,16 +448,16 @@ export async function sendReplyAgentHITLNotification(
                 },
               },
               {
-                text: '💬 Add Instructions',
+                text: '❌ Reject',
                 onClick: {
                   openLink: {
-                    url: instructionsUrl,
+                    url: rejectUrl,
                   },
                 },
                 color: {
-                  red: 0.4,
-                  green: 0.31,
-                  blue: 0.64,
+                  red: 0.937,
+                  green: 0.267,
+                  blue: 0.267,
                   alpha: 1,
                 },
               },
