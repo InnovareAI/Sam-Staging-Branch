@@ -251,16 +251,39 @@ export interface ReplyAgentHITLNotification {
   draftReply: string;
   intent: string;
   appUrl: string;
+  workspaceId?: string; // Used to filter which workspaces send to which channels
 }
+
+/**
+ * InnovareAI workspace IDs (IA1-IA6)
+ * Only these workspaces send Reply Agent notifications to the IA Google Chat channel
+ */
+const INNOVAREAI_WORKSPACE_IDS = [
+  'babdcab8-1a78-4b2f-913e-6e9fd9821009', // IA1 - Thorsten
+  '04666209-fce8-4d71-8eaf-01278edfc73b', // IA2 - Michelle
+  '96c03b38-a2f4-40de-9e16-43098599e1d4', // IA3 - Irish
+  '7f0341da-88db-476b-ae0a-fc0da5b70861', // IA4 - Charissa
+  'cd57981a-e63b-401c-bde1-ac71752c2293', // IA5 - Jennifer
+  '2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c', // IA6 - Chona
+];
 
 /**
  * Send a Reply Agent HITL approval request to Google Chat
  * Uses dedicated GOOGLE_CHAT_REPLIES_WEBHOOK_URL for Campaign Replies channel
  * Includes Approve/Reject buttons that link to the approval endpoint
+ *
+ * NOTE: Only InnovareAI workspaces (IA1-IA6) send to this channel.
+ * Client workspaces are filtered out to keep channels separate.
  */
 export async function sendReplyAgentHITLNotification(
   notification: ReplyAgentHITLNotification
 ): Promise<{ success: boolean; error?: string }> {
+  // Filter: Only send to Google Chat for InnovareAI workspaces
+  if (notification.workspaceId && !INNOVAREAI_WORKSPACE_IDS.includes(notification.workspaceId)) {
+    console.log(`ℹ️ Skipping Google Chat notification - workspace ${notification.workspaceId} is not an IA workspace`);
+    return { success: true, error: undefined }; // Not an error, just filtered out
+  }
+
   // Use dedicated Campaign Replies channel
   const repliesWebhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
 

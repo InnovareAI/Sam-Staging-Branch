@@ -231,6 +231,7 @@ export async function POST(request: NextRequest) {
               draftReply: savedDraft.draft_text,
               intent: savedDraft.intent_detected || 'UNCLEAR',
               appUrl: APP_URL,
+              workspaceId: workspaceId, // Filter: only IA workspaces send to Google Chat
             });
           } else {
             // Auto-approve mode - send immediately
@@ -975,6 +976,7 @@ async function sendHITLEmail(
         draftReply: draft.draft_text,
         intent: draft.intent_detected || 'UNCLEAR',
         appUrl: APP_URL,
+        workspaceId: draft.workspace_id, // Filter: only IA workspaces send to Google Chat
       });
     }
 
@@ -1103,7 +1105,7 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
 
         // Send HITL notifications (Google Chat + Slack)
         if (config.approval_mode === 'manual') {
-          // Google Chat notification
+          // Google Chat notification (only for IA workspaces)
           await sendReplyAgentHITLNotification({
             draftId: updatedDraft.id,
             approvalToken: updatedDraft.approval_token,
@@ -1114,6 +1116,7 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
             draftReply: updatedDraft.draft_text,
             intent: updatedDraft.intent_detected || 'UNCLEAR',
             appUrl: APP_URL,
+            workspaceId: draft.workspace_id, // Filter: only IA workspaces send to Google Chat
           });
           console.log(`✅ Draft ${draft.id} - Google Chat notification sent`);
 
