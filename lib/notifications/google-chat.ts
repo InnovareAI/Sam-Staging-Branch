@@ -273,18 +273,32 @@ const INNOVAREAI_WORKSPACE_IDS = [
 
 /**
  * Send a Reply Agent HITL approval request to Google Chat
- * All notifications go to the Campaign Replies channel for InnovareAI monitoring
+ * Routes to different channels based on workspace:
+ * - IA workspaces (IA1-IA6) → GOOGLE_CHAT_REPLIES_WEBHOOK_URL (Campaign Replies)
+ * - Client workspaces → GOOGLE_CHAT_CLIENT_WEBHOOK_URL (QC channel)
  */
 export async function sendReplyAgentHITLNotification(
   notification: ReplyAgentHITLNotification
 ): Promise<{ success: boolean; error?: string }> {
-  const webhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
-  if (!webhookUrl) {
-    console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping notification');
-    return { success: false, error: 'Webhook URL not configured' };
+  const isIAWorkspace = notification.workspaceId && INNOVAREAI_WORKSPACE_IDS.includes(notification.workspaceId);
+
+  let webhookUrl: string | undefined;
+  if (isIAWorkspace) {
+    webhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
+    if (!webhookUrl) {
+      console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping IA notification');
+      return { success: false, error: 'IA webhook URL not configured' };
+    }
+  } else {
+    webhookUrl = process.env.GOOGLE_CHAT_CLIENT_WEBHOOK_URL;
+    if (!webhookUrl) {
+      console.warn('⚠️ GOOGLE_CHAT_CLIENT_WEBHOOK_URL not configured - skipping client notification');
+      return { success: false, error: 'Client webhook URL not configured' };
+    }
   }
 
-  console.log(`📬 Sending notification to Campaign Replies channel for workspace ${notification.workspaceId}`);
+  const channelName = isIAWorkspace ? 'Campaign Replies' : 'QC';
+  console.log(`📬 Sending notification to ${channelName} channel for workspace ${notification.workspaceId}`);
 
   const approveUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=approve`;
   const rejectUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=reject`;
