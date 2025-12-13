@@ -272,32 +272,50 @@ const INNOVAREAI_WORKSPACE_IDS = [
 ];
 
 /**
+ * Client workspace-specific Google Chat webhook URLs
+ * Maps workspace IDs to their dedicated notification channels
+ */
+const CLIENT_WORKSPACE_WEBHOOKS: Record<string, string> = {
+  // ChillMine (CM1) - Brian Neirby
+  'aa1a214c-02f0-4f3a-8849-92c7a50ee4f7': 'https://chat.googleapis.com/v1/spaces/AAQAbi2nByM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=4yaPXFAKoPQU6E-F4LfssjdgsTB2QWIL3HugweQtEn4',
+};
+
+/**
  * Send a Reply Agent HITL approval request to Google Chat
  * Routes to different channels based on workspace:
  * - IA workspaces (IA1-IA6) → GOOGLE_CHAT_REPLIES_WEBHOOK_URL (Campaign Replies)
- * - Client workspaces → GOOGLE_CHAT_CLIENT_WEBHOOK_URL (QC channel)
+ * - Client workspaces with dedicated channel → CLIENT_WORKSPACE_WEBHOOKS
+ * - Other client workspaces → GOOGLE_CHAT_CLIENT_WEBHOOK_URL (QC channel)
  */
 export async function sendReplyAgentHITLNotification(
   notification: ReplyAgentHITLNotification
 ): Promise<{ success: boolean; error?: string }> {
   const isIAWorkspace = notification.workspaceId && INNOVAREAI_WORKSPACE_IDS.includes(notification.workspaceId);
+  const hasClientWebhook = notification.workspaceId && CLIENT_WORKSPACE_WEBHOOKS[notification.workspaceId];
 
   let webhookUrl: string | undefined;
+  let channelName: string;
+
   if (isIAWorkspace) {
     webhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
+    channelName = 'Campaign Replies';
     if (!webhookUrl) {
       console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping IA notification');
       return { success: false, error: 'IA webhook URL not configured' };
     }
+  } else if (hasClientWebhook) {
+    // Client has dedicated notification channel
+    webhookUrl = CLIENT_WORKSPACE_WEBHOOKS[notification.workspaceId!];
+    channelName = `Client: ${notification.clientName || notification.workspaceId}`;
   } else {
     webhookUrl = process.env.GOOGLE_CHAT_CLIENT_WEBHOOK_URL;
+    channelName = 'QC';
     if (!webhookUrl) {
       console.warn('⚠️ GOOGLE_CHAT_CLIENT_WEBHOOK_URL not configured - skipping client notification');
       return { success: false, error: 'Client webhook URL not configured' };
     }
   }
 
-  const channelName = isIAWorkspace ? 'Campaign Replies' : 'QC';
   console.log(`📬 Sending notification to ${channelName} channel for workspace ${notification.workspaceId}`);
 
   const approveUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=approve`;
