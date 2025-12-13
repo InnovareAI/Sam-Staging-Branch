@@ -12,6 +12,11 @@ import { createClient } from '@supabase/supabase-js';
  * - Without this, prospects get follow-ups after they've replied
  * - Connection acceptance has polling backup, replies need one too
  *
+ * MULTI-TURN CONVERSATION SUPPORT (Dec 13, 2025):
+ * - Also checks prospects with status='replied' for 2nd/3rd/etc messages
+ * - Tracks last_processed_message_id to detect NEW messages only
+ * - Creates new drafts for each new inbound message in the conversation
+ *
  * POST /api/cron/poll-message-replies
  * Header: x-cron-secret (for security)
  */
@@ -40,8 +45,12 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Get all prospects that might have replies (connected status, no responded_at)
-    const { data: prospects, error: prospectsError } = await supabase
+    // MULTI-TURN SUPPORT (Dec 13, 2025):
+    // 1. First get prospects who haven't replied yet (first reply detection)
+    // 2. Then get prospects who HAVE replied (second/third reply detection)
+
+    // Query 1: Prospects awaiting first reply
+    const { data: firstReplyProspects, error: firstError } = await supabase
       .from('campaign_prospects')
       .select(`
         id,
@@ -53,6 +62,7 @@ export async function POST(request: NextRequest) {
         title,
         status,
         responded_at,
+        last_processed_message_id,
         campaign_id,
         campaigns (
           workspace_id,
@@ -65,8 +75,49 @@ export async function POST(request: NextRequest) {
       .in('status', ['connected', 'connection_request_sent'])
       .is('responded_at', null)
       .not('linkedin_user_id', 'is', null)
-      .order('updated_at', { ascending: false }) // Most recently updated first
-      .limit(20); // Dec 5: Increased to catch more prospects
+      .order('updated_at', { ascending: false })
+      .limit(20);
+
+    // Query 2: Prospects who already replied (check for follow-up messages)
+    // Only check those updated in last 7 days to avoid checking stale conversations
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { data: repliedProspects, error: repliedError } = await supabase
+      .from('campaign_prospects')
+      .select(`
+        id,
+        first_name,
+        last_name,
+        linkedin_user_id,
+        linkedin_url,
+        company_name,
+        title,
+        status,
+        responded_at,
+        last_processed_message_id,
+        campaign_id,
+        campaigns (
+          workspace_id,
+          linkedin_account_id,
+          workspace_accounts!linkedin_account_id (
+            unipile_account_id
+          )
+        )
+      `)
+      .eq('status', 'replied')
+      .not('linkedin_user_id', 'is', null)
+      .gte('responded_at', sevenDaysAgo.toISOString())
+      .order('responded_at', { ascending: false })
+      .limit(30); // Check more replied prospects for multi-turn
+
+    const prospectsError = firstError || repliedError;
+
+    // Combine both lists
+    const prospects = [
+      ...(firstReplyProspects || []),
+      ...(repliedProspects || [])
+    ];
 
     if (prospectsError) {
       console.error('❌ Error fetching prospects:', prospectsError);
@@ -208,35 +259,65 @@ export async function POST(request: NextRequest) {
           const messagesData = await messagesResponse.json();
           const messages = messagesData.items || [];
 
-          // Check if any message is FROM the prospect (not from us)
-          // Dec 5 FIX: Use is_sender === 0 and verify sender_id matches prospect
+          // MULTI-TURN SUPPORT (Dec 13, 2025):
+          // Find ALL inbound messages from prospect, then check if any are NEW
+          // (i.e., newer than last_processed_message_id)
           console.log(`   📨 Checking ${messages.length} messages for reply from ${prospect.first_name}...`);
-          const prospectReply = messages.find((msg: any) => {
-            // is_sender: 0 = message from them, 1 = message from us
-            // sender_id should match the prospect's provider_id
-            const isReply = msg.is_sender === 0 && msg.sender_id === prospectProviderId;
-            if (msg.is_sender === 0) {
-              console.log(`      Found msg from them: sender_id=${msg.sender_id?.slice(0, 20)}... expected=${prospectProviderId?.slice(0, 20)}...`);
-            }
-            return isReply;
+
+          // Get all inbound messages from this prospect
+          const inboundMessages = messages.filter((msg: any) => {
+            return msg.is_sender === 0 && msg.sender_id === prospectProviderId;
           });
 
-          if (prospectReply) {
-            console.log(`✅ Found reply from ${prospect.first_name} ${prospect.last_name}`);
-            results.replies_found++;
+          if (inboundMessages.length === 0) {
+            continue; // No inbound messages from this prospect
+          }
 
-            // Update prospect as replied - STOP all messaging
+          // Sort by created_at descending (most recent first)
+          inboundMessages.sort((a: any, b: any) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+
+          const latestInbound = inboundMessages[0];
+          const lastProcessedId = (prospect as any).last_processed_message_id;
+
+          // Check if this is a NEW message we haven't processed
+          if (lastProcessedId && latestInbound.id === lastProcessedId) {
+            console.log(`   ℹ️ ${prospect.first_name}: No new messages since last check`);
+            continue; // Already processed this message
+          }
+
+          // Check if we already have a draft for this specific message
+          const { data: existingDraftForMessage } = await supabase
+            .from('reply_agent_drafts')
+            .select('id')
+            .eq('inbound_message_id', latestInbound.id)
+            .single();
+
+          if (existingDraftForMessage) {
+            console.log(`   ℹ️ ${prospect.first_name}: Draft already exists for message ${latestInbound.id.slice(0, 15)}...`);
+            continue;
+          }
+
+          // NEW MESSAGE DETECTED!
+          const isFirstReply = !prospect.responded_at;
+          console.log(`✅ Found ${isFirstReply ? 'FIRST' : 'FOLLOW-UP'} reply from ${prospect.first_name} ${prospect.last_name}`);
+          results.replies_found++;
+
+          if (isFirstReply) {
+            // First reply - update prospect status and stop follow-ups
             await supabase
               .from('campaign_prospects')
               .update({
                 status: 'replied',
-                responded_at: prospectReply.created_at || new Date().toISOString(),
+                responded_at: latestInbound.created_at || new Date().toISOString(),
+                last_processed_message_id: latestInbound.id,
                 follow_up_due_at: null, // CRITICAL: Stop follow-ups
                 updated_at: new Date().toISOString()
               })
               .eq('id', prospect.id);
 
-            // Also cancel any pending send_queue items for this prospect
+            // Cancel pending queue items
             await supabase
               .from('send_queue')
               .update({
@@ -247,7 +328,6 @@ export async function POST(request: NextRequest) {
               .eq('prospect_id', prospect.id)
               .eq('status', 'pending');
 
-            // Also cancel any pending emails for this prospect
             await supabase
               .from('email_send_queue')
               .update({
@@ -257,20 +337,29 @@ export async function POST(request: NextRequest) {
               })
               .eq('prospect_id', prospect.id)
               .eq('status', 'pending');
-
-            // TRIGGER SAM REPLY AGENT - Create draft for approval
-            const wsId = (prospect.campaigns as any)?.workspace_id;
-            console.log(`🤖 Triggering SAM Reply Agent for ${prospect.first_name} (workspace: ${wsId})...`);
-            if (!wsId) {
-              console.log(`   ⚠️ No workspace_id found for ${prospect.first_name}! campaigns: ${JSON.stringify(prospect.campaigns)}`);
-            }
-            await triggerReplyAgent(
-              supabase,
-              prospect,
-              prospectReply,
-              wsId
-            );
+          } else {
+            // Follow-up reply - just update last_processed_message_id
+            await supabase
+              .from('campaign_prospects')
+              .update({
+                last_processed_message_id: latestInbound.id,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', prospect.id);
           }
+
+          // TRIGGER SAM REPLY AGENT - Create draft for approval
+          const wsId = (prospect.campaigns as any)?.workspace_id;
+          console.log(`🤖 Triggering SAM Reply Agent for ${prospect.first_name} (workspace: ${wsId})...`);
+          if (!wsId) {
+            console.log(`   ⚠️ No workspace_id found for ${prospect.first_name}! campaigns: ${JSON.stringify(prospect.campaigns)}`);
+          }
+          await triggerReplyAgent(
+            supabase,
+            prospect,
+            latestInbound,
+            wsId
+          );
         }
 
         // Rate limit between accounts

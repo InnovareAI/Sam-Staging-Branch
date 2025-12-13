@@ -112,12 +112,13 @@ export async function POST(request: NextRequest) {
       if (!campaigns?.length) continue;
 
       // 3. Get prospects who have been contacted (might reply)
+      // MULTI-TURN SUPPORT (Dec 13, 2025): Also include 'replied' status for follow-up messages
       const campaignIds = campaigns.map(c => c.id);
       const { data: prospects } = await supabase
         .from('campaign_prospects')
         .select('*, campaigns(campaign_name)')
         .in('campaign_id', campaignIds)
-        .in('status', ['connection_request_sent', 'connected', 'message_sent', 'followed_up']);
+        .in('status', ['connection_request_sent', 'connected', 'message_sent', 'followed_up', 'replied']);
 
       if (!prospects?.length) continue;
 
@@ -136,15 +137,17 @@ export async function POST(request: NextRequest) {
         if (!prospect.linkedin_user_id) continue;
 
         try {
-          // Check if we already processed this prospect recently
+          // MULTI-TURN SUPPORT (Dec 13, 2025):
+          // Only skip if there's a pending_approval OR pending_generation draft
+          // This allows new drafts to be created for follow-up messages
           const { data: existingDraft } = await supabase
             .from('reply_agent_drafts')
             .select('id')
             .eq('prospect_id', prospect.id)
-            .eq('status', 'pending_approval')
+            .in('status', ['pending_approval', 'pending_generation'])
             .single();
 
-          if (existingDraft) continue; // Already have pending draft
+          if (existingDraft) continue; // Already have pending draft awaiting action
 
           // Fetch recent messages from Unipile
           const messagesResponse = await fetch(
