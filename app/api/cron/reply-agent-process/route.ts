@@ -221,6 +221,10 @@ export async function POST(request: NextRequest) {
 
           // 8. Send HITL notification to Google Chat (if manual approval mode)
           if (config.approval_mode === 'manual') {
+            // Build LinkedIn URL from prospect data
+            const linkedInUrl = prospect.linkedin_url ||
+              (prospect.linkedin_user_id ? `https://www.linkedin.com/in/${prospect.linkedin_user_id}` : undefined);
+
             await sendReplyAgentHITLNotification({
               draftId: savedDraft.id,
               approvalToken: savedDraft.approval_token,
@@ -231,7 +235,11 @@ export async function POST(request: NextRequest) {
               draftReply: savedDraft.draft_text,
               intent: savedDraft.intent_detected || 'UNCLEAR',
               appUrl: APP_URL,
-              workspaceId: workspaceId, // Filter: only IA workspaces send to Google Chat
+              workspaceId: workspaceId,
+              // Additional fields for client QC notifications
+              campaignName: prospect.campaigns?.campaign_name,
+              prospectLinkedInUrl: linkedInUrl,
+              clientName: config.workspaces?.name,
             });
           } else {
             // Auto-approve mode - send immediately
@@ -852,7 +860,9 @@ async function sendHITLEmail(
   config: any,
   prospect: any,
   inboundText: string,
-  supabase: any
+  supabase: any,
+  campaignName?: string,
+  workspaceName?: string
 ): Promise<void> {
   if (!POSTMARK_API_KEY) {
     console.error('POSTMARK_API_KEY not configured');
@@ -860,15 +870,16 @@ async function sendHITLEmail(
   }
 
   try {
-    // Get workspace owner's email
+    // Get workspace owner's email and workspace name if not provided
     const { data: members } = await supabase
       .from('workspace_members')
-      .select('user_id, users(email)')
+      .select('user_id, users(email), workspaces(name)')
       .eq('workspace_id', draft.workspace_id)
       .eq('role', 'owner')
       .limit(1);
 
     const ownerEmail = members?.[0]?.users?.email;
+    const clientName = workspaceName || members?.[0]?.workspaces?.name;
     if (!ownerEmail) {
       console.error('No owner email found for workspace');
       return;
@@ -966,6 +977,10 @@ async function sendHITLEmail(
     // Only send to Google Chat if workspace has chat channel enabled (enterprise feature)
     const notificationChannels = config.notification_channels || ['email'];
     if (notificationChannels.includes('chat')) {
+      // Build LinkedIn URL from prospect data
+      const linkedInUrl = prospect.linkedin_url ||
+        (prospect.linkedin_user_id ? `https://www.linkedin.com/in/${prospect.linkedin_user_id}` : undefined);
+
       await sendReplyAgentHITLNotification({
         draftId: draft.id,
         approvalToken: draft.approval_token,
@@ -976,7 +991,11 @@ async function sendHITLEmail(
         draftReply: draft.draft_text,
         intent: draft.intent_detected || 'UNCLEAR',
         appUrl: APP_URL,
-        workspaceId: draft.workspace_id, // Filter: only IA workspaces send to Google Chat
+        workspaceId: draft.workspace_id,
+        // Additional fields for client QC notifications
+        campaignName: campaignName,
+        prospectLinkedInUrl: linkedInUrl,
+        clientName: clientName,
       });
     }
 
@@ -1024,10 +1043,10 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
 
     for (const draft of pendingDrafts) {
       try {
-        // Get workspace config
+        // Get workspace config with workspace name
         const { data: config } = await supabase
           .from('workspace_reply_agent_config')
-          .select('*')
+          .select('*, workspaces(name)')
           .eq('workspace_id', draft.workspace_id)
           .eq('enabled', true)
           .single();
@@ -1105,7 +1124,11 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
 
         // Send HITL notifications (Google Chat + Slack)
         if (config.approval_mode === 'manual') {
-          // Google Chat notification (only for IA workspaces)
+          // Build LinkedIn URL from prospect data
+          const linkedInUrl = prospect.linkedin_url ||
+            (prospect.linkedin_user_id ? `https://www.linkedin.com/in/${prospect.linkedin_user_id}` : undefined);
+
+          // Google Chat notification (routes to IA or Client QC channel based on workspace)
           await sendReplyAgentHITLNotification({
             draftId: updatedDraft.id,
             approvalToken: updatedDraft.approval_token,
@@ -1116,7 +1139,11 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
             draftReply: updatedDraft.draft_text,
             intent: updatedDraft.intent_detected || 'UNCLEAR',
             appUrl: APP_URL,
-            workspaceId: draft.workspace_id, // Filter: only IA workspaces send to Google Chat
+            workspaceId: draft.workspace_id,
+            // Additional fields for client QC notifications
+            campaignName: draft.campaigns?.campaign_name,
+            prospectLinkedInUrl: linkedInUrl,
+            clientName: config.workspaces?.name,
           });
           console.log(`✅ Draft ${draft.id} - Google Chat notification sent`);
 

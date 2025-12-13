@@ -252,6 +252,10 @@ export interface ReplyAgentHITLNotification {
   intent: string;
   appUrl: string;
   workspaceId?: string; // Used to filter which workspaces send to which channels
+  // Additional fields for client notifications
+  campaignName?: string;
+  prospectLinkedInUrl?: string;
+  clientName?: string; // Workspace name
 }
 
 /**
@@ -269,28 +273,33 @@ const INNOVAREAI_WORKSPACE_IDS = [
 
 /**
  * Send a Reply Agent HITL approval request to Google Chat
- * Uses dedicated GOOGLE_CHAT_REPLIES_WEBHOOK_URL for Campaign Replies channel
- * Includes Approve/Reject buttons that link to the approval endpoint
- *
- * NOTE: Only InnovareAI workspaces (IA1-IA6) send to this channel.
- * Client workspaces are filtered out to keep channels separate.
+ * Routes to different webhooks based on workspace:
+ * - InnovareAI workspaces (IA1-IA6) → GOOGLE_CHAT_REPLIES_WEBHOOK_URL
+ * - Client workspaces → GOOGLE_CHAT_CLIENT_WEBHOOK_URL
  */
 export async function sendReplyAgentHITLNotification(
   notification: ReplyAgentHITLNotification
 ): Promise<{ success: boolean; error?: string }> {
-  // Filter: Only send to Google Chat for InnovareAI workspaces
-  if (notification.workspaceId && !INNOVAREAI_WORKSPACE_IDS.includes(notification.workspaceId)) {
-    console.log(`ℹ️ Skipping Google Chat notification - workspace ${notification.workspaceId} is not an IA workspace`);
-    return { success: true, error: undefined }; // Not an error, just filtered out
+  const isIAWorkspace = notification.workspaceId && INNOVAREAI_WORKSPACE_IDS.includes(notification.workspaceId);
+
+  // Determine which webhook to use based on workspace
+  let webhookUrl: string | undefined;
+  if (isIAWorkspace) {
+    webhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
+    if (!webhookUrl) {
+      console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping IA notification');
+      return { success: false, error: 'IA webhook URL not configured' };
+    }
+  } else {
+    webhookUrl = process.env.GOOGLE_CHAT_CLIENT_WEBHOOK_URL;
+    if (!webhookUrl) {
+      console.warn('⚠️ GOOGLE_CHAT_CLIENT_WEBHOOK_URL not configured - skipping client notification');
+      return { success: false, error: 'Client webhook URL not configured' };
+    }
   }
 
-  // Use dedicated Campaign Replies channel
-  const repliesWebhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
-
-  if (!repliesWebhookUrl) {
-    console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping Reply Agent notification');
-    return { success: false, error: 'Replies webhook URL not configured' };
-  }
+  const workspaceType = isIAWorkspace ? 'IA' : 'Client';
+  console.log(`📬 Sending ${workspaceType} notification to Google Chat for workspace ${notification.workspaceId}`);
 
   const approveUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=approve`;
   const rejectUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=reject`;
@@ -305,7 +314,71 @@ export async function sendReplyAgentHITLNotification(
     'VAGUE_POSITIVE': '👍',
     'UNCLEAR': '🤔',
     'NOT_INTERESTED': '❌',
+    'WRONG_PERSON': '🚫',
   };
+
+  // Build sections array - add client info section for non-IA workspaces (QC channel)
+  const sections: any[] = [];
+
+  // For client notifications (QC channel), add client/campaign info at the top
+  if (!isIAWorkspace) {
+    const clientInfoWidgets: any[] = [];
+
+    if (notification.clientName) {
+      clientInfoWidgets.push({
+        decoratedText: {
+          topLabel: 'Client',
+          text: notification.clientName,
+          startIcon: { knownIcon: 'PERSON' },
+        },
+      });
+    }
+
+    if (notification.campaignName) {
+      clientInfoWidgets.push({
+        decoratedText: {
+          topLabel: 'Campaign',
+          text: notification.campaignName,
+          startIcon: { knownIcon: 'BOOKMARK' },
+        },
+      });
+    }
+
+    if (notification.prospectLinkedInUrl) {
+      clientInfoWidgets.push({
+        decoratedText: {
+          topLabel: 'LinkedIn',
+          text: notification.prospectLinkedInUrl,
+          startIcon: { knownIcon: 'MEMBERSHIP' },
+          button: {
+            text: 'View Profile',
+            onClick: {
+              openLink: { url: notification.prospectLinkedInUrl },
+            },
+          },
+        },
+      });
+    }
+
+    if (clientInfoWidgets.length > 0) {
+      sections.push({
+        header: '📋 Client Info',
+        widgets: clientInfoWidgets,
+      });
+    }
+  }
+
+  // Add intent and message section
+  sections.push({
+    header: `Intent: ${intentEmoji[notification.intent] || '💬'} ${notification.intent}`,
+    widgets: [
+      {
+        textParagraph: {
+          text: `<b>Their Message:</b>\n"${notification.inboundMessage}"`,
+        },
+      },
+    ],
+  });
 
   const message: GoogleChatMessage = {
     cardsV2: [
@@ -318,16 +391,7 @@ export async function sendReplyAgentHITLNotification(
             imageType: 'CIRCLE',
           },
           sections: [
-            {
-              header: `Intent: ${intentEmoji[notification.intent] || '💬'} ${notification.intent}`,
-              widgets: [
-                {
-                  textParagraph: {
-                    text: `<b>Their Message:</b>\n"${notification.inboundMessage}"`,
-                  },
-                },
-              ],
-            },
+            ...sections,
             {
               header: '💡 SAM\'s Draft Reply',
               widgets: [
@@ -416,9 +480,9 @@ export async function sendReplyAgentHITLNotification(
     ],
   };
 
-  // Send directly to Campaign Replies channel (not the generic webhook)
+  // Send to the appropriate webhook (IA or Client QC channel)
   try {
-    const response = await fetch(repliesWebhookUrl, {
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -428,14 +492,14 @@ export async function sendReplyAgentHITLNotification(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Campaign Replies notification failed:', errorText);
+      console.error(`❌ ${workspaceType} notification failed:`, errorText);
       return { success: false, error: errorText };
     }
 
-    console.log('✅ Campaign Replies notification sent');
+    console.log(`✅ ${workspaceType} notification sent to Google Chat`);
     return { success: true };
   } catch (error) {
-    console.error('❌ Campaign Replies notification error:', error);
+    console.error(`❌ ${workspaceType} notification error:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
