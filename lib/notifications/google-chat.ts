@@ -273,33 +273,18 @@ const INNOVAREAI_WORKSPACE_IDS = [
 
 /**
  * Send a Reply Agent HITL approval request to Google Chat
- * Routes to different webhooks based on workspace:
- * - InnovareAI workspaces (IA1-IA6) → GOOGLE_CHAT_REPLIES_WEBHOOK_URL
- * - Client workspaces → GOOGLE_CHAT_CLIENT_WEBHOOK_URL
+ * All notifications go to the Campaign Replies channel for InnovareAI monitoring
  */
 export async function sendReplyAgentHITLNotification(
   notification: ReplyAgentHITLNotification
 ): Promise<{ success: boolean; error?: string }> {
-  const isIAWorkspace = notification.workspaceId && INNOVAREAI_WORKSPACE_IDS.includes(notification.workspaceId);
-
-  // Determine which webhook to use based on workspace
-  let webhookUrl: string | undefined;
-  if (isIAWorkspace) {
-    webhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
-    if (!webhookUrl) {
-      console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping IA notification');
-      return { success: false, error: 'IA webhook URL not configured' };
-    }
-  } else {
-    webhookUrl = process.env.GOOGLE_CHAT_CLIENT_WEBHOOK_URL;
-    if (!webhookUrl) {
-      console.warn('⚠️ GOOGLE_CHAT_CLIENT_WEBHOOK_URL not configured - skipping client notification');
-      return { success: false, error: 'Client webhook URL not configured' };
-    }
+  const webhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping notification');
+    return { success: false, error: 'Webhook URL not configured' };
   }
 
-  const workspaceType = isIAWorkspace ? 'IA' : 'Client';
-  console.log(`📬 Sending ${workspaceType} notification to Google Chat for workspace ${notification.workspaceId}`);
+  console.log(`📬 Sending notification to Campaign Replies channel for workspace ${notification.workspaceId}`);
 
   const approveUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=approve`;
   const rejectUrl = `${notification.appUrl}/api/reply-agent/approve?token=${notification.approvalToken}&action=reject`;
@@ -317,55 +302,54 @@ export async function sendReplyAgentHITLNotification(
     'WRONG_PERSON': '🚫',
   };
 
-  // Build sections array - add client info section for non-IA workspaces (QC channel)
+  // Build sections array - always include campaign info and LinkedIn link
   const sections: any[] = [];
 
-  // For client notifications (QC channel), add client/campaign info at the top
-  if (!isIAWorkspace) {
-    const clientInfoWidgets: any[] = [];
+  // Campaign info section with LinkedIn link (always shown)
+  const infoWidgets: any[] = [];
 
-    if (notification.clientName) {
-      clientInfoWidgets.push({
-        decoratedText: {
-          topLabel: 'Client',
-          text: notification.clientName,
-          startIcon: { knownIcon: 'PERSON' },
-        },
-      });
-    }
+  if (notification.clientName) {
+    infoWidgets.push({
+      decoratedText: {
+        topLabel: 'Workspace',
+        text: notification.clientName,
+        startIcon: { knownIcon: 'PERSON' },
+      },
+    });
+  }
 
-    if (notification.campaignName) {
-      clientInfoWidgets.push({
-        decoratedText: {
-          topLabel: 'Campaign',
-          text: notification.campaignName,
-          startIcon: { knownIcon: 'BOOKMARK' },
-        },
-      });
-    }
+  if (notification.campaignName) {
+    infoWidgets.push({
+      decoratedText: {
+        topLabel: 'Campaign',
+        text: notification.campaignName,
+        startIcon: { knownIcon: 'BOOKMARK' },
+      },
+    });
+  }
 
-    if (notification.prospectLinkedInUrl) {
-      clientInfoWidgets.push({
-        decoratedText: {
-          topLabel: 'LinkedIn',
-          text: notification.prospectLinkedInUrl,
-          startIcon: { knownIcon: 'MEMBERSHIP' },
-          button: {
-            text: 'View Profile',
-            onClick: {
-              openLink: { url: notification.prospectLinkedInUrl },
-            },
+  // LinkedIn link - ALWAYS shown
+  if (notification.prospectLinkedInUrl) {
+    infoWidgets.push({
+      decoratedText: {
+        topLabel: 'LinkedIn',
+        text: notification.prospectLinkedInUrl,
+        startIcon: { knownIcon: 'MEMBERSHIP' },
+        button: {
+          text: 'View Profile',
+          onClick: {
+            openLink: { url: notification.prospectLinkedInUrl },
           },
         },
-      });
-    }
+      },
+    });
+  }
 
-    if (clientInfoWidgets.length > 0) {
-      sections.push({
-        header: '📋 Client Info',
-        widgets: clientInfoWidgets,
-      });
-    }
+  if (infoWidgets.length > 0) {
+    sections.push({
+      header: '📋 Campaign Info',
+      widgets: infoWidgets,
+    });
   }
 
   // Add intent and message section
@@ -480,7 +464,7 @@ export async function sendReplyAgentHITLNotification(
     ],
   };
 
-  // Send to the appropriate webhook (IA or Client QC channel)
+  // Send to Campaign Replies channel
   try {
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -492,14 +476,14 @@ export async function sendReplyAgentHITLNotification(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ ${workspaceType} notification failed:`, errorText);
+      console.error(`❌ Reply notification failed:`, errorText);
       return { success: false, error: errorText };
     }
 
-    console.log(`✅ ${workspaceType} notification sent to Google Chat`);
+    console.log(`✅ Reply notification sent to Google Chat`);
     return { success: true };
   } catch (error) {
-    console.error(`❌ ${workspaceType} notification error:`, error);
+    console.error(`❌ Reply notification error:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
