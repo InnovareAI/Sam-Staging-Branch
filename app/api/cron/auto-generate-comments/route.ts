@@ -110,7 +110,29 @@ export async function POST(request: NextRequest) {
     }
 
     const totalCommentsToday = todaysComments?.length || 0;
-    console.log(`   📊 Comments generated today: ${totalCommentsToday} (limit: ${dailyLimit})`);
+    console.log(`   📊 Total comments generated today: ${totalCommentsToday}`);
+    console.log(`   📊 Per-workspace breakdown:`, commentsPerWorkspaceToday);
+
+    // ============================================
+    // FETCH MONITOR METADATA FOR PER-WORKSPACE LIMITS
+    // ============================================
+    const { data: monitors } = await supabase
+      .from('linkedin_post_monitors')
+      .select('id, workspace_id, metadata')
+      .eq('status', 'active');
+
+    // Build per-workspace limit map from monitor metadata
+    const workspaceLimits: Record<string, number> = {};
+    for (const monitor of monitors || []) {
+      const customLimit = monitor.metadata?.daily_comment_limit;
+      if (customLimit && typeof customLimit === 'number') {
+        // Use the custom limit (could have multiple monitors per workspace - use lowest)
+        if (!workspaceLimits[monitor.workspace_id] || customLimit < workspaceLimits[monitor.workspace_id]) {
+          workspaceLimits[monitor.workspace_id] = customLimit;
+        }
+      }
+    }
+    console.log(`   📊 Per-workspace custom limits:`, workspaceLimits);
 
     if (totalCommentsToday >= dailyLimit) {
       console.log(`   ✅ Daily limit reached (${totalCommentsToday}/${dailyLimit}) - stopping for today`);
@@ -314,6 +336,28 @@ export async function POST(request: NextRequest) {
         const monitor = post.linkedin_post_monitors;
         const brandGuideline = guidelinesByWorkspace[post.workspace_id];
         const authorId = post.author_profile_id || post.author_name || 'unknown';
+
+        // ============================================
+        // PER-WORKSPACE LIMIT CHECK
+        // Respect custom daily limits set in monitor metadata
+        // ============================================
+        const workspaceLimit = workspaceLimits[post.workspace_id] || dailyLimit;
+        const workspaceCommentsToday = commentsPerWorkspaceToday[post.workspace_id] || 0;
+
+        if (workspaceCommentsToday >= workspaceLimit) {
+          console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - WORKSPACE LIMIT REACHED (${workspaceCommentsToday}/${workspaceLimit})`);
+          skipCount++;
+          results.push({ post_id: post.id, status: 'skipped_workspace_daily_limit' });
+          // Mark post back to discovered so it can be processed tomorrow
+          await supabase
+            .from('linkedin_posts_discovered')
+            .update({
+              status: 'discovered',
+              comment_generated_at: null  // Reset so it can be picked up later
+            })
+            .eq('id', post.id);
+          continue;
+        }
 
         // CRITICAL DEDUPLICATION: Skip if post already has a comment (any status)
         // This prevents duplicate comments from race conditions between cron runs
@@ -829,6 +873,9 @@ export async function POST(request: NextRequest) {
         // Track this author so we don't comment on their other posts in this run
         authorsCommentedThisRun.add(authorId);
         authorsWithPendingComments.add(authorId); // Also prevent future runs from double-commenting
+
+        // Increment per-workspace counter (enforces limit within this run)
+        commentsPerWorkspaceToday[post.workspace_id] = (commentsPerWorkspaceToday[post.workspace_id] || 0) + 1;
 
         // Track social_id to prevent duplicates from same LinkedIn post
         if (post.social_id) {
