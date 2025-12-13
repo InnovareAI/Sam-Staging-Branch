@@ -323,10 +323,11 @@ ${context.typePrompt}
 /**
  * Get random typing delay in milliseconds
  * Simulates time spent reading post and typing comment
+ * Humans take 15-45 seconds to read a post and type a thoughtful response
  */
 export function getTypingDelayMs(): number {
-  // 2-8 seconds delay (2000-8000ms)
-  return 2000 + Math.floor(Math.random() * 6000);
+  // 15-45 seconds delay (15000-45000ms)
+  return 15000 + Math.floor(Math.random() * 30000);
 }
 
 // ============================================
@@ -506,10 +507,10 @@ export function shouldLikeBeforeComment(): boolean {
 
 /**
  * Get delay between liking and commenting (if liking first)
- * 3-15 seconds - simulates reading after liking
+ * 10-30 seconds - simulates continued reading after liking before typing
  */
 export function getLikeToCommentDelayMs(): number {
-  return 3000 + Math.floor(Math.random() * 12000);
+  return 10000 + Math.floor(Math.random() * 20000);
 }
 
 // ============================================
@@ -527,10 +528,10 @@ export function shouldViewProfileFirst(): boolean {
 
 /**
  * Get delay after viewing profile before commenting
- * 5-20 seconds - simulates reading profile
+ * 20-60 seconds - simulates thoroughly reading someone's profile
  */
 export function getProfileViewDelayMs(): number {
-  return 5000 + Math.floor(Math.random() * 15000);
+  return 20000 + Math.floor(Math.random() * 40000);
 }
 
 // ============================================
