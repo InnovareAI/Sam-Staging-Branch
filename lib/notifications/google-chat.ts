@@ -378,6 +378,98 @@ export async function sendReplyAgentHITLNotification(
     ],
   });
 
+  // For IA workspaces: Include SAM's draft reply and action buttons
+  // For Client workspaces: Just a notification (no SAM reply, no buttons)
+  const finalSections = [...sections];
+
+  if (isIAWorkspace) {
+    // Add SAM's draft reply section
+    finalSections.push({
+      header: '💡 SAM\'s Draft Reply',
+      widgets: [
+        {
+          textParagraph: {
+            text: notification.draftReply,
+          },
+        },
+      ],
+    });
+
+    // Add action buttons section
+    finalSections.push({
+      widgets: [
+        {
+          buttonList: {
+            buttons: [
+              {
+                text: '✓ Approve & Send',
+                onClick: {
+                  openLink: {
+                    url: approveUrl,
+                  },
+                },
+                color: {
+                  red: 0.063,
+                  green: 0.722,
+                  blue: 0.506,
+                  alpha: 1,
+                },
+              },
+              {
+                text: '✗ Reject',
+                onClick: {
+                  openLink: {
+                    url: rejectUrl,
+                  },
+                },
+                color: {
+                  red: 0.937,
+                  green: 0.267,
+                  blue: 0.267,
+                  alpha: 1,
+                },
+              },
+            ],
+          },
+        },
+        {
+          buttonList: {
+            buttons: [
+              {
+                text: '✏️ Edit Reply',
+                onClick: {
+                  openLink: {
+                    url: editUrl,
+                  },
+                },
+                color: {
+                  red: 0.42,
+                  green: 0.48,
+                  blue: 0.54,
+                  alpha: 1,
+                },
+              },
+              {
+                text: '💬 Add Instructions',
+                onClick: {
+                  openLink: {
+                    url: instructionsUrl,
+                  },
+                },
+                color: {
+                  red: 0.4,
+                  green: 0.31,
+                  blue: 0.64,
+                  alpha: 1,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+  }
+
   const message: GoogleChatMessage = {
     cardsV2: [
       {
@@ -388,91 +480,7 @@ export async function sendReplyAgentHITLNotification(
             subtitle: `${notification.prospectTitle || ''} at ${notification.prospectCompany || 'Unknown'}`,
             imageType: 'CIRCLE',
           },
-          sections: [
-            ...sections,
-            {
-              header: '💡 SAM\'s Draft Reply',
-              widgets: [
-                {
-                  textParagraph: {
-                    text: notification.draftReply,
-                  },
-                },
-              ],
-            },
-            {
-              widgets: [
-                {
-                  buttonList: {
-                    buttons: [
-                      {
-                        text: '✓ Approve & Send',
-                        onClick: {
-                          openLink: {
-                            url: approveUrl,
-                          },
-                        },
-                        color: {
-                          red: 0.063,
-                          green: 0.722,
-                          blue: 0.506,
-                          alpha: 1,
-                        },
-                      },
-                      {
-                        text: '✗ Reject',
-                        onClick: {
-                          openLink: {
-                            url: rejectUrl,
-                          },
-                        },
-                        color: {
-                          red: 0.937,
-                          green: 0.267,
-                          blue: 0.267,
-                          alpha: 1,
-                        },
-                      },
-                    ],
-                  },
-                },
-                {
-                  buttonList: {
-                    buttons: [
-                      {
-                        text: '✏️ Edit Reply',
-                        onClick: {
-                          openLink: {
-                            url: editUrl,
-                          },
-                        },
-                        color: {
-                          red: 0.42,
-                          green: 0.48,
-                          blue: 0.54,
-                          alpha: 1,
-                        },
-                      },
-                      {
-                        text: '💬 Add Instructions',
-                        onClick: {
-                          openLink: {
-                            url: instructionsUrl,
-                          },
-                        },
-                        color: {
-                          red: 0.4,
-                          green: 0.31,
-                          blue: 0.64,
-                          alpha: 1,
-                        },
-                      },
-                    ],
-                  },
-                },
-              ],
-            },
-          ],
+          sections: finalSections,
         },
       },
     ],
