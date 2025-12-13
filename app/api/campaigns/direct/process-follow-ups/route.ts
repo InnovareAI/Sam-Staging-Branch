@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { spinForProspect, personalizeMessage } from '@/lib/anti-detection/spintax';
+import {
+  getRandomizedFollowUpInterval,
+  getPreSendDelayMs,
+  getComposingDelayMs,
+  isMessageWarning
+} from '@/lib/anti-detection/message-variance';
 
 /**
  * Direct Campaign Execution - Process Follow-Ups
@@ -44,8 +51,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Follow-up intervals (in days)
-const FOLLOW_UP_INTERVALS = [5, 7, 5, 7]; // FU1: +5d, FU2: +7d, FU3: +5d, FU4: +7d
+// Follow-up intervals are now RANDOMIZED via getRandomizedFollowUpInterval()
+// Base intervals: [5, 7, 5, 7] with +/- 2 days variance
+// This creates human-like variation: FU1 might be 3-7 days, FU2 might be 5-9 days, etc.
+const BASE_FOLLOW_UP_INTERVALS = [5, 7, 5, 7]; // Reference only - actual intervals are randomized
 
 export async function POST(req: NextRequest) {
   try {
@@ -265,27 +274,36 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // Personalize message - ALL formats (Dec 4 fix)
+        // STEP 1: Process SPINTAX first (deterministic per prospect)
+        const rawMessage = followUpMessages[messageIndex];
+        const spintaxResult = spinForProspect(rawMessage, prospect.id);
+
+        if (spintaxResult.variationsCount > 1) {
+          console.log(`🎲 Spintax: ${spintaxResult.variationsCount} variations for FU${messageIndex + 1}`);
+        }
+
+        // STEP 2: Personalize the spun message
         const firstName = prospect.first_name || '';
         const lastName = prospect.last_name || '';
         const companyName = prospect.company_name || '';
         const title = prospect.title || '';
-        const message = followUpMessages[messageIndex]
-          .replace(/\{first_name\}/gi, firstName)
-          .replace(/\{last_name\}/gi, lastName)
-          .replace(/\{company_name\}/gi, companyName)
-          .replace(/\{company\}/gi, companyName)
-          .replace(/\{title\}/gi, title)
-          .replace(/\{\{first_name\}\}/gi, firstName)
-          .replace(/\{\{last_name\}\}/gi, lastName)
-          .replace(/\{\{company_name\}\}/gi, companyName)
-          .replace(/\{\{company\}\}/gi, companyName)
-          .replace(/\{firstName\}/g, firstName)
-          .replace(/\{lastName\}/g, lastName)
-          .replace(/\{companyName\}/g, companyName)
-          .replace(/\{\{firstName\}\}/g, firstName)
-          .replace(/\{\{lastName\}\}/g, lastName)
-          .replace(/\{\{companyName\}\}/g, companyName);
+
+        const message = personalizeMessage(spintaxResult.output, {
+          first_name: firstName,
+          last_name: lastName,
+          company_name: companyName,
+          title: title,
+        });
+
+        // HUMAN-LIKE DELAYS (Anti-Detection)
+        // Simulate: reading conversation history, composing thoughtful response
+        const preSendDelay = getPreSendDelayMs();
+        console.log(`⏳ Pre-send delay: ${Math.round(preSendDelay / 1000)}s (reading conversation)`);
+        await new Promise(resolve => setTimeout(resolve, preSendDelay));
+
+        const composingDelay = getComposingDelayMs(message.length);
+        console.log(`⌨️  Composing delay: ${Math.round(composingDelay / 1000)}s (typing ${message.length} chars)`);
+        await new Promise(resolve => setTimeout(resolve, composingDelay));
 
         // Send message using REST API
         console.log(`📤 Sending follow-up message...`);
@@ -299,11 +317,31 @@ export async function POST(req: NextRequest) {
         // Mark as successfully processed (for rate limit tracking)
         processedProspectIds.add(prospect.id);
 
-        // Calculate next follow-up time
-        const nextInterval = FOLLOW_UP_INTERVALS[messageIndex];
-        const nextDueAt = nextInterval ? new Date() : null;
-        if (nextDueAt) {
-          nextDueAt.setDate(nextDueAt.getDate() + nextInterval);
+        // Calculate next follow-up time with RANDOMIZED interval
+        // Uses getRandomizedFollowUpInterval() for human-like variance
+        // Returns -1 if this follow-up should be skipped (5% probability for human hesitation)
+        const nextMessageIndex = messageIndex + 1;
+        let nextDueAt: Date | null = null;
+
+        if (nextMessageIndex < followUpMessages.length) {
+          const nextInterval = getRandomizedFollowUpInterval(nextMessageIndex);
+
+          if (nextInterval === -1) {
+            // Random skip (human hesitation) - skip this follow-up entirely
+            console.log(`⏭️  Random skip triggered for FU${nextMessageIndex + 1} (human hesitation simulation)`);
+            // Move to the NEXT follow-up after this one
+            if (nextMessageIndex + 1 < followUpMessages.length) {
+              const skipToInterval = getRandomizedFollowUpInterval(nextMessageIndex + 1);
+              if (skipToInterval > 0) {
+                nextDueAt = new Date();
+                nextDueAt.setDate(nextDueAt.getDate() + skipToInterval);
+              }
+            }
+          } else {
+            nextDueAt = new Date();
+            nextDueAt.setDate(nextDueAt.getDate() + nextInterval);
+            console.log(`📅 Next FU interval: ${nextInterval} days (randomized from base ${BASE_FOLLOW_UP_INTERVALS[nextMessageIndex] || 7})`);
+          }
         }
 
         // Update database

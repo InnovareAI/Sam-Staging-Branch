@@ -7,6 +7,12 @@ import {
   BUSINESS_HOURS,
   type ScheduleSettings
 } from '@/lib/scheduling-config';
+import {
+  getPreSendDelayMs,
+  getComposingDelayMs,
+  isMessageWarning,
+  MESSAGE_HARD_LIMITS
+} from '@/lib/anti-detection/message-variance';
 
 // Countries with Friday-Saturday weekends (Middle East)
 const FRIDAY_SATURDAY_WEEKEND_COUNTRIES = ['AE', 'SA', 'KW', 'QA', 'BH', 'OM', 'JO', 'EG'];
@@ -517,6 +523,22 @@ export async function POST(req: NextRequest) {
     console.log(`   Scheduled: ${queueItem.scheduled_for}`);
     console.log(`   Type: ${isMessengerMessage ? 'Direct Message' : isConnectionRequest ? 'Connection Request' : 'Follow-up'}`);
 
+    // ============================================
+    // HUMAN-LIKE DELAYS (Anti-Detection)
+    // Simulate: reading profile, composing message
+    // ============================================
+    const messageLength = queueItem.message?.length || 150;
+
+    // Pre-send delay: Simulates viewing profile before reaching out
+    const preSendDelay = getPreSendDelayMs();
+    console.log(`⏳ Pre-send delay: ${Math.round(preSendDelay / 1000)}s (simulating profile view)`);
+    await new Promise(resolve => setTimeout(resolve, preSendDelay));
+
+    // Composing delay: Simulates thinking + typing the message
+    const composingDelay = getComposingDelayMs(messageLength);
+    console.log(`⌨️  Composing delay: ${Math.round(composingDelay / 1000)}s (simulating typing ${messageLength} chars)`);
+    await new Promise(resolve => setTimeout(resolve, composingDelay));
+
     try {
       // 2. Resolve linkedin_user_id to provider_id (handles URLs and vanities)
       let providerId = queueItem.linkedin_user_id;
@@ -718,6 +740,44 @@ export async function POST(req: NextRequest) {
     } catch (sendError: unknown) {
       const errorMessage = sendError instanceof Error ? sendError.message : 'Unknown error';
       console.error(`❌ Failed to send CR:`, errorMessage);
+
+      // Check for LinkedIn warning patterns (rate limits, restrictions)
+      const warningCheck = isMessageWarning(errorMessage);
+      if (warningCheck.isWarning) {
+        console.log(`🚨 LINKEDIN WARNING DETECTED: "${warningCheck.pattern}"`);
+        console.log(`🛑 PAUSING campaign ${campaign.id} for 24 hours`);
+
+        // Log warning to activity log
+        await logActivity('linkedin_warning', 'failed', {
+          warning_pattern: warningCheck.pattern,
+          prospect_name: `${prospect.first_name} ${prospect.last_name}`,
+          action: 'campaign_paused_24h'
+        }, {
+          workspaceId: campaign.workspace_id,
+          campaignId: campaign.id,
+          prospectId: prospect.id,
+          errorMessage: `LinkedIn warning: ${warningCheck.pattern}`
+        });
+
+        // Reschedule this message for 24 hours later
+        const resumeTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await supabase
+          .from('send_queue')
+          .update({
+            scheduled_for: resumeTime.toISOString(),
+            error_message: `LinkedIn warning (${warningCheck.pattern}) - rescheduled for ${resumeTime.toISOString()}`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', queueItem.id);
+
+        return NextResponse.json({
+          success: false,
+          processed: 0,
+          warning: warningCheck.pattern,
+          message: `LinkedIn warning detected - rescheduled for 24 hours`,
+          resume_at: resumeTime.toISOString()
+        });
+      }
 
       // Determine specific status based on error message
       let prospectStatus = 'failed';

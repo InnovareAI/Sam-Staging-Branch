@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { createClient } from '@supabase/supabase-js';
 import { airtableService } from '@/lib/airtable';
+import { spinForProspect, personalizeMessage, validateSpintax } from '@/lib/anti-detection/spintax';
+import { getMessageVarianceContext, getABTestVariant } from '@/lib/anti-detection/message-variance';
 
 /**
  * FAST Queue-Based Campaign Execution
@@ -333,45 +335,44 @@ export async function POST(req: NextRequest) {
         scheduledTime = new Date(scheduledTime.getTime() + (randomInterval * 60 * 1000));
       }
 
-      // A/B Testing: Assign variant (even index = A, odd index = B)
+      // A/B Testing: Use improved distribution (not just even/odd)
+      // This uses multiple factors (time, day, random) for natural distribution
       const useAbTesting = abTestingEnabled && connectionMessageB;
-      const variant: 'A' | 'B' | null = useAbTesting ? (i % 2 === 0 ? 'A' : 'B') : null;
+      const abResult = useAbTesting ? getABTestVariant(i, prospect.id) : null;
+      const variant: 'A' | 'B' | null = abResult?.variant || null;
       const messageToUse = variant === 'B' ? connectionMessageB : connectionMessage;
 
       // Personalize message - handle all variable formats and null values
-      // CRITICAL FIX (Dec 4): Add fallbacks for undefined/null prospect fields
       const firstName = prospect.first_name || prospect.firstName || '';
       const lastName = prospect.last_name || prospect.lastName || '';
       const companyName = prospect.company_name || prospect.company || '';
       const title = prospect.title || prospect.job_title || '';
 
-      // CRITICAL: Process double-brace {{var}} BEFORE single-brace {var}
-      // Otherwise {firstName} matches inside {{firstName}} leaving {value}
-      const personalizedMessage = messageToUse
-        // Double-brace patterns FIRST (most specific)
-        .replace(/\{\{firstName\}\}/g, firstName)
-        .replace(/\{\{lastName\}\}/g, lastName)
-        .replace(/\{\{companyName\}\}/g, companyName)
-        .replace(/\{\{company\}\}/gi, companyName)
-        .replace(/\{\{first_name\}\}/gi, firstName)
-        .replace(/\{\{last_name\}\}/gi, lastName)
-        .replace(/\{\{company_name\}\}/gi, companyName)
-        .replace(/\{\{title\}\}/gi, title)
-        // Single-brace patterns AFTER (less specific)
-        .replace(/\{firstName\}/g, firstName)
-        .replace(/\{lastName\}/g, lastName)
-        .replace(/\{companyName\}/g, companyName)
-        .replace(/\{jobTitle\}/g, title)
-        .replace(/\{first_name\}/gi, firstName)
-        .replace(/\{last_name\}/gi, lastName)
-        .replace(/\{company_name\}/gi, companyName)
-        .replace(/\{company\}/gi, companyName)
-        .replace(/\{title\}/gi, title)
-        .replace(/\{job_title\}/gi, title);
+      // STEP 1: Process SPINTAX first (deterministic per prospect)
+      // Spintax syntax: {option1|option2|option3} creates variations
+      // Same prospect always gets same spin (deterministic via prospect.id)
+      const spintaxResult = spinForProspect(messageToUse, prospect.id);
+      let processedMessage = spintaxResult.output;
+
+      // Log spintax processing if variations were found
+      if (spintaxResult.variationsCount > 1) {
+        console.log(`🎲 Spintax: ${spintaxResult.variationsCount} variations, selected: "${spintaxResult.optionsSelected.slice(0, 3).join(', ')}${spintaxResult.optionsSelected.length > 3 ? '...' : ''}"`);
+      }
+
+      // STEP 2: Personalize the spun message
+      // Use the centralized personalizeMessage function for consistency
+      const personalizedMessage = personalizeMessage(processedMessage, {
+        first_name: firstName,
+        last_name: lastName,
+        company_name: companyName,
+        title: title,
+      });
 
       // Log if any variables weren't replaced (debugging)
-      if (personalizedMessage.includes('{') && personalizedMessage.includes('}')) {
-        console.warn(`⚠️ Unreplaced variables in message for ${firstName}: "${personalizedMessage.substring(0, 100)}..."`)
+      // Check for unreplaced personalization vars (not spintax)
+      const unreplacedVars = personalizedMessage.match(/\{[a-z_]+\}/gi);
+      if (unreplacedVars && unreplacedVars.length > 0) {
+        console.warn(`⚠️ Unreplaced variables for ${firstName}: ${unreplacedVars.join(', ')}`);
       }
 
       queueRecords.push({
