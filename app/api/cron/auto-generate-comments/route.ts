@@ -47,9 +47,24 @@ export async function POST(request: NextRequest) {
 
   // ============================================
   // ANTI-DETECTION: Check if we should skip today entirely
+  // HARD RULE: No comments on Sundays
   // Humans don't post every single day - we randomly skip ~15% of days
   // ============================================
   const dayOfWeek = new Date().getDay();
+
+  // SUNDAY BLOCK: Never comment on Sundays (day 0)
+  if (dayOfWeek === 0) {
+    console.log(`   🚫 SUNDAY - No comments today (hard rule)`);
+    return NextResponse.json({
+      success: true,
+      message: 'Sunday - no comments allowed',
+      posts_processed: 0,
+      comments_generated: 0,
+      skipped_reason: 'sunday_no_comments',
+      duration_ms: Date.now() - startTime
+    });
+  }
+
   const skipCheck = shouldSkipToday(dayOfWeek);
   if (skipCheck.skip) {
     console.log(`   🎲 SKIPPING TODAY: ${skipCheck.reason}`);
@@ -121,18 +136,44 @@ export async function POST(request: NextRequest) {
       .select('id, workspace_id, metadata')
       .eq('status', 'active');
 
-    // Build per-workspace limit map from monitor metadata
+    // Build per-workspace settings map from monitor metadata
     const workspaceLimits: Record<string, number> = {};
+    const workspaceSkipProbability: Record<string, number> = {};
+    const workspaceDelaySettings: Record<string, { minHours: number; maxHours: number }> = {};
+    const workspaceRandomizerEnabled: Record<string, boolean> = {};
+
     for (const monitor of monitors || []) {
-      const customLimit = monitor.metadata?.daily_comment_limit;
+      const metadata = monitor.metadata as Record<string, any> || {};
+
+      // Daily comment limit
+      const customLimit = metadata.daily_comment_limit;
       if (customLimit && typeof customLimit === 'number') {
-        // Use the custom limit (could have multiple monitors per workspace - use lowest)
         if (!workspaceLimits[monitor.workspace_id] || customLimit < workspaceLimits[monitor.workspace_id]) {
           workspaceLimits[monitor.workspace_id] = customLimit;
         }
       }
+
+      // Skip day probability
+      const skipProb = metadata.skip_day_probability;
+      if (typeof skipProb === 'number' && skipProb >= 0 && skipProb <= 1) {
+        workspaceSkipProbability[monitor.workspace_id] = skipProb;
+      }
+
+      // Randomizer enabled flag
+      if (metadata.randomizer_enabled !== undefined) {
+        workspaceRandomizerEnabled[monitor.workspace_id] = Boolean(metadata.randomizer_enabled);
+      }
+
+      // Comment delay settings (in hours)
+      const minHours = metadata.comment_delay_min_hours;
+      const maxHours = metadata.comment_delay_max_hours;
+      if (typeof minHours === 'number' && typeof maxHours === 'number') {
+        workspaceDelaySettings[monitor.workspace_id] = { minHours, maxHours };
+      }
     }
     console.log(`   📊 Per-workspace custom limits:`, workspaceLimits);
+    console.log(`   📊 Per-workspace skip probabilities:`, workspaceSkipProbability);
+    console.log(`   📊 Per-workspace delay settings:`, workspaceDelaySettings);
 
     if (totalCommentsToday >= dailyLimit) {
       console.log(`   ✅ Daily limit reached (${totalCommentsToday}/${dailyLimit}) - stopping for today`);
@@ -357,6 +398,35 @@ export async function POST(request: NextRequest) {
             })
             .eq('id', post.id);
           continue;
+        }
+
+        // ============================================
+        // PER-WORKSPACE SKIP DAY CHECK
+        // Respect custom skip_day_probability from monitor metadata
+        // Only check once per workspace per run (deterministic for the day)
+        // ============================================
+        const customSkipProb = workspaceSkipProbability[post.workspace_id];
+        if (customSkipProb !== undefined && workspaceRandomizerEnabled[post.workspace_id]) {
+          // Use workspace ID + date as seed for consistent daily skip decision
+          const dateStr = new Date().toISOString().split('T')[0];
+          const seedString = `${post.workspace_id}-${dateStr}`;
+          const hash = seedString.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0);
+          const seededRandom = Math.abs(hash % 100) / 100;
+
+          if (seededRandom < customSkipProb) {
+            console.log(`\n⏭️ Skipping post ${post.id.substring(0, 8)} - WORKSPACE SKIP DAY (${(customSkipProb * 100).toFixed(0)}% probability)`);
+            skipCount++;
+            results.push({ post_id: post.id, status: 'skipped_workspace_skip_day' });
+            // Reset post so it can be processed another day
+            await supabase
+              .from('linkedin_posts_discovered')
+              .update({
+                status: 'discovered',
+                comment_generated_at: null
+              })
+              .eq('id', post.id);
+            continue;
+          }
         }
 
         // CRITICAL DEDUPLICATION: Skip if post already has a comment (any status)
@@ -779,11 +849,25 @@ export async function POST(request: NextRequest) {
 
           // ============================================
           // ANTI-DETECTION: Use random posting times
-          // Instead of fixed 36-min intervals, we use variance:
-          // - Random gaps between comments (30-180 min)
-          // - Posting hours weighted toward business hours
+          // Per-workspace delay settings from monitor metadata
+          // Falls back to global variance if not configured
           // ============================================
           const now = new Date();
+
+          // Get per-workspace delay settings or use defaults
+          const delaySettings = workspaceDelaySettings[post.workspace_id];
+          let gapMinutes: number;
+
+          if (delaySettings && workspaceRandomizerEnabled[post.workspace_id]) {
+            // Use per-workspace delay settings (in hours, convert to minutes)
+            const minMinutes = delaySettings.minHours * 60;
+            const maxMinutes = delaySettings.maxHours * 60;
+            gapMinutes = minMinutes + Math.floor(Math.random() * (maxMinutes - minMinutes));
+            console.log(`   🎯 Using workspace delay: ${delaySettings.minHours}-${delaySettings.maxHours}h`);
+          } else {
+            // Fall back to global variance
+            gapMinutes = getRandomCommentGap();
+          }
 
           // Get the last scheduled comment for this workspace
           const { data: lastScheduled } = await supabase
@@ -798,13 +882,11 @@ export async function POST(request: NextRequest) {
           if (lastScheduled?.scheduled_post_time) {
             // Schedule after the last scheduled comment with random gap
             const lastTime = new Date(lastScheduled.scheduled_post_time);
-            const gapMinutes = getRandomCommentGap();
             const scheduled = new Date(lastTime.getTime() + gapMinutes * 60 * 1000);
             scheduledPostTime = scheduled.toISOString();
-            console.log(`   🎲 Scheduled ${gapMinutes}min after last (variance gap)`);
+            console.log(`   🎲 Scheduled ${gapMinutes}min (${(gapMinutes/60).toFixed(1)}h) after last`);
           } else {
             // No pending scheduled comments - schedule for a random future time
-            const gapMinutes = getRandomCommentGap();
             const scheduled = new Date(now.getTime() + gapMinutes * 60 * 1000);
             scheduledPostTime = scheduled.toISOString();
             console.log(`   🎲 Scheduled ${gapMinutes}min from now (variance start)`);
