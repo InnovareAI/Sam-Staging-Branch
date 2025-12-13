@@ -396,11 +396,11 @@ export async function sendReplyAgentHITLNotification(
     ],
   });
 
-  // For IA workspaces: Include SAM's draft reply and action buttons
-  // For Client workspaces: Just a notification (no SAM reply, no buttons)
+  // For IA workspaces and clients with dedicated webhooks: Include SAM's draft reply and action buttons
+  // For other client workspaces: Just a notification (no SAM reply, no buttons)
   const finalSections = [...sections];
 
-  if (isIAWorkspace) {
+  if (isIAWorkspace || hasClientWebhook) {
     // Add SAM's draft reply section
     finalSections.push({
       header: '💡 SAM\'s Draft Reply',
@@ -489,6 +489,8 @@ export async function sendReplyAgentHITLNotification(
   }
 
   const message: GoogleChatMessage = {
+    // Add @all mention for client workspaces to notify everyone
+    text: hasClientWebhook ? '<users/all> 🔔 New reply needs review' : undefined,
     cardsV2: [
       {
         cardId: `reply-agent-${notification.draftId}`,
