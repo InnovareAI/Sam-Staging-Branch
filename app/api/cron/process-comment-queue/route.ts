@@ -11,6 +11,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import moment from 'moment-timezone';
 import { getHolidaysForCountry, BUSINESS_HOURS } from '@/lib/scheduling-config';
+import {
+  isHoliday,
+  getTypingDelayMs,
+  shouldLikeBeforeComment,
+  getLikeToCommentDelayMs,
+  shouldViewProfileFirst,
+  getProfileViewDelayMs,
+  getAntiDetectionContext
+} from '@/lib/anti-detection/comment-variance';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -110,6 +119,21 @@ export async function POST(req: NextRequest) {
   }
 
   console.log('📤 Processing scheduled comments queue...');
+
+  // ============================================
+  // ANTI-DETECTION: Holiday check
+  // Skip all posting on major holidays
+  // ============================================
+  const holidayCheck = isHoliday();
+  if (holidayCheck.isHoliday) {
+    console.log(`🎄 HOLIDAY SKIP: ${holidayCheck.holidayName} - no comments today`);
+    return NextResponse.json({
+      success: true,
+      processed: 0,
+      message: `Holiday skip: ${holidayCheck.holidayName}`,
+      skipped_reason: 'holiday'
+    });
+  }
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -319,6 +343,58 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
+        // ============================================
+        // ANTI-DETECTION: Full human behavior simulation
+        // ============================================
+        const antiDetection = getAntiDetectionContext();
+        let didLikeBefore = false;
+
+        // 1. View author profile first (40% chance)
+        if (antiDetection.shouldViewProfile) {
+          console.log(`   👤 Viewing author profile first (anti-detection)...`);
+          // Note: Would need author profile URL from post data
+          // For now, just simulate the delay
+          await new Promise(resolve => setTimeout(resolve, antiDetection.profileViewDelayMs));
+          console.log(`   ⏳ Profile view delay: ${Math.round(antiDetection.profileViewDelayMs / 1000)}s`);
+        }
+
+        // 2. Like post BEFORE commenting (50% chance)
+        if (antiDetection.shouldLikeFirst) {
+          console.log(`   👍 Liking post BEFORE comment (anti-detection)...`);
+          try {
+            const likeResponse = await fetch(
+              `${UNIPILE_BASE_URL}/api/v1/posts/reaction`,
+              {
+                method: 'POST',
+                headers: {
+                  'X-API-KEY': UNIPILE_API_KEY,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  account_id: linkedinAccount.unipile_account_id,
+                  post_id: activitySocialId,
+                  reaction_type: 'like'
+                })
+              }
+            );
+
+            if (likeResponse.ok) {
+              console.log('   ✅ Post liked (before comment)');
+              didLikeBefore = true;
+              // Delay after liking, before commenting
+              await new Promise(resolve => setTimeout(resolve, antiDetection.likeToCommentDelayMs));
+              console.log(`   ⏳ Like-to-comment delay: ${Math.round(antiDetection.likeToCommentDelayMs / 1000)}s`);
+            }
+          } catch (likeError) {
+            console.log(`   ⚠️ Pre-comment like failed: ${likeError}`);
+          }
+        }
+
+        // 3. Typing delay (simulates reading post + typing comment)
+        console.log(`   ⌨️ Typing delay: ${Math.round(antiDetection.typingDelayMs / 1000)}s`);
+        await new Promise(resolve => setTimeout(resolve, antiDetection.typingDelayMs));
+
+        // 4. Post the comment
         const unipileResponse = await fetch(
           `${UNIPILE_BASE_URL}/api/v1/posts/${encodeURIComponent(postSocialId)}/comments`,
           {
@@ -358,34 +434,38 @@ export async function POST(req: NextRequest) {
         // Extract LinkedIn comment ID
         const linkedinCommentId = unipileData.id || unipileData.comment_id || unipileData.object_id || null;
 
-        // Auto-like the post after commenting
+        // Auto-like the post after commenting (if we didn't already like before)
         // Use the original activity ID for reactions (not ugcPost)
-        console.log(`   👍 Liking post ${activitySocialId}...`);
-        try {
-          const likeResponse = await fetch(
-            `${UNIPILE_BASE_URL}/api/v1/posts/reaction`,
-            {
-              method: 'POST',
-              headers: {
-                'X-API-KEY': UNIPILE_API_KEY,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                account_id: linkedinAccount.unipile_account_id,
-                post_id: activitySocialId,
-                reaction_type: 'like'  // lowercase required
-              })
-            }
-          );
+        if (!didLikeBefore) {
+          console.log(`   👍 Liking post AFTER comment...`);
+          try {
+            const likeResponse = await fetch(
+              `${UNIPILE_BASE_URL}/api/v1/posts/reaction`,
+              {
+                method: 'POST',
+                headers: {
+                  'X-API-KEY': UNIPILE_API_KEY,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  account_id: linkedinAccount.unipile_account_id,
+                  post_id: activitySocialId,
+                  reaction_type: 'like'
+                })
+              }
+            );
 
-          if (likeResponse.ok) {
-            console.log('   ✅ Post liked');
-          } else {
-            const likeError = await likeResponse.text();
-            console.log(`   ⚠️ Could not like post: ${likeError}`);
+            if (likeResponse.ok) {
+              console.log('   ✅ Post liked (after comment)');
+            } else {
+              const likeError = await likeResponse.text();
+              console.log(`   ⚠️ Could not like post: ${likeError}`);
+            }
+          } catch (likeError) {
+            console.log(`   ⚠️ Like failed: ${likeError}`);
           }
-        } catch (likeError) {
-          console.log(`   ⚠️ Like failed: ${likeError}`);
+        } else {
+          console.log('   ✅ Post already liked before comment - skipping');
         }
 
         // Update comment status to 'posted'

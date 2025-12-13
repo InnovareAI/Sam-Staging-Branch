@@ -19,7 +19,9 @@ import {
   getRandomCommentGap,
   getRandomPostingHour,
   getRandomPostingMinute,
-  DAILY_VOLUME_CONFIG
+  DAILY_VOLUME_CONFIG,
+  isHoliday,
+  getSessionBehavior
 } from '@/lib/anti-detection/comment-variance';
 
 export const dynamic = 'force-dynamic';
@@ -61,6 +63,20 @@ export async function POST(request: NextRequest) {
       posts_processed: 0,
       comments_generated: 0,
       skipped_reason: 'sunday_no_comments',
+      duration_ms: Date.now() - startTime
+    });
+  }
+
+  // HOLIDAY BLOCK: Skip major holidays
+  const holidayCheck = isHoliday();
+  if (holidayCheck.isHoliday) {
+    console.log(`   🎄 HOLIDAY - ${holidayCheck.holidayName} - No comments today`);
+    return NextResponse.json({
+      success: true,
+      message: `Holiday skip: ${holidayCheck.holidayName}`,
+      posts_processed: 0,
+      comments_generated: 0,
+      skipped_reason: 'holiday_no_comments',
       duration_ms: Date.now() - startTime
     });
   }

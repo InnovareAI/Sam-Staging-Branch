@@ -291,6 +291,12 @@ export function getCommentVarianceContext(): CommentVarianceContext {
  * Build variance instructions for AI prompt
  */
 export function buildVariancePromptInstructions(context: CommentVarianceContext): string {
+  // Emoji variance: 30% chance to include emoji instruction
+  const includeEmoji = Math.random() < 0.30;
+  const emojiInstruction = includeEmoji
+    ? '\n- Include 1-2 relevant emojis naturally (not at the start)'
+    : '\n- Do NOT use any emojis in this comment';
+
   return `
 ## VARIANCE INSTRUCTIONS (CRITICAL FOR ANTI-DETECTION)
 
@@ -305,6 +311,258 @@ ${context.typePrompt}
 **Style Variation**:
 - Vary your opening style (don't always start with "Great point!" or similar)
 - Mix up sentence structure
-- Use different phrasings for similar ideas
+- Use different phrasings for similar ideas${emojiInstruction}
 `;
+}
+
+// ============================================
+// TYPING DELAY SIMULATION
+// Simulates human reading post + typing comment
+// ============================================
+
+/**
+ * Get random typing delay in milliseconds
+ * Simulates time spent reading post and typing comment
+ */
+export function getTypingDelayMs(): number {
+  // 2-8 seconds delay (2000-8000ms)
+  return 2000 + Math.floor(Math.random() * 6000);
+}
+
+// ============================================
+// BUSINESS HOURS WEIGHTING
+// 80% of comments during business hours (8am-6pm)
+// ============================================
+
+/**
+ * Check if current time is within business hours
+ * Returns adjustment factor for scheduling
+ */
+export function isBusinessHours(hour: number): boolean {
+  return hour >= 8 && hour < 18;
+}
+
+/**
+ * Get scheduling adjustment based on time of day
+ * Delays non-business hour posts to next business window
+ */
+export function getBusinessHoursDelay(): number {
+  const now = new Date();
+  const hour = now.getHours();
+
+  // 80% chance to enforce business hours
+  if (Math.random() < 0.80) {
+    if (hour < 8) {
+      // Before 8am - delay to 8am + random minutes
+      const minutesToEight = (8 - hour) * 60 - now.getMinutes();
+      return minutesToEight + Math.floor(Math.random() * 60);
+    } else if (hour >= 18) {
+      // After 6pm - delay to next day 8am + random
+      const minutesToMidnight = (24 - hour) * 60 - now.getMinutes();
+      const minutesTo8am = 8 * 60;
+      return minutesToMidnight + minutesTo8am + Math.floor(Math.random() * 60);
+    }
+  }
+
+  return 0; // No delay needed
+}
+
+// ============================================
+// SESSION-BASED ACTIVITY
+// Comments come in bursts, not evenly spread
+// ============================================
+
+export interface SessionConfig {
+  isInSession: boolean;
+  commentsInSession: number;
+  sessionGapMinutes: number;
+}
+
+/**
+ * Determine if we should start a new session or continue existing
+ * Sessions are 2-4 comments with short gaps, then long break
+ */
+export function getSessionBehavior(commentsToday: number): SessionConfig {
+  // Session size: 2-4 comments
+  const sessionSize = 2 + Math.floor(Math.random() * 3);
+
+  // Are we mid-session?
+  const positionInSession = commentsToday % sessionSize;
+  const isInSession = positionInSession > 0 && positionInSession < sessionSize;
+
+  if (isInSession) {
+    // Short gap within session (5-20 min)
+    return {
+      isInSession: true,
+      commentsInSession: positionInSession,
+      sessionGapMinutes: 5 + Math.floor(Math.random() * 15)
+    };
+  } else {
+    // Long gap between sessions (2-4 hours)
+    return {
+      isInSession: false,
+      commentsInSession: 0,
+      sessionGapMinutes: 120 + Math.floor(Math.random() * 120)
+    };
+  }
+}
+
+// ============================================
+// HOLIDAY SKIPPING
+// Skip major US/EU holidays
+// ============================================
+
+const HOLIDAYS_2024_2025 = [
+  // 2024
+  '2024-12-24', '2024-12-25', '2024-12-26', // Christmas
+  '2024-12-31', // New Year's Eve
+  // 2025
+  '2025-01-01', // New Year's Day
+  '2025-01-20', // MLK Day
+  '2025-02-17', // Presidents Day
+  '2025-04-18', '2025-04-21', // Easter weekend
+  '2025-05-26', // Memorial Day
+  '2025-07-04', // Independence Day
+  '2025-09-01', // Labor Day
+  '2025-10-13', // Columbus Day
+  '2025-11-11', // Veterans Day
+  '2025-11-27', '2025-11-28', // Thanksgiving
+  '2025-12-24', '2025-12-25', '2025-12-26', // Christmas
+  '2025-12-31', // New Year's Eve
+  '2026-01-01', // New Year's Day
+];
+
+/**
+ * Check if today is a holiday
+ */
+export function isHoliday(date: Date = new Date()): { isHoliday: boolean; holidayName?: string } {
+  const dateStr = date.toISOString().split('T')[0];
+
+  if (HOLIDAYS_2024_2025.includes(dateStr)) {
+    // Get holiday name
+    const month = date.getMonth();
+    const day = date.getDate();
+
+    if (month === 11 && (day >= 24 && day <= 26)) return { isHoliday: true, holidayName: 'Christmas' };
+    if (month === 11 && day === 31) return { isHoliday: true, holidayName: "New Year's Eve" };
+    if (month === 0 && day === 1) return { isHoliday: true, holidayName: "New Year's Day" };
+    if (month === 10 && (day === 27 || day === 28)) return { isHoliday: true, holidayName: 'Thanksgiving' };
+    if (month === 6 && day === 4) return { isHoliday: true, holidayName: 'Independence Day' };
+
+    return { isHoliday: true, holidayName: 'Holiday' };
+  }
+
+  return { isHoliday: false };
+}
+
+// ============================================
+// ACCOUNT WARM-UP MODE
+// New accounts start slow and gradually increase
+// ============================================
+
+export interface WarmupConfig {
+  accountAgeDays: number;
+  maxCommentsPerDay: number;
+  isWarmupMode: boolean;
+}
+
+/**
+ * Get warm-up configuration based on account age
+ * Week 1: 1 comment/day
+ * Week 2: 2 comments/day
+ * Week 3: 3 comments/day
+ * Week 4+: Normal limits
+ */
+export function getWarmupConfig(accountCreatedAt: Date): WarmupConfig {
+  const now = new Date();
+  const ageMs = now.getTime() - accountCreatedAt.getTime();
+  const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+
+  if (ageDays < 7) {
+    return { accountAgeDays: ageDays, maxCommentsPerDay: 1, isWarmupMode: true };
+  } else if (ageDays < 14) {
+    return { accountAgeDays: ageDays, maxCommentsPerDay: 2, isWarmupMode: true };
+  } else if (ageDays < 21) {
+    return { accountAgeDays: ageDays, maxCommentsPerDay: 3, isWarmupMode: true };
+  } else if (ageDays < 28) {
+    return { accountAgeDays: ageDays, maxCommentsPerDay: 4, isWarmupMode: true };
+  }
+
+  return { accountAgeDays: ageDays, maxCommentsPerDay: 5, isWarmupMode: false };
+}
+
+// ============================================
+// LIKE-BEFORE-COMMENT
+// Sometimes like the post before commenting
+// ============================================
+
+/**
+ * Should we like the post before commenting?
+ * 50% chance to like first
+ */
+export function shouldLikeBeforeComment(): boolean {
+  return Math.random() < 0.50;
+}
+
+/**
+ * Get delay between liking and commenting (if liking first)
+ * 3-15 seconds - simulates reading after liking
+ */
+export function getLikeToCommentDelayMs(): number {
+  return 3000 + Math.floor(Math.random() * 12000);
+}
+
+// ============================================
+// PROFILE VIEW SIMULATION
+// Sometimes view author profile before commenting
+// ============================================
+
+/**
+ * Should we view the author's profile before commenting?
+ * 40% chance to view profile first
+ */
+export function shouldViewProfileFirst(): boolean {
+  return Math.random() < 0.40;
+}
+
+/**
+ * Get delay after viewing profile before commenting
+ * 5-20 seconds - simulates reading profile
+ */
+export function getProfileViewDelayMs(): number {
+  return 5000 + Math.floor(Math.random() * 15000);
+}
+
+// ============================================
+// COMBINED ANTI-DETECTION CONTEXT
+// ============================================
+
+export interface AntiDetectionContext {
+  typingDelayMs: number;
+  businessHoursDelayMinutes: number;
+  session: SessionConfig;
+  shouldLikeFirst: boolean;
+  likeToCommentDelayMs: number;
+  shouldViewProfile: boolean;
+  profileViewDelayMs: number;
+  includeEmoji: boolean;
+}
+
+/**
+ * Get full anti-detection context for a comment
+ */
+export function getAntiDetectionContext(commentsToday: number = 0): AntiDetectionContext {
+  const shouldLikeFirst = shouldLikeBeforeComment();
+  const shouldViewProfile = shouldViewProfileFirst();
+
+  return {
+    typingDelayMs: getTypingDelayMs(),
+    businessHoursDelayMinutes: getBusinessHoursDelay(),
+    session: getSessionBehavior(commentsToday),
+    shouldLikeFirst,
+    likeToCommentDelayMs: shouldLikeFirst ? getLikeToCommentDelayMs() : 0,
+    shouldViewProfile,
+    profileViewDelayMs: shouldViewProfile ? getProfileViewDelayMs() : 0,
+    includeEmoji: Math.random() < 0.30,
+  };
 }
