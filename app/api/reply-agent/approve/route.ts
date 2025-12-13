@@ -116,54 +116,115 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
   }
 
   try {
-    // For Reply Agent, we have the inbound_message_id - use it to find the chat
-    // This is more reliable than trying to match by linkedin_user_id (which may be a URL)
+    const channel = draft.channel || 'linkedin';  // Default to LinkedIn
+    const messageText = draft.edited_text || draft.draft_text;
 
-    if (!draft.inbound_message_id) {
-      return { success: false, error: 'No inbound message ID - cannot find conversation' };
-    }
+    if (channel === 'email') {
+      // ========== EMAIL CHANNEL ==========
+      // Get workspace email account
+      const { data: emailAccount, error: emailAccountError } = await supabase
+        .from('workspace_accounts')
+        .select('unipile_account_id, account_name')
+        .eq('workspace_id', draft.workspace_id)
+        .eq('account_type', 'email')
+        .eq('connection_status', 'connected')
+        .limit(1)
+        .single();
 
-    // Step 1: Get the inbound message to find the chat_id
-    const messageResponse = await fetch(`https://${UNIPILE_DSN}/api/v1/messages/${draft.inbound_message_id}`, {
-      method: 'GET',
-      headers: {
-        'X-API-KEY': UNIPILE_API_KEY,
-        'Accept': 'application/json'
+      if (emailAccountError || !emailAccount?.unipile_account_id) {
+        return { success: false, error: 'No email account connected. Connect Gmail or Outlook in Settings.' };
       }
-    });
 
-    if (!messageResponse.ok) {
-      const errorText = await messageResponse.text();
-      return { success: false, error: `Failed to fetch inbound message: ${errorText}` };
+      // Get prospect email
+      const { data: prospect } = await supabase
+        .from('campaign_prospects')
+        .select('email, first_name, last_name')
+        .eq('id', draft.prospect_id)
+        .single();
+
+      if (!prospect?.email) {
+        return { success: false, error: 'Prospect has no email address' };
+      }
+
+      // Send email via Unipile
+      const response = await fetch(`https://${UNIPILE_DSN}/api/v1/emails/send`, {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          account_id: emailAccount.unipile_account_id,
+          to: [{ email: prospect.email, name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() }],
+          subject: draft.subject || `Re: ${draft.inbound_subject || 'Following up'}`,
+          body: messageText,
+          body_type: 'text/plain',
+          // Thread with original message if available
+          ...(draft.inbound_thread_id && { thread_id: draft.inbound_thread_id })
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Email send error: ${errorText}` };
+      }
+
+      const result = await response.json();
+      console.log(`✅ Email reply sent to ${prospect.email} via ${emailAccount.account_name}`);
+      return { success: true, messageId: result.message_id || result.id };
+
+    } else {
+      // ========== LINKEDIN CHANNEL ==========
+      // For Reply Agent, we have the inbound_message_id - use it to find the chat
+      // This is more reliable than trying to match by linkedin_user_id (which may be a URL)
+
+      if (!draft.inbound_message_id) {
+        return { success: false, error: 'No inbound message ID - cannot find conversation' };
+      }
+
+      // Step 1: Get the inbound message to find the chat_id
+      const messageResponse = await fetch(`https://${UNIPILE_DSN}/api/v1/messages/${draft.inbound_message_id}`, {
+        method: 'GET',
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!messageResponse.ok) {
+        const errorText = await messageResponse.text();
+        return { success: false, error: `Failed to fetch inbound message: ${errorText}` };
+      }
+
+      const messageData = await messageResponse.json();
+      const chatId = messageData.chat_id;
+
+      if (!chatId) {
+        return { success: false, error: 'Inbound message has no chat_id' };
+      }
+
+      // Step 2: Send reply to that chat
+      const response = await fetch(`https://${UNIPILE_DSN}/api/v1/chats/${chatId}/messages`, {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          text: messageText
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Unipile send error: ${errorText}` };
+      }
+
+      const result = await response.json();
+      return { success: true, messageId: result.message_id || result.id };
     }
-
-    const messageData = await messageResponse.json();
-    const chatId = messageData.chat_id;
-
-    if (!chatId) {
-      return { success: false, error: 'Inbound message has no chat_id' };
-    }
-
-    // Step 2: Send reply to that chat
-    const response = await fetch(`https://${UNIPILE_DSN}/api/v1/chats/${chatId}/messages`, {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': UNIPILE_API_KEY,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        text: draft.edited_text || draft.draft_text
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return { success: false, error: `Unipile send error: ${errorText}` };
-    }
-
-    const result = await response.json();
-    return { success: true, messageId: result.message_id || result.id };
 
   } catch (error) {
     return { success: false, error: String(error) };

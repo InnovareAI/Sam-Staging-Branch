@@ -172,19 +172,41 @@ export async function POST(req: NextRequest) {
           }
 
           case 'email': {
-            // Use Unipile email or fall back to Postmark
+            // Use Unipile email account for sending
             if (!prospect.email) {
               throw new Error('No email address for prospect');
             }
 
-            // TODO: Implement email sending via Unipile or Postmark
-            // For now, log and mark as failed
-            console.log(`📧 Would send email to ${prospect.email}`);
-            console.log(`   Subject: ${draft.subject}`);
-            console.log(`   Body: ${draft.message.substring(0, 100)}...`);
+            // Get workspace email account
+            const { data: emailAccount, error: emailAccountError } = await supabase
+              .from('workspace_accounts')
+              .select('unipile_account_id, account_name')
+              .eq('workspace_id', campaign.workspace_id)
+              .eq('account_type', 'email')
+              .eq('connection_status', 'connected')
+              .limit(1)
+              .single();
 
-            // Placeholder - implement actual email sending
-            throw new Error('Email sending not yet implemented - use LinkedIn');
+            if (emailAccountError || !emailAccount?.unipile_account_id) {
+              throw new Error('No email account connected for this workspace. Connect Gmail or Outlook in Settings → Integrations.');
+            }
+
+            console.log(`📧 Sending email via Unipile account: ${emailAccount.account_name}`);
+
+            // Send email via Unipile
+            await unipileRequest(`/api/v1/emails/send`, {
+              method: 'POST',
+              body: JSON.stringify({
+                account_id: emailAccount.unipile_account_id,
+                to: [{ email: prospect.email, name: prospectName }],
+                subject: draft.subject || 'Following up',
+                body: draft.message,
+                body_type: 'text/plain'  // Use plain text for conversational emails
+              })
+            });
+
+            console.log(`✅ Email sent to ${prospect.email}`);
+            break;
           }
 
           case 'inmail': {
