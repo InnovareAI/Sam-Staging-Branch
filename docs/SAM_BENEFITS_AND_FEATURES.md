@@ -743,7 +743,7 @@ SAM leverages two critical external services:
 
 | Task | Description | Investment | Impact |
 |------|-------------|------------|--------|
-| **Abstract AI Layer** | Build `SAMIntelligence` service that can swap Claude/GPT/Llama | 1-2 weeks | Shows vendor independence |
+| **InnovareAI Intelligence Framework** | AI abstraction layer that can swap Claude/GPT/Llama | 1-2 weeks | Shows vendor independence |
 | **Provisional Patent** | File for "Method for randomizing B2B outreach timing to avoid platform detection" | ~$2K | Signals IP seriousness |
 | **Document Algorithms** | Formalize anti-detection, rate limiting, warning detection as proprietary IP | 1 week | Due diligence ready |
 
@@ -814,7 +814,7 @@ More Campaigns (repeat)
 
 | Threat | Defense |
 |--------|---------|
-| "What if Anthropic raises prices 10x?" | SAMIntelligence abstraction layer allows swapping to GPT-4/Llama |
+| "What if Anthropic raises prices 10x?" | InnovareAI Intelligence Framework allows swapping to GPT-4/Llama |
 | "What if Unipile gets shut down?" | Multi-API strategy (have evaluated alternatives), core value is orchestration layer |
 | "What stops a well-funded competitor?" | Anti-detection learnings from real account warnings, campaign performance data across customers, vertical expertise |
 | "What's the gross margin?" | AI costs are <10% of revenue at scale, Unipile is fixed cost per account |
