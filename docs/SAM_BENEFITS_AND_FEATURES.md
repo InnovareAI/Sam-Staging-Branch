@@ -821,10 +821,124 @@ More Campaigns (repeat)
 
 ---
 
+## MCP-First Orchestration Architecture
+
+### The Core Vision
+
+**InnovareAI is not a tool. It's the orchestration layer that sits on top of a client's existing tech stack.**
+
+We don't replace Mailchimp, HubSpot, or Calendly. We orchestrate them.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                  InnovareAI ORCHESTRATION LAYER                         │
+│                    (This is 100% our IP)                                │
+│                                                                         │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐           │
+│  │  Social    │ │ Competitor │ │   Reply    │ │  Calendar  │           │
+│  │ Listening  │ │   Intel    │ │   Agent    │ │   Agent    │  + more   │
+│  │   Agent    │ │   Agent    │ │ (w/score)  │ │            │           │
+│  └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘           │
+│        │              │              │              │                   │
+│        └──────────────┴──────────────┴──────────────┘                   │
+│                              │                                          │
+│                      MCP Protocol Layer                                 │
+│                              │                                          │
+└──────────────────────────────┼──────────────────────────────────────────┘
+                               │
+         ┌─────────────────────┼─────────────────────┐
+         │                     │                     │
+         ▼                     ▼                     ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CLIENT'S EXISTING TECH STACK                         │
+│                    (They already pay for these)                         │
+├───────────┬───────────┬───────────┬───────────┬───────────┬────────────┤
+│  LinkedIn │   Email   │  Calendar │    CRM    │    CMS    │ Newsletter │
+├───────────┼───────────┼───────────┼───────────┼───────────┼────────────┤
+│  Unipile  │  Gmail    │  Calendly │  HubSpot  │ WordPress │  Mailchimp │
+│           │  Outlook  │  Cal.com  │ Salesforce│  Webflow  │  Beehiiv   │
+│           │  SMTP     │  Google   │  Pipedrive│  Ghost    │ ConvertKit │
+│           │           │  Calendar │  Zoho     │  Notion   │  Substack  │
+│           │           │           │  Close    │           │            │
+└───────────┴───────────┴───────────┴───────────┴───────────┴────────────┘
+```
+
+---
+
+### Why MCP-First?
+
+**Model Context Protocol (MCP)** is our integration standard. Every external service connects via MCP.
+
+| Benefit | Description |
+|---------|-------------|
+| **Swappable** | Client uses Mailchimp? Plug in Mailchimp MCP. Switches to Beehiiv? Swap the MCP server. Orchestration layer doesn't change. |
+| **Standardized** | All integrations expose the same interface to our agents |
+| **Extensible** | Adding new integrations = building new MCP servers, not rewriting agents |
+| **Future-Proof** | MCP is becoming the standard for AI tool integrations |
+
+---
+
+### Integration Categories
+
+| Category | Current | Planned |
+|----------|---------|---------|
+| **LinkedIn** | Unipile ✅ | - |
+| **Email** | Unipile, Postmark ✅ | Gmail API, Outlook API |
+| **CRM** | HubSpot ✅, ActiveCampaign ✅, Airtable ✅ | Salesforce, Pipedrive, Zoho, Keap, Close, Copper, Freshsales |
+| **Calendar** | - | Calendly, Cal.com, Google Calendar |
+| **Newsletter** | - | Mailchimp, Beehiiv, ConvertKit, Substack |
+| **CMS** | WordPress (MCP exists) | Webflow, Ghost, Notion |
+
+---
+
+### AI Agents (Current & Planned)
+
+| Agent | Status | Description |
+|-------|--------|-------------|
+| **SAM Orchestration** | ✅ Active | Coordinates all agents, manages conversations |
+| **Reply Agent** | ✅ Active | Responds to prospects with lead scoring |
+| **Follow-Up Agent** | ✅ Active | Automated follow-up sequences |
+| **Inbox Agent** | ✅ Active | Categorizes incoming messages |
+| **Commenting Agent** | ✅ Active | LinkedIn engagement automation |
+| **AI Search Agent (GEO)** | ✅ Active | SEO/GEO optimization |
+| **LinkedIn Content Agent** | 🔜 Planned | Generate and schedule LinkedIn posts |
+| **Blog Writer Agent** | 🔜 Planned | SEO-optimized content generation |
+| **Social Listening Agent** | 🔜 Planned | Monitor LinkedIn/Twitter for buying signals |
+| **Competitor Intel Agent** | 🔜 Planned | Track competitor activity and messaging |
+| **Calendar Agent** | 🔜 Planned | Book meetings via connected calendar tools |
+| **BYOA (Bring Your Own Agents)** | 🔜 Planned | Connect custom AI agents via MCP |
+
+---
+
+### The Value Proposition Shift
+
+| Old Thinking | New Thinking |
+|--------------|--------------|
+| "We have email sending" | "We orchestrate YOUR email tool" |
+| "We have a CRM" | "We sync with YOUR CRM" |
+| "We write newsletters" | "We feed YOUR newsletter tool" |
+| "We schedule meetings" | "We book via YOUR calendar tool" |
+| "Use our tools" | "We make YOUR tools work together intelligently" |
+
+---
+
+### Investor Pitch (Updated)
+
+> "InnovareAI is the orchestration brain for B2B go-to-market. We don't replace your CRM, calendar, or newsletter tool - we make them work together intelligently. Our AI agents coordinate across 15+ integration categories via MCP, turning disconnected tools into an autonomous sales engine. The more integrations we support, the stickier we become in a client's workflow."
+
+**Why this wins:**
+1. **No tool competition** - We don't compete with HubSpot, Calendly, Mailchimp
+2. **Integration moat** - More integrations = more value = harder to replace
+3. **Platform play** - We're the glue, not a point solution
+4. **Expansion revenue** - Each new integration category = upsell opportunity
+
+---
+
 ## Version History
 
 | Date | Changes |
 |------|---------|
+| Dec 14, 2025 | Added MCP-First Orchestration Architecture section |
 | Dec 14, 2025 | Added IP & Technical Moat Strategy section |
 | Dec 3, 2025 | Complete rewrite - added Commenting Agent, Reply Agent, Email, multi-channel |
 | Dec 3, 2025 | Initial document (LinkedIn-only) |
