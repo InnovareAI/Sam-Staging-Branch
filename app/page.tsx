@@ -622,14 +622,18 @@ export default function Page() {
       };
 
       const loadPendingComments = async () => {
+        console.log('🔵 loadPendingComments called with workspace:', selectedWorkspaceId);
         setPendingCommentsLoading(true);
         try {
           const response = await fetch(`/api/linkedin-commenting/pending-comments?workspace_id=${selectedWorkspaceId}`);
+          console.log('🔵 pending-comments response status:', response.status);
           if (response.ok) {
             const data = await response.json();
+            console.log('🔵 pending-comments data:', data);
             setPendingComments(data.comments || []);
           } else {
-            console.error('Failed to load pending comments:', await response.text());
+            const errorText = await response.text();
+            console.error('Failed to load pending comments:', errorText);
             setPendingComments([]);
           }
         } catch (error) {
