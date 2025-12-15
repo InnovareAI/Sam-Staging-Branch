@@ -2275,12 +2275,22 @@ export default function Page() {
     try {
       console.log('🔍 [WORKSPACE LOAD] Fetching via API for user:', userId);
 
-      const response = await fetch('/api/workspace/list');
+      // Get access token for API authentication
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const accessToken = currentSession?.access_token;
+      console.log('🔍 [WORKSPACE LOAD] Access token available:', !!accessToken);
+
+      const response = await fetch('/api/workspace/list', {
+        headers: accessToken ? {
+          'Authorization': `Bearer ${accessToken}`
+        } : undefined
+      });
       if (!response.ok) {
         throw new Error(`API returned ${response.status}`);
       }
 
-      const { workspaces: apiWorkspaces, current } = await response.json();
+      const { workspaces: apiWorkspaces, current, debug } = await response.json();
+      console.log('🔍 [WORKSPACE LOAD] Debug info:', debug);
       console.log(`✅ [WORKSPACE LOAD] API returned ${apiWorkspaces.length} workspaces`);
 
       // For each workspace, fetch pending invitations

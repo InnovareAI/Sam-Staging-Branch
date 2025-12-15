@@ -1,58 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
+import { cookies, headers } from 'next/headers'
 
-// Cache bust: 2025-12-15-v4 - Debug Rony workspace issue
-export async function GET() {
+// Cache bust: 2025-12-15-v5 - Add Authorization header support for Rony issue
+export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
+    const headersList = await headers()
     console.log('[workspace/list] Cookie count:', cookieStore.getAll().length)
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // Cookie setting can fail in middleware context
+    let sessionUser: { id: string; email?: string } | null = null
+    let authMethod = 'none'
+
+    // Method 1: Try Authorization header first (most reliable for SPA)
+    const authHeader = headersList.get('authorization') || request.headers.get('authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.slice(7)
+      console.log('[workspace/list] Found Authorization header, verifying token...')
+
+      const supabaseWithToken = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`
             }
           }
         }
-      }
-    )
-    // Try getUser first (more reliable), fallback to getSession
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+      )
 
-    console.log('[workspace/list] Auth check - user:', user?.id, user?.email, 'error:', userError?.message)
-
-    if (!user) {
-      // Fallback: Try getSession as backup
-      const { data: { session } } = await supabase.auth.getSession()
-      console.log('[workspace/list] Session fallback - session:', session?.user?.id, session?.user?.email)
-
-      if (!session?.user) {
-        console.log('[workspace/list] No user found via getUser or getSession, returning empty')
-        return NextResponse.json({ workspaces: [], debug: { reason: 'no_auth', userError: userError?.message } })
+      const { data: { user: tokenUser }, error: tokenError } = await supabaseWithToken.auth.getUser()
+      if (tokenUser) {
+        sessionUser = tokenUser
+        authMethod = 'bearer_token'
+        console.log('[workspace/list] Auth via Bearer token:', tokenUser.id, tokenUser.email)
+      } else {
+        console.log('[workspace/list] Bearer token invalid:', tokenError?.message)
       }
     }
 
-    // Use user from getUser if available, otherwise from session
-    const sessionUser = user || (await supabase.auth.getSession()).data.session?.user
+    // Method 2: Try cookie-based auth if Bearer didn't work
+    if (!sessionUser) {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return cookieStore.getAll()
+            },
+            setAll(cookiesToSet) {
+              try {
+                cookiesToSet.forEach(({ name, value, options }) =>
+                  cookieStore.set(name, value, options)
+                )
+              } catch {
+                // Cookie setting can fail in middleware context
+              }
+            }
+          }
+        }
+      )
+
+      // Try getUser first (more reliable)
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      console.log('[workspace/list] Cookie auth - getUser:', user?.id, user?.email, 'error:', userError?.message)
+
+      if (user) {
+        sessionUser = user
+        authMethod = 'cookie_getUser'
+      } else {
+        // Fallback: Try getSession as backup
+        const { data: { session } } = await supabase.auth.getSession()
+        console.log('[workspace/list] Cookie auth - getSession:', session?.user?.id, session?.user?.email)
+        if (session?.user) {
+          sessionUser = session.user
+          authMethod = 'cookie_getSession'
+        }
+      }
+    }
 
     if (!sessionUser) {
-      console.log('[workspace/list] No session user after all checks')
-      return NextResponse.json({ workspaces: [] })
+      console.log('[workspace/list] No auth found via any method')
+      return NextResponse.json({ workspaces: [], debug: { reason: 'no_auth', authMethod } })
     }
 
-    console.log('[workspace/list] Authenticated user:', sessionUser.id, sessionUser.email)
+    console.log('[workspace/list] Authenticated user via', authMethod, ':', sessionUser.id, sessionUser.email)
 
     // CRITICAL FIX: Use service role to bypass RLS since policies are broken
     const supabaseAdmin = createServerClient(
