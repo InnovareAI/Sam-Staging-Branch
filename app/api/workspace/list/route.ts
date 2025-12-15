@@ -191,30 +191,39 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // CRITICAL FIX (Dec 15): Simplified query - removed nested users JOIN that was causing failures
-    // The users join was causing "Could not find relationship" errors for some accounts
+    // CRITICAL FIX (Dec 15): COMPLETELY REMOVED JOINS
+    // Use 2 separate queries to avoid "relationship not found" schema errors
     const { data: workspaceData, error: workspaceError } = await supabaseAdmin
       .from('workspaces')
-      .select(`
-        id,
-        name,
-        created_at,
-        owner_id,
-        commenting_agent_enabled,
-        workspace_members(id, user_id, role)
-      `)
+      .select('id, name, created_at, owner_id, commenting_agent_enabled')
       .in('id', workspaceIds)
       .order('created_at', { ascending: false })
 
-    console.log('[workspace/list] CRITICAL DEBUG - Workspaces returned from DB:', workspaceData?.length)
-    console.log('[workspace/list] CRITICAL DEBUG - Workspace names returned:', workspaceData?.map(w => w.name))
-
     if (workspaceError) {
       console.error('[workspace/list] Error fetching workspaces:', workspaceError)
-      return NextResponse.json({ workspaces: [], error: workspaceError.message })
+      return NextResponse.json({ 
+        workspaces: [], 
+        error: workspaceError.message,
+        debug: { reason: 'workspace_fetch_error', error: workspaceError }
+      })
     }
 
-    const workspaces = workspaceData || []
+    // Fetch members separately to avoid join issues
+    const { data: allMembers, error: membersError } = await supabaseAdmin
+      .from('workspace_members')
+      .select('id, user_id, role, workspace_id')
+      .in('workspace_id', workspaceIds)
+      
+    if (membersError) {
+       console.error('[workspace/list] Error fetching members:', membersError)
+       // Continue without members if that fails
+    }
+
+    // Stitch data together in JS
+    const workspaces = (workspaceData || []).map(ws => ({
+      ...ws,
+      workspace_members: (allMembers || []).filter(m => m.workspace_id === ws.id)
+    }))
 
     // Use current_workspace_id from users table if it exists and is in the workspace list
     let current = null
