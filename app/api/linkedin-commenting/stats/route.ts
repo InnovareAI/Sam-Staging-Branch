@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/app/lib/supabase';
+import { createServerSupabaseClient, supabaseAdmin } from '@/app/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'workspace_id required' }, { status: 400 });
     }
 
-    const supabase = await createServerSupabaseClient();
+    // Use admin client to bypass RLS
+    const supabase = supabaseAdmin();
 
     // Get total and active profiles (monitors)
     const { data: monitors, error: monitorsError } = await supabase
