@@ -33,9 +33,13 @@ export async function POST(req: NextRequest) {
     // 1. Get all active campaigns (both connector and messenger types)
     // CRITICAL FIX (Dec 4): Also fetch connection_message and linkedin_config for message source
     // FIX (Dec 4): Also handle messenger campaigns, not just connector
+    // FIX (Dec 15): Join with workspaces to get timezone settings for business hours calculation
     const { data: activeCampaigns, error: campError } = await supabase
       .from('campaigns')
-      .select('id, campaign_name, linkedin_account_id, message_templates, connection_message, linkedin_config, campaign_type')
+      .select(`
+        id, campaign_name, linkedin_account_id, message_templates, connection_message, linkedin_config, campaign_type, workspace_id,
+        workspaces!inner(id, settings)
+      `)
       .eq('status', 'active')
       .in('campaign_type', ['connector', 'messenger']);
 
@@ -229,30 +233,93 @@ export async function POST(req: NextRequest) {
         return MIN_SPACING_MINUTES + Math.floor(Math.random() * (MAX_SPACING_MINUTES - MIN_SPACING_MINUTES + 1));
       };
 
-      // Helper: Check if time is within business hours (9 AM - 5 PM PST = 17:00 - 01:00 UTC)
-      const isBusinessHours = (date: Date) => {
-        const hour = date.getUTCHours();
-        // Business hours: 17:00-23:59 UTC (9 AM - 5 PM PST) or 00:00-01:00 UTC (next day)
-        return (hour >= 17 || hour < 1);
+      // ============================================
+      // TIMEZONE-AWARE BUSINESS HOURS (Dec 15, 2025)
+      // Uses workspace.settings.default_timezone or timezone
+      // Falls back to America/Los_Angeles (PST) if not set
+      // ============================================
+      type WorkspaceSettings = {
+        default_timezone?: string;
+        timezone?: string;
+        default_working_hours?: { start: number; end: number };
       };
 
-      // Helper: Check if date is a weekend
+      const workspace = (campaign as any).workspaces as { settings: WorkspaceSettings } | null;
+      const workspaceSettings = workspace?.settings || {} as WorkspaceSettings;
+
+      // Get timezone from workspace settings (supports both field names)
+      const timezone = workspaceSettings.default_timezone || workspaceSettings.timezone || 'America/Los_Angeles';
+
+      // Get business hours from workspace settings or default to 9-17
+      const businessHoursStart = workspaceSettings.default_working_hours?.start || 9;
+      const businessHoursEnd = workspaceSettings.default_working_hours?.end || 17;
+
+      console.log(`  🌍 Using timezone: ${timezone} (business hours: ${businessHoursStart}:00-${businessHoursEnd}:00)`);
+
+      // Helper: Get hour in target timezone
+      const getHourInTimezone = (date: Date, tz: string): number => {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          hour: 'numeric',
+          hour12: false,
+          timeZone: tz
+        });
+        return parseInt(formatter.format(date), 10);
+      };
+
+      // Helper: Get day of week in target timezone (0 = Sunday, 6 = Saturday)
+      const getDayInTimezone = (date: Date, tz: string): number => {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          weekday: 'short',
+          timeZone: tz
+        });
+        const day = formatter.format(date);
+        const dayMap: Record<string, number> = { 'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6 };
+        return dayMap[day] ?? 0;
+      };
+
+      // Helper: Check if time is within business hours in the workspace timezone
+      const isBusinessHours = (date: Date) => {
+        const hour = getHourInTimezone(date, timezone);
+        return hour >= businessHoursStart && hour < businessHoursEnd;
+      };
+
+      // Helper: Check if date is a weekend in the workspace timezone
       const isWeekend = (date: Date) => {
-        const day = date.getUTCDay();
+        const day = getDayInTimezone(date, timezone);
         return day === 0 || day === 6; // Sunday = 0, Saturday = 6
       };
 
-      // Helper: Move to next business day at 9 AM PST (17:00 UTC)
+      // Helper: Move to next business day at start of business hours
       const moveToNextBusinessDay = (date: Date) => {
         const next = new Date(date);
-        next.setUTCHours(17, 0, 0, 0);
-        if (next <= date) {
-          next.setUTCDate(next.getUTCDate() + 1);
+
+        // Get current hour in timezone to calculate offset to next business day start
+        const currentHour = getHourInTimezone(next, timezone);
+
+        // If we're before business hours today, move to business hours start
+        if (currentHour < businessHoursStart && !isWeekend(next)) {
+          // Calculate how many hours to add to reach businessHoursStart
+          const hoursToAdd = businessHoursStart - currentHour;
+          next.setTime(next.getTime() + hoursToAdd * 60 * 60 * 1000);
+          // Reset minutes to 0
+          next.setMinutes(0, 0, 0);
+          return next;
         }
+
+        // Otherwise, move to tomorrow and set to business hours start
+        next.setTime(next.getTime() + 24 * 60 * 60 * 1000);
+
         // Skip weekends
         while (isWeekend(next)) {
-          next.setUTCDate(next.getUTCDate() + 1);
+          next.setTime(next.getTime() + 24 * 60 * 60 * 1000);
         }
+
+        // Set to business hours start
+        const targetHour = getHourInTimezone(next, timezone);
+        const hoursToAdd = businessHoursStart - targetHour;
+        next.setTime(next.getTime() + hoursToAdd * 60 * 60 * 1000);
+        next.setMinutes(0, 0, 0);
+
         return next;
       };
 
