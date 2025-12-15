@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/app/lib/supabase';
+import { createServerSupabaseClient, supabaseAdmin } from '@/app/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
+    const adminClient = supabaseAdmin();
     const { data: { user } } = await supabase.auth.getUser();
 
     console.log('🔍 GET monitors - User:', user?.email, 'ID:', user?.id);
@@ -17,8 +18,8 @@ export async function GET(request: NextRequest) {
 
     if (!workspaceId) return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 });
 
-    // Check user's workspace membership
-    const { data: membership, error: memberError } = await supabase
+    // Check user's workspace membership using admin client to bypass RLS
+    const { data: membership, error: memberError } = await adminClient
       .from('workspace_members')
       .select('workspace_id, role')
       .eq('user_id', user.id)
@@ -27,7 +28,12 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Workspace membership:', membership, 'Error:', memberError);
 
-    const { data, error } = await supabase.from('linkedin_post_monitors').select('*').eq('workspace_id', workspaceId);
+    if (!membership) {
+      return NextResponse.json({ error: 'Access denied to this workspace' }, { status: 403 });
+    }
+
+    // Use admin client to bypass RLS for monitors query
+    const { data, error } = await adminClient.from('linkedin_post_monitors').select('*').eq('workspace_id', workspaceId);
 
     console.log('🔍 Query result - Data:', data, 'Error:', error);
 
@@ -41,10 +47,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message, details: error }, { status: 500 });
     }
 
-    // Get post counts for each monitor
+    // Get post counts for each monitor using admin client
     const monitorsWithCounts = await Promise.all(
       (data || []).map(async (monitor) => {
-        const { count } = await supabase
+        const { count } = await adminClient
           .from('linkedin_posts_discovered')
           .select('*', { count: 'exact', head: true })
           .eq('monitor_id', monitor.id);

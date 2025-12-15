@@ -348,19 +348,22 @@ export async function POST(req: NextRequest) {
       const companyName = prospect.company_name || prospect.company || '';
       const title = prospect.title || prospect.job_title || '';
 
-      // STEP 1: Process SPINTAX first (deterministic per prospect)
-      // Spintax syntax: {option1|option2|option3} creates variations
-      // Same prospect always gets same spin (deterministic via prospect.id)
-      const spintaxResult = spinForProspect(messageToUse, prospect.id);
-      let processedMessage = spintaxResult.output;
+      // SPINTAX DISABLED (Dec 15, 2025) - Only use when explicitly enabled via campaign setting
+      // Spintax was causing issues by processing {company_name} as single-option spintax
+      // For now, skip spintax and go directly to personalization
+      const spintaxEnabled = campaign.message_templates?.spintax_enabled === true;
 
-      // Log spintax processing if variations were found
-      if (spintaxResult.variationsCount > 1) {
-        console.log(`🎲 Spintax: ${spintaxResult.variationsCount} variations, selected: "${spintaxResult.optionsSelected.slice(0, 3).join(', ')}${spintaxResult.optionsSelected.length > 3 ? '...' : ''}"`);
+      let processedMessage = messageToUse;
+      if (spintaxEnabled) {
+        // Only process spintax if explicitly enabled
+        const spintaxResult = spinForProspect(messageToUse, prospect.id);
+        processedMessage = spintaxResult.output;
+        if (spintaxResult.variationsCount > 1) {
+          console.log(`🎲 Spintax: ${spintaxResult.variationsCount} variations, selected: "${spintaxResult.optionsSelected.slice(0, 3).join(', ')}${spintaxResult.optionsSelected.length > 3 ? '...' : ''}"`);
+        }
       }
 
-      // STEP 2: Personalize the spun message
-      // Use the centralized personalizeMessage function for consistency
+      // Personalize the message (replace {first_name}, {company_name}, etc.)
       const personalizedMessage = personalizeMessage(processedMessage, {
         first_name: firstName,
         last_name: lastName,

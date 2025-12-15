@@ -274,21 +274,28 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // STEP 1: Process SPINTAX first (deterministic per prospect)
+        // Get the raw follow-up message
         const rawMessage = followUpMessages[messageIndex];
-        const spintaxResult = spinForProspect(rawMessage, prospect.id);
 
-        if (spintaxResult.variationsCount > 1) {
-          console.log(`🎲 Spintax: ${spintaxResult.variationsCount} variations for FU${messageIndex + 1}`);
+        // SPINTAX DISABLED (Dec 15, 2025) - Only use when explicitly enabled
+        const spintaxEnabled = campaign.message_templates?.spintax_enabled === true;
+        let processedMessage = rawMessage;
+
+        if (spintaxEnabled) {
+          const spintaxResult = spinForProspect(rawMessage, prospect.id);
+          processedMessage = spintaxResult.output;
+          if (spintaxResult.variationsCount > 1) {
+            console.log(`🎲 Spintax: ${spintaxResult.variationsCount} variations for FU${messageIndex + 1}`);
+          }
         }
 
-        // STEP 2: Personalize the spun message
+        // Personalize the message (replace {first_name}, {company_name}, etc.)
         const firstName = prospect.first_name || '';
         const lastName = prospect.last_name || '';
         const companyName = prospect.company_name || '';
         const title = prospect.title || '';
 
-        const message = personalizeMessage(spintaxResult.output, {
+        const message = personalizeMessage(processedMessage, {
           first_name: firstName,
           last_name: lastName,
           company_name: companyName,
