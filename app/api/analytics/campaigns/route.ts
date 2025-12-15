@@ -91,44 +91,58 @@ export async function GET(req: NextRequest) {
 
     aggregatedMetrics.totalProspects = prospectCount || 0;
 
-    // Generate time series if the RPC function doesn't exist
+    // Generate time series - OPTIMIZED: single query instead of N queries per day
     let campaignSeries = timeSeries || [];
     if (!timeSeries || timeSeries.length === 0) {
-      // Generate daily buckets for the selected range
       const days = timeRange === '1d' ? 1 : timeRange === '7d' ? 7 : timeRange === '1m' ? 30 : 90;
-      const seriesData = [];
+      const startDateRange = addDays(new Date(), -(days - 1));
+      const startDateStr = startDateRange.toISOString().split('T')[0];
 
+      // Generate empty daily buckets
+      const seriesData: Record<string, { date: string; prospects: number; messages: number; replies: number; infoRequests: number; meetings: number }> = {};
       for (let i = days - 1; i >= 0; i--) {
         const date = addDays(new Date(), -i);
         const dateStr = date.toISOString().split('T')[0];
-
-        // Get messages sent on this date
-        const { count: messagesCount } = await supabase
-          .from('campaign_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('workspace_id', workspaceId)
-          .gte('sent_at', date.toISOString().split('T')[0])
-          .lt('sent_at', addDays(date, 1).toISOString().split('T')[0]);
-
-        // Get replies received on this date
-        const { count: repliesCount } = await supabase
-          .from('campaign_replies')
-          .select('*', { count: 'exact', head: true })
-          .eq('workspace_id', workspaceId)
-          .gte('received_at', date.toISOString().split('T')[0])
-          .lt('received_at', addDays(date, 1).toISOString().split('T')[0]);
-
-        seriesData.push({
+        seriesData[dateStr] = {
           date: dateStr,
-          prospects: 0, // TODO: Track daily prospect adds
-          messages: messagesCount || 0,
-          replies: repliesCount || 0,
-          infoRequests: 0, // TODO: Track from campaign_replies with interested sentiment
-          meetings: 0, // TODO: Track meetings booked
+          prospects: 0,
+          messages: 0,
+          replies: 0,
+          infoRequests: 0,
+          meetings: 0,
+        };
+      }
+
+      // Get all campaign_prospects with status changes in date range (batch query)
+      // Use campaign_prospects.updated_at for when status changed
+      const campaignIds = campaigns?.map(c => c.campaign_id) || [];
+      if (campaignIds.length > 0) {
+        const { data: prospectsData } = await supabase
+          .from('campaign_prospects')
+          .select('status, updated_at')
+          .in('campaign_id', campaignIds)
+          .gte('updated_at', startDateStr);
+
+        // Group by date
+        prospectsData?.forEach(p => {
+          if (p.updated_at) {
+            const dateKey = p.updated_at.split('T')[0];
+            if (seriesData[dateKey]) {
+              // Count messages sent (CR sent statuses)
+              if (['connection_request_sent', 'connected', 'replied', 'follow_up_sent'].includes(p.status)) {
+                seriesData[dateKey].messages++;
+              }
+              // Count replies
+              if (p.status === 'replied') {
+                seriesData[dateKey].replies++;
+              }
+            }
+          }
         });
       }
 
-      campaignSeries = seriesData;
+      // Convert to array sorted by date
+      campaignSeries = Object.values(seriesData).sort((a, b) => a.date.localeCompare(b.date));
     }
 
     return NextResponse.json({

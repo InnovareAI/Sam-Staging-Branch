@@ -325,6 +325,53 @@ export default function Page() {
     }
   }, [activeMenuItem]);
 
+  // Preload analytics data when workspace is set (background fetch)
+  // This ensures data is ready before user clicks on Analytics tab
+  useEffect(() => {
+    if (selectedWorkspaceId && user?.id) {
+      const cacheKey = `analytics_cache_${selectedWorkspaceId}`;
+      // Check if already cached
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          // If cache is less than 5 minutes old, don't refetch
+          if (Date.now() - data.timestamp < 5 * 60 * 1000) {
+            console.log('📊 [PRELOAD] Analytics already cached for workspace:', selectedWorkspaceId);
+            return;
+          }
+        } catch (e) {
+          // Invalid cache, will refetch
+        }
+      }
+
+      // Preload analytics in background
+      console.log('📊 [PRELOAD] Preloading analytics data for workspace:', selectedWorkspaceId);
+      fetch(`/api/analytics/campaigns?workspace_id=${selectedWorkspaceId}&time_range=7d&campaign_type=all`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            sessionStorage.setItem(cacheKey, JSON.stringify({
+              campaignsData: data.campaigns || [],
+              campaignKPIs: {
+                totalProspects: data.aggregatedMetrics?.totalProspects || 0,
+                totalMessages: data.aggregatedMetrics?.totalMessages || 0,
+                totalReplies: data.aggregatedMetrics?.totalReplies || 0,
+                totalInfoRequests: data.aggregatedMetrics?.totalInfoRequests || 0,
+                totalMeetings: data.aggregatedMetrics?.totalMeetings || 0,
+              },
+              campaignSeries: data.campaignSeries || [],
+              timestamp: Date.now()
+            }));
+            console.log('✅ [PRELOAD] Analytics data cached for workspace:', selectedWorkspaceId);
+          }
+        })
+        .catch(err => {
+          console.error('❌ [PRELOAD] Failed to preload analytics:', err);
+        });
+    }
+  }, [selectedWorkspaceId, user?.id]);
+
   // Auto-select first workspace if none selected and workspaces loaded
   useEffect(() => {
     if (!selectedWorkspaceId && workspaces.length > 0 && !workspacesLoading) {
