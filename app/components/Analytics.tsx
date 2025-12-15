@@ -563,7 +563,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
         <div className="mb-4 p-4 bg-red-900/30 border border-red-500/50 rounded-lg flex items-center gap-3">
           <span className="text-red-400">{error}</span>
           <button
-            onClick={() => demoMode ? fetchDemoData() : fetchLiveData()}
+            onClick={() => demoMode ? generateDummyData() : fetchLiveData()}
             className="ml-auto text-sm bg-red-600 hover:bg-red-700 px-3 py-1 rounded"
           >
             Retry
