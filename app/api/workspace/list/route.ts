@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies, headers } from 'next/headers'
 
-// Cache bust: 2025-12-15-v7 - Fixed empty workspaces bug (don't wipe on error)
+// Cache bust: 2025-12-15-v8 - Debug auth token path, fixed token passthrough
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
@@ -191,6 +191,8 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // CRITICAL FIX (Dec 15): Simplified query - removed nested users JOIN that was causing failures
+    // The users join was causing "Could not find relationship" errors for some accounts
     const { data: workspaceData, error: workspaceError } = await supabaseAdmin
       .from('workspaces')
       .select(`
@@ -199,7 +201,7 @@ export async function GET(request: NextRequest) {
         created_at,
         owner_id,
         commenting_agent_enabled,
-        workspace_members(id, user_id, role, users(email, first_name, last_name))
+        workspace_members(id, user_id, role)
       `)
       .in('id', workspaceIds)
       .order('created_at', { ascending: false })
