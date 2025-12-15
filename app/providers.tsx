@@ -14,8 +14,8 @@ export function Providers({ children }: { children: ReactNode }) {
             staleTime: 5 * 60 * 1000,
             // Cache data for 30 minutes
             gcTime: 30 * 60 * 1000,
-            // Refetch when window regains focus
-            refetchOnWindowFocus: true,
+            // Don't refetch when window regains focus (causes unnecessary reloads)
+            refetchOnWindowFocus: false,
             // Retry failed requests 2 times
             retry: 2,
             // Prevent data vanishing during refetch

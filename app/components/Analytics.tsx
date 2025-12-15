@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { CalendarIcon } from 'lucide-react';
 import { format, differenceInCalendarDays, addDays } from 'date-fns';
+import { useWorkspaceAnalytics, defaultAnalyticsData } from '@/app/hooks/useWorkspaceData';
 
 // Campaign Analytics KPI Cards
 function KPIGrid({ campaignKPIs, timeRange, campaignType, visibleMetrics, isLoading }: { campaignKPIs: { totalProspects: number; totalMessages: number; totalReplies: number; totalInfoRequests: number; totalMeetings: number }, timeRange: '1d' | '7d' | '1m' | '3m' | 'custom', campaignType: string, visibleMetrics: Array<'prospects'|'messages'|'replies'|'infoRequests'|'meetings'>, isLoading?: boolean }) {
@@ -147,14 +148,8 @@ interface AnalyticsProps {
 }
 
 const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
-  const [analyticsData, setAnalyticsData] = useState<any[]>([]);
-  const [platformData, setPlatformData] = useState<any[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // UI state (not data)
   const [demoMode, setDemoMode] = useState(false);
-  // Use workspaceId from props - ensures data separation between workspaces
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(workspaceId);
   const [viewMode, setViewMode] = useState<'overall' | 'campaign' | 'time'>('overall');
   const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<'1d' | '7d' | '1m' | '3m' | 'custom'>('7d');
@@ -166,69 +161,44 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
   const [campaignType, setCampaignType] = useState<string>('all');
   const [chartType, setChartType] = useState<'area' | 'bar'>('area');
 
-  // Campaign performance analytics
-  const [campaignSeries, setCampaignSeries] = useState<{ date: string; prospects: number; messages: number; replies: number; infoRequests: number; meetings: number }[]>([]);
-  const [campaignKPIs, setCampaignKPIs] = useState<{ totalProspects: number; totalMessages: number; totalReplies: number; totalInfoRequests: number; totalMeetings: number }>({ totalProspects: 0, totalMessages: 0, totalReplies: 0, totalInfoRequests: 0, totalMeetings: 0 });
-  const [campaignsData, setCampaignsData] = useState<any[]>([]);
+  // Legacy state for demo mode and platform data (not yet migrated to React Query)
+  const [analyticsData, setAnalyticsData] = useState<any[]>([]);
+  const [platformData, setPlatformData] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
-  // Track if initial data has been loaded for this workspace (session cache)
-  const [dataLoadedForWorkspace, setDataLoadedForWorkspace] = useState<string | null>(null);
+  // Demo mode state (separate from API data)
+  const [demoCampaignSeries, setDemoCampaignSeries] = useState<{ date: string; prospects: number; messages: number; replies: number; infoRequests: number; meetings: number }[]>([]);
+  const [demoCampaignKPIs, setDemoCampaignKPIs] = useState<{ totalProspects: number; totalMessages: number; totalReplies: number; totalInfoRequests: number; totalMeetings: number }>({ totalProspects: 0, totalMessages: 0, totalReplies: 0, totalInfoRequests: 0, totalMeetings: 0 });
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
 
   const supabase = createClient();
 
-  // Session storage key for caching analytics data
-  const getCacheKey = (wsId: string) => `analytics_cache_${wsId}`;
+  // React Query for analytics data - handles caching automatically
+  const {
+    data: analyticsResult,
+    isLoading: isQueryLoading,
+    error: queryError,
+    isFetching,
+    refetch,
+  } = useWorkspaceAnalytics({
+    workspaceId,
+    timeRange,
+    campaignType,
+    customDateRange,
+    userId: userViewMode === 'by-user' ? selectedUser : undefined,
+  });
 
-  // Load cached data from sessionStorage
-  const loadCachedData = (wsId: string): boolean => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const cached = sessionStorage.getItem(getCacheKey(wsId));
-      if (cached) {
-        const data = JSON.parse(cached);
-        // Check if cache is less than 5 minutes old
-        if (Date.now() - data.timestamp < 5 * 60 * 1000) {
-          setCampaignsData(data.campaignsData || []);
-          setCampaignKPIs(data.campaignKPIs || { totalProspects: 0, totalMessages: 0, totalReplies: 0, totalInfoRequests: 0, totalMeetings: 0 });
-          setCampaignSeries(data.campaignSeries || []);
-          setDataLoadedForWorkspace(wsId);
-          setIsLoading(false);
-          return true;
-        }
-      }
-    } catch (e) {
-      console.error('Error loading cached analytics:', e);
-    }
-    return false;
-  };
+  // Extract data from React Query result, fallback to defaults (or demo data in demo mode)
+  const campaignsData = demoMode ? [] : (analyticsResult?.campaigns || defaultAnalyticsData.campaigns);
+  const campaignKPIs = demoMode ? demoCampaignKPIs : (analyticsResult?.campaignKPIs || defaultAnalyticsData.campaignKPIs);
+  const campaignSeries = demoMode ? demoCampaignSeries : (analyticsResult?.campaignSeries || defaultAnalyticsData.campaignSeries);
 
-  // Save data to sessionStorage
-  const saveCachedData = (wsId: string, campaigns: any[], kpis: any, series: any[]) => {
-    if (typeof window === 'undefined') return;
-    try {
-      sessionStorage.setItem(getCacheKey(wsId), JSON.stringify({
-        campaignsData: campaigns,
-        campaignKPIs: kpis,
-        campaignSeries: series,
-        timestamp: Date.now()
-      }));
-    } catch (e) {
-      console.error('Error saving cached analytics:', e);
-    }
-  };
-
-  // Sync workspace ID from props - ensures complete data separation between workspaces
-  useEffect(() => {
-    if (workspaceId) {
-      setCurrentWorkspaceId(workspaceId);
-      fetchWorkspaceMembers(workspaceId);
-    } else {
-      setCurrentWorkspaceId(null);
-    }
-  }, [workspaceId]);
+  // Combined loading state - true only on initial load, not during background refetch
+  const isLoading = demoMode ? isDemoLoading : isQueryLoading;
+  const error = demoMode ? null : queryError?.message || null;
 
   // Fetch workspace members
-  const fetchWorkspaceMembers = async (workspaceId: string) => {
+  const fetchWorkspaceMembers = async (wsId: string) => {
     try {
       const { data, error } = await supabase
         .from('workspace_members')
@@ -240,7 +210,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
             full_name
           )
         `)
-        .eq('workspace_id', workspaceId);
+        .eq('workspace_id', wsId);
 
       if (error) throw error;
       setWorkspaceMembers(data || []);
@@ -249,48 +219,31 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
     }
   };
 
-  // Load analytics data - use session cache to avoid refetching
+  // Fetch workspace members when workspace changes
   useEffect(() => {
-    if (demoMode) {
-      generateDummyData();
-      return;
+    if (workspaceId) {
+      fetchWorkspaceMembers(workspaceId);
     }
-
-    // If workspace hasn't changed and we already have data, don't refetch
-    if (currentWorkspaceId && dataLoadedForWorkspace === currentWorkspaceId && campaignsData.length > 0) {
-      setIsLoading(false);
-      return;
-    }
-
-    // Try to load from session cache first
-    if (currentWorkspaceId && loadCachedData(currentWorkspaceId)) {
-      return; // Data loaded from cache
-    }
-
-    // Fetch fresh data
-    fetchLiveData();
-  }, [demoMode, currentWorkspaceId]);
-
-  // Filter changes don't require refetch - data is already loaded, just filter client-side
+  }, [workspaceId]);
   // Time range and campaign type are UI filters, not data fetches
 
   // Generate realistic dummy data for demo purposes
   const generateDummyData = () => {
-    setIsLoading(true);
-    
+    setIsDemoLoading(true);
+
     // Simulate API loading delay
     setTimeout(() => {
         // Dummy analytics data
         const dummyAnalytics = [
-          { 
-            total_messages_sent: 2847, 
-            messages_with_replies: 486, 
+          {
+            total_messages_sent: 2847,
+            messages_with_replies: 486,
             overall_response_rate_percent: '17.1',
             messages_last_30_days: 1247
           },
-          { 
-            total_messages_sent: 1523, 
-            messages_with_replies: 201, 
+          {
+            total_messages_sent: 1523,
+            messages_with_replies: 201,
             overall_response_rate_percent: '13.2',
             messages_last_30_days: 689
           }
@@ -400,8 +353,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
           const meetings = Math.floor(infoRequests * (0.25 + Math.random() * 0.2));
           series.push({ date: label, prospects, messages, replies, infoRequests, meetings });
         }
-        setCampaignSeries(series);
-        setCampaignKPIs({
+        setDemoCampaignSeries(series);
+        setDemoCampaignKPIs({
           totalProspects: series.reduce((a, b) => a + b.prospects, 0),
           totalMessages: series.reduce((a, b) => a + b.messages, 0),
           totalReplies: series.reduce((a, b) => a + b.replies, 0),
@@ -409,80 +362,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
           totalMeetings: series.reduce((a, b) => a + b.meetings, 0),
         });
 
-        setIsLoading(false);
+        setIsDemoLoading(false);
       }, 800); // Simulate 800ms loading time
-  };
-
-  // Fetch live data from database
-  const fetchLiveData = async () => {
-    if (!currentWorkspaceId) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Build query parameters
-      const params = new URLSearchParams({
-        workspace_id: currentWorkspaceId,
-        time_range: timeRange,
-        campaign_type: campaignType,
-      });
-
-      if (timeRange === 'custom' && customDateRange.start && customDateRange.end) {
-        params.append('start_date', customDateRange.start.toISOString());
-        params.append('end_date', customDateRange.end.toISOString());
-      }
-
-      if (userViewMode === 'by-user' && selectedUser !== 'all') {
-        params.append('user_id', selectedUser);
-      }
-
-      // Fetch campaign analytics
-      const response = await fetch(`/api/analytics/campaigns?${params.toString()}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch analytics');
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-        const series = data.campaignSeries || [];
-        const kpis = {
-          totalProspects: data.aggregatedMetrics.totalProspects || 0,
-          totalMessages: data.aggregatedMetrics.totalMessages || 0,
-          totalReplies: data.aggregatedMetrics.totalReplies || 0,
-          totalInfoRequests: data.aggregatedMetrics.totalInfoRequests || 0,
-          totalMeetings: data.aggregatedMetrics.totalMeetings || 0,
-        };
-        const campaigns = data.campaigns || [];
-
-        // Update campaign series for chart
-        setCampaignSeries(series);
-
-        // Update KPIs
-        setCampaignKPIs(kpis);
-
-        // Update campaigns list for table
-        setCampaignsData(campaigns);
-
-        // Mark this workspace as loaded and save to session cache
-        setDataLoadedForWorkspace(currentWorkspaceId);
-        saveCachedData(currentWorkspaceId!, campaigns, kpis, series);
-
-        // TODO: Fetch platform-specific and activity data
-        setAnalyticsData([]);
-        setPlatformData([]);
-        setRecentActivity([]);
-      }
-
-      setIsLoading(false);
-
-    } catch (err) {
-      console.error('Error fetching live data:', err);
-      setError('Failed to load analytics data');
-      setIsLoading(false);
-    }
   };
 
   // Generate chart data for visualization
@@ -563,7 +444,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
         <div className="mb-4 p-4 bg-red-900/30 border border-red-500/50 rounded-lg flex items-center gap-3">
           <span className="text-red-400">{error}</span>
           <button
-            onClick={() => demoMode ? fetchDemoData() : fetchLiveData()}
+            onClick={() => demoMode ? generateDummyData() : refetch()}
             className="ml-auto text-sm bg-red-600 hover:bg-red-700 px-3 py-1 rounded"
           >
             Retry
