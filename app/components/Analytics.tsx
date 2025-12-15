@@ -862,8 +862,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
         </CardContent>
       </Card>
 
-      {/* Data Sources Notice */}
-      {!demoMode && analyticsData.length === 0 && (
+      {/* Data Sources Notice - only show when there's no campaign data and not in demo mode */}
+      {!demoMode && campaignsData.length === 0 && campaignKPIs.totalProspects === 0 && (
         <div>
           <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6 text-center">
             <Database className="h-12 w-12 text-blue-400 mx-auto mb-4" />

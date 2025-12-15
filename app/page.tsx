@@ -6,7 +6,7 @@ import { SimpleTileCard } from '@/components/TileCard';
 import { createClient } from '@/app/lib/supabase';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { flushSync } from 'react-dom';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSamThreadedChat } from '@/lib/hooks/useSamThreadedChat';
 import { useConfirm } from '@/hooks/useConfirm';
 import { DemoModeToggle } from '@/components/DemoModeToggle';
@@ -257,6 +257,25 @@ export default function Page() {
       setUserVerified(true);
     }
   }, [user?.id]);
+
+  // Read workspace from URL query params (e.g., /?workspace=uuid)
+  // This allows direct links to specific workspaces
+  useEffect(() => {
+    if (typeof window !== 'undefined' && workspaces.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const workspaceFromUrl = urlParams.get('workspace');
+      if (workspaceFromUrl) {
+        // Verify the workspace exists and user has access
+        const workspaceExists = workspaces.some(ws => ws.id === workspaceFromUrl);
+        if (workspaceExists && workspaceFromUrl !== selectedWorkspaceId) {
+          console.log('🔗 [URL] Setting workspace from URL param:', workspaceFromUrl);
+          setSelectedWorkspaceId(workspaceFromUrl);
+        } else if (!workspaceExists) {
+          console.log('⚠️ [URL] Workspace from URL not found or no access:', workspaceFromUrl);
+        }
+      }
+    }
+  }, [workspaces, selectedWorkspaceId]);
 
   // Validate workspace ID from localStorage and clear if invalid
   useEffect(() => {
@@ -1355,8 +1374,12 @@ export default function Page() {
       const section = urlParams.get('section');
       if (section) {
         setActiveMenuItem(section);
-        // Clean up URL to remove the parameter
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // Clean up URL but preserve workspace param if present
+        const workspace = urlParams.get('workspace');
+        const newUrl = workspace
+          ? `${window.location.pathname}?workspace=${workspace}`
+          : window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
       }
     }
   }, []);
