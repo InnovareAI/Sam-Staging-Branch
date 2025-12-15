@@ -1347,7 +1347,8 @@ export default function Page() {
 
           const isAdmin = checkSuperAdmin(user.email || '');
           setIsSuperAdmin(isAdmin);
-          await loadWorkspaces(user.id, isAdmin, user.email || session?.user?.email);
+          // CRITICAL FIX (Dec 15): Pass access_token to avoid getSession() timing issues
+          await loadWorkspaces(user.id, isAdmin, user.email || session?.user?.email, session?.access_token);
         } else {
           setSession(null);
           setWorkspacesLoading(false); // No user = no workspaces to load
@@ -1394,7 +1395,8 @@ export default function Page() {
         if (session?.user) {
           const isAdmin = checkSuperAdmin(session.user.email || '');
           setIsSuperAdmin(isAdmin);
-          loadWorkspaces(session.user.id, isAdmin, session.user.email);
+          // CRITICAL FIX (Dec 15): Pass access_token directly to avoid getSession() timing issues
+          loadWorkspaces(session.user.id, isAdmin, session.user.email, session.access_token);
         }
         
         // Only set auth loading to false if this is not the initial session event
@@ -2171,7 +2173,8 @@ export default function Page() {
   };
 
   // Load all workspaces for super admin or user's own workspaces
-  const loadWorkspaces = async (userId: string, isAdmin?: boolean, userEmail?: string) => {
+  // CRITICAL FIX (Dec 15): Pass accessToken directly from onAuthStateChange to avoid getSession() timing issues
+  const loadWorkspaces = async (userId: string, isAdmin?: boolean, userEmail?: string, accessToken?: string) => {
     try {
       console.log('🔄 loadWorkspaces called with userId:', userId, 'isAdmin:', isAdmin, 'userEmail:', userEmail);
       setWorkspacesLoading(true);
@@ -2197,7 +2200,8 @@ export default function Page() {
       
       // Only true super admins can load all workspaces via admin API
       if (shouldLoadAllWorkspaces) {
-        const token = await getAuthToken();
+        // Use passed token first, fallback to getAuthToken() for backwards compatibility
+        const token = accessToken || await getAuthToken();
         const response = await fetch('/api/admin/workspaces', {
           method: 'GET',
           headers: {
@@ -2257,11 +2261,11 @@ export default function Page() {
         } else {
           console.error('❌ Failed to fetch admin workspaces');
           // Fall back to regular user workspaces
-          await loadUserWorkspaces(userId);
+          await loadUserWorkspaces(userId, accessToken);
         }
       } else {
         // Regular user - load only their workspaces
-        await loadUserWorkspaces(userId);
+        await loadUserWorkspaces(userId, accessToken);
       }
     } catch (error) {
       console.error('Failed to load workspaces:', error);
@@ -2272,14 +2276,19 @@ export default function Page() {
 
   // Load workspaces for current user only
   // Version: 2025-12-15-fix-empty-workspaces
-  const loadUserWorkspaces = async (userId: string) => {
+  // CRITICAL FIX (Dec 15): Accept accessToken parameter to avoid getSession() timing issues
+  const loadUserWorkspaces = async (userId: string, passedAccessToken?: string) => {
     try {
       console.log('🔍 [WORKSPACE LOAD] Fetching via API for user:', userId);
 
-      // Get access token for API authentication
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      const accessToken = currentSession?.access_token;
-      console.log('🔍 [WORKSPACE LOAD] Access token available:', !!accessToken);
+      // CRITICAL FIX: Use passed token first, fallback to getSession() for backwards compatibility
+      let accessToken = passedAccessToken;
+      if (!accessToken) {
+        console.log('🔍 [WORKSPACE LOAD] No passed token, falling back to getSession()...');
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        accessToken = currentSession?.access_token;
+      }
+      console.log('🔍 [WORKSPACE LOAD] Access token available:', !!accessToken, passedAccessToken ? '(from auth state)' : '(from getSession)');
 
       const response = await fetch('/api/workspace/list', {
         headers: {
@@ -2515,7 +2524,7 @@ export default function Page() {
         setNewWorkspaceName('');
         setShowCreateWorkspace(false);
         console.log('🔄 Reloading workspaces after creation...');
-        await loadWorkspaces(user.id, isSuperAdmin);
+        await loadWorkspaces(user.id, isSuperAdmin, user?.email, session?.access_token);
         showNotification('success', 'Workspace created successfully!');
         return;
       }
@@ -2578,9 +2587,9 @@ export default function Page() {
 
       setNewWorkspaceName('');
       setShowCreateWorkspace(false);
-      await loadWorkspaces(user.id, isSuperAdmin);
+      await loadWorkspaces(user.id, isSuperAdmin, user?.email, session?.access_token);
       showNotification('success', 'Workspace created successfully!');
-      
+
     } catch (error: any) {
       console.error('Complete workspace creation failure:', error);
       const errorMessage = error?.message || 'Unknown error occurred';
@@ -2777,7 +2786,7 @@ export default function Page() {
         showNotification('success', result.message);
         loadUsers(); // Refresh users list
         if (user) {
-          await loadWorkspaces(user.id, isSuperAdmin); // Refresh workspaces list
+          await loadWorkspaces(user.id, isSuperAdmin, user?.email, session?.access_token); // Refresh workspaces list
         }
       } else {
         throw new Error(result.error || 'Failed to reassign workspace');
@@ -2858,7 +2867,7 @@ export default function Page() {
         showNotification('success', `Successfully deleted ${selectedWorkspaces.size} workspace${selectedWorkspaces.size > 1 ? 's' : ''}!`);
         setSelectedWorkspaces(new Set());
         if (user) {
-          await loadWorkspaces(user.id, isSuperAdmin); // Refresh the workspace list
+          await loadWorkspaces(user.id, isSuperAdmin, user?.email, session?.access_token); // Refresh the workspace list
         }
       } else {
         throw new Error(result.error || 'Failed to delete workspaces');
