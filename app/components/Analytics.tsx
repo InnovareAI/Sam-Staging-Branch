@@ -14,7 +14,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format, differenceInCalendarDays, addDays } from 'date-fns';
 
 // Campaign Analytics KPI Cards
-function KPIGrid({ campaignKPIs, timeRange, campaignType, visibleMetrics }: { campaignKPIs: { totalProspects: number; totalMessages: number; totalReplies: number; totalInfoRequests: number; totalMeetings: number }, timeRange: '1d' | '7d' | '1m' | '3m' | 'custom', campaignType: string, visibleMetrics: Array<'prospects'|'messages'|'replies'|'infoRequests'|'meetings'> }) {
+function KPIGrid({ campaignKPIs, timeRange, campaignType, visibleMetrics, isLoading }: { campaignKPIs: { totalProspects: number; totalMessages: number; totalReplies: number; totalInfoRequests: number; totalMeetings: number }, timeRange: '1d' | '7d' | '1m' | '3m' | 'custom', campaignType: string, visibleMetrics: Array<'prospects'|'messages'|'replies'|'infoRequests'|'meetings'>, isLoading?: boolean }) {
   // Use metrics from parent component
   const totalProspects = campaignKPIs.totalProspects;
   const totalMessages = campaignKPIs.totalMessages;
@@ -97,7 +97,7 @@ function KPIGrid({ campaignKPIs, timeRange, campaignType, visibleMetrics }: { ca
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {c.label}
               </CardTitle>
-              {c.trend && (
+              {!isLoading && c.trend && (
                 <div className={`flex items-center text-xs font-medium ${
                   c.trendUp ? 'text-green-500' : 'text-red-500'
                 }`}>
@@ -106,10 +106,19 @@ function KPIGrid({ campaignKPIs, timeRange, campaignType, visibleMetrics }: { ca
               )}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{c.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {c.sublabel}
-              </p>
+              {isLoading ? (
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-700 rounded w-20 mb-2"></div>
+                  <div className="h-3 bg-gray-700 rounded w-32"></div>
+                </div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{c.value}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {c.sublabel}
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         );
@@ -475,28 +484,28 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
       responseRate: r.responseRate,
     }));
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white text-lg">Loading analytics...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-red-400 text-lg">{error}</div>
-      </div>
-    );
-  }
+  // Show error as a toast/banner but still render the dashboard
+  // This allows users to see the structure while data loads or if there's an issue
 
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-[1400px] mx-auto">
+      {/* Error Banner */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-900/30 border border-red-500/50 rounded-lg flex items-center gap-3">
+          <span className="text-red-400">{error}</span>
+          <button
+            onClick={() => demoMode ? fetchDemoData() : fetchLiveData()}
+            className="ml-auto text-sm bg-red-600 hover:bg-red-700 px-3 py-1 rounded"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* KPI Grid */}
       <div className="mb-8">
-        <KPIGrid campaignKPIs={campaignKPIs} timeRange={timeRange} campaignType={campaignType} visibleMetrics={getVisibleMetrics(campaignType)} />
+        <KPIGrid campaignKPIs={campaignKPIs} timeRange={timeRange} campaignType={campaignType} visibleMetrics={getVisibleMetrics(campaignType)} isLoading={isLoading} />
       </div>
 
       {/* Campaign Performance Overview - Time Rows & KPIs */}
@@ -648,7 +657,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
           )}
 
           {/* Activity Trends Chart */}
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-6">
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-6 relative">
+            {isLoading && (
+              <div className="absolute inset-0 bg-gray-800/80 flex items-center justify-center z-10 rounded-lg">
+                <div className="flex items-center gap-2 text-gray-400">
+                  <div className="animate-spin h-5 w-5 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                  <span>Loading chart data...</span>
+                </div>
+              </div>
+            )}
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 {chartType === 'area' ? (
@@ -771,7 +788,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
         </CardHeader>
         <CardContent>
           {/* Campaign Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto relative">
+            {isLoading && (
+              <div className="absolute inset-0 bg-gray-900/60 flex items-center justify-center z-10">
+                <div className="flex items-center gap-2 text-gray-400">
+                  <div className="animate-spin h-5 w-5 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                  <span>Loading campaigns...</span>
+                </div>
+              </div>
+            )}
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-700">
