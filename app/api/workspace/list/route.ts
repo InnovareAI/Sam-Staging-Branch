@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-// Cache bust: 2025-12-15-v3 - Super admin sees ALL workspaces
+// Cache bust: 2025-12-15-v4 - Debug Rony workspace issue
 export async function GET() {
   try {
     const cookieStore = await cookies()
+    console.log('[workspace/list] Cookie count:', cookieStore.getAll().length)
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -133,8 +134,18 @@ export async function GET() {
     console.log('[workspace/list] Number of workspace IDs:', workspaceIds.length)
 
     if (workspaceIds.length === 0) {
-      console.log('[workspace/list] No workspaces found')
-      return NextResponse.json({ workspaces: [], current: null })
+      console.log('[workspace/list] No workspaces found for user:', sessionUser.id, sessionUser.email)
+      return NextResponse.json({
+        workspaces: [],
+        current: null,
+        debug: {
+          userId: sessionUser.id,
+          userEmail: sessionUser.email,
+          isSuperAdmin,
+          membershipCount: memberships.length,
+          reason: 'no_workspace_memberships'
+        }
+      })
     }
 
     const { data: workspaceData, error: workspaceError } = await supabaseAdmin
