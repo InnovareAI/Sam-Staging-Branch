@@ -49,8 +49,11 @@ export function spinText(text: string, options: SpintaxOptions = {}): SpintaxRes
   let iterations = 0;
 
   // Keep processing until no more spintax blocks
-  // Regex matches innermost { } blocks first (no nested braces inside)
-  const spintaxRegex = /\{([^{}]+)\}/g;
+  // CRITICAL FIX (Dec 15, 2025): Regex MUST require | to distinguish spintax from personalization vars
+  // - Spintax: {option1|option2|option3} - has | separator
+  // - Personalization: {company_name}, {first_name} - NO | separator
+  // Without this fix, {company_name} gets processed as single-option spintax and loses its braces!
+  const spintaxRegex = /\{([^{}]*\|[^{}]*)\}/g;
 
   while (spintaxRegex.test(result) && iterations < maxIterations) {
     result = result.replace(spintaxRegex, (match, content) => {
@@ -125,7 +128,9 @@ function selectWeightedOption(
  */
 export function countVariations(text: string): number {
   let count = 1;
-  const regex = /\{([^{}]+)\}/g;
+  // CRITICAL FIX (Dec 15, 2025): Only count blocks with | as spintax
+  // Blocks without | are personalization variables, not spintax options
+  const regex = /\{([^{}]*\|[^{}]*)\}/g;
   let match;
 
   // Process innermost blocks first
