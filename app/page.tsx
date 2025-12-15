@@ -1624,12 +1624,6 @@ export default function Page() {
             description: 'Advanced controls for InnovareAI leadership',
             icon: Shield,
           },
-          {
-            id: 'audit',
-            label: 'Audit Trail',
-            description: 'Keep every interaction compliant and auditable',
-            icon: FileText,
-          },
         ]
       : []),
   ];
@@ -2938,27 +2932,7 @@ export default function Page() {
 
 
   const filteredWorkspaces = workspaces.filter((workspace) => {
-    if (selectedCompanyFilter === 'all') return true;
-
-    if (selectedCompanyFilter === 'innovareai') {
-      // Allow all workspaces in multi-tenant system
-    return false;
-    }
-
-    if (selectedCompanyFilter === '3cubed') {
-      const slug = workspace.slug;
-      const name = (workspace.name || '').toLowerCase();
-      return (
-        slug === '3cubed' ||
-        slug === 'sendingcell' ||
-        slug === 'wt-matchmaker' ||
-        name.includes('3cubed') ||
-        name.includes('sendingcell') ||
-        name.includes('wt') ||
-        name.includes('matchmaker')
-      );
-    }
-
+    // Show all workspaces - each user has their own workspace/tenant
     return true;
   });
 
@@ -4239,7 +4213,7 @@ export default function Page() {
                             )}
                           </div>
                           <p className="text-gray-400 text-sm">
-                            {workspace.workspace_members?.length || 0} members · Created {new Date(workspace.created_at).toLocaleDateString()}
+                            {workspace.workspace_members?.length || 0} {(workspace.workspace_members?.length || 0) === 1 ? 'member' : 'members'} · Created {new Date(workspace.created_at).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="text-gray-400 text-sm">
@@ -4266,11 +4240,11 @@ export default function Page() {
                       <span>Create Workspace</span>
                     </button>
                     <button
-                      onClick={() => setActiveMenuItem('audit')}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                      onClick={() => setShowInviteUser(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
                     >
-                      <FileText size={20} />
-                      <span>View Audit Trail</span>
+                      <UserPlus size={20} />
+                      <span>Invite User</span>
                     </button>
                   </div>
                 </div>

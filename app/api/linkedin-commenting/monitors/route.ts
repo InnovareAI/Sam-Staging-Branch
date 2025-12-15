@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
+    const adminClient = supabaseAdmin(); // Use admin client to bypass RLS
 
     console.log('🔐 Step 1: Getting user...');
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -94,7 +95,8 @@ export async function POST(request: NextRequest) {
     console.log('📥 Monitor data:', JSON.stringify(body, null, 2));
 
     console.log('🔍 Step 3: Getting user workspace...');
-    const { data: memberData, error: memberError } = await supabase
+    // Use admin client to bypass RLS for workspace membership check
+    const { data: memberData, error: memberError } = await adminClient
       .from('workspace_members')
       .select('workspace_id')
       .eq('user_id', user.id)
@@ -139,7 +141,8 @@ export async function POST(request: NextRequest) {
 
     console.log('📝 Monitor data to insert:', JSON.stringify(monitorData, null, 2));
 
-    const { data, error } = await supabase
+    // Use admin client to bypass RLS for insert
+    const { data, error } = await adminClient
       .from('linkedin_post_monitors')
       .insert(monitorData)
       .select()

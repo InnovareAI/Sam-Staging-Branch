@@ -97,24 +97,11 @@ export async function GET(request: NextRequest) {
 
     console.log('[workspace/list] Authenticated user via', authMethod, ':', sessionUser.id, sessionUser.email)
 
-    // CRITICAL FIX: Use service role to bypass RLS since policies are broken
-    const supabaseAdmin = createServerClient(
+    // CRITICAL FIX: Use createClient (NOT createServerClient) with service role to bypass RLS
+    // createServerClient still applies RLS even with service role key
+    const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {}
-          }
-        }
-      }
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
     // Get user's current_workspace_id from users table
