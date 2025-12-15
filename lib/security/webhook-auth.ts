@@ -84,12 +84,17 @@ export async function verifyN8NWebhook(
   request: NextRequest,
   body: string
 ): Promise<{ valid: boolean; error?: NextResponse }> {
-  // Check if secret is configured first
+  // SECURITY: Fail-closed if secret not configured
   const secret = process.env.N8N_WEBHOOK_SECRET;
   if (!secret) {
-    console.warn('⚠️  N8N_WEBHOOK_SECRET not configured - allowing trusted N8N requests');
-    // Allow requests from trusted N8N instance when secret not configured
-    return { valid: true };
+    console.error('❌ N8N_WEBHOOK_SECRET not configured - rejecting request (fail-closed)');
+    return {
+      valid: false,
+      error: NextResponse.json(
+        { error: 'Server misconfigured - N8N webhook secret not set' },
+        { status: 500 }
+      )
+    };
   }
 
   // Secret configured - require signature

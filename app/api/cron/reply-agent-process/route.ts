@@ -8,7 +8,7 @@ import { normalizeCompanyName } from '@/lib/prospect-normalization';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const CRON_SECRET = process.env.CRON_SECRET || '792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0';
+const CRON_SECRET = process.env.CRON_SECRET; // REQUIRED - no fallback for security
 const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6.unipile.com:13670';
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
 const POSTMARK_API_KEY = process.env.POSTMARK_SERVER_TOKEN;
@@ -71,6 +71,12 @@ function getContextualGreeting(): string | null {
 }
 
 export async function POST(request: NextRequest) {
+  // SECURITY: Fail-closed if CRON_SECRET not configured
+  if (!CRON_SECRET) {
+    console.error('❌ CRON_SECRET not configured - rejecting request');
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+  }
+
   // Verify cron secret
   const authHeader = request.headers.get('x-cron-secret');
   if (authHeader !== CRON_SECRET) {

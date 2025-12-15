@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const CRON_SECRET = process.env.CRON_SECRET || '792e0c09eeee1a229b78a6341739613177fad24f401b1c82f2673bbb9ee806a0';
+const CRON_SECRET = process.env.CRON_SECRET; // REQUIRED - no fallback for security
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com';
 
 interface DigestComment {
@@ -51,6 +51,12 @@ interface WorkspaceSettings {
  */
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Fail-closed if CRON_SECRET not configured
+    if (!CRON_SECRET) {
+      console.error('❌ CRON_SECRET not configured - rejecting request');
+      return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+    }
+
     // Verify cron secret
     const cronSecret = request.headers.get('x-cron-secret');
     if (cronSecret !== CRON_SECRET) {
