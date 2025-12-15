@@ -90,14 +90,24 @@ export function getRandomCommentType(): CommentType {
 
 /**
  * Get prompt modifier for comment type
+ * Updated Dec 16, 2025: More specific instructions with example openers
  */
 export function getCommentTypePrompt(type: CommentType): string {
   const prompts: Record<CommentType, string> = {
-    question: 'End your comment with a thoughtful question that invites discussion.',
-    statement: 'Make a confident statement sharing your perspective. Do NOT ask a question.',
-    observation: 'Share an observation or insight. Keep it declarative, no questions.',
-    story: 'Share a brief personal story or example (1-2 sentences max). No questions.',
-    agreement: 'Express genuine agreement with the author and add one small insight. No questions.',
+    question: `End your comment with ONE thoughtful question that invites discussion.
+    Example openers: "The part about X got me thinking..." / "What I'm curious about is..." / "This raises an interesting point about..."`,
+
+    statement: `Make a confident statement sharing your perspective. Do NOT ask a question.
+    Example openers: "The key insight here is..." / "What's often overlooked is..." / "The real challenge with this is..."`,
+
+    observation: `Share an observation or insight. Keep it declarative, no questions.
+    Example openers: "What I've noticed is..." / "The pattern I keep seeing is..." / "The interesting thing about this is..."`,
+
+    story: `Share a brief personal story or example (1-2 sentences max). No questions.
+    Example openers: "We learned this the hard way when..." / "Reminds me of when we..." / "Had a similar situation where..."`,
+
+    agreement: `Express genuine agreement with the author and add one small insight. No questions.
+    Example openers: "Exactly right - and I'd add that..." / "This matches what we found when..." / "The part about X especially - we saw the same thing..."`,
   };
   return prompts[type];
 }
@@ -287,8 +297,46 @@ export function getCommentVarianceContext(): CommentVarianceContext {
   };
 }
 
+// Random opener suggestions to force variety
+const VARIED_OPENER_POOL = [
+  // Observation-based
+  "What struck me here is...",
+  "The interesting bit is...",
+  "What I've noticed is...",
+  "The pattern here is...",
+  // Experience-based
+  "We ran into this when...",
+  "Reminds me of when...",
+  "Had a similar experience...",
+  "The hard lesson for us was...",
+  // Thought-provoking
+  "The counterintuitive part is...",
+  "What's often missed is...",
+  "The nuance I'd add is...",
+  "Something worth considering...",
+  // Direct engagement
+  "The point about X really...",
+  "Building on the X part...",
+  "The bit about X especially...",
+  "Re: the comment on X...",
+  // Casual/conversational
+  "Ha, been there...",
+  "Exactly this...",
+  "This is the thing...",
+  "Yeah, and...",
+];
+
+/**
+ * Get random opener suggestions for the AI
+ */
+function getRandomOpenerSuggestions(count: number = 3): string[] {
+  const shuffled = [...VARIED_OPENER_POOL].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
 /**
  * Build variance instructions for AI prompt
+ * Updated Dec 16, 2025: Added random opener suggestions
  */
 export function buildVariancePromptInstructions(context: CommentVarianceContext): string {
   // Emoji variance: 30% chance to include emoji instruction
@@ -296,6 +344,9 @@ export function buildVariancePromptInstructions(context: CommentVarianceContext)
   const emojiInstruction = includeEmoji
     ? '\n- Include 1-2 relevant emojis naturally (not at the start)'
     : '\n- Do NOT use any emojis in this comment';
+
+  // Get random openers to suggest (different each time!)
+  const suggestedOpeners = getRandomOpenerSuggestions(3);
 
   return `
 ## VARIANCE INSTRUCTIONS (CRITICAL FOR ANTI-DETECTION)
@@ -312,6 +363,11 @@ ${context.typePrompt}
 - Vary your opening style (don't always start with "Great point!" or similar)
 - Mix up sentence structure
 - Use different phrasings for similar ideas${emojiInstruction}
+
+**SUGGESTED OPENERS FOR THIS COMMENT** (pick one or create similar):
+- "${suggestedOpeners[0]}"
+- "${suggestedOpeners[1]}"
+- "${suggestedOpeners[2]}"
 `;
 }
 
