@@ -65,42 +65,73 @@ export async function GET() {
 
     console.log('[workspace/list] User current_workspace_id:', userRecord?.current_workspace_id)
 
-    // Fetch accessible workspaces using admin client to bypass RLS
-    const { data: memberships, error: memberError } = await supabaseAdmin
-      .from('workspace_members')
-      .select('workspace_id')
-      .eq('user_id', session.user.id)
-      .eq('status', 'active')
+    // Check if user is super admin
+    const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com']
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(session.user.email || '')
 
-    console.log('[workspace/list] Query result:', {
-      memberships,
-      memberError,
-      userId: session.user.id,
-      membershipCount: memberships?.length || 0
-    })
+    console.log('[workspace/list] Is super admin:', isSuperAdmin, session.user.email)
 
-    if (memberError) {
-      console.error('[workspace/list] Error fetching memberships:', memberError)
-      return NextResponse.json({ workspaces: [], error: memberError.message })
+    let workspaceIds: string[] = []
+    let memberships: any[] = []
+
+    if (isSuperAdmin) {
+      // Super admins see ALL workspaces
+      console.log('[workspace/list] Super admin - fetching ALL workspaces')
+      const { data: allWorkspaces, error: allError } = await supabaseAdmin
+        .from('workspaces')
+        .select('id')
+
+      if (allError) {
+        console.error('[workspace/list] Error fetching all workspaces:', allError)
+        return NextResponse.json({ workspaces: [], error: allError.message })
+      }
+
+      workspaceIds = (allWorkspaces || []).map(w => w.id)
+      console.log('[workspace/list] Super admin - found', workspaceIds.length, 'workspaces')
+    } else {
+      // Regular users - only see their memberships
+      const { data: membershipData, error: memberError } = await supabaseAdmin
+        .from('workspace_members')
+        .select('workspace_id')
+        .eq('user_id', session.user.id)
+        .eq('status', 'active')
+
+      console.log('[workspace/list] Query result:', {
+        memberships: membershipData,
+        memberError,
+        userId: session.user.id,
+        membershipCount: membershipData?.length || 0
+      })
+
+      if (memberError) {
+        console.error('[workspace/list] Error fetching memberships:', memberError)
+        return NextResponse.json({ workspaces: [], error: memberError.message })
+      }
+
+      memberships = membershipData || []
+      workspaceIds = memberships.map(m => m.workspace_id)
     }
-
-    console.log('[workspace/list] Memberships:', memberships)
-
-    // Fetch workspace details separately
-    const workspaceIds = (memberships || []).map(m => m.workspace_id)
 
     console.log('[workspace/list] CRITICAL DEBUG - Workspace IDs to filter by:', workspaceIds)
     console.log('[workspace/list] Number of workspace IDs:', workspaceIds.length)
 
     if (workspaceIds.length === 0) {
-      console.log('[workspace/list] No workspace memberships found')
+      console.log('[workspace/list] No workspaces found')
       return NextResponse.json({ workspaces: [], current: null })
     }
 
     const { data: workspaceData, error: workspaceError } = await supabaseAdmin
       .from('workspaces')
-      .select('id, name, commenting_agent_enabled')
+      .select(`
+        id,
+        name,
+        created_at,
+        owner_id,
+        commenting_agent_enabled,
+        workspace_members(id, user_id, role, users(email, first_name, last_name))
+      `)
       .in('id', workspaceIds)
+      .order('created_at', { ascending: false })
 
     console.log('[workspace/list] CRITICAL DEBUG - Workspaces returned from DB:', workspaceData?.length)
     console.log('[workspace/list] CRITICAL DEBUG - Workspace names returned:', workspaceData?.map(w => w.name))
@@ -127,17 +158,16 @@ export async function GET() {
 
     console.log('[workspace/list] Returning:', { workspaceCount: workspaces.length, current: current?.name })
 
-    // TEMPORARY DEBUG: Return full debug info in response
+    // Return workspaces with debug info for super admins
     return NextResponse.json({
       workspaces,
       current,
       debug: {
         userId: session.user.id,
         userEmail: session.user.email,
-        membershipCount: memberships?.length || 0,
-        memberError: memberError?.message || null,
-        workspaceIds,
-        rawMemberships: memberships
+        isSuperAdmin,
+        workspaceCount: workspaces.length,
+        workspaceIds
       }
     })
   } catch (e) {
