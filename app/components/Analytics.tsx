@@ -171,51 +171,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
   const [campaignKPIs, setCampaignKPIs] = useState<{ totalProspects: number; totalMessages: number; totalReplies: number; totalInfoRequests: number; totalMeetings: number }>({ totalProspects: 0, totalMessages: 0, totalReplies: 0, totalInfoRequests: 0, totalMeetings: 0 });
   const [campaignsData, setCampaignsData] = useState<any[]>([]);
 
-  // Track if initial data has been loaded for this workspace (session cache)
-  const [dataLoadedForWorkspace, setDataLoadedForWorkspace] = useState<string | null>(null);
-
   const supabase = createClient();
-
-  // Session storage key for caching analytics data
-  const getCacheKey = (wsId: string) => `analytics_cache_${wsId}`;
-
-  // Load cached data from sessionStorage
-  const loadCachedData = (wsId: string): boolean => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const cached = sessionStorage.getItem(getCacheKey(wsId));
-      if (cached) {
-        const data = JSON.parse(cached);
-        // Check if cache is less than 5 minutes old
-        if (Date.now() - data.timestamp < 5 * 60 * 1000) {
-          setCampaignsData(data.campaignsData || []);
-          setCampaignKPIs(data.campaignKPIs || { totalProspects: 0, totalMessages: 0, totalReplies: 0, totalInfoRequests: 0, totalMeetings: 0 });
-          setCampaignSeries(data.campaignSeries || []);
-          setDataLoadedForWorkspace(wsId);
-          setIsLoading(false);
-          return true;
-        }
-      }
-    } catch (e) {
-      console.error('Error loading cached analytics:', e);
-    }
-    return false;
-  };
-
-  // Save data to sessionStorage
-  const saveCachedData = (wsId: string, campaigns: any[], kpis: any, series: any[]) => {
-    if (typeof window === 'undefined') return;
-    try {
-      sessionStorage.setItem(getCacheKey(wsId), JSON.stringify({
-        campaignsData: campaigns,
-        campaignKPIs: kpis,
-        campaignSeries: series,
-        timestamp: Date.now()
-      }));
-    } catch (e) {
-      console.error('Error saving cached analytics:', e);
-    }
-  };
 
   // Sync workspace ID from props - ensures complete data separation between workspaces
   useEffect(() => {
@@ -249,30 +205,30 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
     }
   };
 
-  // Load analytics data - use session cache to avoid refetching
+  // Load analytics data when workspace or time range changes
   useEffect(() => {
     if (demoMode) {
       generateDummyData();
       return;
     }
 
-    // If workspace hasn't changed and we already have data, don't refetch
-    if (currentWorkspaceId && dataLoadedForWorkspace === currentWorkspaceId && campaignsData.length > 0) {
-      setIsLoading(false);
+    if (!currentWorkspaceId) {
       return;
     }
 
-    // Try to load from session cache first
-    if (currentWorkspaceId && loadCachedData(currentWorkspaceId)) {
-      return; // Data loaded from cache
-    }
-
-    // Fetch fresh data
+    // Always fetch when time range changes - the API filters by time range
     fetchLiveData();
-  }, [demoMode, currentWorkspaceId]);
+  }, [demoMode, currentWorkspaceId, timeRange]);
 
-  // Filter changes don't require refetch - data is already loaded, just filter client-side
-  // Time range and campaign type are UI filters, not data fetches
+  // Also refetch when custom date range changes
+  useEffect(() => {
+    if (demoMode || !currentWorkspaceId || timeRange !== 'custom') {
+      return;
+    }
+    if (customDateRange.start && customDateRange.end) {
+      fetchLiveData();
+    }
+  }, [customDateRange.start, customDateRange.end]);
 
   // Generate realistic dummy data for demo purposes
   const generateDummyData = () => {
@@ -465,10 +421,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
 
         // Update campaigns list for table
         setCampaignsData(campaigns);
-
-        // Mark this workspace as loaded and save to session cache
-        setDataLoadedForWorkspace(currentWorkspaceId);
-        saveCachedData(currentWorkspaceId!, campaigns, kpis, series);
 
         // TODO: Fetch platform-specific and activity data
         setAnalyticsData([]);
