@@ -133,14 +133,19 @@ const getVisibleMetrics = (ct: string): Array<'prospects'|'messages'|'replies'|'
   }
 };
 
-const Analytics: React.FC = () => {
+interface AnalyticsProps {
+  workspaceId: string | null;
+}
+
+const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
   const [analyticsData, setAnalyticsData] = useState<any[]>([]);
   const [platformData, setPlatformData] = useState<any[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [demoMode, setDemoMode] = useState(true);
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
+  const [demoMode, setDemoMode] = useState(false);
+  // Use workspaceId from props - ensures data separation between workspaces
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(workspaceId);
   const [viewMode, setViewMode] = useState<'overall' | 'campaign' | 'time'>('overall');
   const [selectedCampaign, setSelectedCampaign] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<'1d' | '7d' | '1m' | '3m' | 'custom'>('7d');
@@ -159,31 +164,15 @@ const Analytics: React.FC = () => {
 
   const supabase = createClient();
 
-  // Get current workspace on component mount
+  // Sync workspace ID from props - ensures complete data separation between workspaces
   useEffect(() => {
-    const getCurrentWorkspace = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: workspaceMember } = await supabase
-            .from('workspace_members')
-            .select('workspace_id')
-            .eq('user_id', user.id)
-            .single();
-          
-          if (workspaceMember) {
-            setCurrentWorkspaceId(workspaceMember.workspace_id);
-            // Fetch workspace members
-            fetchWorkspaceMembers(workspaceMember.workspace_id);
-          }
-        }
-      } catch (error) {
-        console.error('Error getting workspace:', error);
-      }
-    };
-
-    getCurrentWorkspace();
-  }, []);
+    if (workspaceId) {
+      setCurrentWorkspaceId(workspaceId);
+      fetchWorkspaceMembers(workspaceId);
+    } else {
+      setCurrentWorkspaceId(null);
+    }
+  }, [workspaceId]);
 
   // Fetch workspace members
   const fetchWorkspaceMembers = async (workspaceId: string) => {
@@ -808,10 +797,20 @@ const Analytics: React.FC = () => {
                   className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="all">All Campaigns</option>
-                  <option value="q4-enterprise">Q4 Enterprise Outreach</option>
-                  <option value="saas-founders">SaaS Founders Series</option>
-                  <option value="vp-sales">VP of Sales Target</option>
-                  <option value="tech-startup">Tech Startup Warmup</option>
+                  {campaignsData.length > 0 ? (
+                    campaignsData.map((campaign) => (
+                      <option key={campaign.id || campaign.campaign_name} value={campaign.campaign_name?.toLowerCase().replace(/\s+/g, '-') || ''}>
+                        {campaign.campaign_name || 'Unnamed Campaign'}
+                      </option>
+                    ))
+                  ) : demoMode ? (
+                    <>
+                      <option value="q4-enterprise">Q4 Enterprise Outreach</option>
+                      <option value="saas-founders">SaaS Founders Series</option>
+                      <option value="vp-sales">VP of Sales Target</option>
+                      <option value="tech-startup">Tech Startup Warmup</option>
+                    </>
+                  ) : null}
                 </select>
               )}
             </div>

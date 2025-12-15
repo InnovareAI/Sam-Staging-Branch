@@ -3551,7 +3551,7 @@ export default function Page() {
           </div>
           )
         ) : activeMenuItem === 'analytics' ? (
-          <Analytics />
+          <Analytics workspaceId={currentWorkspace?.id || null} />
         ) : activeMenuItem === 'audit' ? (
           <AuditTrail />
         ) : activeMenuItem === 'settings' ? (
