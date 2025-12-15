@@ -58,11 +58,12 @@ export async function GET(request: NextRequest) {
         status,
         generated_at,
         scheduled_post_time,
+        created_at,
         post:linkedin_posts_discovered!inner (
           id,
           author_name,
           author_profile_id,
-          author_title,
+          author_headline,
           post_content,
           share_url,
           post_date,
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
       `)
       .eq('workspace_id', workspaceId)
       .in('status', ['pending_approval', 'scheduled'])
-      .order('generated_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('❌ Error fetching pending comments:', error);
