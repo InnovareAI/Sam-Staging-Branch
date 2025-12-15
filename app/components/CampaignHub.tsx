@@ -9286,28 +9286,6 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="text-white font-medium">{campaign.name}</span>
-                              {/* Validation indicator */}
-                              {campaignValidations[campaign.id] && !campaignValidations[campaign.id].is_valid && (
-                                <span
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400 cursor-help"
-                                  title={campaignValidations[campaign.id].issues
-                                    .filter((i: any) => i.type === 'error')
-                                    .map((i: any) => i.message)
-                                    .join(', ') || 'Campaign has issues'}
-                                >
-                                  <AlertTriangle size={12} />
-                                  {campaignValidations[campaign.id].issues.filter((i: any) => i.type === 'error').length} issue{campaignValidations[campaign.id].issues.filter((i: any) => i.type === 'error').length !== 1 ? 's' : ''}
-                                </span>
-                              )}
-                              {campaignValidations[campaign.id]?.auto_fixed?.length > 0 && (
-                                <span
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400"
-                                  title={`Auto-fixed: ${campaignValidations[campaign.id].auto_fixed.join(', ')}`}
-                                >
-                                  <Sparkles size={12} />
-                                  Fixed
-                                </span>
-                              )}
                             </div>
                             <div className="text-gray-400 text-sm">Created {new Date(campaign.created_at).toLocaleDateString()}</div>
                           </div>
