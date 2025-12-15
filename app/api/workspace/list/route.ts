@@ -27,14 +27,31 @@ export async function GET() {
         }
       }
     )
-    const { data: { session } } = await supabase.auth.getSession()
+    // Try getUser first (more reliable), fallback to getSession
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    console.log('[workspace/list] Session user:', session?.user?.id, session?.user?.email)
+    console.log('[workspace/list] Auth check - user:', user?.id, user?.email, 'error:', userError?.message)
 
-    if (!session?.user) {
-      console.log('[workspace/list] No session, returning empty')
+    if (!user) {
+      // Fallback: Try getSession as backup
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('[workspace/list] Session fallback - session:', session?.user?.id, session?.user?.email)
+
+      if (!session?.user) {
+        console.log('[workspace/list] No user found via getUser or getSession, returning empty')
+        return NextResponse.json({ workspaces: [], debug: { reason: 'no_auth', userError: userError?.message } })
+      }
+    }
+
+    // Use user from getUser if available, otherwise from session
+    const sessionUser = user || (await supabase.auth.getSession()).data.session?.user
+
+    if (!sessionUser) {
+      console.log('[workspace/list] No session user after all checks')
       return NextResponse.json({ workspaces: [] })
     }
+
+    console.log('[workspace/list] Authenticated user:', sessionUser.id, sessionUser.email)
 
     // CRITICAL FIX: Use service role to bypass RLS since policies are broken
     const supabaseAdmin = createServerClient(
@@ -60,16 +77,16 @@ export async function GET() {
     const { data: userRecord } = await supabaseAdmin
       .from('users')
       .select('current_workspace_id')
-      .eq('id', session.user.id)
+      .eq('id', sessionUser.id)
       .single()
 
     console.log('[workspace/list] User current_workspace_id:', userRecord?.current_workspace_id)
 
     // Check if user is super admin
     const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com']
-    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(session.user.email || '')
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(sessionUser.email || '')
 
-    console.log('[workspace/list] Is super admin:', isSuperAdmin, session.user.email)
+    console.log('[workspace/list] Is super admin:', isSuperAdmin, sessionUser.email)
 
     let workspaceIds: string[] = []
     let memberships: any[] = []
@@ -93,13 +110,13 @@ export async function GET() {
       const { data: membershipData, error: memberError } = await supabaseAdmin
         .from('workspace_members')
         .select('workspace_id')
-        .eq('user_id', session.user.id)
+        .eq('user_id', sessionUser.id)
         .eq('status', 'active')
 
       console.log('[workspace/list] Query result:', {
         memberships: membershipData,
         memberError,
-        userId: session.user.id,
+        userId: sessionUser.id,
         membershipCount: membershipData?.length || 0
       })
 
@@ -163,8 +180,8 @@ export async function GET() {
       workspaces,
       current,
       debug: {
-        userId: session.user.id,
-        userEmail: session.user.email,
+        userId: sessionUser.id,
+        userEmail: sessionUser.email,
         isSuperAdmin,
         workspaceCount: workspaces.length,
         workspaceIds
