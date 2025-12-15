@@ -3850,16 +3850,19 @@ export default function Page() {
                             <span className="text-sm text-gray-400">
                               {workspace.workspace_members?.length || 0} members
                             </span>
-                            <button
-                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-1 transition-colors"
-                              onClick={() => {
-                                setInviteWorkspaceId(workspace.id);
-                                setShowInviteUser(true);
-                              }}
-                            >
-                              <UserPlus size={16} />
-                              <span>Invite Member</span>
-                            </button>
+                            {/* Only super admins can invite members */}
+                            {isSuperAdmin && (
+                              <button
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-1 transition-colors"
+                                onClick={() => {
+                                  setInviteWorkspaceId(workspace.id);
+                                  setShowInviteUser(true);
+                                }}
+                              >
+                                <UserPlus size={16} />
+                                <span>Invite Member</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                         
@@ -4213,28 +4216,30 @@ export default function Page() {
                 )}
               </div>
 
-              {/* Admin Actions */}
-              <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">Admin Actions</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button
-                    onClick={() => {
-                      setShowCreateWorkspace(true);
-                    }}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <Plus size={20} />
-                    <span>Create Workspace</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveMenuItem('audit')}
-                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <FileText size={20} />
-                    <span>View Audit Trail</span>
-                  </button>
+              {/* Admin Actions - Only visible to super admins */}
+              {isSuperAdmin && (
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">Admin Actions</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                      onClick={() => {
+                        setShowCreateWorkspace(true);
+                      }}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <Plus size={20} />
+                      <span>Create Workspace</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveMenuItem('audit')}
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <FileText size={20} />
+                      <span>View Audit Trail</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
                 ) : showStarterScreen ? (

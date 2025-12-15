@@ -1,25 +1,38 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAdmin } from '@/lib/security/route-auth';
+import { requireAuth } from '@/lib/security/route-auth';
 
-// Initialize Supabase client
+// Initialize Supabase client with service role for admin operations
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(request: NextRequest) {
+// ONLY super admin emails can invite users
+const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
 
-  // Require admin authentication
-  const { error: authError } = await requireAdmin(request);
+export async function POST(request: NextRequest) {
+  // Require authentication
+  const { error: authError, user } = await requireAuth(request);
   if (authError) return authError;
+
   try {
     const body = await request.json();
     const { email, workspaceId, organizationId, role = 'member', firstName, lastName, company } = body;
-    
+
     // Support both workspaceId and organizationId field names
     const targetWorkspaceId = workspaceId || organizationId;
+
+    // ONLY super admins can invite users - no one else
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user!.email || '');
+
+    if (!isSuperAdmin) {
+      return NextResponse.json(
+        { error: 'Only super admins can invite users' },
+        { status: 403 }
+      );
+    }
 
     // Basic validation
     if (!email || !targetWorkspaceId) {
