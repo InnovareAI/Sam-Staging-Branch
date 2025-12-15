@@ -536,6 +536,7 @@ ${bg.competitors_never_mention.join(', ')}`;
 3. ❌ Don't use corporate jargon or buzzwords
 4. ❌ Don't make it about you/your company
 5. ❌ Don't use emojis excessively (max 1-2 if appropriate)
+6. ❌ Don't use repetitive AI-sounding openers like "This is exactly what the industry needs..."
 
 **🚨 AVOID SOUNDING LIKE A BOT - Common Mistakes**:
 - ❌ **Forced analogies**: "This is the new X of 2012" - sounds fake and overly clever
@@ -677,15 +678,35 @@ CRITICAL RULES:
 5. Add YOUR perspective - agree, disagree, expand, share experience
 6. Sound like a real person having a conversation, not a bot${typeInstruction}
 
+🚨 BANNED OPENER PATTERNS (NEVER USE THESE):
+- "This is exactly what the industry needs..."
+- "This is exactly what..."
+- "Couldn't agree more..."
+- "This is so important..."
+- "This hits different..."
+- "Spot on!" / "Nailed it!"
+- "Love this take/perspective..."
+- "Such an important/great point..."
+- "100% this" / "So much this" / "This right here"
+These sound AI-generated and repetitive. BE ORIGINAL.
+
 EXAMPLES OF BAD COMMENTS (DO NOT DO THIS):
 - "Great insights on [topic]! This aligns perfectly with..."
 - "Thanks for sharing! Would love to hear more..."
 - "Interesting perspective! In my experience..."
+- "This is exactly what the industry needs right now..." ← BANNED
+- "Couldn't agree more! This is so important..." ← BANNED
 
-EXAMPLES OF GOOD COMMENTS:
+EXAMPLES OF GOOD COMMENTS (VARIED OPENERS):
 - "The point about X really resonates - we tried Y and found Z"
 - "I'd push back slightly on the idea that... because in practice..."
 - "This is why I've been telling my team to focus on..."
+- "What strikes me about this is..."
+- "The counterintuitive part is..."
+- "We learned this the hard way when..."
+- "Something I'd add here..."
+- "The nuance I've noticed is..."
+- "Curious about your take on X aspect of this..."
 
 Return JSON with comment_text. ${lengthInstruction}`;
 }
@@ -851,6 +872,28 @@ export function validateCommentQuality(comment: GeneratedComment): {
     'book a demo',
     'resonate with me',
     'resonates with what',
+    // REPETITIVE OPENER PATTERNS - Dec 16, 2025
+    // These phrases sound AI-generated and appear too frequently
+    'this is exactly what the industry needs',
+    'this is exactly what',
+    'exactly what the industry',
+    'what the industry needs right now',
+    'the industry needs right now',
+    'couldn\'t agree more',
+    'this is so important',
+    'this is so true',
+    'this hits different',
+    'this hits home',
+    'spot on',
+    'nailed it',
+    'love this take',
+    'love this perspective',
+    'such an important point',
+    'such a great point',
+    'absolutely this',
+    'this right here',
+    '100% this',
+    'so much this',
     // CRITICAL: Garbage/placeholder phrases - AI didn't have proper content
     'came through empty',
     'content didn\'t load',
