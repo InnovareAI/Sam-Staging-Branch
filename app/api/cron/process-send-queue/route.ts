@@ -8,8 +8,6 @@ import {
   type ScheduleSettings
 } from '@/lib/scheduling-config';
 import {
-  getPreSendDelayMs,
-  getComposingDelayMs,
   isMessageWarning,
   MESSAGE_HARD_LIMITS
 } from '@/lib/anti-detection/message-variance';
@@ -525,19 +523,19 @@ export async function POST(req: NextRequest) {
 
     // ============================================
     // HUMAN-LIKE DELAYS (Anti-Detection)
-    // Simulate: reading profile, composing message
+    // REDUCED for serverless function (60s limit)
+    // Full delays (30-90s) would timeout the cron job
     // ============================================
-    const messageLength = queueItem.message?.length || 150;
 
-    // Pre-send delay: Simulates viewing profile before reaching out
-    const preSendDelay = getPreSendDelayMs();
-    console.log(`⏳ Pre-send delay: ${Math.round(preSendDelay / 1000)}s (simulating profile view)`);
-    await new Promise(resolve => setTimeout(resolve, preSendDelay));
-
-    // Composing delay: Simulates thinking + typing the message
-    const composingDelay = getComposingDelayMs(messageLength);
-    console.log(`⌨️  Composing delay: ${Math.round(composingDelay / 1000)}s (simulating typing ${messageLength} chars)`);
-    await new Promise(resolve => setTimeout(resolve, composingDelay));
+    // Short delay (3-8 seconds) to add some variance but not timeout
+    // Real anti-detection comes from:
+    // 1. 2-minute spacing between messages (enforced in selection loop)
+    // 2. Business hours check (no late night sends)
+    // 3. Weekend/holiday skipping
+    // 4. Daily rate limits (20 CRs/day)
+    const shortDelay = 3000 + Math.floor(Math.random() * 5000);
+    console.log(`⏳ Pre-send delay: ${Math.round(shortDelay / 1000)}s`);
+    await new Promise(resolve => setTimeout(resolve, shortDelay));
 
     try {
       // 2. Resolve linkedin_user_id to provider_id (handles URLs and vanities)

@@ -178,39 +178,66 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // CRITICAL FIX (Dec 15): COMPLETELY REMOVED JOINS
-    // Use 2 separate queries to avoid "relationship not found" schema errors
-    const { data: workspaceData, error: workspaceError } = await supabaseAdmin
-      .from('workspaces')
-      .select('id, name, created_at, owner_id, commenting_agent_enabled')
-      .in('id', workspaceIds)
-      .order('created_at', { ascending: false })
+    // PERFORMANCE OPTIMIZATION: Run all queries in parallel
+    // This reduces API latency from ~3 sequential queries to 1 parallel batch
+    const [workspacesResult, membersResult, invitationsResult] = await Promise.all([
+      // Query 1: Workspaces
+      supabaseAdmin
+        .from('workspaces')
+        .select('id, name, created_at, owner_id, commenting_agent_enabled')
+        .in('id', workspaceIds)
+        .order('created_at', { ascending: false }),
+      // Query 2: Members
+      supabaseAdmin
+        .from('workspace_members')
+        .select('id, user_id, role, workspace_id, linkedin_unipile_account_id')
+        .in('workspace_id', workspaceIds),
+      // Query 3: Pending invitations (eliminates N+1 in frontend)
+      supabaseAdmin
+        .from('workspace_invitations')
+        .select('workspace_id, invited_email, status')
+        .in('workspace_id', workspaceIds)
+        .eq('status', 'pending')
+    ])
 
-    if (workspaceError) {
-      console.error('[workspace/list] Error fetching workspaces:', workspaceError)
-      return NextResponse.json({ 
-        workspaces: [], 
-        error: workspaceError.message,
-        debug: { reason: 'workspace_fetch_error', error: workspaceError }
+    if (workspacesResult.error) {
+      console.error('[workspace/list] Error fetching workspaces:', workspacesResult.error)
+      return NextResponse.json({
+        workspaces: [],
+        error: workspacesResult.error.message,
+        debug: { reason: 'workspace_fetch_error', error: workspacesResult.error }
       })
     }
 
-    // Fetch members separately to avoid join issues
-    const { data: allMembers, error: membersError } = await supabaseAdmin
-      .from('workspace_members')
-      .select('id, user_id, role, workspace_id, linkedin_unipile_account_id')
-      .in('workspace_id', workspaceIds)
-      
-    if (membersError) {
-       console.error('[workspace/list] Error fetching members:', membersError)
-       // Continue without members if that fails
+    if (membersResult.error) {
+      console.error('[workspace/list] Error fetching members:', membersResult.error)
+      // Continue without members if that fails
     }
 
-    // Stitch data together in JS
-    const workspaces = (workspaceData || []).map(ws => ({
-      ...ws,
-      workspace_members: (allMembers || []).filter(m => m.workspace_id === ws.id)
-    }))
+    if (invitationsResult.error) {
+      console.error('[workspace/list] Error fetching invitations:', invitationsResult.error)
+      // Continue without invitations if that fails
+    }
+
+    const workspaceData = workspacesResult.data || []
+    const allMembers = membersResult.data || []
+    const allInvitations = invitationsResult.data || []
+
+    // Stitch data together in JS - single pass
+    const workspaces = workspaceData.map(ws => {
+      const wsMembers = allMembers.filter(m => m.workspace_id === ws.id)
+      const wsInvitations = allInvitations.filter(i => i.workspace_id === ws.id)
+
+      return {
+        ...ws,
+        workspace_members: wsMembers,
+        pending_invitations_count: wsInvitations.length,
+        pending_invitations: wsInvitations.map(i => ({
+          email: i.invited_email,
+          status: i.status
+        }))
+      }
+    })
 
     // Use current_workspace_id from users table if it exists and is in the workspace list
     let current = null

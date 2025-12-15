@@ -3691,12 +3691,12 @@ Would you like me to adjust these or create more variations?`
     if (file && file.type === 'text/csv') {
       setCsvFile(file);
       setIsUploading(true);
-      
+
       const reader = new FileReader();
       reader.onload = (e) => {
         const csv = e.target?.result as string;
         const lines = csv.split('\n').filter(line => line.trim());
-        
+
         if (lines.length > 0) {
           const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
           const data = lines.slice(1).map(line => {
@@ -3707,7 +3707,7 @@ Would you like me to adjust these or create more variations?`
             });
             return row;
           }).filter(row => Object.values(row).some(val => val));
-          
+
           // Validate connection degree field for LinkedIn campaigns
           const connectionDegreeFields = [
             'connection_degree', 'degree', 'connectiondegree', 'connection',
@@ -3727,6 +3727,17 @@ Would you like me to adjust these or create more variations?`
           setCsvData(data);
           setShowPreview(true);
         }
+        setIsUploading(false);
+      };
+      // Handle FileReader errors to prevent silent failures
+      reader.onerror = () => {
+        console.error('FileReader error:', reader.error);
+        toastError('Failed to read CSV file. Please try again.');
+        setIsUploading(false);
+      };
+      // Handle abort case
+      reader.onabort = () => {
+        console.warn('FileReader aborted');
         setIsUploading(false);
       };
       reader.readAsText(file);

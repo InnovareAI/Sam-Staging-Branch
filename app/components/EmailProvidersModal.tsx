@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mail, X, Plus, Trash2, CheckCircle, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 
 interface EmailProvider {
@@ -46,6 +46,23 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
   const [addProviderType, setAddProviderType] = useState<'google' | 'microsoft' | 'smtp' | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  // Refs for cleanup to prevent memory leaks
+  const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+    };
+  }, []);
 
   // SMTP Form State
   const [smtpForm, setSmtpForm] = useState<SMTPFormData>({
@@ -112,8 +129,16 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
   }, [isOpen]);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
+    // Clear any existing timeout to prevent memory leaks
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
     setNotification({ type, message });
-    setTimeout(() => setNotification(null), 5000);
+    notificationTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setNotification(null);
+      }
+    }, 5000);
   };
 
   // Connect Google account via Unipile - Open in popup like LinkedIn
@@ -244,20 +269,32 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
       setIsConnecting(false);
       return;
     }
-    const pollInterval = setInterval(async () => {
+
+    // Clear any existing poll intervals/timeouts to prevent memory leaks
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+
+    pollIntervalRef.current = setInterval(async () => {
+      if (!isMountedRef.current) {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        return;
+      }
       try {
         const response = await fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`);
         const data = await response.json();
 
         if (data.success && data.email_connected) {
-          clearInterval(pollInterval);
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
           showNotification('success', 'Email account connected successfully!');
           setIsConnecting(false);
           await fetchProviders(); // Refresh the list
           // Optional: close modal after brief delay
-          setTimeout(() => {
-            onClose();
-          }, 1500);
+          if (isMountedRef.current) {
+            setTimeout(() => {
+              if (isMountedRef.current) onClose();
+            }, 1500);
+          }
         }
       } catch (error) {
         console.error('Polling error:', error);
@@ -265,9 +302,9 @@ const EmailProvidersModal: React.FC<EmailProvidersModalProps> = ({ isOpen, onClo
     }, 3000); // Poll every 3 seconds
 
     // Stop polling after 5 minutes
-    setTimeout(() => {
-      clearInterval(pollInterval);
-      setIsConnecting(false);
+    pollTimeoutRef.current = setTimeout(() => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      if (isMountedRef.current) setIsConnecting(false);
     }, 300000);
   };
 

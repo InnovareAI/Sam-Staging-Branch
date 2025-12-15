@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, User, Building2, Target, FileText, Send, CheckCircle, Upload, ArrowRight } from 'lucide-react';
 
 // Onboarding Flow Data
@@ -110,6 +110,20 @@ const SAMOnboarding: React.FC<SAMOnboardingProps> = ({ onComplete }) => {
   });
   const [isTyping, setIsTyping] = useState(false);
 
+  // Track timeouts for cleanup on unmount
+  const timeoutRefs = useRef<NodeJS.Timeout[]>([]);
+  const isMountedRef = useRef(true);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+      timeoutRefs.current = [];
+    };
+  }, []);
+
   useEffect(() => {
     // Start with welcome message
     addSAMMessage(ONBOARDING_FLOWS.welcome[0]);
@@ -117,7 +131,8 @@ const SAMOnboarding: React.FC<SAMOnboardingProps> = ({ onComplete }) => {
 
   const addSAMMessage = (content: string) => {
     setIsTyping(true);
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
+      if (!isMountedRef.current) return; // Don't update if unmounted
       const message: Message = {
         id: Date.now().toString(),
         type: 'sam',
@@ -127,6 +142,7 @@ const SAMOnboarding: React.FC<SAMOnboardingProps> = ({ onComplete }) => {
       setMessages(prev => [...prev, message]);
       setIsTyping(false);
     }, 1000 + Math.random() * 1000); // Simulate typing delay
+    timeoutRefs.current.push(timeout);
   };
 
   const addUserMessage = (content: string) => {
@@ -172,9 +188,11 @@ const SAMOnboarding: React.FC<SAMOnboardingProps> = ({ onComplete }) => {
     // Move to next question or step
     if (currentQuestion < flow.length - 1) {
       setCurrentQuestion(prev => prev + 1);
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
+        if (!isMountedRef.current) return;
         addSAMMessage(flow[currentQuestion + 1]);
       }, 500);
+      timeoutRefs.current.push(timeout);
     } else {
       // Move to next step
       moveToNextStep();
@@ -193,14 +211,24 @@ const SAMOnboarding: React.FC<SAMOnboardingProps> = ({ onComplete }) => {
       if (nextStep === 'build_icp') {
         const summary = `${userData.company} serving ${userData.markets} with ${userData.products}, targeting ${userData.dreamCustomer}`;
         const message = ONBOARDING_FLOWS[nextStep][0].replace('{summary}', summary);
-        setTimeout(() => addSAMMessage(message), 1000);
+        const timeout = setTimeout(() => {
+          if (!isMountedRef.current) return;
+          addSAMMessage(message);
+        }, 1000);
+        timeoutRefs.current.push(timeout);
       } else if (nextStep === 'completed') {
-        setTimeout(() => {
+        const timeout = setTimeout(() => {
+          if (!isMountedRef.current) return;
           addSAMMessage("Perfect! Your knowledge base is set up. I'm now ready to help you with personalized outreach campaigns.");
           onComplete?.(userData);
         }, 1000);
+        timeoutRefs.current.push(timeout);
       } else {
-        setTimeout(() => addSAMMessage(ONBOARDING_FLOWS[nextStep][0]), 1000);
+        const timeout = setTimeout(() => {
+          if (!isMountedRef.current) return;
+          addSAMMessage(ONBOARDING_FLOWS[nextStep][0]);
+        }, 1000);
+        timeoutRefs.current.push(timeout);
       }
     }
   };

@@ -1778,18 +1778,19 @@ export default function Page() {
     setUploadProgress(0);
     setShowPasteModal(false);
 
+    let progressInterval: NodeJS.Timeout | null = null;
     try {
       // Create a blob from the pasted text
       const blob = new Blob([pastedCSV], { type: 'text/csv' });
       const file = new File([blob], 'pasted-data.csv', { type: 'text/csv' });
-      
+
       const formData = new FormData();
       formData.append('file', file);
       formData.append('dataset_name', 'CSV Paste - Manual Entry');
       formData.append('action', 'upload');
 
       // Simulate upload progress
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 200);
 
@@ -1799,6 +1800,7 @@ export default function Page() {
       });
 
       clearInterval(progressInterval);
+      progressInterval = null;
       setUploadProgress(100);
 
       const data = await response.json();
@@ -1914,6 +1916,8 @@ export default function Page() {
       console.error('CSV paste error:', error);
       showNotification('error', `CSV processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
+      // Ensure interval is cleared to prevent memory leak
+      if (progressInterval) clearInterval(progressInterval);
       setIsUploadingCSV(false);
       setUploadProgress(0);
     }
@@ -1933,6 +1937,7 @@ export default function Page() {
     setIsUploadingCSV(true);
     setUploadProgress(0);
 
+    let progressInterval: NodeJS.Timeout | null = null;
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -1940,7 +1945,7 @@ export default function Page() {
       formData.append('action', 'upload'); // Mark as upload action for data approval
 
       // Simulate upload progress
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 10, 90));
       }, 200);
 
@@ -1950,6 +1955,7 @@ export default function Page() {
       });
 
       clearInterval(progressInterval);
+      progressInterval = null;
       setUploadProgress(100);
 
       const data = await response.json();
@@ -2066,6 +2072,8 @@ export default function Page() {
       console.error('CSV upload error:', error);
       showNotification('error', `CSV upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
+      // Ensure interval is cleared to prevent memory leak
+      if (progressInterval) clearInterval(progressInterval);
       setIsUploadingCSV(false);
       setUploadProgress(0);
       // Reset the file input so the same file can be uploaded again if needed
