@@ -30,8 +30,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify user has access to this workspace
-    const { data: membership } = await authClient
+    // Verify user has access to this workspace - use admin client to bypass RLS
+    const adminClient = supabaseAdmin();
+    const { data: membership } = await adminClient
       .from('workspace_members')
       .select('role')
       .eq('workspace_id', workspaceId)
