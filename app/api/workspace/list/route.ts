@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies, headers } from 'next/headers'
 
-// Cache bust: 2025-12-15-v6 - More debug logging for Rony
+// Cache bust: 2025-12-15-v7 - Fixed empty workspaces bug (don't wipe on error)
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()

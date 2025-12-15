@@ -2271,6 +2271,7 @@ export default function Page() {
   };
 
   // Load workspaces for current user only
+  // Version: 2025-12-15-fix-empty-workspaces
   const loadUserWorkspaces = async (userId: string) => {
     try {
       console.log('🔍 [WORKSPACE LOAD] Fetching via API for user:', userId);
@@ -2294,7 +2295,13 @@ export default function Page() {
 
       const { workspaces: apiWorkspaces, current, debug } = await response.json();
       console.log('🔍 [WORKSPACE LOAD] Debug info:', debug);
-      console.log(`✅ [WORKSPACE LOAD] API returned ${apiWorkspaces.length} workspaces`);
+      console.log(`✅ [WORKSPACE LOAD] API returned ${apiWorkspaces?.length || 0} workspaces`);
+
+      // CRITICAL FIX (Dec 15): Handle case where apiWorkspaces is undefined/null
+      if (!apiWorkspaces || !Array.isArray(apiWorkspaces)) {
+        console.error('❌ [WORKSPACE LOAD] API returned invalid workspaces data:', apiWorkspaces);
+        return; // Don't set workspaces to [] - preserve existing state
+      }
 
       // For each workspace, fetch pending invitations
       const workspacesWithInvitations = await Promise.all(
@@ -2367,7 +2374,9 @@ export default function Page() {
       setIsWorkspaceAdmin(isOwner || isAdminMember || false);
     } catch (error) {
       console.error('❌ [WORKSPACE LOAD] API error:', error);
-      setWorkspaces([]);
+      // CRITICAL FIX (Dec 15): Don't wipe workspaces on error - preserve existing state
+      // Setting to [] causes users to see 0 workspaces even if API returned data but invitations fetch failed
+      // setWorkspaces([]);
     }
   };
 
