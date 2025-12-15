@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     // Exchange the code for tokens
     const clientId = process.env.SLACK_CLIENT_ID;
     const clientSecret = process.env.SLACK_CLIENT_SECRET;
-    const redirectUri = `https://app.meet-sam.com/api/integrations/slack/oauth-callback`;
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/api/integrations/slack/oauth-callback`;
 
     if (!clientId || !clientSecret) {
       console.error('[Slack OAuth] Missing SLACK_CLIENT_ID or SLACK_CLIENT_SECRET env vars');
@@ -103,12 +103,25 @@ export async function GET(request: NextRequest) {
       authed_user,
     } = tokenData;
 
+    // Validate required team data
+    if (!team?.id) {
+      console.error('[Slack OAuth] Missing team data in response:', tokenData);
+      if (isDirectInstall) {
+        return NextResponse.redirect(
+          new URL('/slack/connect?error=missing_team_data', request.url)
+        );
+      }
+      return NextResponse.redirect(
+        new URL(`/workspace/${state}?slack_error=missing_team_data`, request.url)
+      );
+    }
+
     // The bot token is in access_token for bot-only apps
     const botToken = access_token;
 
     console.log('[Slack OAuth] Successfully authenticated:', {
-      team_id: team?.id,
-      team_name: team?.name,
+      team_id: team.id,
+      team_name: team.name,
       bot_user_id,
       authed_user_id: authed_user?.id,
       isDirectInstall,
@@ -121,8 +134,8 @@ export async function GET(request: NextRequest) {
       const { error: pendingError } = await supabaseAdmin()
         .from('slack_pending_installations')
         .upsert({
-          slack_team_id: team?.id,
-          slack_team_name: team?.name,
+          slack_team_id: team.id,
+          slack_team_name: team.name || 'Unknown Team',
           bot_token: botToken,
           bot_user_id,
           authed_user_id: authed_user?.id,
@@ -140,8 +153,8 @@ export async function GET(request: NextRequest) {
 
       // Redirect to connection page with Slack team info
       const connectUrl = new URL('/slack/connect', request.url);
-      connectUrl.searchParams.set('team_id', team?.id || '');
-      connectUrl.searchParams.set('team_name', team?.name || '');
+      connectUrl.searchParams.set('team_id', team.id);
+      connectUrl.searchParams.set('team_name', team.name || 'Unknown Team');
       connectUrl.searchParams.set('success', 'true');
 
       return NextResponse.redirect(connectUrl);
@@ -155,8 +168,8 @@ export async function GET(request: NextRequest) {
       .from('slack_app_config')
       .upsert({
         workspace_id: workspaceId,
-        slack_team_id: team?.id,
-        slack_team_name: team?.name,
+        slack_team_id: team.id,
+        slack_team_name: team.name || 'Unknown Team',
         bot_token: botToken,
         bot_user_id,
         status: 'active',
@@ -188,8 +201,8 @@ export async function GET(request: NextRequest) {
         status: 'active',
         config: {
           mode: 'app',
-          team_id: team?.id,
-          team_name: team?.name,
+          team_id: team.id,
+          team_name: team.name || 'Unknown Team',
           bot_user_id,
           has_bot_token: true,
         },
@@ -200,7 +213,7 @@ export async function GET(request: NextRequest) {
 
     // Redirect back to workspace with success
     return NextResponse.redirect(
-      new URL(`/workspace/${workspaceId}?slack_success=true&team_name=${encodeURIComponent(team?.name || '')}`, request.url)
+      new URL(`/workspace/${workspaceId}?slack_success=true&team_name=${encodeURIComponent(team.name || 'Slack')}`, request.url)
     );
 
   } catch (error) {

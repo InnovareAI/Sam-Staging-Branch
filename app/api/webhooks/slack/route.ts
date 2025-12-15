@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { slackService } from '@/lib/slack';
+import crypto from 'crypto';
 
 /**
  * Slack Webhook Endpoint
@@ -12,13 +13,68 @@ import { slackService } from '@/lib/slack';
  */
 
 // ============================================================================
+// SIGNATURE VERIFICATION
+// ============================================================================
+
+function verifySlackSignature(
+  signature: string | null,
+  timestamp: string | null,
+  body: string
+): boolean {
+  const signingSecret = process.env.SLACK_SIGNING_SECRET;
+
+  // Skip verification if signing secret not configured (dev mode)
+  if (!signingSecret) {
+    console.warn('[Slack] SLACK_SIGNING_SECRET not configured - skipping signature verification');
+    return true;
+  }
+
+  if (!signature || !timestamp) {
+    console.error('[Slack] Missing signature or timestamp headers');
+    return false;
+  }
+
+  // Check timestamp to prevent replay attacks (5 min window)
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - parseInt(timestamp)) > 300) {
+    console.error('[Slack] Request timestamp too old');
+    return false;
+  }
+
+  // Compute expected signature
+  const sigBasestring = `v0:${timestamp}:${body}`;
+  const mySignature = 'v0=' + crypto
+    .createHmac('sha256', signingSecret)
+    .update(sigBasestring, 'utf8')
+    .digest('hex');
+
+  // Constant-time comparison to prevent timing attacks
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(mySignature, 'utf8'),
+      Buffer.from(signature, 'utf8')
+    );
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
 // MAIN HANDLER
 // ============================================================================
 
 export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get('content-type') || '';
+    const signature = request.headers.get('x-slack-signature');
+    const timestamp = request.headers.get('x-slack-request-timestamp');
     const rawBody = await request.text();
+
+    // Verify Slack signature (security check)
+    if (!verifySlackSignature(signature, timestamp, rawBody)) {
+      console.error('[Slack] Invalid signature - rejecting request');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
 
     let body: any;
 
@@ -431,13 +487,25 @@ async function triggerFlow(workspaceId: string, channelId: string, userId: strin
     const result = await response.json();
 
     if (result.success && result.response) {
-      await slackService.postMessage(workspaceId, channelId, {
+      await slackService.sendBotMessage(workspaceId, channelId, {
         text: result.response,
         blocks: result.blocks,
+      });
+    } else if (!result.success) {
+      console.error('[Slack] Flow response failed:', result.error || 'Unknown error');
+      await slackService.sendBotMessage(workspaceId, channelId, {
+        text: `Sorry, I encountered an error processing your request. Please try again.`,
       });
     }
   } catch (error) {
     console.error('[Slack] Error triggering flow:', error);
+    try {
+      await slackService.sendBotMessage(workspaceId, channelId, {
+        text: `Sorry, something went wrong. Please try again later.`,
+      });
+    } catch (e) {
+      console.error('[Slack] Failed to send error message:', e);
+    }
   }
 }
 
