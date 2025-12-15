@@ -5474,14 +5474,14 @@ export default function Page() {
       })()}
 
       {/* Commenting Campaign Modal */}
-      {showCommentingCampaignModal && selectedWorkspaceId && (
+      {showCommentingCampaignModal && (selectedWorkspaceId || currentWorkspace?.id) && (
         <CommentingCampaignModal
           isOpen={showCommentingCampaignModal}
           onClose={() => {
             setShowCommentingCampaignModal(false);
             setEditingCampaign(null);
           }}
-          workspaceId={selectedWorkspaceId}
+          workspaceId={selectedWorkspaceId || currentWorkspace?.id || ''}
           editMode={!!editingCampaign}
           existingMonitor={editingCampaign || undefined}
         />
