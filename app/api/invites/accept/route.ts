@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const { data: invite, error: inviteError } = await supabase
       .from('workspace_invitations')
       .select('*')
-      .eq('invite_token', token)
+      .eq('token', token)
       .single();
 
     if (inviteError || !invite) {
@@ -63,9 +63,9 @@ export async function POST(req: NextRequest) {
       .eq('id', currentUserId)
       .single();
 
-    if (userError || !user || user.email !== invite.email) {
-      return NextResponse.json({ 
-        error: 'User email does not match invitation' 
+    if (userError || !user || user.email !== invite.invited_email) {
+      return NextResponse.json({
+        error: 'User email does not match invitation'
       }, { status: 403 });
     }
 
