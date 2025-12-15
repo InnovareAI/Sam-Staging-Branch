@@ -299,13 +299,30 @@ export async function GET(request: NextRequest) {
     
     // No hardcoded user-specific logic - auto-association now handles all users generically
     
-    // 🛡️ SECURITY: Get user's associated accounts only
+    // 🛡️ SECURITY: Get user's associated accounts from BOTH sources:
+    // 1. user_unipile_accounts table (legacy)
+    // 2. workspace_members.linkedin_unipile_account_id (new, preferred)
     const { data: userAccounts } = await supabase
       .from('user_unipile_accounts')
       .select('unipile_account_id, platform, account_name, account_email, linkedin_profile_url')
       .eq('user_id', user.id)
 
+    // Also check workspace_members for linkedin_unipile_account_id
+    const { data: workspaceMembership } = await supabase
+      .from('workspace_members')
+      .select('linkedin_unipile_account_id')
+      .eq('user_id', user.id)
+      .not('linkedin_unipile_account_id', 'is', null)
+
     const userAccountIds = new Set(userAccounts?.map(acc => acc.unipile_account_id) || [])
+
+    // Add workspace_members linkedin IDs to the set
+    workspaceMembership?.forEach(m => {
+      if (m.linkedin_unipile_account_id) {
+        userAccountIds.add(m.linkedin_unipile_account_id)
+        console.log(`🔗 Added linkedin_unipile_account_id from workspace_members: ${m.linkedin_unipile_account_id}`)
+      }
+    })
 
     // 🔄 AUTO-ASSOCIATE: Check for LinkedIn accounts that belong to this user but aren't associated yet
     const allLinkedInAccounts = allAccounts.filter((account: any) => account.type === 'LINKEDIN')
