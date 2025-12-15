@@ -588,3 +588,33 @@ export async function sendDailyCampaignSummary(
 
   return sendGoogleChatNotification(message);
 }
+
+/**
+ * Send Email Reply Notification (placeholder - to be implemented)
+ * Used by ReachInbox webhook handler
+ */
+export async function sendEmailReplyNotification(data: {
+  from: string;
+  subject: string;
+  text: string;
+  campaignName?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  // TODO: Implement email reply notification
+  console.log("[Email Reply Notification]", data);
+  return { success: true };
+}
+
+/**
+ * Send Campaign Reply Notification (placeholder - to be implemented)
+ * Used by Unipile messages webhook handler
+ */
+export async function sendCampaignReplyNotification(data: {
+  from: string;
+  message: string;
+  campaignName?: string;
+  platform?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  // TODO: Implement campaign reply notification
+  console.log("[Campaign Reply Notification]", data);
+  return { success: true };
+}
