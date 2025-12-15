@@ -92,8 +92,12 @@ async function fetchAnalytics(params: AnalyticsParams): Promise<AnalyticsData> {
  * - Returns previous data while loading new data
  */
 export function useWorkspaceAnalytics(params: AnalyticsParams) {
+  // Build query key safely - avoid calling toISOString on undefined
+  const startDateKey = params.customDateRange?.start ? params.customDateRange.start.toISOString() : null;
+  const endDateKey = params.customDateRange?.end ? params.customDateRange.end.toISOString() : null;
+
   return useQuery({
-    queryKey: ['analytics', params.workspaceId, params.timeRange, params.campaignType, params.customDateRange?.start?.toISOString(), params.customDateRange?.end?.toISOString(), params.userId],
+    queryKey: ['analytics', params.workspaceId, params.timeRange, params.campaignType, startDateKey, endDateKey, params.userId],
     queryFn: () => fetchAnalytics(params),
     enabled: !!params.workspaceId,
     // Keep showing old data while fetching new data

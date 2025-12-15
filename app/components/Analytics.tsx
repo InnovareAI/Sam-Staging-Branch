@@ -195,7 +195,8 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
 
   // Combined loading state - true only on initial load, not during background refetch
   const isLoading = demoMode ? isDemoLoading : isQueryLoading;
-  const error = demoMode ? null : queryError?.message || null;
+  // React Query error could be Error object or null
+  const error = demoMode ? null : (queryError instanceof Error ? queryError.message : null);
 
   // Fetch workspace members
   const fetchWorkspaceMembers = async (wsId: string) => {
