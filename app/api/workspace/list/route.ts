@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
     // Fetch members separately to avoid join issues
     const { data: allMembers, error: membersError } = await supabaseAdmin
       .from('workspace_members')
-      .select('id, user_id, role, workspace_id')
+      .select('id, user_id, role, workspace_id, linkedin_unipile_account_id')
       .in('workspace_id', workspaceIds)
       
     if (membersError) {
