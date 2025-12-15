@@ -3,11 +3,18 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies, headers } from 'next/headers'
 
-// Cache bust: 2025-12-15-v5 - Add Authorization header support for Rony issue
+// Cache bust: 2025-12-15-v6 - More debug logging for Rony
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
     const headersList = await headers()
+
+    // Log all headers for debugging
+    const allHeaders: Record<string, string> = {}
+    request.headers.forEach((value, key) => {
+      allHeaders[key] = key.toLowerCase() === 'authorization' ? `Bearer ${value.slice(7, 20)}...` : value
+    })
+    console.log('[workspace/list] Request headers:', JSON.stringify(allHeaders))
     console.log('[workspace/list] Cookie count:', cookieStore.getAll().length)
 
     let sessionUser: { id: string; email?: string } | null = null
@@ -15,6 +22,7 @@ export async function GET(request: NextRequest) {
 
     // Method 1: Try Authorization header first (most reliable for SPA)
     const authHeader = headersList.get('authorization') || request.headers.get('authorization')
+    console.log('[workspace/list] Auth header present:', !!authHeader, authHeader ? `${authHeader.slice(0, 30)}...` : 'none')
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7)
       console.log('[workspace/list] Found Authorization header, verifying token...')

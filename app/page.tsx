@@ -2281,9 +2281,12 @@ export default function Page() {
       console.log('🔍 [WORKSPACE LOAD] Access token available:', !!accessToken);
 
       const response = await fetch('/api/workspace/list', {
-        headers: accessToken ? {
-          'Authorization': `Bearer ${accessToken}`
-        } : undefined
+        headers: {
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        cache: 'no-store'
       });
       if (!response.ok) {
         throw new Error(`API returned ${response.status}`);
