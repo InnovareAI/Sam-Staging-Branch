@@ -3233,7 +3233,7 @@ export default function Page() {
                     <span className="text-gray-400 text-sm">Pending Approvals</span>
                     <Clock size={20} className="text-yellow-400" />
                   </div>
-                  <div className="text-3xl font-bold text-white">0</div>
+                  <div className="text-3xl font-bold text-white">{pendingCommentsLoading ? '...' : pendingComments.length}</div>
                   <div className="text-xs text-gray-500 mt-1">Comments awaiting review</div>
                 </div>
 
