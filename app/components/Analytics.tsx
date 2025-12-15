@@ -700,68 +700,21 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
             </div>
           </div>
 
-          {/* View By Filters Below Chart */}
-          <div className="space-y-4">
-            {/* View By User */}
-            <div className="flex items-center gap-4">
-              <span className="text-gray-400 text-sm font-medium">View By:</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setUserViewMode('consolidated')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    userViewMode === 'consolidated' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Consolidated
-                </button>
-                <button
-                  onClick={() => setUserViewMode('by-user')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    userViewMode === 'by-user' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  By User
-                </button>
-              </div>
-
-              {/* User Selector (shown when userViewMode is 'by-user') */}
-              {userViewMode === 'by-user' && (
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground text-sm">Team Member:</span>
-                  <Select value={selectedUser} onValueChange={setSelectedUser}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Select team member" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Users</SelectItem>
-                      {workspaceMembers.map((member: any) => (
-                        <SelectItem key={member.user_id} value={member.user_id}>
-                          {member.users?.full_name || member.users?.email || 'Unknown User'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Campaign Type Filter moved next to View By */}
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-sm font-medium">Campaign Type:</span>
-                <Select value={campaignType} onValueChange={setCampaignType}>
-                  <SelectTrigger className="w-[250px]">
-                    <SelectValue placeholder="Select campaign type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Campaigns</SelectItem>
-                    <SelectItem value="connector">Connector Campaign</SelectItem>
-                    <SelectItem value="messenger">Messenger Campaign</SelectItem>
-                    <SelectItem value="group">Group Message Campaign</SelectItem>
-                    <SelectItem value="email">Email Campaign</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
+          {/* Campaign Type Filter */}
+          <div className="flex items-center gap-4">
+            <span className="text-gray-400 text-sm font-medium">Campaign Type:</span>
+            <Select value={campaignType} onValueChange={setCampaignType}>
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Select campaign type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Campaigns</SelectItem>
+                <SelectItem value="connector">Connector Campaign</SelectItem>
+                <SelectItem value="messenger">Messenger Campaign</SelectItem>
+                <SelectItem value="group">Group Message Campaign</SelectItem>
+                <SelectItem value="email">Email Campaign</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
