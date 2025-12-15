@@ -171,7 +171,51 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
   const [campaignKPIs, setCampaignKPIs] = useState<{ totalProspects: number; totalMessages: number; totalReplies: number; totalInfoRequests: number; totalMeetings: number }>({ totalProspects: 0, totalMessages: 0, totalReplies: 0, totalInfoRequests: 0, totalMeetings: 0 });
   const [campaignsData, setCampaignsData] = useState<any[]>([]);
 
+  // Track if initial data has been loaded for this workspace (session cache)
+  const [dataLoadedForWorkspace, setDataLoadedForWorkspace] = useState<string | null>(null);
+
   const supabase = createClient();
+
+  // Session storage key for caching analytics data
+  const getCacheKey = (wsId: string) => `analytics_cache_${wsId}`;
+
+  // Load cached data from sessionStorage
+  const loadCachedData = (wsId: string): boolean => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const cached = sessionStorage.getItem(getCacheKey(wsId));
+      if (cached) {
+        const data = JSON.parse(cached);
+        // Check if cache is less than 5 minutes old
+        if (Date.now() - data.timestamp < 5 * 60 * 1000) {
+          setCampaignsData(data.campaignsData || []);
+          setCampaignKPIs(data.campaignKPIs || { totalProspects: 0, totalMessages: 0, totalReplies: 0, totalInfoRequests: 0, totalMeetings: 0 });
+          setCampaignSeries(data.campaignSeries || []);
+          setDataLoadedForWorkspace(wsId);
+          setIsLoading(false);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.error('Error loading cached analytics:', e);
+    }
+    return false;
+  };
+
+  // Save data to sessionStorage
+  const saveCachedData = (wsId: string, campaigns: any[], kpis: any, series: any[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem(getCacheKey(wsId), JSON.stringify({
+        campaignsData: campaigns,
+        campaignKPIs: kpis,
+        campaignSeries: series,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      console.error('Error saving cached analytics:', e);
+    }
+  };
 
   // Sync workspace ID from props - ensures complete data separation between workspaces
   useEffect(() => {
@@ -205,14 +249,30 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
     }
   };
 
-  // Load analytics data based on mode and time range
+  // Load analytics data - use session cache to avoid refetching
   useEffect(() => {
     if (demoMode) {
       generateDummyData();
-    } else {
-      fetchLiveData();
+      return;
     }
-  }, [demoMode, currentWorkspaceId, timeRange, customDateRange.start, customDateRange.end, campaignType]);
+
+    // If workspace hasn't changed and we already have data, don't refetch
+    if (currentWorkspaceId && dataLoadedForWorkspace === currentWorkspaceId && campaignsData.length > 0) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Try to load from session cache first
+    if (currentWorkspaceId && loadCachedData(currentWorkspaceId)) {
+      return; // Data loaded from cache
+    }
+
+    // Fetch fresh data
+    fetchLiveData();
+  }, [demoMode, currentWorkspaceId]);
+
+  // Filter changes don't require refetch - data is already loaded, just filter client-side
+  // Time range and campaign type are UI filters, not data fetches
 
   // Generate realistic dummy data for demo purposes
   const generateDummyData = () => {
@@ -387,20 +447,28 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
       const data = await response.json();
 
       if (data.success) {
-        // Update campaign series for chart
-        setCampaignSeries(data.campaignSeries || []);
-
-        // Update KPIs
-        setCampaignKPIs({
+        const series = data.campaignSeries || [];
+        const kpis = {
           totalProspects: data.aggregatedMetrics.totalProspects || 0,
           totalMessages: data.aggregatedMetrics.totalMessages || 0,
           totalReplies: data.aggregatedMetrics.totalReplies || 0,
           totalInfoRequests: data.aggregatedMetrics.totalInfoRequests || 0,
           totalMeetings: data.aggregatedMetrics.totalMeetings || 0,
-        });
+        };
+        const campaigns = data.campaigns || [];
+
+        // Update campaign series for chart
+        setCampaignSeries(series);
+
+        // Update KPIs
+        setCampaignKPIs(kpis);
 
         // Update campaigns list for table
-        setCampaignsData(data.campaigns || []);
+        setCampaignsData(campaigns);
+
+        // Mark this workspace as loaded and save to session cache
+        setDataLoadedForWorkspace(currentWorkspaceId);
+        saveCachedData(currentWorkspaceId!, campaigns, kpis, series);
 
         // TODO: Fetch platform-specific and activity data
         setAnalyticsData([]);
