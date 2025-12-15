@@ -35,23 +35,23 @@ export async function GET(request: NextRequest) {
       profilesMonitored += profiles?.length || 0;
     });
 
-    // Get pending comments count
+    // Get pending comments count from linkedin_post_comments table
     const { count: pendingComments, error: pendingError } = await supabase
-      .from('linkedin_posts_discovered')
+      .from('linkedin_post_comments')
       .select('*', { count: 'exact', head: true })
       .eq('workspace_id', workspaceId)
-      .eq('status', 'pending');
+      .in('status', ['pending_approval', 'scheduled']);
 
     if (pendingError) {
       console.error('Error fetching pending comments:', pendingError);
     }
 
-    // Get today's posted comments
+    // Get today's posted comments from linkedin_post_comments table
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const { count: postedToday, error: postedTodayError } = await supabase
-      .from('linkedin_posts_discovered')
+      .from('linkedin_post_comments')
       .select('*', { count: 'exact', head: true })
       .eq('workspace_id', workspaceId)
       .eq('status', 'posted')
@@ -61,12 +61,12 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching posted today:', postedTodayError);
     }
 
-    // Get this week's posted comments
+    // Get this week's posted comments from linkedin_post_comments table
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     const { count: postedThisWeek, error: postedWeekError } = await supabase
-      .from('linkedin_posts_discovered')
+      .from('linkedin_post_comments')
       .select('*', { count: 'exact', head: true })
       .eq('workspace_id', workspaceId)
       .eq('status', 'posted')
@@ -76,15 +76,14 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching posted this week:', postedWeekError);
     }
 
-    // Calculate engagement rate (posted / generated)
+    // Calculate engagement rate (posted / total comments generated)
     const { count: totalGenerated, error: generatedError } = await supabase
-      .from('linkedin_posts_discovered')
+      .from('linkedin_post_comments')
       .select('*', { count: 'exact', head: true })
-      .eq('workspace_id', workspaceId)
-      .not('generated_comment', 'is', null);
+      .eq('workspace_id', workspaceId);
 
     const { count: totalPosted, error: totalPostedError } = await supabase
-      .from('linkedin_posts_discovered')
+      .from('linkedin_post_comments')
       .select('*', { count: 'exact', head: true })
       .eq('workspace_id', workspaceId)
       .eq('status', 'posted');
