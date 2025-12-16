@@ -1,6 +1,6 @@
 # Rolling TODO List - Sam AI Project
 
-**Last Updated**: October 20, 2025
+**Last Updated**: December 16, 2025
 
 ---
 
@@ -12,6 +12,20 @@
 ---
 
 ## 📋 This Week
+
+### Meeting Agent & Calendar Integrations (Dec 16)
+- [x] **Meeting Agent** - Full meeting lifecycle management (booking, reminders, no-shows, follow-ups) ✅ COMPLETED Dec 16
+- [x] **Google Calendar Integration** - Via Unipile ✅ COMPLETED Dec 16
+- [x] **Outlook Calendar Integration** - Via Unipile ✅ COMPLETED Dec 16
+- [x] **Calendly Integration** - Custom OAuth flow (ready, needs OAuth credentials) ✅ COMPLETED Dec 16
+- [x] **Cal.com Integration** - Custom OAuth flow (ready, needs OAuth credentials) ✅ COMPLETED Dec 16
+- [ ] **Run SQL Migration 054** - Create `oauth_states` table in Supabase for Calendly/Cal.com OAuth
+- [ ] **Register Calendly OAuth App** - Get credentials from developer.calendly.com, set via `netlify env:set`
+- [ ] **Register Cal.com OAuth App** - Get credentials from cal.com, set via `netlify env:set`
+
+---
+
+## 📋 Backlog
 
 - [ ] **Integrate SuperAdmin Analytics Tracking** - Add data collection to start populating real data
   - Track conversations in SAM AI API (call `track_conversation_analytics()`)
