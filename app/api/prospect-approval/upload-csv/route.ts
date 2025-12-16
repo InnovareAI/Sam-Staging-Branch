@@ -557,15 +557,29 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString()
     }));
 
-    const { error: insertError } = await supabase
-      .from('prospect_approval_data')
-      .insert(prospectRecords);
+    // Insert in batches of 50 to avoid timeout
+    const BATCH_SIZE = 50;
+    let insertError = null;
+
+    for (let i = 0; i < prospectRecords.length; i += BATCH_SIZE) {
+      const batch = prospectRecords.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase
+        .from('prospect_approval_data')
+        .insert(batch);
+
+      if (error) {
+        console.error(`CSV Upload - Error inserting batch ${Math.floor(i/BATCH_SIZE) + 1}:`, error);
+        insertError = error;
+        break;
+      }
+      insertedCount += batch.length;
+      console.log(`CSV Upload - Inserted batch ${Math.floor(i/BATCH_SIZE) + 1} (${insertedCount}/${prospectRecords.length})`);
+    }
 
     if (insertError) {
       console.error('CSV Upload - Error inserting prospects:', insertError);
       // Session created but prospects failed - still report partial success
     } else {
-      insertedCount = prospectRecords.length;
       console.log(`CSV Upload - Inserted ${insertedCount} prospects into prospect_approval_data`);
     }
 
