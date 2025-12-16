@@ -229,7 +229,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## 🔴 RECENT CRITICAL FIXES (Nov 10-27)
+## 🔴 RECENT CRITICAL FIXES (Nov 10 - Dec 16)
+
+### ✅ Anti-Detection Randomizer Integration (Dec 16, 2025)
+
+**Full integration of `lib/anti-detection/message-variance.ts` into send queue:**
+
+**MESSAGE_HARD_LIMITS now enforced:**
+| Limit | Value | Status |
+|-------|-------|--------|
+| MIN_CR_GAP_MINUTES | 20 min | ✅ Enforced |
+| MAX_CONNECTION_REQUESTS_PER_DAY | 25 | ✅ Enforced |
+| MAX_MESSAGES_PER_DAY | 50 | ✅ Enforced |
+| MAX_CONNECTION_REQUESTS_PER_HOUR | 5 | ✅ Enforced (burst protection) |
+| MAX_MESSAGES_PER_HOUR | 10 | ✅ Enforced (burst protection) |
+| MAX_OPEN_INMAILS_PER_MONTH | 100 | ✅ Added |
+
+**Randomizer functions integrated:**
+- `getPreSendDelayMs()` - 30-90s delays (capped at 15s for serverless)
+- `getMessageVarianceContext()` - tone/style/length variance per prospect
+- `MESSAGE_HARD_LIMITS` - all limits from centralized config
+
+**Files modified:**
+- `/app/api/cron/process-send-queue/route.ts` - Uses MESSAGE_HARD_LIMITS
+- `/lib/anti-detection/message-variance.ts` - Added MAX_OPEN_INMAILS_PER_MONTH
+
+**Commits:**
+- `d16bcaf8` - enforce 20-minute minimum spacing
+- `4e0de842` - integrate anti-detection randomizer
+- `ee322253` - use MESSAGE_HARD_LIMITS from randomizer
+- `95b83279` - integrate all MESSAGE_HARD_LIMITS
+- `5ef4b082` - add MAX_OPEN_INMAILS_PER_MONTH
+
+---
 
 ### ✅ Resolved Issues
 
