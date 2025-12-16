@@ -229,3 +229,16 @@
 # Sends Google Chat summary when recoveries are made
 [functions."recover-orphan-prospects"]
   schedule = "0 * * * *"
+
+# ============================================
+# INVITATION MANAGEMENT (Dec 16, 2025)
+# ============================================
+
+# Withdraw Stale Invitations: Daily cleanup of pending LinkedIn connection requests
+# Withdraws invitations older than 21 days to:
+# 1. Free up weekly invitation limit (100/week)
+# 2. Improve account health score
+# 3. Allow re-targeting non-responsive prospects
+# Runs daily at 3 AM EST (8 AM UTC) - off-peak hours
+[functions."withdraw-stale-invitations"]
+  schedule = "0 8 * * *"
