@@ -269,3 +269,28 @@
 # Updates prospect status and schedules next follow-up if applicable
 [functions."send-approved-follow-ups"]
   schedule = "*/15 * * * *"
+
+# ============================================
+# MEETING AGENT (Dec 16, 2025)
+# Full meeting lifecycle: booking, reminders, no-show handling, follow-ups
+# ============================================
+
+# Check Meeting Status: Detect no-shows and trigger follow-ups every 15 minutes
+# Finds meetings past scheduled time without completion marker
+# Generates AI no-show/cancellation follow-up drafts for HITL approval
+# Also handles post-meeting follow-ups (1-24h after completed meetings)
+[functions."check-meeting-status"]
+  schedule = "*/15 * * * *"
+
+# Send Meeting Reminders: Process 24h, 1h, 15m reminders every 5 minutes
+# Checks meeting_reminders table for due reminders
+# Sends via Postmark (email) with meeting details and join link
+[functions."send-meeting-reminders"]
+  schedule = "*/5 * * * *"
+
+# Send Meeting Follow-ups: Send HITL-approved meeting follow-up drafts every 15 minutes
+# Processes meeting_follow_up_drafts with status='approved'
+# Sends via Postmark (email) or Unipile (LinkedIn)
+# Handles no-show, cancellation, and post-meeting follow-ups
+[functions."send-meeting-follow-ups"]
+  schedule = "*/15 * * * *"
