@@ -181,6 +181,13 @@
 [functions."commenting-digest"]
   schedule = "0 13 * * 1-5"
 
+# Track Comment Performance: Check engagement on our posted comments every 6 hours
+# Updates performance scores, relationship tracking, and weekly aggregations
+# Learns what comment styles work best for each workspace
+# Added Dec 16, 2025
+[functions."track-comment-performance"]
+  schedule = "0 */6 * * *"
+
 # ============================================
 # SELF-POST ENGAGEMENT (Dec 9, 2025)
 # ============================================

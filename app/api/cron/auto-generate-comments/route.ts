@@ -23,6 +23,13 @@ import {
   isHoliday,
   getSessionBehavior
 } from '@/lib/anti-detection/comment-variance';
+// NEW: Engagement quality scoring and relationship tracking (Dec 16, 2025)
+import { calculateEngagementQuality, type QualityScore } from '@/lib/services/engagement-quality-scorer';
+import {
+  getAuthorRelationshipContext,
+  recordAuthorInteraction,
+  extractTopicFromPost
+} from '@/lib/services/author-relationship-tracker';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for batch generation
@@ -653,6 +660,80 @@ export async function POST(request: NextRequest) {
         console.log(`\n💬 Processing post ${post.id.substring(0, 8)}...`);
         console.log(`   Author: ${post.author_name}`);
 
+        // ============================================
+        // NEW: ENGAGEMENT QUALITY SCORING (Dec 16, 2025)
+        // Prioritize high-quality posts for better ROI
+        // ============================================
+        const engagementMetrics = post.engagement_metrics || { reactions: 0, comments: 0, reposts: 0 };
+        const qualityScore = calculateEngagementQuality({
+          post_content: post.post_content || '',
+          engagement_metrics: {
+            likes_count: engagementMetrics.reactions || 0,
+            comments_count: engagementMetrics.comments || 0,
+            shares_count: engagementMetrics.reposts || 0,
+          },
+          post_date: post.post_date || new Date().toISOString(),
+          author_name: post.author_name,
+          author_headline: post.author_headline || post.author_title,
+        });
+
+        console.log(`   📊 Quality Score: ${qualityScore.total_score}/100 (${qualityScore.recommendation})`);
+
+        // Skip low-quality posts (score < 25)
+        if (qualityScore.recommendation === 'skip') {
+          console.log(`   ⏭️ Skipping - quality too low (${qualityScore.total_score})`);
+          skipCount++;
+          results.push({ post_id: post.id, status: 'skipped_low_quality', quality_score: qualityScore.total_score });
+          await supabase
+            .from('linkedin_posts_discovered')
+            .update({
+              status: 'skipped',
+              engagement_quality_score: qualityScore.total_score,
+              quality_factors: qualityScore.factors,
+            })
+            .eq('id', post.id);
+          continue;
+        }
+
+        // Save quality score to post record
+        await supabase
+          .from('linkedin_posts_discovered')
+          .update({
+            engagement_quality_score: qualityScore.total_score,
+            quality_factors: qualityScore.factors,
+          })
+          .eq('id', post.id);
+
+        // ============================================
+        // NEW: RELATIONSHIP MEMORY CHECK (Dec 16, 2025)
+        // Check past interactions with this author
+        // ============================================
+        const relationshipContext = await getAuthorRelationshipContext(
+          supabase,
+          post.workspace_id,
+          authorId,
+          post.author_name
+        );
+
+        if (relationshipContext.recommendation === 'skip_cooldown') {
+          console.log(`   ⏭️ Skipping - ${relationshipContext.reason}`);
+          skipCount++;
+          results.push({ post_id: post.id, status: 'skipped_relationship_cooldown' });
+          await supabase
+            .from('linkedin_posts_discovered')
+            .update({ status: 'skipped' })
+            .eq('id', post.id);
+          continue;
+        }
+
+        if (relationshipContext.recommendation === 'high_priority') {
+          console.log(`   ⭐ HIGH PRIORITY: ${relationshipContext.reason}`);
+        }
+
+        if (relationshipContext.topics_to_avoid?.length) {
+          console.log(`   📝 Topics to avoid (already discussed): ${relationshipContext.topics_to_avoid.join(', ')}`);
+        }
+
         // === 70/30 RULE: Check if we should reply to a comment ===
         // Fetch existing comments on the post
         const existingComments = await fetchPostComments(post.social_id);
@@ -979,6 +1060,19 @@ export async function POST(request: NextRequest) {
         if (post.social_id) {
           socialIdsWithComments.add(post.social_id);
         }
+
+        // ============================================
+        // NEW: RECORD AUTHOR INTERACTION (Dec 16, 2025)
+        // Track relationship for future personalization
+        // ============================================
+        const topic = extractTopicFromPost(post.post_content || '');
+        await recordAuthorInteraction(supabase, post.workspace_id, authorId, {
+          author_name: post.author_name,
+          author_headline: post.author_headline || post.author_title,
+          topic: topic || undefined,
+          comment_id: savedComment.id,
+        });
+        console.log(`   📝 Recorded interaction with ${post.author_name}${topic ? ` (topic: ${topic})` : ''}`);
 
         // Rate limiting: 5 seconds between AI calls
         await new Promise(resolve => setTimeout(resolve, 5000));
