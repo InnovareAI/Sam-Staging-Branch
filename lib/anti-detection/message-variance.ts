@@ -392,6 +392,9 @@ export const MESSAGE_HARD_LIMITS = {
   MAX_CONNECTION_REQUESTS_PER_WEEK: 100, // LinkedIn's known limit
   MAX_MESSAGES_PER_WEEK: 200,
 
+  // Monthly limits
+  MAX_OPEN_INMAILS_PER_MONTH: 100, // LinkedIn Sales Navigator limit
+
   // Hourly limits (burst protection)
   MAX_CONNECTION_REQUESTS_PER_HOUR: 5,
   MAX_MESSAGES_PER_HOUR: 10,
