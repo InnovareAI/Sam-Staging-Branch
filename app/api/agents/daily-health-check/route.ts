@@ -407,27 +407,44 @@ async function checkStaleData(supabase: any): Promise<HealthCheckResult> {
       .eq('status', 'running')
       .lt('updated_at', threeDaysAgo);
 
-    // Check for prospects stuck in 'pending' for >3 days
+    // Check for prospects stuck in 'pending' or 'approved' for >3 days
     const { data: staleProspects } = await supabase
       .from('campaign_prospects')
       .select('id')
-      .eq('status', 'pending')
+      .in('status', ['pending', 'approved'])
       .lt('updated_at', threeDaysAgo);
 
+    // IMPORTANT: Check how many have pending queue entries (these are NOT truly stale)
+    const staleIds = staleProspects?.map((p: any) => p.id) || [];
+    let queuedCount = 0;
+
+    if (staleIds.length > 0) {
+      const { data: queuedProspects } = await supabase
+        .from('send_queue')
+        .select('prospect_id')
+        .in('prospect_id', staleIds)
+        .eq('status', 'pending');
+
+      queuedCount = queuedProspects?.length || 0;
+    }
+
     const staleCampaignCount = staleCampaigns?.length || 0;
-    const staleProspectCount = staleProspects?.length || 0;
+    const totalStaleProspects = staleProspects?.length || 0;
+    const trulyStaleProspects = totalStaleProspects - queuedCount;
 
     let status: 'healthy' | 'warning' | 'critical' = 'healthy';
-    if (staleCampaignCount > 5 || staleProspectCount > 100) status = 'critical';
-    else if (staleCampaignCount > 0 || staleProspectCount > 50) status = 'warning';
+    // Only alert on TRULY stale prospects (not in queue)
+    if (staleCampaignCount > 5 || trulyStaleProspects > 100) status = 'critical';
+    else if (staleCampaignCount > 0 || trulyStaleProspects > 50) status = 'warning';
 
     return {
       check_name: 'Stale Data',
       status,
-      details: `${staleCampaignCount} stale campaigns, ${staleProspectCount} stale prospects (>3 days)`,
+      details: `${staleCampaignCount} stale campaigns, ${trulyStaleProspects} truly stale prospects (${queuedCount} have pending queue - OK)`,
       metrics: {
         stale_campaigns: staleCampaignCount,
-        stale_prospects: staleProspectCount,
+        stale_prospects: trulyStaleProspects,
+        prospects_in_queue: queuedCount,
         stale_campaign_names: staleCampaigns?.map((c: any) => c.campaign_name)
       }
     };
@@ -556,15 +573,23 @@ async function autoFixStuckQueue(supabase: any): Promise<AutoFixResult> {
 
 /**
  * AUTO-FIX: Mark stale prospects as failed (>3 days pending)
+ *
+ * IMPORTANT: Only marks prospects as failed if they DON'T have pending queue entries.
+ * Prospects waiting in queue are legitimately pending and should not be auto-failed.
+ *
+ * Fix applied: Dec 16, 2025 - Previously this was incorrectly failing prospects
+ * that were waiting in the send queue (e.g., Asphericon campaign had 311 prospects
+ * auto-failed even though they had pending queue entries).
  */
 async function autoFixStaleProspects(supabase: any): Promise<AutoFixResult> {
   try {
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
 
+    // Get stale prospects (pending or approved for >3 days)
     const { data: staleProspects, error: fetchError } = await supabase
       .from('campaign_prospects')
-      .select('id')
-      .eq('status', 'pending')
+      .select('id, campaign_id')
+      .in('status', ['pending', 'approved']) // Include 'approved' status too
       .lt('updated_at', threeDaysAgo);
 
     if (fetchError) throw fetchError;
@@ -579,15 +604,44 @@ async function autoFixStaleProspects(supabase: any): Promise<AutoFixResult> {
       };
     }
 
-    // Mark as failed
+    // CRITICAL: Check which prospects have pending queue entries
+    // These should NOT be auto-failed - they're legitimately waiting to be sent
+    const staleIds = staleProspects.map((p: any) => p.id);
+
+    const { data: queuedProspects } = await supabase
+      .from('send_queue')
+      .select('prospect_id')
+      .in('prospect_id', staleIds)
+      .eq('status', 'pending');
+
+    const queuedProspectIds = new Set(queuedProspects?.map((q: any) => q.prospect_id) || []);
+
+    // Filter out prospects that have pending queue entries
+    const trulyStaleProspects = staleProspects.filter(
+      (p: any) => !queuedProspectIds.has(p.id)
+    );
+
+    const skippedCount = staleProspects.length - trulyStaleProspects.length;
+
+    if (trulyStaleProspects.length === 0) {
+      return {
+        issue: 'Stale Prospects',
+        attempted: true,
+        success: true,
+        count: 0,
+        details: `No truly stale prospects found (${skippedCount} have pending queue entries - left alone)`
+      };
+    }
+
+    // Mark only truly stale prospects as failed
     const { error: updateError } = await supabase
       .from('campaign_prospects')
       .update({
         status: 'failed',
-        notes: 'Auto-failed by health check: stale >3 days',
+        notes: 'Auto-failed by health check: stale >3 days with no queue entry',
         updated_at: new Date().toISOString()
       })
-      .in('id', staleProspects.map((p: any) => p.id));
+      .in('id', trulyStaleProspects.map((p: any) => p.id));
 
     if (updateError) throw updateError;
 
@@ -595,8 +649,8 @@ async function autoFixStaleProspects(supabase: any): Promise<AutoFixResult> {
       issue: 'Stale Prospects',
       attempted: true,
       success: true,
-      count: staleProspects.length,
-      details: `Marked ${staleProspects.length} stale prospects as failed`
+      count: trulyStaleProspects.length,
+      details: `Marked ${trulyStaleProspects.length} stale prospects as failed (${skippedCount} skipped - have pending queue entries)`
     };
   } catch (error) {
     return {
