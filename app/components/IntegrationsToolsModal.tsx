@@ -48,7 +48,7 @@ export function IntegrationsToolsModal({ isOpen, onClose, workspaceId }: Integra
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
           </div>
 
-          <div className="p-4 space-y-3">
+          <div className="p-4 space-y-3 overflow-y-auto flex-1">
             <button onClick={() => setShowUnipileModal(true)} className="w-full flex items-center justify-between p-4 bg-background hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center"><Linkedin className="h-5 w-5 text-blue-400" /></div>
