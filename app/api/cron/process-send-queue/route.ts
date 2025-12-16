@@ -348,25 +348,26 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Check daily caps for this account (separate limits for CRs vs messages)
-      // LINKEDIN DAILY LIMITS (Dec 11, 2025):
-      // - Connection Requests: 20/day (conservative to stay safe)
-      // - Direct Messages to connections: 50/day
-      const DAILY_CR_LIMIT = 20;
-      const DAILY_MESSAGE_LIMIT = 50;
+      // Check daily caps for this account using MESSAGE_HARD_LIMITS from randomizer
+      const DAILY_CR_LIMIT = MESSAGE_HARD_LIMITS.MAX_CONNECTION_REQUESTS_PER_DAY; // 25
+      const DAILY_MESSAGE_LIMIT = MESSAGE_HARD_LIMITS.MAX_MESSAGES_PER_DAY; // 50
+      const HOURLY_CR_LIMIT = MESSAGE_HARD_LIMITS.MAX_CONNECTION_REQUESTS_PER_HOUR; // 5
+      const HOURLY_MESSAGE_LIMIT = MESSAGE_HARD_LIMITS.MAX_MESSAGES_PER_HOUR; // 10
 
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
+      const hourStart = new Date();
+      hourStart.setMinutes(0, 0, 0);
 
       // Get today's sends with message_type to count separately
       const { data: sentToday } = await supabase
         .from('send_queue')
-        .select('id, message_type')
+        .select('id, message_type, sent_at')
         .eq('status', 'sent')
         .in('campaign_id', accountCampaignIds)
         .gte('sent_at', todayStart.toISOString());
 
-      // Count CRs vs messages separately
+      // Count CRs vs messages separately (daily)
       const crsSentToday = (sentToday || []).filter(s =>
         s.message_type === 'connection_request' || !s.message_type
       ).length;
@@ -374,11 +375,33 @@ export async function POST(req: NextRequest) {
         s.message_type && s.message_type !== 'connection_request'
       ).length;
 
+      // Count CRs vs messages this hour (burst protection)
+      const crsSentThisHour = (sentToday || []).filter(s =>
+        (s.message_type === 'connection_request' || !s.message_type) &&
+        new Date(s.sent_at) >= hourStart
+      ).length;
+      const messagesSentThisHour = (sentToday || []).filter(s =>
+        s.message_type && s.message_type !== 'connection_request' &&
+        new Date(s.sent_at) >= hourStart
+      ).length;
+
       // Determine which type this candidate is
       const candidateType = candidate.message_type || 'connection_request';
       const isCR = candidateType === 'connection_request';
 
-      // Check appropriate limit
+      // Check HOURLY limits first (burst protection from randomizer)
+      if (isCR && crsSentThisHour >= HOURLY_CR_LIMIT) {
+        console.log(`⏸️  Account ${accountId} hit CR hourly cap (${crsSentThisHour}/${HOURLY_CR_LIMIT})`);
+        skippedAccounts.push(accountId);
+        continue;
+      }
+      if (!isCR && messagesSentThisHour >= HOURLY_MESSAGE_LIMIT) {
+        console.log(`⏸️  Account ${accountId} hit message hourly cap (${messagesSentThisHour}/${HOURLY_MESSAGE_LIMIT})`);
+        skippedAccounts.push(accountId);
+        continue;
+      }
+
+      // Check DAILY limits
       if (isCR && crsSentToday >= DAILY_CR_LIMIT) {
         console.log(`⏸️  Account ${accountId} hit CR daily cap (${crsSentToday}/${DAILY_CR_LIMIT})`);
         skippedAccounts.push(accountId);
@@ -447,7 +470,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      console.log(`📊 Account ${accountId.substring(0, 8)}... today: ${crsSentToday}/${DAILY_CR_LIMIT} CRs, ${messagesSentToday}/${DAILY_MESSAGE_LIMIT} msgs`);
+      console.log(`📊 Account ${accountId.substring(0, 8)}... today: ${crsSentToday}/${DAILY_CR_LIMIT} CRs, ${messagesSentToday}/${DAILY_MESSAGE_LIMIT} msgs | hour: ${crsSentThisHour}/${HOURLY_CR_LIMIT} CRs, ${messagesSentThisHour}/${HOURLY_MESSAGE_LIMIT} msgs`);
 
       // This message can be sent!
       queueItem = candidate;
