@@ -536,8 +536,9 @@ export async function POST(request: NextRequest) {
 
     // Insert prospects into LEGACY prospect_approval_data table
     const prospectRecords = prospects.map((p, idx) => ({
+      workspace_id: workspaceId,
       session_id: session.id,
-      prospect_id: `csv_${Date.now()}_${idx}`,
+      prospect_id: crypto.randomUUID(),
       name: p.name || 'Unknown',
       title: p.title || '',
       company: p.company || { name: '' },
@@ -551,6 +552,7 @@ export async function POST(request: NextRequest) {
       connection_degree: p.connectionDegree || null,
       enrichment_score: p.enrichment_score || 70,
       source: 'csv_upload',
+      approval_status: 'pending',
       enriched_at: new Date().toISOString(),
       created_at: new Date().toISOString()
     }));
