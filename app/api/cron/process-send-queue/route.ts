@@ -9,7 +9,10 @@ import {
 } from '@/lib/scheduling-config';
 import {
   isMessageWarning,
-  MESSAGE_HARD_LIMITS
+  MESSAGE_HARD_LIMITS,
+  getPreSendDelayMs,
+  getBetweenMessageDelayMs,
+  getMessageVarianceContext
 } from '@/lib/anti-detection/message-variance';
 import { sendRateLimitNotification } from '@/lib/notifications/notification-router';
 
@@ -580,20 +583,20 @@ export async function POST(req: NextRequest) {
     console.log(`   Type: ${isMessengerMessage ? 'Direct Message' : isConnectionRequest ? 'Connection Request' : 'Follow-up'}`);
 
     // ============================================
-    // HUMAN-LIKE DELAYS (Anti-Detection)
-    // REDUCED for serverless function (60s limit)
-    // Full delays (30-90s) would timeout the cron job
+    // HUMAN-LIKE DELAYS (Anti-Detection Randomizer)
+    // Uses message-variance.ts for human-like behavior
+    // Capped at 15s to avoid serverless timeout (60s limit)
     // ============================================
 
-    // Short delay (3-8 seconds) to add some variance but not timeout
-    // Real anti-detection comes from:
-    // 1. 2-minute spacing between messages (enforced in selection loop)
-    // 2. Business hours check (no late night sends)
-    // 3. Weekend/holiday skipping
-    // 4. Daily rate limits (20 CRs/day)
-    const shortDelay = 3000 + Math.floor(Math.random() * 5000);
-    console.log(`⏳ Pre-send delay: ${Math.round(shortDelay / 1000)}s`);
-    await new Promise(resolve => setTimeout(resolve, shortDelay));
+    // Get variance context for this prospect (consistent style per prospect)
+    const varianceContext = getMessageVarianceContext(prospect.id, 0, queueItem.message.length);
+
+    // Use randomizer's pre-send delay (30-90s normally, capped for serverless)
+    const rawPreSendDelay = getPreSendDelayMs();
+    const preSendDelay = Math.min(rawPreSendDelay, 15000); // Cap at 15s for serverless
+    console.log(`⏳ Pre-send delay: ${Math.round(preSendDelay / 1000)}s (randomizer: ${Math.round(rawPreSendDelay / 1000)}s)`);
+    console.log(`📝 Variance: tone=${varianceContext.tone}, style=${varianceContext.openingStyle}, length=${varianceContext.targetLength}`);
+    await new Promise(resolve => setTimeout(resolve, preSendDelay));
 
     try {
       // 2. Resolve linkedin_user_id to provider_id (handles URLs and vanities)
