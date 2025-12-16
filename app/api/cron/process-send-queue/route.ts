@@ -321,8 +321,8 @@ export async function POST(req: NextRequest) {
       }
 
       // Check spacing for this account
-      // Reduced to 2 minutes for faster sending - still safe for LinkedIn
-      const MIN_SPACING_MINUTES = 2;
+      // ANTI-DETECTION: Use 20-minute minimum gap (from message-variance.ts)
+      const MIN_SPACING_MINUTES = 20;
       const spacingCutoff = new Date(Date.now() - MIN_SPACING_MINUTES * 60 * 1000);
 
       const { data: accountCampaigns } = await supabase
