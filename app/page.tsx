@@ -33,6 +33,10 @@ import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import CommentApprovalWorkflow from '@/app/components/CommentApprovalWorkflow';
 import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
 import { IntegrationsToolsModal } from '@/app/components/IntegrationsToolsModal';
+import GoogleCalendarModal from '@/app/components/GoogleCalendarModal';
+import OutlookCalendarModal from '@/app/components/OutlookCalendarModal';
+import CalendlyModal from '@/app/components/CalendlyModal';
+import CalComModal from '@/app/components/CalComModal';
 // SuperAdminPage removed - no cross-workspace data access allowed
 import {
   Activity,
@@ -80,7 +84,9 @@ import {
   Search,
   MessageSquare,
   CheckCircle,
-  Hash
+  Hash,
+  Calendar,
+  Link
 } from 'lucide-react';
 
 const USER_PROXY_SENTINEL = '__USER_PROXY__';
@@ -398,6 +404,10 @@ export default function Page() {
   const [showEmailIntegrationModal, setShowEmailIntegrationModal] = useState(false);
   const [showReachInboxModal, setShowReachInboxModal] = useState(false);
   const [showBlacklistModal, setShowBlacklistModal] = useState(false);
+  const [showGoogleCalendarModal, setShowGoogleCalendarModal] = useState(false);
+  const [showOutlookCalendarModal, setShowOutlookCalendarModal] = useState(false);
+  const [showCalendlyModal, setShowCalendlyModal] = useState(false);
+  const [showCalComModal, setShowCalComModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showApiKeysModal, setShowApiKeysModal] = useState(false);
   const [showDataPreferencesModal, setShowDataPreferencesModal] = useState(false);
@@ -3706,6 +3716,42 @@ export default function Page() {
                   onClick={() => setShowBlacklistModal(true)}
                 />
 
+                {/* Google Calendar */}
+                <SimpleTileCard
+                  title="Google Calendar"
+                  description="Connect Google Calendar for meeting scheduling, availability checking, and calendar sync."
+                  icon={Calendar}
+                  color="red"
+                  onClick={() => setShowGoogleCalendarModal(true)}
+                />
+
+                {/* Outlook Calendar */}
+                <SimpleTileCard
+                  title="Outlook Calendar"
+                  description="Connect Microsoft 365 Outlook Calendar for meeting scheduling and availability sync."
+                  icon={Calendar}
+                  color="blue"
+                  onClick={() => setShowOutlookCalendarModal(true)}
+                />
+
+                {/* Calendly */}
+                <SimpleTileCard
+                  title="Calendly"
+                  description="Connect Calendly for automated meeting booking, scheduling links, and booking notifications."
+                  icon={Link}
+                  color="cyan"
+                  onClick={() => setShowCalendlyModal(true)}
+                />
+
+                {/* Cal.com */}
+                <SimpleTileCard
+                  title="Cal.com"
+                  description="Connect Cal.com for open-source scheduling, meeting automation, and booking management."
+                  icon={Link}
+                  color="orange"
+                  onClick={() => setShowCalComModal(true)}
+                />
+
               </div>
             </div>
           </div>
@@ -5128,6 +5174,28 @@ export default function Page() {
       <BlacklistModal
         isOpen={showBlacklistModal}
         onClose={() => setShowBlacklistModal(false)}
+        workspaceId={selectedWorkspaceId || ''}
+      />
+
+      {/* Calendar Integration Modals */}
+      <GoogleCalendarModal
+        isOpen={showGoogleCalendarModal}
+        onClose={() => setShowGoogleCalendarModal(false)}
+        workspaceId={selectedWorkspaceId || ''}
+      />
+      <OutlookCalendarModal
+        isOpen={showOutlookCalendarModal}
+        onClose={() => setShowOutlookCalendarModal(false)}
+        workspaceId={selectedWorkspaceId || ''}
+      />
+      <CalendlyModal
+        isOpen={showCalendlyModal}
+        onClose={() => setShowCalendlyModal(false)}
+        workspaceId={selectedWorkspaceId || ''}
+      />
+      <CalComModal
+        isOpen={showCalComModal}
+        onClose={() => setShowCalComModal(false)}
         workspaceId={selectedWorkspaceId || ''}
       />
 
