@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Linkedin, Mail, Send, Zap, Hash } from 'lucide-react';
+import { X, Linkedin, Mail, Send, Zap, Hash, Calendar } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const UnipileModal = dynamic(() => import('@/components/integrations/UnipileModal').then(mod => ({ default: mod.UnipileModal })), { ssr: false });
 const EmailProvidersModal = dynamic(() => import('@/app/components/EmailProvidersModal'), { ssr: false });
 const ReachInboxModal = dynamic(() => import('@/app/components/ReachInboxModal'), { ssr: false });
 const SlackModal = dynamic(() => import('@/app/components/SlackModal'), { ssr: false });
+const GoogleCalendarModal = dynamic(() => import('@/app/components/GoogleCalendarModal'), { ssr: false });
 
 interface IntegrationsToolsModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export function IntegrationsToolsModal({ isOpen, onClose, workspaceId }: Integra
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showReachInboxModal, setShowReachInboxModal] = useState(false);
   const [showSlackModal, setShowSlackModal] = useState(false);
+  const [showGoogleCalendarModal, setShowGoogleCalendarModal] = useState(false);
 
   if (!isOpen) return null;
 
@@ -84,6 +86,17 @@ export function IntegrationsToolsModal({ isOpen, onClose, workspaceId }: Integra
               </div>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
             </button>
+
+            <button onClick={() => setShowGoogleCalendarModal(true)} className="w-full flex items-center justify-between p-4 bg-background hover:bg-accent border border-border rounded-xl transition-all hover:border-primary/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-600/20 rounded-lg flex items-center justify-center"><Calendar className="h-5 w-5 text-red-400" /></div>
+                <div className="text-left">
+                  <div className="font-semibold text-sm">Google Calendar</div>
+                  <div className="text-xs text-muted-foreground">Connect for meeting scheduling</div>
+                </div>
+              </div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
           </div>
 
           <div className="p-4 border-t border-border">
@@ -96,6 +109,7 @@ export function IntegrationsToolsModal({ isOpen, onClose, workspaceId }: Integra
       <EmailProvidersModal isOpen={showEmailModal} onClose={() => setShowEmailModal(false)} workspaceId={workspaceId} />
       <ReachInboxModal isOpen={showReachInboxModal} onClose={() => setShowReachInboxModal(false)} workspaceId={workspaceId} />
       <SlackModal isOpen={showSlackModal} onClose={() => setShowSlackModal(false)} workspaceId={workspaceId} />
+      <GoogleCalendarModal isOpen={showGoogleCalendarModal} onClose={() => setShowGoogleCalendarModal(false)} workspaceId={workspaceId} />
     </>
   );
 }

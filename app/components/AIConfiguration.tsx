@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Brain, MessageCircle, Send, TrendingUp, Search, MessageSquare, FileText, Settings, Edit, Plug } from 'lucide-react';
+import { Brain, MessageCircle, Send, TrendingUp, Search, MessageSquare, FileText, Settings, Edit, Plug, Calendar } from 'lucide-react';
 import LLMConfigModal from '@/components/LLMConfigModal';
 import ReplyAgentModal from '@/app/components/ReplyAgentModal';
 import FollowUpAgentModal from '@/app/components/FollowUpAgentModal';
 import CommentingAgentModal from '@/app/components/CommentingAgentModal';
 import AISearchAgentModal from '@/app/components/AISearchAgentModal';
 import InboxAgentModal from '@/app/components/InboxAgentModal';
+import MeetingAgentModal from '@/app/components/MeetingAgentModal';
 import { TileCard } from '@/components/TileCard';
 
 interface AIConfigurationProps {
@@ -33,6 +34,7 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
   const [showCommentingAgentModal, setShowCommentingAgentModal] = useState(false);
   const [showAISearchAgentModal, setShowAISearchAgentModal] = useState(false);
   const [showInboxAgentModal, setShowInboxAgentModal] = useState(false);
+  const [showMeetingAgentModal, setShowMeetingAgentModal] = useState(false);
 
   const agents: Agent[] = [
     {
@@ -106,6 +108,15 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
       status: 'active',
       color: 'pink',
       onClick: () => setShowCommentingAgentModal(true),
+    },
+    {
+      id: 'meeting-agent',
+      name: 'Meeting Agent',
+      description: 'Book meetings from Calendly links, send reminders, handle no-shows and follow-ups',
+      icon: Calendar,
+      status: 'active',
+      color: 'purple',
+      onClick: () => setShowMeetingAgentModal(true),
     },
     {
       id: 'content-agent',
@@ -211,6 +222,14 @@ export default function AIConfiguration({ workspaceId, workspaceName }: AIConfig
         <InboxAgentModal
           isOpen={showInboxAgentModal}
           onClose={() => setShowInboxAgentModal(false)}
+          workspaceId={workspaceId}
+        />
+      )}
+
+      {showMeetingAgentModal && workspaceId && (
+        <MeetingAgentModal
+          isOpen={showMeetingAgentModal}
+          onClose={() => setShowMeetingAgentModal(false)}
           workspaceId={workspaceId}
         />
       )}

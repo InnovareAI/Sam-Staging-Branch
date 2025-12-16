@@ -233,3 +233,57 @@ COMMENT ON TABLE meetings IS 'Meeting lifecycle management - booking, reminders,
 COMMENT ON TABLE meeting_reminders IS 'Scheduled meeting reminders (24h, 1h, 15m before)';
 COMMENT ON TABLE meeting_follow_up_drafts IS 'AI-generated meeting follow-ups pending HITL approval';
 COMMENT ON TABLE booking_platforms IS 'Supported booking platforms with URL detection patterns';
+
+-- ============================================
+-- Meeting Agent Configuration (per workspace)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS workspace_meeting_agent_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE UNIQUE,
+
+  -- Core settings
+  enabled BOOLEAN DEFAULT TRUE,
+  auto_book BOOLEAN DEFAULT FALSE,              -- Auto-book first available slot
+  approval_mode TEXT DEFAULT 'manual',          -- 'auto' or 'manual' for follow-ups
+
+  -- Reminder settings
+  reminder_24h_enabled BOOLEAN DEFAULT TRUE,
+  reminder_1h_enabled BOOLEAN DEFAULT TRUE,
+  reminder_15m_enabled BOOLEAN DEFAULT TRUE,
+
+  -- No-show settings
+  no_show_detection_enabled BOOLEAN DEFAULT TRUE,
+  no_show_grace_period_minutes INTEGER DEFAULT 15,
+  max_reschedule_attempts INTEGER DEFAULT 3,
+
+  -- Default settings
+  default_meeting_duration INTEGER DEFAULT 30,
+
+  -- AI settings
+  ai_model TEXT DEFAULT 'claude-sonnet-4-5-20250929',
+  follow_up_guidelines TEXT,
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS for config table
+ALTER TABLE workspace_meeting_agent_config ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY workspace_meeting_agent_config_workspace_access ON workspace_meeting_agent_config
+  FOR ALL USING (
+    workspace_id IN (
+      SELECT workspace_id FROM workspace_members
+      WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY workspace_meeting_agent_config_service_role ON workspace_meeting_agent_config
+  FOR ALL USING (auth.role() = 'service_role');
+
+CREATE TRIGGER workspace_meeting_agent_config_updated_at
+  BEFORE UPDATE ON workspace_meeting_agent_config
+  FOR EACH ROW EXECUTE FUNCTION update_meetings_updated_at();
+
+COMMENT ON TABLE workspace_meeting_agent_config IS 'Per-workspace Meeting Agent configuration';

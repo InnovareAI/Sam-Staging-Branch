@@ -417,6 +417,131 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 📅 MEETING AGENT (Dec 16, 2025)
+
+**Status:** ✅ DEPLOYED & READY FOR TESTING
+
+### What It Does
+
+Full meeting lifecycle management when prospects share their Calendly/Cal.com booking links:
+
+1. **Booking Detection** - Detects Calendly, Cal.com, HubSpot, Google, Microsoft booking URLs
+2. **Slot Scraping** - Uses Bright Data to scrape available slots from prospect's booking page
+3. **Calendar Conflict Check** - Checks our calendar via Unipile before booking
+4. **Auto-Booking** - Books the first available slot (or lets user choose)
+5. **Calendar Sync** - Syncs booked meeting to our calendar via Unipile
+6. **Automated Reminders** - Sends 24h, 1h, 15m reminders via Postmark
+7. **No-Show Detection** - Detects meetings past scheduled time without completion
+8. **AI Follow-Ups** - Generates contextual follow-ups for no-shows, cancellations, post-meeting
+9. **HITL Approval** - All AI-generated follow-ups require human approval before sending
+
+### Key Files
+
+**Core Services:**
+- `lib/services/meeting-agent.ts` - Meeting lifecycle logic, booking link detection, AI follow-up generation
+- `lib/services/calendly-scraper.ts` - Bright Data scraper for Calendly/Cal.com slots
+
+**API Endpoints:**
+- `app/api/meeting-agent/book/route.ts` - Booking endpoint (detects links, scrapes slots, books)
+
+**Cron Jobs:**
+- `app/api/cron/check-meeting-status/route.ts` - Every 15 min, detects no-shows/cancellations
+- `app/api/cron/send-meeting-reminders/route.ts` - Every 5 min, sends 24h/1h/15m reminders
+- `app/api/cron/send-meeting-follow-ups/route.ts` - Every 15 min, sends approved follow-ups
+
+**Netlify Scheduled Functions:**
+- `netlify/functions/check-meeting-status.ts` - Wrapper for cron
+- `netlify/functions/send-meeting-reminders.ts` - Wrapper for cron
+- `netlify/functions/send-meeting-follow-ups.ts` - Wrapper for cron
+
+**Database Migration:**
+- `sql/migrations/053-create-meetings-table.sql` - Creates `meetings`, `meeting_reminders`, `meeting_follow_up_drafts`, `booking_platforms` tables
+
+### Database Schema
+
+```sql
+-- Main meetings table
+meetings (
+  id, prospect_id, workspace_id, campaign_id,
+  booking_url, booking_platform, scheduled_at, duration_minutes,
+  meeting_link, meeting_platform,
+  status: 'scheduled' | 'confirmed' | 'cancelled' | 'no_show' | 'completed' | 'rescheduled',
+  reminder_24h_sent_at, reminder_1h_sent_at, reminder_15m_sent_at,
+  no_show_follow_up_sent_at, post_meeting_follow_up_sent_at,
+  outcome, next_steps, notes
+)
+
+-- Reminder queue
+meeting_reminders (
+  id, meeting_id, workspace_id,
+  reminder_type: '24h' | '1h' | '15m',
+  scheduled_for, status: 'pending' | 'sent' | 'cancelled' | 'failed'
+)
+
+-- HITL follow-up drafts
+meeting_follow_up_drafts (
+  id, meeting_id, prospect_id, workspace_id,
+  follow_up_type: 'no_show' | 'cancelled' | 'post_meeting' | 'reschedule',
+  subject, message, channel: 'email' | 'linkedin',
+  status: 'pending_generation' | 'pending_approval' | 'approved' | 'sent' | 'rejected'
+)
+
+-- Supported platforms
+booking_platforms (
+  platform_name: 'calendly' | 'cal.com' | 'hubspot' | 'google_calendar' | 'microsoft_bookings',
+  url_pattern, scrape_enabled, booking_enabled
+)
+```
+
+### How Booking Works
+
+1. Reply Agent detects Calendly link in prospect's message
+2. Calls `POST /api/meeting-agent/book` with `{ prospect_id, booking_url, auto_book: true }`
+3. Meeting Agent scrapes available slots via Bright Data
+4. Checks our calendar for conflicts via Unipile Calendar API
+5. Books first available non-conflicting slot
+6. Creates meeting record and schedules reminders
+7. Syncs event to our calendar
+
+### Cron Schedules (netlify.toml)
+
+```toml
+[functions."check-meeting-status"]
+  schedule = "*/15 * * * *"   # Every 15 minutes
+
+[functions."send-meeting-reminders"]
+  schedule = "*/5 * * * *"    # Every 5 minutes
+
+[functions."send-meeting-follow-ups"]
+  schedule = "*/15 * * * *"   # Every 15 minutes
+```
+
+### Environment Variables Required
+
+- `BRIGHT_DATA_BROWSER_WS` - Bright Data Scraping Browser WebSocket URL
+- `POSTMARK_SERVER_TOKEN` - For sending email reminders/follow-ups
+- `POSTMARK_FROM_EMAIL` - Default sender email
+- `OPENROUTER_API_KEY` - For AI-generated follow-ups
+- `UNIPILE_DSN`, `UNIPILE_API_KEY` - For calendar sync
+
+### Testing
+
+```bash
+# Monitor meeting status cron
+netlify logs:function check-meeting-status --tail
+
+# Monitor reminders
+netlify logs:function send-meeting-reminders --tail
+
+# Check pending reminders
+SELECT * FROM meeting_reminders WHERE status = 'pending' ORDER BY scheduled_for;
+
+# Check meetings
+SELECT * FROM meetings WHERE status = 'scheduled' ORDER BY scheduled_at;
+```
+
+---
+
 ## 📋 QUICK REFERENCE
 
 ### Database
@@ -485,6 +610,10 @@ pwd  # Must return: /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
   - Queue-based campaign execution, rate limiting, multi-country support
   - Reply detection, follow-up automation, Unipile integration
   - 8,000+ lines of code across 50+ files
+- **`docs/MEETING_AGENT.md`** - Meeting Agent documentation (Dec 16)
+  - Booking detection (Calendly, Cal.com, HubSpot), slot scraping via Bright Data
+  - Automated reminders (24h, 1h, 15m), no-show detection, AI follow-ups
+  - HITL approval for all follow-up messages
 - **`SAM_SYSTEM_TECHNICAL_OVERVIEW.md`** - System architecture (1083 lines)
 - **`README.md`** - Quick start and deployment guide
 - **`TODO.md`** - Current tasks (last updated Oct 20)
