@@ -477,6 +477,14 @@ pwd  # Must return: /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7
   - Architecture diagram, API endpoints, database tables
   - Unipile integration, cron jobs, deployment
   - Common issues & fixes, monitoring queries
+- **`docs/LINKEDIN_COMMENTING_AGENT.md`** - Complete LinkedIn Commenting Agent documentation (Dec 16)
+  - AI comment generation, quality scoring, performance tracking
+  - Author relationship memory, anti-detection, brand guidelines
+  - 10,000+ lines of code across 60+ files
+- **`docs/LINKEDIN_MESSAGING_AGENT.md`** - Complete LinkedIn/Email Messaging Agent documentation (Dec 16)
+  - Queue-based campaign execution, rate limiting, multi-country support
+  - Reply detection, follow-up automation, Unipile integration
+  - 8,000+ lines of code across 50+ files
 - **`SAM_SYSTEM_TECHNICAL_OVERVIEW.md`** - System architecture (1083 lines)
 - **`README.md`** - Quick start and deployment guide
 - **`TODO.md`** - Current tasks (last updated Oct 20)
@@ -878,6 +886,9 @@ netlify deploy --prod
 
 ### Technical Documentation
 
+- **`docs/INFRASTRUCTURE.md`** - Complete infrastructure guide
+- **`docs/LINKEDIN_COMMENTING_AGENT.md`** - LinkedIn Commenting Agent (Dec 16, 2025)
+- **`docs/LINKEDIN_MESSAGING_AGENT.md`** - LinkedIn/Email Messaging Agent (Dec 16, 2025)
 - **`SAM_SYSTEM_TECHNICAL_OVERVIEW.md`** - Complete system architecture (1083 lines)
 - **`README.md`** - Quick start and deployment guide
 - **`TODO.md`** - Current tasks and priorities

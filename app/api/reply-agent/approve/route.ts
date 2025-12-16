@@ -80,6 +80,45 @@ export async function GET(request: NextRequest) {
           }
         });
 
+      // ============================================
+      // COORDINATION: Reset Follow-Up Agent V2 timers (Dec 16, 2025)
+      // After Reply Agent sends, schedule next follow-up check
+      // and cancel any pending follow_up_drafts (we just sent a new message)
+      // ============================================
+      if (draft.prospect_id) {
+        // 1. Cancel any pending Follow-Up Agent drafts
+        const { data: cancelledDrafts } = await supabase
+          .from('follow_up_drafts')
+          .update({
+            status: 'archived',
+            rejected_reason: 'Reply Agent sent new message - resetting follow-up sequence',
+            updated_at: new Date().toISOString()
+          })
+          .eq('prospect_id', draft.prospect_id)
+          .in('status', ['pending_generation', 'pending_approval', 'approved'])
+          .select('id');
+
+        if (cancelledDrafts?.length) {
+          console.log(`🛑 Cancelled ${cancelledDrafts.length} Follow-Up Agent draft(s) for prospect`);
+        }
+
+        // 2. Schedule next follow-up check (3 days from now if no reply)
+        const nextFollowUpDate = new Date();
+        nextFollowUpDate.setDate(nextFollowUpDate.getDate() + 3);
+
+        await supabase
+          .from('campaign_prospects')
+          .update({
+            follow_up_due_at: nextFollowUpDate.toISOString(),
+            last_follow_up_at: new Date().toISOString(),
+            // Don't increment follow_up_sequence_index - Reply Agent is conversational, not sequence
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', draft.prospect_id);
+
+        console.log(`⏰ Scheduled next Follow-Up Agent check for ${nextFollowUpDate.toISOString()}`);
+      }
+
       return redirectWithMessage('success', `Reply sent to ${draft.prospect_name}!`);
     } else {
       await supabase
@@ -321,6 +360,44 @@ export async function POST(request: NextRequest) {
               inbound_message_id: draft.inbound_message_id
             }
           });
+
+        // ============================================
+        // COORDINATION: Reset Follow-Up Agent V2 timers (Dec 16, 2025)
+        // After Reply Agent sends, schedule next follow-up check
+        // and cancel any pending follow_up_drafts (we just sent a new message)
+        // ============================================
+        if (draft.prospect_id) {
+          // 1. Cancel any pending Follow-Up Agent drafts
+          const { data: cancelledDrafts } = await supabase
+            .from('follow_up_drafts')
+            .update({
+              status: 'archived',
+              rejected_reason: 'Reply Agent sent new message - resetting follow-up sequence',
+              updated_at: new Date().toISOString()
+            })
+            .eq('prospect_id', draft.prospect_id)
+            .in('status', ['pending_generation', 'pending_approval', 'approved'])
+            .select('id');
+
+          if (cancelledDrafts?.length) {
+            console.log(`🛑 Cancelled ${cancelledDrafts.length} Follow-Up Agent draft(s) for prospect`);
+          }
+
+          // 2. Schedule next follow-up check (3 days from now if no reply)
+          const nextFollowUpDate = new Date();
+          nextFollowUpDate.setDate(nextFollowUpDate.getDate() + 3);
+
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              follow_up_due_at: nextFollowUpDate.toISOString(),
+              last_follow_up_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', draft.prospect_id);
+
+          console.log(`⏰ Scheduled next Follow-Up Agent check for ${nextFollowUpDate.toISOString()}`);
+        }
 
         return NextResponse.json({ success: true, status: 'sent' });
       } else {

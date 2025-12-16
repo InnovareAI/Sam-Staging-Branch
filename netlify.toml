@@ -249,3 +249,23 @@
 # Runs daily at 3 AM EST (8 AM UTC) - off-peak hours
 [functions."withdraw-stale-invitations"]
   schedule = "0 8 * * *"
+
+# ============================================
+# FOLLOW-UP AGENT V2 (Dec 16, 2025)
+# AI-powered re-engagement for ghosting prospects
+# ============================================
+
+# Generate Follow-Up Drafts: Create AI-powered follow-up messages every hour
+# Finds prospects due for follow-up (no response after X days)
+# Detects scenario: no_reply_to_cr, replied_then_silent, no_show_to_call, etc.
+# Generates contextual AI message with appropriate tone (light_bump → breakup)
+# Saves to follow_up_drafts table for HITL approval
+[functions."generate-follow-up-drafts"]
+  schedule = "15 * * * *"
+
+# Send Approved Follow-Ups: Send HITL-approved follow-up drafts every 15 minutes
+# Processes follow_up_drafts with status='approved'
+# Sends via Unipile (LinkedIn or Email based on channel)
+# Updates prospect status and schedules next follow-up if applicable
+[functions."send-approved-follow-ups"]
+  schedule = "*/15 * * * *"

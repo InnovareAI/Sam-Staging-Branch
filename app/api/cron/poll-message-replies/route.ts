@@ -317,7 +317,7 @@ export async function POST(request: NextRequest) {
               })
               .eq('id', prospect.id);
 
-            // Cancel pending queue items
+            // Cancel pending queue items (messaging sequence)
             await supabase
               .from('send_queue')
               .update({
@@ -337,6 +337,25 @@ export async function POST(request: NextRequest) {
               })
               .eq('prospect_id', prospect.id)
               .eq('status', 'pending');
+
+            // ============================================
+            // COORDINATION: Cancel Follow-Up Agent V2 drafts (Dec 16, 2025)
+            // When prospect replies, cancel any pending AI follow-up drafts
+            // ============================================
+            const { data: cancelledFollowUps } = await supabase
+              .from('follow_up_drafts')
+              .update({
+                status: 'archived',
+                rejected_reason: 'Prospect replied - follow-up sequence stopped',
+                updated_at: new Date().toISOString()
+              })
+              .eq('prospect_id', prospect.id)
+              .in('status', ['pending_generation', 'pending_approval', 'approved'])
+              .select('id');
+
+            if (cancelledFollowUps?.length) {
+              console.log(`   🛑 Cancelled ${cancelledFollowUps.length} Follow-Up Agent draft(s)`);
+            }
           } else {
             // Follow-up reply - just update last_processed_message_id
             await supabase
