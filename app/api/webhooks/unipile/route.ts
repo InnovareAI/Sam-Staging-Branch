@@ -441,16 +441,38 @@ async function handleMessagingWebhook(event: any) {
           })
           .eq('id', prospect.id);
 
+        // Cancel any pending LinkedIn messages for this prospect
+        await supabase
+          .from('send_queue')
+          .update({
+            status: 'cancelled',
+            error_message: 'Prospect replied - sequence stopped (webhook)',
+            updated_at: new Date().toISOString()
+          })
+          .eq('prospect_id', prospect.id)
+          .eq('status', 'pending');
+
         // Cancel any pending emails for this prospect
         await supabase
           .from('email_send_queue')
           .update({
             status: 'cancelled',
-            error_message: 'Prospect replied - sequence stopped',
+            error_message: 'Prospect replied - sequence stopped (webhook)',
             updated_at: new Date().toISOString()
           })
           .eq('prospect_id', prospect.id)
           .eq('status', 'pending');
+
+        // Cancel any pending Follow-Up Agent V2 drafts
+        await supabase
+          .from('follow_up_drafts')
+          .update({
+            status: 'archived',
+            rejected_reason: 'Prospect replied - follow-up sequence stopped (webhook)',
+            updated_at: new Date().toISOString()
+          })
+          .eq('prospect_id', prospect.id)
+          .in('status', ['pending_generation', 'pending_approval', 'approved']);
       }
 
       console.log(`✅ Updated ${prospects.length} prospects to replied status, stopped follow-up sequences, and cancelled pending emails`);
