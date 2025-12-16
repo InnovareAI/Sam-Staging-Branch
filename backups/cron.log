@@ -10812,3 +10812,61 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 7dc0fcda] 🔄 Auto-backup: auto-backup-20251216_180000
+ Committer: Thorsten Linz <tvonlinz@562d50b1-183c-44ec-8587-866716b22781.fritz.box>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 23 files changed, 2451 insertions(+)
+ create mode 100644 temp/check-all-accounts.mjs
+ create mode 100644 temp/check-brian-guidelines.mjs
+ create mode 100644 temp/check-comment-quality.mjs
+ create mode 100644 temp/check-workspace-accounts.mjs
+ create mode 100644 temp/delete-all-posted.mjs
+ create mode 100644 temp/delete-bad-comment.mjs
+ create mode 100644 temp/delete-comment-now.mjs
+ create mode 100644 temp/diagnose-brian-2.mjs
+ create mode 100644 temp/diagnose-brian.mjs
+ create mode 100644 temp/diagnose-commenting.mjs
+ create mode 100644 temp/enable-brian-digest.mjs
+ create mode 100644 temp/find-account-mapping.mjs
+ create mode 100644 temp/find-linkedin-table.mjs
+ create mode 100644 temp/fix-all-accounts-v2.mjs
+ create mode 100644 temp/fix-all-accounts.mjs
+ create mode 100644 temp/fix-brian-commenting.mjs
+ create mode 100644 temp/fix-scheduled-comments.mjs
+ create mode 100644 temp/generate-brian-comments.mjs
+ create mode 100644 temp/post-brian-comments.mjs
+ create mode 100644 temp/post-good-comments.mjs
+ create mode 100644 temp/regenerate-brian-comments.mjs
+ create mode 100644 temp/set-brian-limits.mjs
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251216_180000[0m
+[0;32m📅 Timestamp: Tue Dec 16 18:00:01 CET 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+

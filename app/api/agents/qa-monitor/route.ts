@@ -271,26 +271,26 @@ export async function POST(request: NextRequest) {
         // Quick check, no problems - this won't be sent, but for completeness
         notificationSummary = `✅ HOURLY CHECK: All systems running normally`;
       } else {
-        // Full detailed report (6 AM run)
-        notificationSummary = `📊 DAILY REPORT (6 AM CET): ${(aiAnalysis?.summary || `${allChecks.filter(c => c.status === 'pass').length}/${allChecks.length} checks passed`)}` + fixesSummary;
+        // Full detailed report (6 AM run) - only show issues count
+        const issueCount = failedChecks.length + warningChecks.length;
+        notificationSummary = issueCount > 0
+          ? `📊 DAILY REPORT: ${issueCount} issues found (${failedChecks.length} critical, ${warningChecks.length} warnings)` + fixesSummary
+          : `✅ DAILY REPORT: All ${allChecks.length} checks passed` + fixesSummary;
       }
+
+      // Only include checks with issues (never send passing checks)
+      const issueChecks = allChecks.filter(c => c.status !== 'pass');
 
       // Send Google Chat notification
       await sendHealthCheckNotification({
         type: 'qa-monitor',
         status: overallStatus as 'healthy' | 'warning' | 'critical',
         summary: notificationSummary,
-        checks: quickCheck && hasProblems
-          ? allChecks.filter(c => c.status !== 'pass').map(c => ({
-              name: c.check_name,
-              status: c.status,
-              details: c.details,
-            }))
-          : allChecks.map(c => ({
-              name: c.check_name,
-              status: c.status,
-              details: c.details,
-            })),
+        checks: issueChecks.map(c => ({
+          name: c.check_name,
+          status: c.status,
+          details: c.details,
+        })),
         recommendations: aiAnalysis?.recommendations || [],
         auto_fixes: autoFixes,
         duration_ms: Date.now() - startTime,
@@ -552,37 +552,37 @@ async function checkStuckCampaigns(supabase: any): Promise<QACheck> {
   const stuckCampaigns: any[] = [];
 
   for (const campaign of activeCampaigns) {
-    // Check for queued items that haven't been sent
-    const { data: pendingQueue } = await supabase
-      .from('send_queue')
-      .select('id, scheduled_for, status')
-      .eq('campaign_id', campaign.id)
-      .eq('status', 'pending')
-      .lt('scheduled_for', twoHoursAgo)
-      .limit(5);
-
-    // Check for prospects in "approved" status but not yet queued (stuck before queue)
-    const { data: approvedNotQueued } = await supabase
+    // Check for prospects in "approved" status that are NOT in queue at all
+    // This is the real stuck case - approved but never queued
+    const { data: approvedProspects } = await supabase
       .from('campaign_prospects')
-      .select('id, status, updated_at')
+      .select('id')
       .eq('campaign_id', campaign.id)
       .eq('status', 'approved')
-      .lt('updated_at', twoHoursAgo)
-      .limit(5);
+      .lt('updated_at', twoHoursAgo);
 
-    const pendingCount = pendingQueue?.length || 0;
-    const approvedCount = approvedNotQueued?.length || 0;
+    if (!approvedProspects || approvedProspects.length === 0) continue;
 
-    if (pendingCount > 0 || approvedCount > 0) {
+    // Check if these approved prospects are already in queue
+    const prospectIds = approvedProspects.map((p: any) => p.id);
+    const { data: inQueue } = await supabase
+      .from('send_queue')
+      .select('prospect_id')
+      .eq('campaign_id', campaign.id)
+      .in('prospect_id', prospectIds);
+
+    const queuedIds = new Set((inQueue || []).map((q: any) => q.prospect_id));
+    const notInQueue = prospectIds.filter((id: string) => !queuedIds.has(id));
+
+    // Only flag as stuck if approved prospects are NOT in queue at all
+    // (Rate-limited prospects in queue are NOT stuck - they're just waiting)
+    if (notInQueue.length > 0) {
       stuckCampaigns.push({
         campaign_id: campaign.id,
         campaign_name: campaign.campaign_name || campaign.name || 'Unnamed Campaign',
         workspace: campaign.workspaces?.name || 'Unknown',
-        pending_queue: pendingCount,
-        approved_not_queued: approvedCount,
-        issue: pendingCount > 0
-          ? `${pendingCount} queue items overdue >2h`
-          : `${approvedCount} approved prospects not queued >2h`
+        approved_not_queued: notInQueue.length,
+        issue: `${notInQueue.length} approved prospects never queued`
       });
     }
   }
@@ -596,14 +596,14 @@ async function checkStuckCampaigns(supabase: any): Promise<QACheck> {
   return {
     check_name: 'Stuck Campaigns Detection',
     category: 'cron',
-    status: count > 0 ? 'fail' : 'pass', // Any stuck campaign is a failure
+    status: count > 0 ? 'fail' : 'pass',
     details: count > 0
-      ? `🚨 CRITICAL: ${count} campaigns stuck! ${details}`
+      ? `🚨 ${count} campaigns with unqueued prospects: ${details}`
       : 'All active campaigns processing normally',
     affected_records: count,
     sample_ids: stuckCampaigns.slice(0, 5).map(c => c.campaign_id),
     suggested_fix: count > 0
-      ? 'Check Netlify scheduled functions: process-send-queue, poll-accepted-connections. May need manual queue restart.'
+      ? 'Run queue-pending-prospects to add approved prospects to send queue'
       : undefined
   };
 }
