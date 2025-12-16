@@ -11,7 +11,6 @@ import {
   isMessageWarning,
   MESSAGE_HARD_LIMITS,
   getPreSendDelayMs,
-  getBetweenMessageDelayMs,
   getMessageVarianceContext
 } from '@/lib/anti-detection/message-variance';
 import { sendRateLimitNotification } from '@/lib/notifications/notification-router';
@@ -324,9 +323,9 @@ export async function POST(req: NextRequest) {
       }
 
       // Check spacing for this account
-      // ANTI-DETECTION: Use 20-minute minimum gap (from message-variance.ts)
-      const MIN_SPACING_MINUTES = 20;
-      const spacingCutoff = new Date(Date.now() - MIN_SPACING_MINUTES * 60 * 1000);
+      // ANTI-DETECTION: Use MESSAGE_HARD_LIMITS.MIN_CR_GAP_MINUTES from randomizer
+      const minSpacingMinutes = MESSAGE_HARD_LIMITS.MIN_CR_GAP_MINUTES; // 20 min
+      const spacingCutoff = new Date(Date.now() - minSpacingMinutes * 60 * 1000);
 
       const { data: accountCampaigns } = await supabase
         .from('campaigns')
@@ -344,7 +343,7 @@ export async function POST(req: NextRequest) {
         .limit(1);
 
       if (recentlySent && recentlySent.length > 0) {
-        console.log(`⏸️  Account ${accountId} blocked by 2-min spacing`);
+        console.log(`⏸️  Account ${accountId} blocked by ${minSpacingMinutes}-min spacing`);
         skippedAccounts.push(accountId);
         continue;
       }
