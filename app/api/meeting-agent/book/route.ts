@@ -31,6 +31,12 @@ import {
   bookSlot,
   CalendlySlot,
 } from '@/lib/services/calendly-scraper';
+import {
+  listCalendars,
+  listEvents,
+  createEvent,
+  checkAvailability,
+} from '@/lib/unipile/calendar-service';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -158,44 +164,46 @@ export async function POST(req: NextRequest) {
           .from('workspace_accounts')
           .select('unipile_account_id')
           .eq('workspace_id', workspaceId)
-          .in('account_type', ['google', 'microsoft', 'email'])
+          .in('account_type', ['google', 'google_calendar', 'outlook', 'outlook_calendar', 'microsoft'])
           .eq('connection_status', 'connected')
           .limit(1)
           .single();
 
         if (calendarAccount?.unipile_account_id) {
-          // Get our calendar events for the slot period
-          const startDate = availableSlots[0].datetime;
-          const endDate = availableSlots[availableSlots.length - 1].datetime;
+          // List calendars for this account
+          const calendarsResult = await listCalendars(calendarAccount.unipile_account_id);
 
-          const calendarResponse = await fetch(
-            `https://${UNIPILE_DSN}/api/v1/calendar/events?account_id=${calendarAccount.unipile_account_id}&start=${startDate.toISOString()}&end=${endDate.toISOString()}`,
-            {
-              headers: {
-                'X-API-KEY': UNIPILE_API_KEY,
-                'Accept': 'application/json',
-              },
-            }
-          );
+          if (calendarsResult.success && calendarsResult.data && calendarsResult.data.length > 0) {
+            // Use primary calendar or first available
+            const primaryCalendar = calendarsResult.data.find(c => c.is_primary) || calendarsResult.data[0];
 
-          if (calendarResponse.ok) {
-            const calendarData = await calendarResponse.json();
-            const ourEvents = calendarData.items || [];
+            // Get our calendar events for the slot period
+            const startDate = availableSlots[0].datetime;
+            const endDate = availableSlots[availableSlots.length - 1].datetime;
 
-            // Filter out slots that conflict with our events
-            filteredSlots = availableSlots.filter(slot => {
-              const slotStart = slot.datetime.getTime();
-              const slotEnd = slotStart + slot.duration_minutes * 60 * 1000;
-
-              return !ourEvents.some((event: any) => {
-                const eventStart = new Date(event.start).getTime();
-                const eventEnd = new Date(event.end).getTime();
-                // Check for overlap
-                return slotStart < eventEnd && slotEnd > eventStart;
-              });
+            const eventsResult = await listEvents(primaryCalendar.id, {
+              start: startDate.toISOString(),
+              end: endDate.toISOString(),
             });
 
-            console.log(`📊 ${filteredSlots.length} slots available after conflict check`);
+            if (eventsResult.success && eventsResult.data) {
+              const ourEvents = eventsResult.data;
+
+              // Filter out slots that conflict with our events
+              filteredSlots = availableSlots.filter(slot => {
+                const slotStart = slot.datetime.getTime();
+                const slotEnd = slotStart + slot.duration_minutes * 60 * 1000;
+
+                return !ourEvents.some((event: any) => {
+                  const eventStart = new Date(event.start).getTime();
+                  const eventEnd = new Date(event.end).getTime();
+                  // Check for overlap
+                  return slotStart < eventEnd && slotEnd > eventStart;
+                });
+              });
+
+              console.log(`📊 ${filteredSlots.length} slots available after conflict check`);
+            }
           }
         }
       } catch (calendarError) {
@@ -339,33 +347,38 @@ async function syncToOurCalendar(workspaceId: string, event: {
       .from('workspace_accounts')
       .select('unipile_account_id')
       .eq('workspace_id', workspaceId)
-      .in('account_type', ['google', 'microsoft'])
+      .in('account_type', ['google', 'google_calendar', 'outlook', 'outlook_calendar', 'microsoft'])
       .eq('connection_status', 'connected')
       .limit(1)
       .single();
 
     if (!calendarAccount?.unipile_account_id || !UNIPILE_API_KEY) return;
 
+    // Get user's primary calendar
+    const calendarsResult = await listCalendars(calendarAccount.unipile_account_id);
+    if (!calendarsResult.success || !calendarsResult.data || calendarsResult.data.length === 0) {
+      console.warn('No calendars found for account');
+      return;
+    }
+
+    const primaryCalendar = calendarsResult.data.find(c => c.is_primary) || calendarsResult.data[0];
     const endTime = new Date(event.scheduled_at.getTime() + event.duration_minutes * 60 * 1000);
 
-    await fetch(`https://${UNIPILE_DSN}/api/v1/calendar/events`, {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': UNIPILE_API_KEY,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        account_id: calendarAccount.unipile_account_id,
-        title: event.title,
-        start: event.scheduled_at.toISOString(),
-        end: endTime.toISOString(),
-        description: event.meeting_link ? `Meeting Link: ${event.meeting_link}` : undefined,
-        attendees: event.attendee_email ? [{ email: event.attendee_email }] : undefined,
-      }),
+    // Create event using our calendar service
+    const createResult = await createEvent(primaryCalendar.id, {
+      title: event.title,
+      start: event.scheduled_at.toISOString(),
+      end: endTime.toISOString(),
+      description: event.meeting_link ? `Meeting Link: ${event.meeting_link}` : undefined,
+      attendees: event.attendee_email ? [{ email: event.attendee_email }] : undefined,
+      conference: true, // Auto-create Google Meet / Teams link
     });
 
-    console.log('📅 Event synced to our calendar');
+    if (createResult.success) {
+      console.log('📅 Event synced to our calendar:', createResult.data?.id);
+    } else {
+      console.warn('Failed to create calendar event:', createResult.error);
+    }
 
   } catch (error) {
     console.warn('Failed to sync to calendar:', error);
