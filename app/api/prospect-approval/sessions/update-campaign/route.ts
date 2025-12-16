@@ -38,12 +38,19 @@ export async function PATCH(request: NextRequest) {
       }, { status: 401 });
     }
 
-    const { session_id, campaign_name } = await request.json();
+    const { session_id, campaign_name, campaign_id } = await request.json();
 
-    if (!session_id || !campaign_name) {
+    if (!session_id) {
       return NextResponse.json({
         success: false,
-        error: 'Session ID and campaign name required'
+        error: 'Session ID required'
+      }, { status: 400 });
+    }
+
+    if (!campaign_name && !campaign_id) {
+      return NextResponse.json({
+        success: false,
+        error: 'Campaign name or campaign ID required'
       }, { status: 400 });
     }
 
@@ -78,23 +85,31 @@ export async function PATCH(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Update campaign name
+    // Build update object with provided fields
+    const updateData: { campaign_name?: string; campaign_id?: string } = {};
+    if (campaign_name) updateData.campaign_name = campaign_name;
+    if (campaign_id) updateData.campaign_id = campaign_id;
+
+    // Update session
     const { error: updateError } = await supabase
       .from('prospect_approval_sessions')
-      .update({ campaign_name })
+      .update(updateData)
       .eq('id', session_id);
 
     if (updateError) {
-      console.error('Error updating campaign name:', updateError);
+      console.error('Error updating session:', updateError);
       return NextResponse.json({
         success: false,
-        error: 'Failed to update campaign name'
+        error: 'Failed to update session'
       }, { status: 500 });
     }
 
+    console.log(`✅ Updated session ${session_id}:`, updateData);
+
     return NextResponse.json({
       success: true,
-      campaign_name
+      campaign_name,
+      campaign_id
     });
 
   } catch (error) {

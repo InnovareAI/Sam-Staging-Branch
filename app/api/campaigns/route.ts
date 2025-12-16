@@ -344,32 +344,56 @@ export async function POST(req: NextRequest) {
 
     // Auto-assign account based on campaign type
     // Note: linkedin_account_id column is used for BOTH LinkedIn and email accounts
+    // CRITICAL FIX (Dec 16): Fail fast if no account is configured instead of silently proceeding
     let linkedinAccountId = null;
     if (campaign_type === 'connector' || campaign_type === 'messenger') {
       // LinkedIn campaigns - assign LinkedIn account
-      const { data: linkedinAccount } = await supabase
+      const { data: linkedinAccount, error: accountError } = await supabase
         .from('workspace_accounts')
-        .select('id')
+        .select('id, account_name')
         .eq('workspace_id', workspace_id)
         .eq('account_type', 'linkedin')
         .eq('connection_status', 'connected')
         .eq('is_active', true)
         .single();
 
-      linkedinAccountId = linkedinAccount?.id || null;
+      if (accountError || !linkedinAccount) {
+        console.error('❌ No LinkedIn account found for workspace:', workspace_id, accountError?.message);
+        // Delete the campaign we just created since it's unusable
+        await supabase.from('campaigns').delete().eq('id', campaignId);
+        return NextResponse.json({
+          success: false,
+          error: 'LinkedIn account not configured',
+          details: 'Please connect a LinkedIn account in Settings → Integrations before creating a campaign.'
+        }, { status: 400 });
+      }
+
+      linkedinAccountId = linkedinAccount.id;
+      console.log('✅ Auto-assigned LinkedIn account:', linkedinAccount.account_name, linkedinAccountId);
     } else if (campaign_type === 'email') {
       // Email campaigns - assign email account
-      const { data: emailAccount } = await supabase
+      const { data: emailAccount, error: accountError } = await supabase
         .from('workspace_accounts')
-        .select('id')
+        .select('id, account_name')
         .eq('workspace_id', workspace_id)
         .eq('account_type', 'email')
         .eq('connection_status', 'connected')
         .eq('is_active', true)
         .single();
 
-      linkedinAccountId = emailAccount?.id || null;
-      console.log('📧 Auto-assigned email account for email campaign:', linkedinAccountId);
+      if (accountError || !emailAccount) {
+        console.error('❌ No email account found for workspace:', workspace_id, accountError?.message);
+        // Delete the campaign we just created since it's unusable
+        await supabase.from('campaigns').delete().eq('id', campaignId);
+        return NextResponse.json({
+          success: false,
+          error: 'Email account not configured',
+          details: 'Please connect an email account in Settings → Integrations before creating an email campaign.'
+        }, { status: 400 });
+      }
+
+      linkedinAccountId = emailAccount.id;
+      console.log('📧 Auto-assigned email account:', emailAccount.account_name, linkedinAccountId);
     }
 
     // Update status AND flow_settings.messages from message_templates
@@ -429,6 +453,13 @@ export async function POST(req: NextRequest) {
       console.log(`Session ID: ${session_id}`);
       console.log(`Campaign ID: ${campaignId}`);
       console.log(`Workspace ID: ${workspace_id}`);
+
+      // CRITICAL FIX (Dec 16): Link the session to this campaign so bulk-approve works later
+      await supabase
+        .from('prospect_approval_sessions')
+        .update({ campaign_id: campaignId })
+        .eq('id', session_id);
+      console.log(`✅ Linked session ${session_id} to campaign ${campaignId}`);
 
       // Get approved prospects from the session
       // First get approved prospect IDs from decisions table
