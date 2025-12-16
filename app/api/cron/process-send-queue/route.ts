@@ -11,6 +11,7 @@ import {
   isMessageWarning,
   MESSAGE_HARD_LIMITS
 } from '@/lib/anti-detection/message-variance';
+import { sendRateLimitNotification } from '@/lib/notifications/notification-router';
 
 // Countries with Friday-Saturday weekends (Middle East)
 const FRIDAY_SATURDAY_WEEKEND_COUNTRIES = ['AE', 'SA', 'KW', 'QA', 'BH', 'OM', 'JO', 'EG'];
@@ -379,11 +380,68 @@ export async function POST(req: NextRequest) {
       if (isCR && crsSentToday >= DAILY_CR_LIMIT) {
         console.log(`⏸️  Account ${accountId} hit CR daily cap (${crsSentToday}/${DAILY_CR_LIMIT})`);
         skippedAccounts.push(accountId);
+
+        // Send rate limit notification (only once per day per account)
+        // Check if we already notified today using a simple in-memory check per request
+        // For persistence, we check if crsSentToday == DAILY_CR_LIMIT (first time hitting limit)
+        if (crsSentToday === DAILY_CR_LIMIT) {
+          const { data: accountInfo } = await supabase
+            .from('workspace_accounts')
+            .select('account_name, workspace_id')
+            .eq('id', accountId)
+            .single();
+
+          if (accountInfo?.workspace_id) {
+            // Count pending items for this account's campaigns
+            const { count: pendingCount } = await supabase
+              .from('send_queue')
+              .select('id', { count: 'exact', head: true })
+              .eq('status', 'pending')
+              .in('campaign_id', accountCampaignIds);
+
+            // Send rate limit notification via unified router (Slack or Google Chat)
+            sendRateLimitNotification({
+              workspaceId: accountInfo.workspace_id,
+              accountName: accountInfo.account_name || 'LinkedIn Account',
+              limitType: 'connection_request',
+              current: crsSentToday,
+              limit: DAILY_CR_LIMIT,
+              pendingCount: pendingCount || 0,
+            }).catch(err => console.warn('Rate limit notification failed:', err));
+          }
+        }
         continue;
       }
       if (!isCR && messagesSentToday >= DAILY_MESSAGE_LIMIT) {
         console.log(`⏸️  Account ${accountId} hit message daily cap (${messagesSentToday}/${DAILY_MESSAGE_LIMIT})`);
         skippedAccounts.push(accountId);
+
+        // Send rate limit notification for messages
+        if (messagesSentToday === DAILY_MESSAGE_LIMIT) {
+          const { data: accountInfo } = await supabase
+            .from('workspace_accounts')
+            .select('account_name, workspace_id')
+            .eq('id', accountId)
+            .single();
+
+          if (accountInfo?.workspace_id) {
+            const { count: pendingCount } = await supabase
+              .from('send_queue')
+              .select('id', { count: 'exact', head: true })
+              .eq('status', 'pending')
+              .in('campaign_id', accountCampaignIds);
+
+            // Send rate limit notification via unified router (Slack or Google Chat)
+            sendRateLimitNotification({
+              workspaceId: accountInfo.workspace_id,
+              accountName: accountInfo.account_name || 'LinkedIn Account',
+              limitType: 'message',
+              current: messagesSentToday,
+              limit: DAILY_MESSAGE_LIMIT,
+              pendingCount: pendingCount || 0,
+            }).catch(err => console.warn('Rate limit notification failed:', err));
+          }
+        }
         continue;
       }
 

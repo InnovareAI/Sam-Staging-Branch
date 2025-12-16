@@ -803,6 +803,54 @@ class SlackService {
   }
 
   /**
+   * Notify when a LinkedIn account hits its daily rate limit
+   */
+  async notifyRateLimitReached(
+    workspaceId: string,
+    accountName: string,
+    limitType: 'connection_request' | 'message',
+    current: number,
+    limit: number,
+    pendingCount: number
+  ) {
+    const limitTypeLabel = limitType === 'connection_request' ? 'Connection Requests' : 'Messages';
+    const emoji = limitType === 'connection_request' ? '🔗' : '💬';
+
+    const message: SlackMessage = {
+      text: `Rate limit reached for ${accountName}`,
+      blocks: [
+        { type: 'header', text: { type: 'plain_text', text: `${emoji} Daily Limit Reached`, emoji: true } },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*Account:* ${accountName}\n*Type:* ${limitTypeLabel}\n*Today:* ${current}/${limit}`,
+          },
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `_${pendingCount} messages queued and will resume tomorrow._`,
+          },
+        },
+        {
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `This is normal behavior to protect your LinkedIn account. Limits reset at midnight.`,
+            },
+          ],
+        },
+      ],
+    };
+
+    const channel = await this.getDefaultChannel(workspaceId);
+    return this.sendBotMessage(workspaceId, channel, message);
+  }
+
+  /**
    * Send campaign milestone notification
    */
   async notifyCampaignMilestone(

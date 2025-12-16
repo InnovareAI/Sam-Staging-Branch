@@ -170,6 +170,10 @@ export async function POST(request: NextRequest) {
     const accountCheck = await checkLinkedInAccountHealth(supabase);
     allChecks.push(accountCheck);
 
+    // 10.5. Rate Limit Status (daily usage summary)
+    const rateLimitCheck = await checkRateLimitStatus(supabase);
+    allChecks.push(rateLimitCheck);
+
     // 11. Status Mismatch Detection (connection_accepted_at set but wrong status)
     const statusMismatchCheck = await checkStatusMismatch(supabase);
     allChecks.push(statusMismatchCheck);
@@ -914,6 +918,115 @@ async function checkLinkedInAccountHealth(supabase: any): Promise<QACheck> {
       category: 'messaging',
       status: 'warning',
       details: `Could not check account health: ${error instanceof Error ? error.message : 'Unknown'}`,
+      affected_records: 0
+    };
+  }
+}
+
+/**
+ * CHECK: Rate Limit Status
+ * Shows daily usage across all LinkedIn accounts for visibility
+ * Real-time notifications are sent by process-send-queue when limits are hit
+ */
+async function checkRateLimitStatus(supabase: any): Promise<QACheck> {
+  const DAILY_CR_LIMIT = 20;
+  const DAILY_MESSAGE_LIMIT = 50;
+
+  try {
+    // Get today's date boundaries in UTC
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setUTCHours(23, 59, 59, 999);
+
+    // Get all active LinkedIn accounts
+    const { data: accounts } = await supabase
+      .from('workspace_accounts')
+      .select('id, account_name, workspace_id, unipile_account_id')
+      .eq('account_type', 'linkedin')
+      .eq('connection_status', 'connected');
+
+    if (!accounts || accounts.length === 0) {
+      return {
+        check_name: 'Rate Limit Status',
+        category: 'messaging',
+        status: 'pass',
+        details: 'No active LinkedIn accounts',
+        affected_records: 0
+      };
+    }
+
+    const accountUsage: { name: string; crs: number; msgs: number; atLimit: boolean }[] = [];
+    let accountsAtLimit = 0;
+
+    for (const account of accounts) {
+      // Get today's sent items for this account's campaigns
+      const { data: campaigns } = await supabase
+        .from('campaigns')
+        .select('id')
+        .eq('linkedin_account_id', account.unipile_account_id);
+
+      if (!campaigns || campaigns.length === 0) continue;
+
+      const campaignIds = campaigns.map((c: any) => c.id);
+
+      // Count CRs sent today
+      const { data: crsSent } = await supabase
+        .from('send_queue')
+        .select('id')
+        .in('campaign_id', campaignIds)
+        .eq('status', 'sent')
+        .or('message_type.is.null,message_type.eq.connection_request')
+        .gte('sent_at', todayStart.toISOString())
+        .lte('sent_at', todayEnd.toISOString());
+
+      // Count messages sent today
+      const { data: msgsSent } = await supabase
+        .from('send_queue')
+        .select('id')
+        .in('campaign_id', campaignIds)
+        .eq('status', 'sent')
+        .neq('message_type', 'connection_request')
+        .not('message_type', 'is', null)
+        .gte('sent_at', todayStart.toISOString())
+        .lte('sent_at', todayEnd.toISOString());
+
+      const crCount = crsSent?.length || 0;
+      const msgCount = msgsSent?.length || 0;
+      const atLimit = crCount >= DAILY_CR_LIMIT || msgCount >= DAILY_MESSAGE_LIMIT;
+
+      if (atLimit) accountsAtLimit++;
+
+      accountUsage.push({
+        name: account.account_name || 'Unknown',
+        crs: crCount,
+        msgs: msgCount,
+        atLimit
+      });
+    }
+
+    // Build summary
+    const usageSummary = accountUsage
+      .slice(0, 5)
+      .map(a => `${a.name}: ${a.crs}/${DAILY_CR_LIMIT} CRs, ${a.msgs}/${DAILY_MESSAGE_LIMIT} msgs${a.atLimit ? ' ⚠️' : ''}`)
+      .join('; ');
+
+    return {
+      check_name: 'Rate Limit Status',
+      category: 'messaging',
+      status: accountsAtLimit > 0 ? 'warning' : 'pass',
+      details: accountsAtLimit > 0
+        ? `${accountsAtLimit} account(s) at daily limit. ${usageSummary}`
+        : `All accounts within limits. ${usageSummary}`,
+      affected_records: accountsAtLimit,
+      suggested_fix: accountsAtLimit > 0 ? 'Normal behavior - limits reset at midnight UTC' : undefined
+    };
+  } catch (error) {
+    return {
+      check_name: 'Rate Limit Status',
+      category: 'messaging',
+      status: 'warning',
+      details: `Error checking rate limits: ${error instanceof Error ? error.message : 'Unknown'}`,
       affected_records: 0
     };
   }

@@ -618,3 +618,84 @@ export async function sendCampaignReplyNotification(data: {
   console.log("[Campaign Reply Notification]", data);
   return { success: true };
 }
+
+/**
+ * Send Rate Limit Notification to Google Chat
+ * Notifies when a LinkedIn account hits its daily sending limit
+ */
+export async function sendRateLimitNotification(data: {
+  accountName: string;
+  limitType: 'connection_request' | 'message';
+  current: number;
+  limit: number;
+  pendingCount: number;
+  workspaceName?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const limitTypeLabel = data.limitType === 'connection_request' ? 'Connection Requests' : 'Messages';
+  const emoji = data.limitType === 'connection_request' ? '🔗' : '💬';
+
+  const message: GoogleChatMessage = {
+    cardsV2: [
+      {
+        cardId: `rate-limit-${Date.now()}`,
+        card: {
+          header: {
+            title: `${emoji} Daily Limit Reached`,
+            subtitle: new Date().toLocaleString(),
+            imageType: 'CIRCLE',
+          },
+          sections: [
+            {
+              widgets: [
+                {
+                  decoratedText: {
+                    topLabel: 'Account',
+                    text: `<b>${data.accountName}</b>`,
+                    startIcon: { knownIcon: 'PERSON' },
+                  },
+                },
+                ...(data.workspaceName ? [{
+                  decoratedText: {
+                    topLabel: 'Workspace',
+                    text: data.workspaceName,
+                    startIcon: { knownIcon: 'BOOKMARK' },
+                  },
+                }] : []),
+                {
+                  decoratedText: {
+                    topLabel: 'Type',
+                    text: limitTypeLabel,
+                    startIcon: { knownIcon: 'EMAIL' },
+                  },
+                },
+                {
+                  decoratedText: {
+                    topLabel: 'Today\'s Usage',
+                    text: `<b>${data.current}/${data.limit}</b>`,
+                    startIcon: { knownIcon: 'CLOCK' },
+                  },
+                },
+              ],
+            },
+            {
+              widgets: [
+                {
+                  textParagraph: {
+                    text: `<i>${data.pendingCount} messages queued and will resume tomorrow.</i>`,
+                  },
+                },
+                {
+                  textParagraph: {
+                    text: `<font color="#888888">This is normal behavior to protect your LinkedIn account. Limits reset at midnight.</font>`,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  return sendGoogleChatNotification(message);
+}
