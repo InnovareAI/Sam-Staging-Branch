@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       const isMessengerCampaign = campaign.campaign_type === 'messenger';
       const targetStatuses = isMessengerCampaign
         ? ['approved', 'pending']  // Messenger: queue approved/pending 1st connections
-        : ['pending'];             // Connector: queue pending prospects for connection requests
+        : ['pending', 'approved']; // Connector: queue pending OR approved prospects (approval flow sets 'approved')
 
       const { data: pendingProspects, error: prospError } = await supabase
         .from('campaign_prospects')
