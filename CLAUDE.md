@@ -231,6 +231,65 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🔴 RECENT CRITICAL FIXES (Nov 10 - Dec 16)
 
+### ✅ End-to-End Campaign Flow Fix (Dec 16, 2025)
+
+**CRITICAL FIX: Eliminated manual micromanagement of campaigns**
+
+The campaign flow was broken in multiple places, requiring manual database interventions. Now it works end-to-end automatically.
+
+**Problems Fixed:**
+
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| Campaigns created without LinkedIn account | Silently set `linkedin_account_id = null` | Now fails fast with clear error message |
+| Approved prospects not in campaign | No auto-transfer from `prospect_approval_data` to `campaign_prospects` | Bulk-approve now auto-transfers |
+| Approved prospects not queued | No auto-queue to `send_queue` | Bulk-approve now auto-queues if campaign is active |
+| Session not linked to campaign | Session `campaign_id` not set on campaign creation | Now linked automatically |
+
+**Files Modified:**
+- `/app/api/campaigns/route.ts` - Fail fast if no LinkedIn account, link session to campaign
+- `/app/api/prospect-approval/bulk-approve/route.ts` - Auto-transfer to `campaign_prospects`, auto-queue to `send_queue`
+- `/app/api/prospect-approval/sessions/update-campaign/route.ts` - Allow setting `campaign_id`
+
+**Complete Flow Now:**
+```
+CSV Upload → prospect_approval_data (pending)
+    ↓
+Bulk Approve → prospect_approval_decisions (approved)
+    ↓ AUTO-TRANSFER
+campaign_prospects (approved status)
+    ↓ AUTO-QUEUE (if campaign active)
+send_queue (pending, 20-min spacing)
+    ↓ CRON
+Unipile API → LinkedIn CR sent
+```
+
+**Key Code Changes:**
+
+1. **Campaign Creation** (`/app/api/campaigns/route.ts`):
+```typescript
+// CRITICAL FIX (Dec 16): Fail fast if no account configured
+if (accountError || !linkedinAccount) {
+  await supabase.from('campaigns').delete().eq('id', campaignId);
+  return NextResponse.json({
+    success: false,
+    error: 'LinkedIn account not configured',
+    details: 'Please connect a LinkedIn account in Settings → Integrations'
+  }, { status: 400 });
+}
+```
+
+2. **Bulk Approve** (`/app/api/prospect-approval/bulk-approve/route.ts`):
+```typescript
+// AUTO-TRANSFER: Move approved prospects to campaign_prospects
+// AUTO-QUEUE: Add to send_queue if campaign is active
+// Uses MESSAGE_HARD_LIMITS.MIN_CR_GAP_MINUTES (20 min) for spacing
+```
+
+**Commit:** `240da3dc` - fix: auto-transfer approved prospects and fail fast on missing LinkedIn account
+
+---
+
 ### ✅ Anti-Detection Randomizer Integration (Dec 16, 2025)
 
 **Full integration of `lib/anti-detection/message-variance.ts` into send queue:**
