@@ -749,7 +749,20 @@ export default function DataCollectionHub({
           // Log all duplicates for troubleshooting
           console.warn('🔍 All duplicate prospects:', errorData.duplicates)
         } else {
-          toastError(errorData.error || 'Failed to upload CSV file')
+          // Show detailed error message with debug info if available
+          let errorMessage = errorData.error || 'Failed to upload CSV file'
+
+          // Log debug info for troubleshooting
+          if (errorData.debug) {
+            console.error('CSV Upload Debug Info:', {
+              headers: errorData.debug.headers,
+              totalRows: errorData.debug.totalRows,
+              skipBreakdown: errorData.debug.skipBreakdown,
+              skippedRows: errorData.debug.skippedRows
+            })
+          }
+
+          toastError(errorMessage)
         }
       }
     } catch (error) {

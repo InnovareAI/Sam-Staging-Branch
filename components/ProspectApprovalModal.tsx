@@ -62,6 +62,10 @@ export default function ProspectApprovalModal({
   const [isEnriching, setIsEnriching] = useState(false)
   const [enrichmentProgress, setEnrichmentProgress] = useState<{ current: number; total: number } | null>(null)
 
+  // Pagination for large lists (prevents browser hang with 800+ prospects)
+  const PAGE_SIZE = 50
+  const [currentPage, setCurrentPage] = useState(1)
+
   // Filter prospects based on search and filters
   const filteredProspects = useMemo(() => {
     return prospects.filter(prospect => {
@@ -89,6 +93,19 @@ export default function ProspectApprovalModal({
     const uniqueSources = new Set(prospects.map(p => p.source))
     return Array.from(uniqueSources)
   }, [prospects])
+
+  // Paginated prospects for rendering (only render current page)
+  const paginatedProspects = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE
+    return filteredProspects.slice(startIndex, startIndex + PAGE_SIZE)
+  }, [filteredProspects, currentPage])
+
+  const totalPages = Math.ceil(filteredProspects.length / PAGE_SIZE)
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, filterSource])
 
   const dismissProspect = (prospectId: string, e?: React.MouseEvent) => {
     e?.stopPropagation()
@@ -395,13 +412,41 @@ export default function ProspectApprovalModal({
 
       {/* Prospect List */}
       <div className="p-6 space-y-4 max-h-[50vh] overflow-y-auto">
+        {/* Pagination info */}
+        {filteredProspects.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between mb-4 px-2">
+            <span className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredProspects.length)} of {filteredProspects.length} prospects
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-sm bg-surface-highlight hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed border border-border/60 rounded-lg transition-colors"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-muted-foreground px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-sm bg-surface-highlight hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed border border-border/60 rounded-lg transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
         {filteredProspects.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground text-lg mb-2">No prospects match your filters</p>
             <p className="text-muted-foreground text-sm">Try adjusting your search or filter criteria</p>
           </div>
         ) : (
-          filteredProspects.map((prospect) => {
+          paginatedProspects.map((prospect) => {
             const isDismissed = dismissedProspects.has(prospect.id)
 
             return (

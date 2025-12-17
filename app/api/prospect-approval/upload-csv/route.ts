@@ -459,13 +459,40 @@ export async function POST(request: NextRequest) {
     }
 
     if (prospects.length === 0) {
+      // Build helpful error message based on skip reasons
+      let errorMessage = 'No valid prospects found in CSV.';
+      const skipReasons = skippedRows.map(r => r.reason);
+      const noNameCount = skipReasons.filter(r => r === 'no name').length;
+      const salesNavCount = skipReasons.filter(r => r === 'sales_navigator_url').length;
+      const unicodeCount = skipReasons.filter(r => r === 'unicode_in_url').length;
+      const incompleteCount = skipReasons.filter(r => r === 'incomplete').length;
+
+      if (noNameCount > 0 && noNameCount === skippedRows.length) {
+        errorMessage = `No valid prospects found. Could not find a name column. Your CSV headers are: ${headers.slice(0, 10).join(', ')}. Expected columns like: "Name", "Full Name", "First Name" + "Last Name".`;
+      } else if (salesNavCount > 0 && salesNavCount === skippedRows.length) {
+        errorMessage = `All ${salesNavCount} prospects have Sales Navigator URLs which cannot be used. Please export with regular LinkedIn URLs (linkedin.com/in/...) instead of Sales Navigator URLs (linkedin.com/sales/lead/...).`;
+      } else if (salesNavCount > 0) {
+        errorMessage = `${salesNavCount} of ${skippedRows.length} prospects have Sales Navigator URLs. Please use regular LinkedIn profile URLs.`;
+      } else if (incompleteCount > 0 && incompleteCount === skippedRows.length) {
+        errorMessage = `All rows have fewer columns than headers (${headers.length} headers expected). The CSV may be malformed or use a different delimiter.`;
+      }
+
+      console.error('CSV Upload - No valid prospects:', {
+        errorMessage,
+        headers,
+        totalRows: lines.length - 1,
+        skipBreakdown: { noNameCount, salesNavCount, unicodeCount, incompleteCount },
+        skippedRows: skippedRows.slice(0, 10)
+      });
+
       return NextResponse.json({
         success: false,
-        error: 'No valid prospects found in CSV',
+        error: errorMessage,
         debug: {
           headers,
           totalRows: lines.length - 1,
-          skippedRows: skippedRows.slice(0, 5)
+          skipBreakdown: { noNameCount, salesNavCount, unicodeCount, incompleteCount },
+          skippedRows: skippedRows.slice(0, 10)
         }
       }, { status: 400 });
     }
