@@ -4,7 +4,33 @@
  * Detects bugs, gaps, and inconsistencies between DB, messaging, and cron jobs
  *
  * POST /api/agents/qa-monitor
- * Trigger: Netlify scheduled functions every 6 hours
+ * Trigger: Netlify scheduled functions (hourly quick check, 6 AM detailed)
+ *
+ * CHECKS (18 total):
+ * 1. Queue-Prospect Status Consistency
+ * 2. Orphaned Queue Records (auto-fix)
+ * 3. Cron Job Execution Gaps
+ * 4. Stuck Campaigns Detection (auto-fix)
+ * 5. Unipile Message Sync
+ * 6. Stuck Prospects Detection (auto-fix)
+ * 7. Pending Prospects Ready for Approval
+ * 8. Campaign State Consistency
+ * 9. Follow-up Scheduling
+ * 10. Same-Day Follow-up Check (auto-fix)
+ * 11. Duplicate Records
+ * 12. Timestamp Anomalies
+ * 13. LinkedIn Account Health
+ * 14. Rate Limit Status
+ * 15. Status Mismatch Detection (auto-fix)
+ * 16. Stuck Upload Sessions (auto-fix)
+ * 17. Missing Workspace Account Sync (auto-fix)
+ * 18. Email Queue Processing
+ *
+ * NEW SAFEGUARD CHECKS (Dec 17, 2025):
+ * 19. Unipile Account Status Consistency (auto-fix 'connected' → 'active')
+ * 20. Reply Agent Configuration Coverage
+ * 21. Workspace Error Rates (>10% threshold)
+ * 22. Provider ID Quality (URL/vanity detection)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -211,6 +237,33 @@ export async function POST(request: NextRequest) {
     // NOTE: Email-only campaigns (like Jennifer Fleming's inbox agent) use email_queue, not send_queue
     const emailQueueCheck = await checkEmailQueueProcessing(supabase);
     allChecks.push(emailQueueCheck);
+
+    // 15. Unipile Account Status Consistency (Dec 17, 2025)
+    // Ensures all accounts are 'active' not just 'connected'
+    const accountStatusCheck = await checkUnipileAccountStatus(supabase);
+    allChecks.push(accountStatusCheck);
+
+    // AUTO-FIX: Update 'connected' accounts to 'active'
+    if (accountStatusCheck.affected_records && accountStatusCheck.affected_records > 0) {
+      console.log(`🔧 Auto-fixing ${accountStatusCheck.affected_records} account status issues...`);
+      const fix = await autoFixUnipileAccountStatus(supabase);
+      autoFixes.push(fix);
+    }
+
+    // 16. Reply Agent Configuration Coverage (Dec 17, 2025)
+    // Alerts if active workspaces don't have Reply Agent configured
+    const replyAgentConfigCheck = await checkReplyAgentConfiguration(supabase);
+    allChecks.push(replyAgentConfigCheck);
+
+    // 17. Error Rate by Workspace (Dec 17, 2025)
+    // Flags workspaces with >10% error rate in last 7 days
+    const errorRateCheck = await checkWorkspaceErrorRates(supabase);
+    allChecks.push(errorRateCheck);
+
+    // 18. Provider ID Quality Check (Dec 17, 2025)
+    // Checks for invalid linkedin_user_id formats (URLs instead of ACo/ACw IDs)
+    const providerIdCheck = await checkProviderIdQuality(supabase);
+    allChecks.push(providerIdCheck);
 
     // ============================================
     // PER-WORKSPACE CHECKS
@@ -1962,6 +2015,304 @@ async function autoFixStuckCampaigns(supabase: any): Promise<AutoFixResult> {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       details: 'Failed to fix stuck campaigns'
+    };
+  }
+}
+
+/**
+ * CHECK 15: Unipile Account Status Consistency (Dec 17, 2025)
+ * Ensures all LinkedIn accounts have status 'active' not 'connected'
+ * The 'connected' status can cause issues with campaign execution
+ */
+async function checkUnipileAccountStatus(supabase: any): Promise<QACheck> {
+  try {
+    // Find accounts with 'connected' status (should be 'active')
+    const { data: incorrectStatus, error } = await supabase
+      .from('user_unipile_accounts')
+      .select('id, account_name, connection_status, workspace_id')
+      .eq('platform', 'LINKEDIN')
+      .eq('connection_status', 'connected');
+
+    if (error) throw error;
+
+    const count = incorrectStatus?.length || 0;
+
+    return {
+      check_name: 'Unipile Account Status Consistency',
+      category: 'messaging',
+      status: count > 0 ? 'warning' : 'pass',
+      details: count > 0
+        ? `${count} LinkedIn accounts have 'connected' status (should be 'active'): ${incorrectStatus?.map((a: any) => a.account_name).join(', ')}`
+        : 'All LinkedIn accounts have correct status',
+      affected_records: count,
+      sample_ids: incorrectStatus?.slice(0, 5).map((a: any) => a.id),
+      suggested_fix: count > 0 ? 'Update connection_status to "active" for functioning accounts' : undefined
+    };
+  } catch (error) {
+    return {
+      check_name: 'Unipile Account Status Consistency',
+      category: 'messaging',
+      status: 'warning',
+      details: `Error checking: ${error instanceof Error ? error.message : 'Unknown'}`,
+      affected_records: 0
+    };
+  }
+}
+
+/**
+ * AUTO-FIX: Update 'connected' accounts to 'active'
+ */
+async function autoFixUnipileAccountStatus(supabase: any): Promise<AutoFixResult> {
+  try {
+    const { data: updated, error } = await supabase
+      .from('user_unipile_accounts')
+      .update({
+        connection_status: 'active',
+        updated_at: new Date().toISOString()
+      })
+      .eq('platform', 'LINKEDIN')
+      .eq('connection_status', 'connected')
+      .select('id, account_name');
+
+    if (error) throw error;
+
+    return {
+      issue: 'Unipile Account Status',
+      attempted: true,
+      success: true,
+      count: updated?.length || 0,
+      details: `Updated ${updated?.length || 0} accounts to 'active' status: ${updated?.map((a: any) => a.account_name).join(', ')}`
+    };
+  } catch (error) {
+    return {
+      issue: 'Unipile Account Status',
+      attempted: true,
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      details: 'Failed to update account statuses'
+    };
+  }
+}
+
+/**
+ * CHECK 16: Reply Agent Configuration Coverage (Dec 17, 2025)
+ * Alerts if workspaces with active campaigns don't have Reply Agent configured
+ */
+async function checkReplyAgentConfiguration(supabase: any): Promise<QACheck> {
+  try {
+    // Get workspaces with active campaigns
+    const { data: activeCampaigns } = await supabase
+      .from('campaigns')
+      .select('workspace_id')
+      .in('status', ['active', 'running']);
+
+    if (!activeCampaigns || activeCampaigns.length === 0) {
+      return {
+        check_name: 'Reply Agent Configuration',
+        category: 'consistency',
+        status: 'pass',
+        details: 'No active campaigns to check',
+        affected_records: 0
+      };
+    }
+
+    // Get unique workspace IDs with active campaigns
+    const activeWorkspaceIds = [...new Set(activeCampaigns.map((c: any) => c.workspace_id))];
+
+    // Get workspaces with Reply Agent enabled
+    const { data: replyAgentConfigs } = await supabase
+      .from('workspace_reply_agent_config')
+      .select('workspace_id')
+      .eq('enabled', true);
+
+    const configuredWorkspaces = new Set((replyAgentConfigs || []).map((c: any) => c.workspace_id));
+
+    // Find workspaces with active campaigns but no Reply Agent
+    const unconfiguredWorkspaces = activeWorkspaceIds.filter(
+      (wsId: string) => !configuredWorkspaces.has(wsId)
+    );
+
+    // Get workspace names for better reporting
+    const { data: workspaceNames } = await supabase
+      .from('workspaces')
+      .select('id, name')
+      .in('id', unconfiguredWorkspaces);
+
+    const names = (workspaceNames || []).map((w: any) => w.name);
+    const count = unconfiguredWorkspaces.length;
+
+    return {
+      check_name: 'Reply Agent Configuration',
+      category: 'consistency',
+      status: count > 2 ? 'warning' : 'pass',
+      details: count > 0
+        ? `${count} workspaces with active campaigns have no Reply Agent: ${names.slice(0, 5).join(', ')}`
+        : `All ${activeWorkspaceIds.length} workspaces with active campaigns have Reply Agent configured`,
+      affected_records: count,
+      sample_ids: unconfiguredWorkspaces.slice(0, 5),
+      suggested_fix: count > 0 ? 'Enable Reply Agent in workspace settings for better response handling' : undefined
+    };
+  } catch (error) {
+    return {
+      check_name: 'Reply Agent Configuration',
+      category: 'consistency',
+      status: 'warning',
+      details: `Error checking: ${error instanceof Error ? error.message : 'Unknown'}`,
+      affected_records: 0
+    };
+  }
+}
+
+/**
+ * CHECK 17: Error Rate by Workspace (Dec 17, 2025)
+ * Flags workspaces with >10% error rate in last 7 days
+ */
+async function checkWorkspaceErrorRates(supabase: any): Promise<QACheck> {
+  try {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Get all workspaces
+    const { data: workspaces } = await supabase
+      .from('workspaces')
+      .select('id, name');
+
+    const highErrorWorkspaces: { name: string; rate: number; sent: number; failed: number }[] = [];
+
+    for (const workspace of workspaces || []) {
+      // Get campaigns for this workspace
+      const { data: campaigns } = await supabase
+        .from('campaigns')
+        .select('id')
+        .eq('workspace_id', workspace.id);
+
+      if (!campaigns || campaigns.length === 0) continue;
+
+      const campaignIds = campaigns.map((c: any) => c.id);
+
+      // Count sent and failed in last 7 days
+      const { count: sent } = await supabase
+        .from('send_queue')
+        .select('*', { count: 'exact', head: true })
+        .in('campaign_id', campaignIds)
+        .eq('status', 'sent')
+        .gte('sent_at', weekAgo);
+
+      const { count: failed } = await supabase
+        .from('send_queue')
+        .select('*', { count: 'exact', head: true })
+        .in('campaign_id', campaignIds)
+        .eq('status', 'failed')
+        .gte('updated_at', weekAgo);
+
+      const total = (sent || 0) + (failed || 0);
+      if (total < 10) continue; // Skip low volume
+
+      const errorRate = ((failed || 0) / total) * 100;
+
+      if (errorRate > 10) {
+        highErrorWorkspaces.push({
+          name: workspace.name,
+          rate: Math.round(errorRate * 10) / 10,
+          sent: sent || 0,
+          failed: failed || 0
+        });
+      }
+    }
+
+    const count = highErrorWorkspaces.length;
+    const details = highErrorWorkspaces
+      .sort((a, b) => b.rate - a.rate)
+      .slice(0, 3)
+      .map(w => `${w.name}: ${w.rate}% (${w.failed}/${w.sent + w.failed})`)
+      .join('; ');
+
+    return {
+      check_name: 'Workspace Error Rates',
+      category: 'consistency',
+      status: count > 0 ? 'warning' : 'pass',
+      details: count > 0
+        ? `${count} workspaces with >10% error rate (7d): ${details}`
+        : 'All workspaces have healthy error rates (<10%)',
+      affected_records: count,
+      suggested_fix: count > 0 ? 'Investigate failed messages - likely invalid provider IDs or account issues' : undefined
+    };
+  } catch (error) {
+    return {
+      check_name: 'Workspace Error Rates',
+      category: 'consistency',
+      status: 'warning',
+      details: `Error checking: ${error instanceof Error ? error.message : 'Unknown'}`,
+      affected_records: 0
+    };
+  }
+}
+
+/**
+ * CHECK 18: Provider ID Quality Check (Dec 17, 2025)
+ * Checks for invalid linkedin_user_id formats in pending queue items
+ * Valid formats: ACo... or ACw... (Unipile provider IDs)
+ * Invalid: LinkedIn URLs, vanity names, etc.
+ */
+async function checkProviderIdQuality(supabase: any): Promise<QACheck> {
+  try {
+    // Get pending queue items with linkedin_user_id
+    const { data: pendingItems, error } = await supabase
+      .from('send_queue')
+      .select('id, linkedin_user_id')
+      .eq('status', 'pending')
+      .limit(500);
+
+    if (error) throw error;
+
+    if (!pendingItems || pendingItems.length === 0) {
+      return {
+        check_name: 'Provider ID Quality',
+        category: 'database',
+        status: 'pass',
+        details: 'No pending queue items to check',
+        affected_records: 0
+      };
+    }
+
+    // Categorize IDs
+    let validIds = 0;
+    let urlIds = 0;
+    let vanityIds = 0;
+    let otherInvalid = 0;
+
+    for (const item of pendingItems) {
+      const id = item.linkedin_user_id || '';
+
+      if (id.startsWith('ACo') || id.startsWith('ACw')) {
+        validIds++;
+      } else if (id.includes('linkedin.com')) {
+        urlIds++;
+      } else if (id.match(/^[a-zA-Z0-9-]+$/) && id.length < 50) {
+        vanityIds++;
+      } else {
+        otherInvalid++;
+      }
+    }
+
+    const invalidCount = urlIds + vanityIds + otherInvalid;
+    const invalidPercent = Math.round((invalidCount / pendingItems.length) * 100);
+
+    // This is informational - IDs are resolved at send time
+    return {
+      check_name: 'Provider ID Quality',
+      category: 'database',
+      status: invalidPercent > 50 ? 'warning' : 'pass',
+      details: `Queue ID breakdown: ${validIds} valid (ACo/ACw), ${urlIds} URLs, ${vanityIds} vanities, ${otherInvalid} other. ${invalidPercent}% will need resolution at send time.`,
+      affected_records: invalidCount,
+      suggested_fix: invalidCount > 0 ? 'IDs are resolved at send time via Unipile API - this is expected behavior' : undefined
+    };
+  } catch (error) {
+    return {
+      check_name: 'Provider ID Quality',
+      category: 'database',
+      status: 'warning',
+      details: `Error checking: ${error instanceof Error ? error.message : 'Unknown'}`,
+      affected_records: 0
     };
   }
 }
