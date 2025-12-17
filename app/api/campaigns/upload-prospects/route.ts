@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { enrichProspectName } from '@/lib/enrich-prospect-name';
 
+// Increase timeout for large prospect uploads (default 10s is too short)
+export const maxDuration = 60; // 60 seconds
+
 // Helper to normalize LinkedIn URL to hash (vanity name only)
 function normalizeLinkedInUrl(url: string | null | undefined): string | null {
   if (!url) return null;
