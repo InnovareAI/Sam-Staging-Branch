@@ -171,12 +171,12 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
 
 /**
  * Resolve LinkedIn URL or vanity to provider_id
- * If already a provider_id (starts with ACo), return as-is
+ * If already a provider_id (starts with ACo or ACw), return as-is
  * Otherwise, extract vanity from URL and lookup via Unipile
  */
 async function resolveToProviderId(linkedinUserIdOrUrl: string, accountId: string): Promise<string> {
-  // Already a provider_id (ACo format)
-  if (linkedinUserIdOrUrl.startsWith('ACo')) {
+  // Already a provider_id (ACo or ACw format - both are valid LinkedIn provider IDs)
+  if (linkedinUserIdOrUrl.startsWith('ACo') || linkedinUserIdOrUrl.startsWith('ACw')) {
     return linkedinUserIdOrUrl;
   }
 
@@ -624,8 +624,9 @@ export async function POST(req: NextRequest) {
       // 2. Resolve linkedin_user_id to provider_id (handles URLs and vanities)
       let providerId = queueItem.linkedin_user_id;
 
-      // If it's a URL or vanity (not ACo format), resolve it
-      if (!providerId.startsWith('ACo')) {
+      // If it's a URL or vanity (not ACo/ACw format), resolve it
+      // Both ACo and ACw are valid LinkedIn provider_id formats
+      if (!providerId.startsWith('ACo') && !providerId.startsWith('ACw')) {
         console.log(`🔄 linkedin_user_id is URL/vanity, resolving to provider_id...`);
         providerId = await resolveToProviderId(providerId, unipileAccountId);
 
