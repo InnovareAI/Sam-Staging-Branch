@@ -597,12 +597,13 @@ export async function POST(req: NextRequest) {
     const messageType = queueItem.message_type || 'connection_request';
     const isMessengerMessage = messageType.startsWith('direct_message_');
     const isConnectionRequest = messageType === 'connection_request';
+    const isOpenInMail = messageType === 'open_inmail';
 
     console.log(`\n📤 Sending ${messageType} to ${prospect.first_name} ${prospect.last_name}`);
     console.log(`   Campaign: ${campaign.name}`);
     console.log(`   Account: ${linkedinAccount.account_name}`);
     console.log(`   Scheduled: ${queueItem.scheduled_for}`);
-    console.log(`   Type: ${isMessengerMessage ? 'Direct Message' : isConnectionRequest ? 'Connection Request' : 'Follow-up'}`);
+    console.log(`   Type: ${isOpenInMail ? 'Open InMail' : isMessengerMessage ? 'Direct Message' : isConnectionRequest ? 'Connection Request' : 'Follow-up'}`);
 
     // ============================================
     // HUMAN-LIKE DELAYS (Anti-Detection Randomizer)
@@ -664,6 +665,43 @@ export async function POST(req: NextRequest) {
         });
 
         console.log(`✅ Connection request sent successfully`);
+
+      } else if (isOpenInMail) {
+        // Send Open InMail (free InMail to profiles with Open Profile enabled)
+        // Uses Unipile's inmail: true option - free if recipient has Open Profile
+        console.log(`📨 Sending Open InMail...`);
+
+        // Check if recipient has Open Profile (optional - for logging)
+        let isOpenProfile = false;
+        try {
+          const profileCheck = await unipileRequest(`/api/v1/users/${providerId}?account_id=${unipileAccountId}`);
+          isOpenProfile = profileCheck.is_open_profile === true;
+          if (!isOpenProfile) {
+            console.warn(`⚠️ Recipient may not have Open Profile - InMail may use credits`);
+          }
+        } catch (e) {
+          console.warn(`⚠️ Could not check Open Profile status`);
+        }
+
+        const payload = {
+          account_id: unipileAccountId,
+          attendees_ids: [providerId],
+          text: queueItem.message,
+          options: {
+            linkedin: {
+              inmail: true  // Critical: enables InMail mode
+            }
+          }
+        };
+
+        console.log(`📨 Sending InMail:`, JSON.stringify(payload, null, 2));
+
+        await unipileRequest('/api/v1/chats', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        console.log(`✅ ${isOpenProfile ? 'Open InMail (free)' : 'InMail'} sent successfully`);
 
       } else {
         // Send direct message or follow-up
@@ -773,6 +811,22 @@ export async function POST(req: NextRequest) {
           .eq('id', prospect.id);
 
         console.log(`✅ CR sent - follow-up will be scheduled when prospect accepts`);
+
+      } else if (isOpenInMail) {
+        // Open InMail sent - they're not connected, but we initiated contact
+        // Can schedule follow-ups via InMail channel
+        await supabase
+          .from('campaign_prospects')
+          .update({
+            status: 'inmail_sent',
+            contacted_at: new Date().toISOString(),
+            linkedin_user_id: queueItem.linkedin_user_id,
+            follow_up_sequence_index: 0,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', prospect.id);
+
+        console.log(`✅ Open InMail sent - prospect contacted via InMail`);
 
       } else {
         // Messenger message or follow-up sent - update status

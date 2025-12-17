@@ -2838,6 +2838,12 @@ function CampaignBuilder({
       icon: MessageSquare
     },
     {
+      value: 'open_inmail',
+      label: 'Open InMail',
+      description: 'Message anyone with an Open Profile (free, no InMail credits needed). Requires LinkedIn Premium/Sales Navigator.',
+      icon: Send
+    },
+    {
       value: 'email',
       label: 'Email',
       description: 'Send direct emails to prospects without LinkedIn connection requests',

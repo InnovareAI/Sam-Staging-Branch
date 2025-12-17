@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare, Trash2, UserPlus, MessageSquare, Loader2, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare, Trash2, UserPlus, MessageSquare, Loader2, AlertTriangle, CheckCircle, XCircle, Send } from 'lucide-react';
 import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -162,7 +162,7 @@ function DuplicateWarningBadge({
 
 interface DataCollectionHubProps {
   onDataCollected: (data: ProspectData[], source: string) => void
-  onApprovalComplete?: (approvedData: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger', draftId?: string) => void
+  onApprovalComplete?: (approvedData: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger' | 'inmail' | 'open_inmail', draftId?: string) => void
   className?: string
   initialUploadedData?: ProspectData[]
   userSession?: any  // Pass session from parent to avoid auth issues
@@ -1940,7 +1940,7 @@ export default function DataCollectionHub({
   }
 
   // Helper function to perform the actual navigation to Campaign Hub
-  const performCampaignHubNavigation = async (approvedProspects: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger') => {
+  const performCampaignHubNavigation = async (approvedProspects: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger' | 'inmail' | 'open_inmail') => {
     // CRITICAL FIX: Save approved prospects to database FIRST to get prospect_ids
     setLoading(true)
     setLoadingMessage(`Saving ${approvedProspects.length} approved prospects...`)
@@ -1989,7 +1989,7 @@ export default function DataCollectionHub({
   }
 
   // Proceed to Campaign Hub with approved prospects ONLY (disregard rejected and pending)
-  const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger') => {
+  const handleProceedToCampaignHub = async (prospectsOverride?: ProspectData[], campaignType?: 'email' | 'linkedin' | 'connector' | 'messenger' | 'inmail' | 'open_inmail') => {
     console.log('🎯 handleProceedToCampaignHub CALLED:', {
       prospectsOverride: prospectsOverride?.length,
       campaignType,
@@ -3524,7 +3524,7 @@ function CampaignTypeModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSelectType: (type: 'email' | 'linkedin' | 'connector' | 'messenger', campaignName?: string) => void;
+  onSelectType: (type: 'email' | 'linkedin' | 'connector' | 'messenger' | 'inmail' | 'open_inmail', campaignName?: string) => void;
   prospectCount: number;
   prospects?: any[];
   hasEmailAccount?: boolean;
@@ -3685,6 +3685,48 @@ function CampaignTypeModal({
               </div>
             </div>
           </button>
+
+          {/* LinkedIn InMail Option (Premium Credits) */}
+          <button
+            onClick={() => connectorCount > 0 && onSelectType('inmail', campaignName)}
+            disabled={connectorCount === 0}
+            className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
+              connectorCount === 0
+                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                : 'border-gray-700 hover:border-amber-500 hover:bg-gray-750'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${connectorCount > 0 ? 'bg-amber-600/20 text-amber-400 group-hover:bg-amber-600/30' : 'bg-gray-600/20 text-gray-500'}`}>
+                <Send className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <div className="text-white font-semibold">LinkedIn InMail</div>
+                <div className="text-gray-400 text-sm">Message anyone (uses Premium InMail credits)</div>
+              </div>
+            </div>
+          </button>
+
+          {/* LinkedIn Open InMail Option (Free) */}
+          <button
+            onClick={() => connectorCount > 0 && onSelectType('open_inmail', campaignName)}
+            disabled={connectorCount === 0}
+            className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
+              connectorCount === 0
+                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                : 'border-gray-700 hover:border-teal-500 hover:bg-gray-750'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${connectorCount > 0 ? 'bg-teal-600/20 text-teal-400 group-hover:bg-teal-600/30' : 'bg-gray-600/20 text-gray-500'}`}>
+                <Send className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <div className="text-white font-semibold">LinkedIn Open InMail</div>
+                <div className="text-gray-400 text-sm">Free InMail to Open Profiles (no credits needed)</div>
+              </div>
+            </div>
+          </button>
         </div>
 
         <button
@@ -3710,7 +3752,7 @@ function PreflightResultsModal({
   isOpen: boolean;
   isLoading: boolean;
   results: any;
-  campaignType: 'email' | 'linkedin' | 'connector' | 'messenger' | null;
+  campaignType: 'email' | 'linkedin' | 'connector' | 'messenger' | 'inmail' | 'open_inmail' | null;
   onClose: () => void;
   onProceed: () => void;
 }) {
