@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare, Trash2, UserPlus, MessageSquare, Loader2, AlertTriangle, CheckCircle, XCircle, Send } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, ChevronRight, Download, Search, Tag, Users, X, Upload, FileText, Link, Sparkles, Mail, Phone, Linkedin, Star, Plus, CheckSquare, Trash2, UserPlus, MessageSquare, Loader2, AlertTriangle, AlertCircle, CheckCircle, XCircle, Send } from 'lucide-react';
 import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -508,6 +508,16 @@ export default function DataCollectionHub({
   const [availableProspects, setAvailableProspects] = useState<any[]>([])
   const [loadingAvailableProspects, setLoadingAvailableProspects] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0) // Trigger to force refresh
+
+  // Data validation modal state
+  const [showDataValidationModal, setShowDataValidationModal] = useState(false)
+  const [dataValidationResults, setDataValidationResults] = useState<{
+    totalProspects: number
+    missingLinkedIn: number
+    missingEmail: number
+    missingConnectionDegree: number
+    prospects: any[]
+  } | null>(null)
 
   // Missing state variables
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -1032,6 +1042,35 @@ export default function DataCollectionHub({
     return () => clearInterval(intervalId)
   }, [actualWorkspaceId, workspacesLoading, userVerified, activeTab, refreshTrigger]) // Refetch when tab changes or when explicitly triggered
 
+  // Helper function to validate prospect data and show modal if issues found
+  const validateAndShowModal = (prospects: any[]) => {
+    const hasLinkedIn = (p: any) => p.linkedinUrl || p.linkedin_url || p.contact?.linkedin_url
+    const hasEmail = (p: any) => {
+      const email = p.email || p.email_address || p.contact?.email
+      return email && typeof email === 'string' && email.trim().length > 0
+    }
+    const hasConnectionDegree = (p: any) => {
+      const degree = p.connectionDegree || p.connection_degree
+      return degree !== undefined && degree !== null && degree !== ''
+    }
+
+    const missingLinkedIn = prospects.filter(p => !hasLinkedIn(p)).length
+    const missingEmail = prospects.filter(p => !hasEmail(p)).length
+    const missingConnectionDegree = prospects.filter(p => !hasConnectionDegree(p)).length
+
+    // Only show modal if there are issues
+    if (missingLinkedIn > 0 || missingEmail > 0 || missingConnectionDegree > 0) {
+      setDataValidationResults({
+        totalProspects: prospects.length,
+        missingLinkedIn,
+        missingEmail,
+        missingConnectionDegree,
+        prospects
+      })
+      setShowDataValidationModal(true)
+    }
+  }
+
   // CSV Upload Handler
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -1066,7 +1105,10 @@ export default function DataCollectionHub({
         onDataCollected(prospects, 'csv_upload')
         setShowApprovalPanel(true)
         setActiveTab('approve')
-        
+
+        // Show data validation modal if there are missing fields
+        validateAndShowModal(prospects)
+
         toastError(`✅ CSV uploaded successfully!\n\n📊 Results:\n• ${data.validation_results?.total_records || 0} total records\n• ${data.validation_results?.valid_records || 0} valid prospects\n• ${data.validation_results?.quality_score ? (data.validation_results.quality_score * 100).toFixed(0) : 0}% quality score\n\nProceeding to approval...`)
       } else {
         throw new Error(data.error || 'Failed to upload CSV')
@@ -1152,7 +1194,10 @@ export default function DataCollectionHub({
         onDataCollected(linkedinData, 'unipile')
         setShowApprovalPanel(true)
         setActiveTab('approve')
-        
+
+        // Show data validation modal if there are missing fields
+        validateAndShowModal(linkedinData)
+
         toastError(`✅ LinkedIn data collected!\n\n📊 Found ${linkedinData.length} prospects\nProceeding to approval...`)
       } else {
         toastError('No LinkedIn prospects found for your search query.')
@@ -1181,7 +1226,10 @@ export default function DataCollectionHub({
       onDataCollected(enrichedData, 'bright-data')
       setShowApprovalPanel(true)
       setActiveTab('approve')
-      
+
+      // Show data validation modal if there are missing fields
+      validateAndShowModal(enrichedData)
+
       toastError(`✅ Bright Data enrichment complete!\n\n📊 Found ${enrichedData.length} enriched prospects\nProceeding to approval...`)
     } catch (error) {
       console.error('Bright Data error:', error)
@@ -3264,6 +3312,20 @@ export default function DataCollectionHub({
         confirmText={confirmModal.type === 'danger' ? 'Delete' : 'Confirm'}
       />
 
+      {/* Data Validation Modal - shows missing fields after data upload */}
+      <DataValidationModal
+        isOpen={showDataValidationModal}
+        onClose={() => {
+          setShowDataValidationModal(false)
+          setDataValidationResults(null)
+        }}
+        onProceed={() => {
+          setShowDataValidationModal(false)
+          // Data stays in prospectData, user can proceed to approve/campaign
+        }}
+        validationResults={dataValidationResults}
+      />
+
       {/* Campaign Type Selection Modal */}
       <CampaignTypeModal
         isOpen={campaignModal.isOpen}
@@ -3527,6 +3589,164 @@ async function collectBrightData(query: string): Promise<ProspectData[]> {
     confidence: Math.round((Math.random() * 0.3 + 0.7) * 100) / 100,
     complianceFlags: []
   }))
+}
+
+// Data Validation Modal Component - shows missing fields after data upload
+function DataValidationModal({
+  isOpen,
+  onClose,
+  onProceed,
+  validationResults
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onProceed: () => void;
+  validationResults: {
+    totalProspects: number;
+    missingLinkedIn: number;
+    missingEmail: number;
+    missingConnectionDegree: number;
+    prospects: any[];
+  } | null;
+}) {
+  if (!isOpen || !validationResults) return null;
+
+  const hasIssues = validationResults.missingLinkedIn > 0 ||
+                    validationResults.missingEmail > 0 ||
+                    validationResults.missingConnectionDegree > 0;
+
+  const allMissingLinkedIn = validationResults.missingLinkedIn === validationResults.totalProspects;
+  const allMissingEmail = validationResults.missingEmail === validationResults.totalProspects;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 border border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            {hasIssues ? (
+              <>
+                <AlertCircle className="w-5 h-5 text-amber-400" />
+                Data Quality Review
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-5 h-5 text-green-400" />
+                Data Looks Good!
+              </>
+            )}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Summary */}
+          <div className="bg-gray-700/50 rounded-lg p-4">
+            <p className="text-gray-300 text-sm mb-3">
+              Loaded <span className="font-bold text-white">{validationResults.totalProspects}</span> prospects
+            </p>
+
+            {hasIssues && (
+              <div className="space-y-2">
+                {validationResults.missingLinkedIn > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                      Missing LinkedIn URL
+                    </span>
+                    <span className={`font-medium ${allMissingLinkedIn ? 'text-red-400' : 'text-amber-400'}`}>
+                      {validationResults.missingLinkedIn} prospects
+                    </span>
+                  </div>
+                )}
+
+                {validationResults.missingEmail > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      Missing Email
+                    </span>
+                    <span className={`font-medium ${allMissingEmail ? 'text-red-400' : 'text-amber-400'}`}>
+                      {validationResults.missingEmail} prospects
+                    </span>
+                  </div>
+                )}
+
+                {validationResults.missingConnectionDegree > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      Missing Connection Degree
+                    </span>
+                    <span className="text-amber-400 font-medium">
+                      {validationResults.missingConnectionDegree} prospects
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Impact explanation */}
+          {hasIssues && (
+            <div className="bg-amber-900/20 border border-amber-700/50 rounded-lg p-4">
+              <h4 className="text-amber-400 text-sm font-medium mb-2">What this means:</h4>
+              <ul className="text-gray-300 text-sm space-y-1">
+                {validationResults.missingLinkedIn > 0 && (
+                  <li>• {validationResults.missingLinkedIn} prospects cannot be used for LinkedIn campaigns</li>
+                )}
+                {validationResults.missingEmail > 0 && (
+                  <li>• {validationResults.missingEmail} prospects cannot be used for Email campaigns</li>
+                )}
+                {validationResults.missingConnectionDegree > 0 && (
+                  <li>• {validationResults.missingConnectionDegree} prospects cannot be properly filtered for Messenger campaigns (1st degree only)</li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* Eligible counts */}
+          <div className="bg-gray-700/30 rounded-lg p-4">
+            <h4 className="text-white text-sm font-medium mb-2">Campaign Eligibility:</h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">LinkedIn Campaigns:</span>
+                <span className="text-white font-medium">
+                  {validationResults.totalProspects - validationResults.missingLinkedIn} eligible
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400">Email Campaigns:</span>
+                <span className="text-white font-medium">
+                  {validationResults.totalProspects - validationResults.missingEmail} eligible
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors"
+          >
+            Go Back & Fix Data
+          </button>
+          <button
+            onClick={onProceed}
+            className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white transition-colors"
+          >
+            {hasIssues ? 'Proceed Anyway' : 'Continue'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Campaign Type Selection Modal Component
