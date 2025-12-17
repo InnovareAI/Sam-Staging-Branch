@@ -537,7 +537,8 @@ async function checkStuckCampaigns(supabase: any): Promise<QACheck> {
   const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
   // Find active/running campaigns that should be sending but have no recent activity
-  // IMPORTANT: Skip email-only campaigns (campaign_type = 'email_only') - they use email_queue
+  // IMPORTANT: Skip email campaigns - they use email_queue or are inbox agents (monitor-only)
+  // Both 'email' and 'email_only' types should be excluded from send_queue checks
   const { data: activeCampaigns } = await supabase
     .from('campaigns')
     .select(`
@@ -545,7 +546,7 @@ async function checkStuckCampaigns(supabase: any): Promise<QACheck> {
       workspaces(name)
     `)
     .in('status', ['active', 'running'])
-    .or('campaign_type.is.null,campaign_type.neq.email_only');
+    .or('campaign_type.is.null,campaign_type.not.in.(email,email_only)');
 
   if (!activeCampaigns || activeCampaigns.length === 0) {
     return {
@@ -1804,7 +1805,8 @@ async function autoFixStuckCampaigns(supabase: any): Promise<AutoFixResult> {
     const fixDetails: string[] = [];
 
     // 1. Find campaigns with approved prospects not in queue
-    // IMPORTANT: Skip email-only campaigns - they use email_queue, not send_queue
+    // IMPORTANT: Skip email campaigns - they use email_queue or are inbox agents (monitor-only)
+    // Both 'email' and 'email_only' types should be excluded from send_queue checks
     const { data: activeCampaigns } = await supabase
       .from('campaigns')
       .select(`
@@ -1812,7 +1814,7 @@ async function autoFixStuckCampaigns(supabase: any): Promise<AutoFixResult> {
         message_templates, connection_message, linkedin_config, campaign_type
       `)
       .in('status', ['active', 'running'])
-      .or('campaign_type.is.null,campaign_type.neq.email_only');
+      .or('campaign_type.is.null,campaign_type.not.in.(email,email_only)');
 
     if (!activeCampaigns || activeCampaigns.length === 0) {
       return {
