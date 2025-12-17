@@ -93,11 +93,13 @@ export async function POST(request: NextRequest) {
         }
 
         // Map user_unipile_accounts to same shape
+        // Note: user_unipile_accounts uses 'active' or 'connected' for valid status
+        const isValid = uniAccount.connection_status === 'connected' || uniAccount.connection_status === 'active'
         linkedinAccount = {
           id: uniAccount.id,
           account_name: uniAccount.account_name,
-          connection_status: uniAccount.connection_status,
-          is_active: uniAccount.connection_status === 'connected'
+          connection_status: isValid ? 'connected' : uniAccount.connection_status,
+          is_active: isValid
         }
       }
 
