@@ -210,9 +210,55 @@ export async function POST(req: NextRequest) {
           }
 
           case 'inmail': {
-            // InMail requires Sales Navigator
-            // TODO: Implement InMail via Unipile
-            throw new Error('InMail sending not yet implemented - use LinkedIn');
+            // InMail requires LinkedIn Premium/Sales Navigator/Recruiter
+            const linkedinAccount = campaign?.workspace_accounts as any;
+            const unipileAccountId = linkedinAccount?.unipile_account_id;
+
+            if (!unipileAccountId) {
+              throw new Error('No LinkedIn account configured for this campaign');
+            }
+
+            // Get recipient's LinkedIn provider_id
+            let recipientProviderId = prospect.linkedin_user_id;
+
+            if (!recipientProviderId) {
+              // Try to get from LinkedIn URL
+              const vanityMatch = prospect.linkedin_url?.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+              if (!vanityMatch) {
+                throw new Error('Cannot send InMail - no LinkedIn profile identifier');
+              }
+
+              // Fetch profile to get provider_id
+              const profile = await unipileRequest(
+                `/api/v1/users/${vanityMatch[1]}?account_id=${unipileAccountId}`
+              );
+              recipientProviderId = profile.provider_id;
+
+              if (!recipientProviderId) {
+                throw new Error('Could not resolve LinkedIn profile to provider_id');
+              }
+            }
+
+            console.log(`📨 Sending InMail to ${prospectName}...`);
+
+            // Send InMail via Unipile
+            // Uses /api/v1/chats endpoint with inmail: true option
+            const inmailResponse = await unipileRequest('/api/v1/chats', {
+              method: 'POST',
+              body: JSON.stringify({
+                account_id: unipileAccountId,
+                attendees_ids: [recipientProviderId],
+                text: draft.message,
+                options: {
+                  linkedin: {
+                    inmail: true  // Critical: enables InMail mode
+                  }
+                }
+              })
+            });
+
+            console.log(`✅ InMail sent to ${prospectName} (Chat ID: ${inmailResponse.id})`);
+            break;
           }
 
           default:

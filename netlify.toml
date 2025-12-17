@@ -226,11 +226,12 @@
 # ============================================
 
 # Real-time Error Monitor: Check for critical campaign errors every 5 minutes
-# DISABLED - Too noisy, sending false alerts for auto-cleaned stale items
-# Detects: failed sends, stuck queue, stuck prospects, cron gaps, queue anomalies
-# Alerts to Google Chat immediately on critical issues
-# [functions."realtime-error-monitor"]
-#   schedule = "*/5 * * * *"
+# RE-ENABLED (Dec 17): Smart filtering added to ignore auto-cleaned items
+# Filters out: stale/expired items, rate limit delays, auto-cleanups
+# Only alerts on REAL failures that need attention
+# Detects: failed sends, stuck prospects, unqueued pending prospects
+[functions."realtime-error-monitor"]
+  schedule = "*/5 * * * *"
 
 # ============================================
 # ORPHAN PROSPECT RECOVERY (Dec 10, 2025)

@@ -45,18 +45,33 @@ export async function POST(req: NextRequest) {
 
   try {
     // CHECK 1: Failed sends in last 15 minutes
+    // SMART FILTER (Dec 17): Ignore auto-cleaned stale items (error contains "stale" or "expired")
     const { data: failedSends, error: failedError } = await supabase
       .from('send_queue')
       .select('id, campaign_id, error_message, updated_at')
       .eq('status', 'failed')
       .gte('updated_at', fifteenMinAgo.toISOString());
 
-    if (!failedError && failedSends && failedSends.length > 0) {
+    // Filter out auto-cleaned items to avoid noise
+    const realFailures = (failedSends || []).filter(f => {
+      const msg = (f.error_message || '').toLowerCase();
+      // Ignore auto-fix cleanups
+      if (msg.includes('stale') || msg.includes('expired') || msg.includes('auto-cleaned')) {
+        return false;
+      }
+      // Ignore rate limit delays (expected behavior)
+      if (msg.includes('rate limit') || msg.includes('too many requests')) {
+        return false;
+      }
+      return true;
+    });
+
+    if (!failedError && realFailures.length > 0) {
       errors.push({
         name: 'Failed Sends (15min)',
-        critical: failedSends.length >= 3,
-        count: failedSends.length,
-        details: failedSends.slice(0, 3).map(f => f.error_message).join('; ')
+        critical: realFailures.length >= 3,
+        count: realFailures.length,
+        details: realFailures.slice(0, 3).map(f => f.error_message).join('; ')
       });
     }
 
