@@ -40,19 +40,20 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Get all workspaces with email accounts that have email campaigns
+    // Get all workspaces with email/Google accounts (for email polling)
+    // FIXED (Dec 17): Query user_unipile_accounts instead of workspace_accounts
+    // Google accounts (platform: GOOGLE) are email accounts for inbox polling
     const { data: emailAccounts, error: accountsError } = await supabase
-      .from('workspace_accounts')
+      .from('user_unipile_accounts')
       .select(`
         id,
         workspace_id,
         account_name,
         unipile_account_id,
-        account_type
+        platform
       `)
-      .eq('account_type', 'email')
-      .eq('connection_status', 'connected')
-      .eq('is_active', true);
+      .in('platform', ['GOOGLE', 'OUTLOOK', 'EMAIL'])
+      .eq('connection_status', 'active');
 
     if (accountsError) {
       console.error('❌ Error fetching email accounts:', accountsError);
@@ -85,7 +86,8 @@ export async function POST(request: NextRequest) {
         results.accounts_processed.push(account.account_name);
 
         // Get prospects for this workspace that might have replies
-        // (email_sent status, no responded_at)
+        // FIXED (Dec 17): Check ALL email campaigns in the workspace, not just by email_account_id
+        // This catches replies for campaigns where email_account_id may not be set
         const { data: prospects, error: prospectsError } = await supabase
           .from('campaign_prospects')
           .select(`
@@ -98,18 +100,19 @@ export async function POST(request: NextRequest) {
             status,
             responded_at,
             campaign_id,
-            campaigns (
+            campaigns!inner (
+              id,
               workspace_id,
-              email_account_id
+              campaign_type
             )
           `)
           .eq('campaigns.workspace_id', account.workspace_id)
-          .eq('campaigns.email_account_id', account.unipile_account_id)
-          .in('status', ['email_sent', 'follow_up_sent'])
+          .in('campaigns.campaign_type', ['email', 'email_only', 'multi_channel'])
+          .in('status', ['email_sent', 'follow_up_sent', 'contacted', 'pending'])
           .is('responded_at', null)
           .not('email', 'is', null)
           .order('updated_at', { ascending: false })
-          .limit(30);
+          .limit(50);
 
         if (prospectsError || !prospects || prospects.length === 0) {
           console.log(`   ℹ️ No prospects to check for ${account.account_name}`);
