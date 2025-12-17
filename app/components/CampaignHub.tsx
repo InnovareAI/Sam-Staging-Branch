@@ -6846,6 +6846,68 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     }
   }, [autoOpenApprovals]);
 
+  // REAL-TIME SUBSCRIPTION: Listen for campaign status changes (Dec 17, 2025)
+  // This ensures the UI always reflects the correct campaign status even when changes
+  // happen from another browser tab, another user, or backend processes
+  useEffect(() => {
+    if (!actualWorkspaceId) return;
+
+    const supabase = createClient();
+
+    // Subscribe to campaign changes for this workspace
+    const channel = supabase
+      .channel(`campaigns-${actualWorkspaceId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'campaigns',
+          filter: `workspace_id=eq.${actualWorkspaceId}`
+        },
+        (payload) => {
+          console.log('📡 [REALTIME] Campaign updated:', payload.new?.name, 'Status:', payload.new?.status);
+          // Invalidate campaigns query to refetch fresh data
+          queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'campaigns',
+          filter: `workspace_id=eq.${actualWorkspaceId}`
+        },
+        (payload) => {
+          console.log('📡 [REALTIME] New campaign created:', payload.new?.name);
+          queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'campaigns',
+          filter: `workspace_id=eq.${actualWorkspaceId}`
+        },
+        () => {
+          console.log('📡 [REALTIME] Campaign deleted');
+          queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 [REALTIME] Subscription status:', status);
+      });
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('📡 [REALTIME] Cleaning up campaign subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [actualWorkspaceId, queryClient]);
+
   // Campaign filter state ('pending' is now 'Drafts' tab - approved prospects waiting for campaign creation)
   // Default to 'pending' (Drafts) when coming from prospect approval page with initialProspects
   const getDefaultCampaignFilter = () => {
