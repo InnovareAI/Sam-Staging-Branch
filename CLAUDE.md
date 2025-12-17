@@ -4,6 +4,52 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 🛑🛑🛑 ABSOLUTE PROHIBITION: DO NOT MODIFY WORKING SYSTEMS 🛑🛑🛑
+
+**UPDATED: DECEMBER 17, 2025 - THIS IS NON-NEGOTIABLE**
+
+### ⛔ FORBIDDEN ACTIONS (REQUIRE EXPLICIT HUMAN CONFIRMATION):
+
+**YOU MUST ASK FOR EXPLICIT HUMAN CONFIRMATION BEFORE:**
+
+1. **Modifying ANY database table structure** (migrations, ALTER TABLE, etc.)
+2. **Changing ANY foreign key relationships**
+3. **Modifying the `user_unipile_accounts` table or its relationships**
+4. **Modifying the `campaigns` table schema**
+5. **Changing how `linkedin_account_id` is stored or referenced**
+6. **Modifying workspace-account associations**
+7. **Deleting or archiving ANY data**
+8. **Changing RLS policies**
+9. **Modifying cron job schedules or logic**
+10. **"Fixing" or "improving" any system that is currently working**
+
+### 🔒 PROTECTED TABLES (DO NOT TOUCH WITHOUT HUMAN APPROVAL):
+
+- `user_unipile_accounts` - LinkedIn account storage
+- `campaigns` - Campaign definitions
+- `campaign_prospects` - Prospect data
+- `send_queue` - Message queue
+- `workspace_members` - Workspace access
+- `workspaces` - Workspace definitions
+
+### ✅ BEFORE ANY DATABASE OR SYSTEM CHANGE:
+
+1. **STOP** and describe the exact change you want to make
+2. **WAIT** for explicit human confirmation ("yes", "approved", "do it")
+3. **DO NOT** assume silence or context means approval
+4. **DO NOT** chain changes together without separate approvals
+
+### 📜 WHY THIS RULE EXISTS:
+
+- Multiple "fixes" have broken the linkedin_account_id relationships
+- Data has been lost due to well-intentioned changes
+- Working systems have been destroyed by "improvements"
+- The workspace_members table was emptied by a "fix"
+
+**If you are unsure, ASK. If it's working, DON'T TOUCH IT.**
+
+---
+
 ## 🚨🚨🚨 CRITICAL: CAMPAIGN EXECUTION ARCHITECTURE 🚨🚨🚨
 
 **READ THIS FIRST - NOVEMBER 22, 2025**
