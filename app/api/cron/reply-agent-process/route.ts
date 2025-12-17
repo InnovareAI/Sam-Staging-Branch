@@ -436,8 +436,20 @@ Respond with just the intent category (e.g., "INTERESTED").`;
 
     // 3. COMPANY WEBSITE - COMPREHENSIVE SCRAPING (SOURCE OF TRUTH)
     // Extract: SEO keywords, products/services, FAQ, blog posts
-    // Priority: stored company_website > website from LinkedIn company page
-    const companyWebsite = prospect.company_website || companyWebsiteFromLinkedIn;
+    // Priority: stored company_website > website from LinkedIn company page > derived from email domain
+    // ENHANCED (Dec 17): For email inbox agent mode, extract domain from prospect email if no website set
+    let companyWebsite = prospect.company_website || companyWebsiteFromLinkedIn;
+
+    // Fallback: derive website from email domain (for inbox agent / email-only campaigns)
+    if (!companyWebsite && prospect.email) {
+      const emailDomain = prospect.email.split('@')[1];
+      // Skip common free email providers
+      const freeEmailDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'mail.com', 'protonmail.com'];
+      if (emailDomain && !freeEmailDomains.includes(emailDomain.toLowerCase())) {
+        companyWebsite = `https://${emailDomain}`;
+        console.log(`   📧 Derived website from email: ${companyWebsite}`);
+      }
+    }
     if (companyWebsite) {
       console.log(`   🌐 Scraping website: ${companyWebsite}`);
       try {

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Prevent 504 timeout on bulk campaign adds
 
 /**
  * POST /api/prospects/add-to-campaign

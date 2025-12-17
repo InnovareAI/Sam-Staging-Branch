@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { normalizeFullName } from '@/lib/enrich-prospect-name'
 
+// Prevent 504 timeout on large CSV uploads
+export const maxDuration = 60 // 60 seconds
+
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies()

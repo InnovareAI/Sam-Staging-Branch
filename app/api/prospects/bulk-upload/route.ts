@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/supabase/server';
 
+// Prevent 504 timeout on large bulk uploads
+export const maxDuration = 60; // 60 seconds
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = createClient();

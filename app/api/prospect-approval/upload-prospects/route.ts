@@ -4,6 +4,9 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { normalizeCompanyName } from '@/lib/enrich-prospect-name';
 
+// Prevent 504 timeout on large prospect uploads
+export const maxDuration = 60; // 60 seconds
+
 // Helper to normalize LinkedIn URL to hash (vanity name only)
 function normalizeLinkedInUrl(url: string | null | undefined): string | null {
   if (!url) return null;

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { parse } from 'csv-parse/sync';
 
+// Prevent 504 timeout on large uploads with LinkedIn resolution
+export const maxDuration = 120; // 120 seconds (LinkedIn resolution takes longer)
+
 // Enhanced Campaign Upload with LinkedIn ID Resolution
 // Handles CSV upload and automatically resolves LinkedIn IDs for existing connections
 
