@@ -3833,11 +3833,14 @@ Would you like me to adjust these or create more variations?`
       prospects: prospects,
       messages: {
         connection_request: connectionMessage,
-        follow_up_1: followUpMessages[0] || '',
-        follow_up_2: followUpMessages[1] || '',
-        follow_up_3: followUpMessages[2] || '',
-        follow_up_4: followUpMessages[3] || '',
-        follow_up_5: followUpMessages[4] || ''
+        // CRITICAL FIX (Dec 17): For messenger campaigns, the "Initial Message" is in alternativeMessage,
+        // NOT in followUpMessages[0]. The approval screen displays follow_up_1 as "INITIAL MESSAGE"
+        // for messenger campaigns, so we need to put alternativeMessage there.
+        follow_up_1: campaignType === 'messenger' ? (alternativeMessage || '') : (followUpMessages[0] || ''),
+        follow_up_2: campaignType === 'messenger' ? (followUpMessages[0] || '') : (followUpMessages[1] || ''),
+        follow_up_3: campaignType === 'messenger' ? (followUpMessages[1] || '') : (followUpMessages[2] || ''),
+        follow_up_4: campaignType === 'messenger' ? (followUpMessages[2] || '') : (followUpMessages[3] || ''),
+        follow_up_5: campaignType === 'messenger' ? (followUpMessages[3] || '') : (followUpMessages[4] || '')
       },
       // Include message timing/cadence settings
       message_delays: campaignSettings.message_delays || [{ value: 3, unit: 'days' }, { value: 5, unit: 'days' }, { value: 1, unit: 'weeks' }, { value: 2, unit: 'weeks' }, { value: 1, unit: 'months' }],
