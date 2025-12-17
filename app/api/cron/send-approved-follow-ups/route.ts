@@ -218,8 +218,27 @@ export async function POST(req: NextRequest) {
               throw new Error('No LinkedIn account configured for this campaign');
             }
 
+            // Check InMail credit balance before sending
+            console.log(`📊 Checking InMail balance for account...`);
+            let inmailBalance: { credits_remaining?: number; is_open_profile?: boolean } = {};
+            try {
+              inmailBalance = await unipileRequest(
+                `/api/v1/linkedin/inmail_balance?account_id=${unipileAccountId}`
+              );
+              console.log(`   Credits remaining: ${inmailBalance.credits_remaining ?? 'unknown'}`);
+            } catch (balanceError) {
+              // Balance check failed - continue anyway, let the send attempt reveal the issue
+              console.warn(`   ⚠️ Could not check InMail balance: ${balanceError}`);
+            }
+
+            // Warn if low on credits (but don't block - may use Open InMail)
+            if (inmailBalance.credits_remaining !== undefined && inmailBalance.credits_remaining === 0) {
+              console.warn(`   ⚠️ No InMail credits remaining - may fail unless recipient has Open Profile`);
+            }
+
             // Get recipient's LinkedIn provider_id
             let recipientProviderId = prospect.linkedin_user_id;
+            let isOpenProfile = false;
 
             if (!recipientProviderId) {
               // Try to get from LinkedIn URL
@@ -228,18 +247,24 @@ export async function POST(req: NextRequest) {
                 throw new Error('Cannot send InMail - no LinkedIn profile identifier');
               }
 
-              // Fetch profile to get provider_id
+              // Fetch profile to get provider_id and check if Open Profile
               const profile = await unipileRequest(
                 `/api/v1/users/${vanityMatch[1]}?account_id=${unipileAccountId}`
               );
               recipientProviderId = profile.provider_id;
+              isOpenProfile = profile.is_open_profile === true;
 
               if (!recipientProviderId) {
                 throw new Error('Could not resolve LinkedIn profile to provider_id');
               }
             }
 
-            console.log(`📨 Sending InMail to ${prospectName}...`);
+            // Log InMail type being used
+            if (isOpenProfile) {
+              console.log(`📨 Sending Open InMail (free) to ${prospectName}...`);
+            } else {
+              console.log(`📨 Sending Premium InMail to ${prospectName} (uses 1 credit)...`);
+            }
 
             // Send InMail via Unipile
             // Uses /api/v1/chats endpoint with inmail: true option
