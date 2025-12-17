@@ -1,169 +1,154 @@
-import { createClient } from '@supabase/supabase-js';
+#!/usr/bin/env node
 
-const supabase = createClient(
-  'https://latxadqrvrrrcvkktrog.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY5OTk4NiwiZXhwIjoyMDY4Mjc1OTg2fQ.nCcqwHSwGtqatcMmb1uanGxsL4DbD8woPwezMAE41OQ'
-);
+const SUPABASE_URL = "https://latxadqrvrrrcvkktrog.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY5OTk4NiwiZXhwIjoyMDY4Mjc1OTg2fQ.nCcqwHSwGtqatcMmb1uanGxsL4DbD8woPwezMAE41OQ";
 
-async function healthCheck() {
-  const now = new Date();
-  console.log('=== SYSTEM HEALTH CHECK ===');
-  console.log('Time:', now.toISOString());
-  console.log('');
+async function query(endpoint, params = {}) {
+  const url = new URL(`${SUPABASE_URL}/rest/v1/${endpoint}`);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, value));
 
-  // 1. Queue status
-  console.log('📬 SEND QUEUE:');
-  const { count: overdue } = await supabase
-    .from('send_queue')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'pending')
-    .lt('scheduled_for', now.toISOString());
-  console.log('  Overdue:', overdue || 0, overdue > 0 ? '⚠️' : '✅');
-
-  const { count: pending } = await supabase
-    .from('send_queue')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'pending');
-  console.log('  Pending:', pending || 0);
-
-  const { count: failed } = await supabase
-    .from('send_queue')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'failed');
-  console.log('  Failed:', failed || 0, failed > 10 ? '⚠️' : '');
-
-  // 2. Recent failures (last 24h)
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const { data: recentFailures } = await supabase
-    .from('send_queue')
-    .select('error_message')
-    .eq('status', 'failed')
-    .gte('updated_at', yesterday.toISOString())
-    .limit(20);
-
-  if (recentFailures && recentFailures.length > 0) {
-    console.log('');
-    console.log('❌ RECENT FAILURES (24h):');
-    const errorCounts = {};
-    recentFailures.forEach(f => {
-      const msg = (f.error_message || 'Unknown').substring(0, 60);
-      errorCounts[msg] = (errorCounts[msg] || 0) + 1;
-    });
-    Object.entries(errorCounts).forEach(([msg, count]) => {
-      console.log('  ', count + 'x:', msg);
-    });
-  }
-
-  // 3. Reply drafts
-  console.log('');
-  console.log('📝 REPLY DRAFTS:');
-  const { count: pendingDrafts } = await supabase
-    .from('reply_agent_drafts')
-    .select('*', { count: 'exact', head: true })
-    .in('status', ['pending_approval', 'pending_generation'])
-    .gt('expires_at', now.toISOString());
-  console.log('  Awaiting approval:', pendingDrafts || 0);
-
-  const { count: expiredDrafts } = await supabase
-    .from('reply_agent_drafts')
-    .select('*', { count: 'exact', head: true })
-    .in('status', ['pending_approval', 'pending_generation'])
-    .lt('expires_at', now.toISOString());
-  console.log('  Expired:', expiredDrafts || 0, expiredDrafts > 5 ? '⚠️ (consider cleanup)' : '');
-
-  // 4. Active campaigns check
-  console.log('');
-  console.log('📊 ACTIVE CAMPAIGNS:');
-  const { data: activeCampaigns } = await supabase
-    .from('campaigns')
-    .select('id, name, linkedin_account_id, campaign_type')
-    .eq('status', 'active');
-
-  if (activeCampaigns) {
-    console.log('  Count:', activeCampaigns.length);
-    let missingAccount = 0;
-    for (const c of activeCampaigns) {
-      const isEmailOnly = c.campaign_type === 'email_only';
-      const hasLinkedIn = c.linkedin_account_id;
-      if (!isEmailOnly && !hasLinkedIn) {
-        missingAccount++;
-        console.log('  ⚠️ Missing LinkedIn account:', c.name);
-      }
+  const response = await fetch(url.toString(), {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Prefer': 'count=exact'
     }
-    if (missingAccount === 0) {
-      console.log('  All LinkedIn campaigns have accounts ✅');
-    }
-  }
+  });
 
-  // 5. Unipile accounts status
-  console.log('');
-  console.log('🔗 UNIPILE ACCOUNTS:');
-  const { data: accounts } = await supabase
-    .from('user_unipile_accounts')
-    .select('account_name, connection_status, platform')
-    .eq('platform', 'LINKEDIN');
-
-  if (accounts) {
-    const active = accounts.filter(a => a.connection_status === 'active').length;
-    const inactive = accounts.filter(a => a.connection_status !== 'active').length;
-    console.log('  Active:', active, '✅');
-    if (inactive > 0) {
-      console.log('  Inactive:', inactive, '⚠️');
-      accounts.filter(a => a.connection_status !== 'active').forEach(a => {
-        console.log('    -', a.account_name, '(' + a.connection_status + ')');
-      });
-    }
-  }
-
-  // 6. Email queue
-  console.log('');
-  console.log('📧 EMAIL QUEUE:');
-  const { count: emailPending, error: emailErr } = await supabase
-    .from('email_send_queue')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'pending');
-  if (emailErr) {
-    console.log('  (table may not exist)');
-  } else {
-    console.log('  Pending:', emailPending || 0);
-  }
-
-  // 7. Stuck campaigns (active with no recent queue activity)
-  console.log('');
-  console.log('🔍 STUCK CAMPAIGN CHECK:');
-  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const contentRange = response.headers.get('content-range');
+  const count = contentRange ? parseInt(contentRange.split('/')[1]) : 0;
+  const data = await response.json();
   
-  if (activeCampaigns) {
-    let stuck = 0;
-    for (const c of activeCampaigns) {
-      // Skip email-only campaigns
-      if (c.campaign_type === 'email_only') continue;
-      
-      const { count: recentQueue } = await supabase
-        .from('send_queue')
-        .select('*', { count: 'exact', head: true })
-        .eq('campaign_id', c.id)
-        .gte('created_at', threeDaysAgo.toISOString());
-      
-      if (!recentQueue || recentQueue === 0) {
-        const { count: totalQueue } = await supabase
-          .from('send_queue')
-          .select('*', { count: 'exact', head: true })
-          .eq('campaign_id', c.id);
-        
-        if (!totalQueue || totalQueue === 0) {
-          stuck++;
-          console.log('  ⚠️ No queue items:', c.name);
-        }
-      }
-    }
-    if (stuck === 0) {
-      console.log('  All active campaigns have queue items ✅');
-    }
-  }
-
-  console.log('');
-  console.log('=== END HEALTH CHECK ===');
+  // Handle both array and object responses
+  const dataArray = Array.isArray(data) ? data : [];
+  
+  return { count, data: dataArray };
 }
 
-healthCheck().catch(console.error);
+console.log('==========================================');
+console.log('SAM MESSAGING PLATFORM - HEALTH CHECK');
+console.log(`Run Time: ${new Date().toISOString()}`);
+console.log('==========================================\n');
+
+// 1. Queue Status
+console.log('1. SEND QUEUE STATUS');
+console.log('-------------------');
+
+const now = new Date().toISOString();
+const today = new Date().toISOString().split('T')[0] + 'T00:00:00';
+
+const overdue = await query('send_queue', {
+  'status': 'eq.pending',
+  'scheduled_send_time': `lt.${now}`
+});
+
+const pending = await query('send_queue', {
+  'status': 'eq.pending'
+});
+
+const sentToday = await query('send_queue', {
+  'status': 'eq.sent',
+  'sent_at': `gte.${today}`
+});
+
+const failed = await query('send_queue', {
+  'status': 'eq.failed'
+});
+
+console.log(`Overdue Messages: ${overdue.count}`);
+console.log(`Pending Messages: ${pending.count}`);
+console.log(`Sent Today: ${sentToday.count}`);
+console.log(`Failed Messages: ${failed.count}\n`);
+
+// 2. Reply Drafts Status
+console.log('2. REPLY DRAFTS STATUS');
+console.log('---------------------');
+
+const pendingDrafts = await query('reply_drafts', {
+  'status': 'eq.pending_approval'
+});
+
+const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+const expiredDrafts = await query('reply_drafts', {
+  'status': 'eq.pending_approval',
+  'created_at': `lt.${sevenDaysAgo}`
+});
+
+console.log(`Pending Approvals: ${pendingDrafts.count}`);
+console.log(`Expired Drafts (>7 days): ${expiredDrafts.count}\n`);
+
+// 3. Active Campaigns
+console.log('3. ACTIVE CAMPAIGNS');
+console.log('------------------');
+
+const activeCampaigns = await query('campaigns', {
+  'status': 'eq.active'
+});
+
+// Count campaigns without LinkedIn that are NOT email-only
+const campaignsDetail = await query('campaigns', {
+  'status': 'eq.active',
+  'select': 'id,name,linkedin_account_id,campaign_type'
+});
+
+const noLinkedIn = campaignsDetail.data.filter(c =>
+  !c.linkedin_account_id && c.campaign_type !== 'email_only'
+).length;
+
+console.log(`Active Campaigns: ${activeCampaigns.count}`);
+console.log(`Without LinkedIn Account: ${noLinkedIn}\n`);
+
+// 4. Unipile Accounts
+console.log('4. UNIPILE ACCOUNTS');
+console.log('------------------');
+
+const accounts = await query('user_unipile_accounts', {
+  'select': 'id,account_name,connection_status,platform'
+});
+
+const accountsByStatus = accounts.data.reduce((acc, account) => {
+  acc[account.connection_status] = (acc[account.connection_status] || 0) + 1;
+  return acc;
+}, {});
+
+const activeAccounts = accountsByStatus['active'] || 0;
+const connectedAccounts = accountsByStatus['connected'] || 0;
+const inactiveAccounts = accountsByStatus['inactive'] || 0;
+
+console.log(`Total Accounts: ${accounts.count}`);
+console.log(`Active: ${activeAccounts}`);
+console.log(`Connected (should be active): ${connectedAccounts}`);
+console.log(`Inactive: ${inactiveAccounts}\n`);
+
+console.log('Account Details:');
+if (accounts.data.length > 0) {
+  accounts.data.forEach(account => {
+    console.log(`  - ${account.account_name || 'Unnamed'} [${account.platform}]: ${account.connection_status}`);
+  });
+} else {
+  console.log('  (No accounts found)');
+}
+console.log('');
+
+// 5. Summary
+console.log('==========================================');
+console.log('HEALTH CHECK SUMMARY');
+console.log('==========================================\n');
+
+const queueStatus = overdue.count === 0 ? '✅' : '⚠️';
+const draftsStatus = expiredDrafts.count === 0 ? '✅' : '⚠️';
+const campaignsStatus = noLinkedIn === 0 ? '✅' : '⚠️';
+const accountsStatus = (connectedAccounts === 0 && inactiveAccounts === 0) ? '✅' :
+                       (connectedAccounts > 0 ? '⚠️' : '✅');
+
+console.log('Component'.padEnd(30) + ' | ' + 'Status'.padEnd(10) + ' | Details');
+console.log('-'.repeat(30) + ' | ' + '-'.repeat(10) + ' | ' + '-'.repeat(40));
+console.log('Send Queue'.padEnd(30) + ' | ' + queueStatus.padEnd(10) + ' | ' +
+  `${overdue.count} overdue, ${pending.count} pending, ${sentToday.count} sent today`);
+console.log('Reply Drafts'.padEnd(30) + ' | ' + draftsStatus.padEnd(10) + ' | ' +
+  `${pendingDrafts.count} pending, ${expiredDrafts.count} expired`);
+console.log('Active Campaigns'.padEnd(30) + ' | ' + campaignsStatus.padEnd(10) + ' | ' +
+  `${activeCampaigns.count} total, ${noLinkedIn} without LinkedIn`);
+console.log('Unipile Accounts'.padEnd(30) + ' | ' + accountsStatus.padEnd(10) + ' | ' +
+  `${activeAccounts} active, ${connectedAccounts} connected, ${inactiveAccounts} inactive`);
+console.log('');

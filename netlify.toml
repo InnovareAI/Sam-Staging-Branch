@@ -162,11 +162,11 @@
 [functions."discover-posts"]
   schedule = "0 */2 * * *"
 
-# Discover Posts (Hashtags): Find new posts from hashtag monitors via Bright Data
-# Uses Bright Data Scraping Browser to scrape linkedin.com/feed/hashtag/{tag}
-# Runs every 4 hours to find fresh hashtag content for commenting
-[functions."discover-posts-brightdata"]
-  schedule = "0 */4 * * *"
+# Discover Posts (Hashtags): REMOVED - Replaced by Unipile API (Dec 17, 2025)
+# Was: Used Bright Data Scraping Browser to scrape linkedin.com/feed/hashtag/{tag}
+# Now: Hashtag discovery handled by discover-posts via Unipile API
+# [functions."discover-posts-brightdata"]
+#   schedule = "0 */4 * * *"
 
 # Auto-Generate Comments: Create AI comments every 30 minutes
 # Generates thoughtful comments for discovered posts (pending approval)
