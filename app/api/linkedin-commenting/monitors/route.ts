@@ -47,20 +47,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message, details: error }, { status: 500 });
     }
 
-    // Get post counts for each monitor using admin client
-    const monitorsWithCounts = await Promise.all(
-      (data || []).map(async (monitor) => {
-        const { count } = await adminClient
-          .from('linkedin_posts_discovered')
-          .select('*', { count: 'exact', head: true })
-          .eq('monitor_id', monitor.id);
+    // PERF FIX (Dec 17): Get all post counts in a single query instead of N+1
+    // Previously: 1 query per monitor (10 monitors = 11 queries)
+    // Now: 1 query total using aggregation
+    const monitorIds = (data || []).map(m => m.id);
 
-        return {
-          ...monitor,
-          posts_count: count || 0
-        };
-      })
-    );
+    let countMap: Record<string, number> = {};
+    if (monitorIds.length > 0) {
+      // Single query to get all counts grouped by monitor_id
+      const { data: postCounts } = await adminClient
+        .from('linkedin_posts_discovered')
+        .select('monitor_id')
+        .in('monitor_id', monitorIds);
+
+      // Build count map client-side (faster than multiple DB round-trips)
+      countMap = (postCounts || []).reduce((acc: Record<string, number>, post) => {
+        acc[post.monitor_id] = (acc[post.monitor_id] || 0) + 1;
+        return acc;
+      }, {});
+    }
+
+    // Attach counts to monitors (no async needed now)
+    const monitorsWithCounts = (data || []).map(monitor => ({
+      ...monitor,
+      posts_count: countMap[monitor.id] || 0
+    }));
 
     console.log('✅ Fetched monitors with counts:', monitorsWithCounts.length);
     return NextResponse.json({ monitors: monitorsWithCounts });

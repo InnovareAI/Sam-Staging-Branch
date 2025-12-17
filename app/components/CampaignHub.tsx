@@ -6920,16 +6920,19 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
   // REACT QUERY: Fetch pending campaigns with caching - LAZY LOAD when tab is active
   // NEW ARCHITECTURE: Uses workspace_prospects table (database-driven)
+  // PERF FIX (Dec 17): Parallelize both fetches instead of sequential
   const { data: pendingCampaignsFromDB = [], isLoading: loadingPendingFromDB } = useQuery({
     queryKey: ['pendingCampaigns', actualWorkspaceId],
     queryFn: async () => {
       if (!actualWorkspaceId) return [];
 
-      // NEW: Fetch from workspace_prospects (approved but not in campaign)
-      const newArchResponse = await fetch(`/api/prospects/approve?workspaceId=${actualWorkspaceId}&status=approved_available`);
-
-      // Also fetch legacy data for backwards compatibility
-      const legacyResponse = await fetch(`/api/prospect-approval/approved?workspace_id=${actualWorkspaceId}`);
+      // PERF FIX: Fetch both sources in parallel instead of sequential
+      const [newArchResponse, legacyResponse] = await Promise.all([
+        // NEW: Fetch from workspace_prospects (approved but not in campaign)
+        fetch(`/api/prospects/approve?workspaceId=${actualWorkspaceId}&status=approved_available`),
+        // Also fetch legacy data for backwards compatibility
+        fetch(`/api/prospect-approval/approved?workspace_id=${actualWorkspaceId}`)
+      ]);
 
       const campaignGroups: Record<string, any> = {};
 
@@ -7117,10 +7120,12 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       return campaigns;
     },
     enabled: (campaignFilter === 'active' || campaignFilter === 'paused' || campaignFilter === 'archived' || campaignFilter === 'completed') && !!actualWorkspaceId,
-    staleTime: 0, // Always fetch fresh - campaigns change frequently
-    gcTime: 0, // Don't cache stale data
+    // PERF FIX (Dec 17): Was staleTime: 0 (always refetch) - now 30s for faster tab switching
+    // Real-time subscription handles status updates, so we don't need constant refetching
+    staleTime: 30 * 1000, // 30 seconds - campaign data is fresh enough for tab switches
+    gcTime: 5 * 60 * 1000, // 5 minutes cache - keeps data available for quick tab returns
     refetchOnWindowFocus: true,
-    refetchOnMount: 'always',
+    refetchOnMount: true, // Refetch if stale (uses staleTime)
   });
 
   // Load approval messages when approval tab is selected

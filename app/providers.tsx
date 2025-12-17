@@ -46,7 +46,10 @@ export function Providers({ children }: { children: ReactNode }) {
             staleTime: 2 * 60 * 1000,
             // Cache data for 30 minutes
             gcTime: 30 * 60 * 1000,
-            // Refetch on mount only if stale (enables instant cache hit)
+            // Refetch behavior on mount:
+            // true = refetch if stale (default, uses staleTime)
+            // 'always' = always refetch regardless of stale status
+            // false = never refetch, only use cache
             refetchOnMount: true,
             // Don't refetch when window regains focus (causes unnecessary reloads)
             refetchOnWindowFocus: false,

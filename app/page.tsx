@@ -2317,45 +2317,55 @@ export default function Page() {
         return; // Don't set workspaces to [] - preserve existing state
       }
 
-      // For each workspace, fetch pending invitations
-      const workspacesWithInvitations = await Promise.all(
-        apiWorkspaces.map(async (workspace: any) => {
-          // Fetch pending invitations
-          const { data: invitationsData, error: invitationsError } = await supabase
-            .from('workspace_invitations')
-            .select('invited_email, status')
-            .eq('workspace_id', workspace.id)
-            .eq('status', 'pending');
+      // PERF FIX (Dec 17): Single query for all workspace invitations instead of N+1
+      // Previously: 1 query per workspace (10 workspaces = 10 queries)
+      // Now: 1 query total
+      const workspaceIds = apiWorkspaces.map((ws: any) => ws.id);
+      const { data: allInvitations, error: invitationsError } = await supabase
+        .from('workspace_invitations')
+        .select('workspace_id, invited_email, status')
+        .in('workspace_id', workspaceIds)
+        .eq('status', 'pending');
 
-          if (invitationsError) {
-            console.error('Error fetching invitations for workspace:', workspace.name, invitationsError);
-          }
+      if (invitationsError) {
+        console.error('Error fetching invitations:', invitationsError);
+      }
 
-          const pendingInvitations = invitationsData || [];
-          const pendingList = pendingInvitations.map((inv: any) =>
-            `${inv.invited_email} (pending)`
-          );
+      // Group invitations by workspace_id
+      const invitationsByWorkspace: Record<string, any[]> = {};
+      (allInvitations || []).forEach((inv: any) => {
+        if (!invitationsByWorkspace[inv.workspace_id]) {
+          invitationsByWorkspace[inv.workspace_id] = [];
+        }
+        invitationsByWorkspace[inv.workspace_id].push(inv);
+      });
 
-          // Determine company based on workspace name
-          let company = 'InnovareAI'; // default
-          let companyColor = 'bg-blue-600';
+      // Map workspaces with invitation data (no async needed now)
+      const workspacesWithInvitations = apiWorkspaces.map((workspace: any) => {
+        const pendingInvitations = invitationsByWorkspace[workspace.id] || [];
+        const pendingList = pendingInvitations.map((inv: any) =>
+          `${inv.invited_email} (pending)`
+        );
 
-          if (workspace.name.toLowerCase().includes('3cubed') || workspace.name === '3cubed' ||
-              workspace.name.toLowerCase().includes('sendingcell') ||
-              workspace.name.toLowerCase().includes('wt') || workspace.name.toLowerCase().includes('matchmaker')) {
-            company = '3cubed';
-            companyColor = 'bg-orange-600';
-          }
+        // Determine company based on workspace name
+        let company = 'InnovareAI'; // default
+        let companyColor = 'bg-blue-600';
 
-          return {
-            ...workspace,
-            pendingInvitations: pendingInvitations.length,
-            pendingList: pendingList,
-            company: company,
-            companyColor: companyColor
-          };
-        })
-      );
+        if (workspace.name.toLowerCase().includes('3cubed') || workspace.name === '3cubed' ||
+            workspace.name.toLowerCase().includes('sendingcell') ||
+            workspace.name.toLowerCase().includes('wt') || workspace.name.toLowerCase().includes('matchmaker')) {
+          company = '3cubed';
+          companyColor = 'bg-orange-600';
+        }
+
+        return {
+          ...workspace,
+          pendingInvitations: pendingInvitations.length,
+          pendingList: pendingList,
+          company: company,
+          companyColor: companyColor
+        };
+      });
 
       console.log('📊 [WORKSPACE LOAD] User workspaces loaded:', workspacesWithInvitations.length, 'workspaces');
       console.log('📊 [WORKSPACE LOAD] Workspaces:', workspacesWithInvitations.map(w => ({ id: w.id, name: w.name })));
