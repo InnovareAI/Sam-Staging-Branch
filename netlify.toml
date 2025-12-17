@@ -6,6 +6,14 @@
   NODE_VERSION = "20"
   NETLIFY_NEXT_PLUGIN_SKIP_CACHE = "true"
 
+# Staging environment configuration
+[context.staging]
+  command = "rm -rf .next && rm -rf node_modules/.cache && npm run build"
+[context.staging.environment]
+  NEXT_PUBLIC_ENVIRONMENT = "staging"
+  NODE_VERSION = "20"
+  NETLIFY_NEXT_PLUGIN_SKIP_CACHE = "true"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 

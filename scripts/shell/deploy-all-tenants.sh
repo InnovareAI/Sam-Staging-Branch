@@ -14,6 +14,20 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Confirmation prompt before production deployment
+echo -e "${YELLOW}⚠️  WARNING: You are about to deploy to PRODUCTION (app.meet-sam.com)${NC}"
+echo -e "${YELLOW}Have you tested on staging.meet-sam.com and verified it works?${NC}"
+echo -e "${YELLOW}This will affect LIVE users and campaigns.${NC}"
+read -p "Type 'DEPLOY' to confirm production deployment: " confirmation
+
+if [ "$confirmation" != "DEPLOY" ]; then
+    echo -e "${RED}❌ Production deployment cancelled${NC}"
+    echo -e "${BLUE}💡 Tip: Test on staging first with: npm run deploy:staging${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Production deployment confirmed${NC}"
+
 # Build the application first
 echo -e "${BLUE}📦 Building application for production...${NC}"
 NEXT_PUBLIC_SUPABASE_URL="https://latxadqrvrrrcvkktrog.supabase.co" \
