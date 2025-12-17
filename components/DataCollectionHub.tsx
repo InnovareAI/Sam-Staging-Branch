@@ -3481,7 +3481,10 @@ async function collectLinkedInData(query: string, workspaceCode: string, connect
         complianceFlags: [],
         campaignName: campaignName,
         campaignTag: campaignName,
-        approvalStatus: 'pending' as const
+        approvalStatus: 'pending' as const,
+        // Include connection degree for campaign type selection (messenger requires 1st degree)
+        connectionDegree: prospect.connectionDegree ? `${prospect.connectionDegree}${prospect.connectionDegree === 1 ? 'st' : prospect.connectionDegree === 2 ? 'nd' : 'rd'}` : undefined,
+        connection_degree: prospect.connectionDegree // Numeric version for compatibility
       }))
     } else {
       throw new Error(data.error || 'No prospects found')

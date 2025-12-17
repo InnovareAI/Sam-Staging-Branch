@@ -57,6 +57,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 11. Modifying the `send_queue` processing logic
 12. Changing rate limits in `MESSAGE_HARD_LIMITS`
 13. Modifying Unipile API integration code
+14. **ADDING MESSAGES TO CAMPAIGNS - ABSOLUTELY FORBIDDEN**
+    - ❌ NEVER add `connection_message` content
+    - ❌ NEVER add `alternative_message` content
+    - ❌ NEVER add `follow_up_message_1`, `follow_up_message_2`, etc.
+    - ❌ NEVER add placeholder messages
+    - ❌ NEVER add "test" messages
+    - ❌ NEVER populate ANY message field
+    - Users MUST configure their own messages in the UI
+    - If a campaign has no message, that is the USER'S responsibility to fix
 
 ### 🔒 PROTECTED TABLES (DO NOT TOUCH WITHOUT HUMAN APPROVAL):
 
