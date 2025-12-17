@@ -159,6 +159,23 @@ Orchestrator: *runs 10 Grep commands directly*
 - DSN: `api6.unipile.com:13670`
 - API Key: Set via `netlify env:set UNIPILE_API_KEY`
 
+### 📊 CAMPAIGN TYPES
+
+| Type | `campaign_type` | Queue Table | Use Case |
+|------|-----------------|-------------|----------|
+| LinkedIn | `null` or `linkedin_only` | `send_queue` | Connection requests, InMails |
+| Email-only | `email_only` | `email_queue` | Cold email inbox agent (no LinkedIn) |
+| Multi-channel | `multi_channel` | Both | LinkedIn + Email combined |
+| Messenger | `messenger` | `send_queue` | Direct messages to 1st connections |
+
+**Example Email-only Campaigns:**
+- **Jennifer Fleming** - Inbox agent for replying to cold email campaigns. NO LinkedIn account needed.
+
+**QA Monitor Behavior:**
+- LinkedIn campaigns → checked via `send_queue`
+- Email-only campaigns → checked via `email_queue`
+- The QA monitor skips email-only campaigns when checking "stuck campaigns" in `send_queue`
+
 ---
 
 ## 🌍 ENVIRONMENTS & DEPLOYMENT

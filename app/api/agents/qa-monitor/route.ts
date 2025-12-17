@@ -207,6 +207,11 @@ export async function POST(request: NextRequest) {
       autoFixes.push(fix);
     }
 
+    // 14. Email Queue Processing (for email-only campaigns)
+    // NOTE: Email-only campaigns (like Jennifer Fleming's inbox agent) use email_queue, not send_queue
+    const emailQueueCheck = await checkEmailQueueProcessing(supabase);
+    allChecks.push(emailQueueCheck);
+
     // ============================================
     // PER-WORKSPACE CHECKS
     // ============================================
@@ -527,17 +532,20 @@ async function checkStuckProspects(supabase: any): Promise<QACheck> {
 }
 
 // CRITICAL: Check for stuck campaigns - active campaigns with no progress
+// NOTE: Only checks LinkedIn campaigns. Email-only campaigns use email_queue, not send_queue.
 async function checkStuckCampaigns(supabase: any): Promise<QACheck> {
   const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
   // Find active/running campaigns that should be sending but have no recent activity
+  // IMPORTANT: Skip email-only campaigns (campaign_type = 'email_only') - they use email_queue
   const { data: activeCampaigns } = await supabase
     .from('campaigns')
     .select(`
-      id, name, campaign_name, status, workspace_id,
+      id, name, campaign_name, status, workspace_id, campaign_type,
       workspaces(name)
     `)
-    .in('status', ['active', 'running']);
+    .in('status', ['active', 'running'])
+    .or('campaign_type.is.null,campaign_type.neq.email_only');
 
   if (!activeCampaigns || activeCampaigns.length === 0) {
     return {
@@ -1796,13 +1804,15 @@ async function autoFixStuckCampaigns(supabase: any): Promise<AutoFixResult> {
     const fixDetails: string[] = [];
 
     // 1. Find campaigns with approved prospects not in queue
+    // IMPORTANT: Skip email-only campaigns - they use email_queue, not send_queue
     const { data: activeCampaigns } = await supabase
       .from('campaigns')
       .select(`
         id, name, campaign_name, status, linkedin_account_id,
         message_templates, connection_message, linkedin_config, campaign_type
       `)
-      .in('status', ['active', 'running']);
+      .in('status', ['active', 'running'])
+      .or('campaign_type.is.null,campaign_type.neq.email_only');
 
     if (!activeCampaigns || activeCampaigns.length === 0) {
       return {
@@ -1950,6 +1960,77 @@ async function autoFixStuckCampaigns(supabase: any): Promise<AutoFixResult> {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       details: 'Failed to fix stuck campaigns'
+    };
+  }
+}
+
+/**
+ * CHECK: Email Queue Processing
+ * Monitors email-only campaigns that use email_queue instead of send_queue.
+ * Email-only campaigns (campaign_type = 'email_only') are handled by the Reply Agent
+ * for cold email responses - they do NOT use LinkedIn at all.
+ *
+ * Examples: Jennifer Fleming's inbox agent for replying to cold email campaigns
+ */
+async function checkEmailQueueProcessing(supabase: any): Promise<QACheck> {
+  try {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    // Find email-only campaigns
+    const { data: emailCampaigns } = await supabase
+      .from('campaigns')
+      .select('id, name, campaign_name, status')
+      .eq('campaign_type', 'email_only')
+      .in('status', ['active', 'running']);
+
+    if (!emailCampaigns || emailCampaigns.length === 0) {
+      return {
+        check_name: 'Email Queue Processing',
+        category: 'messaging',
+        status: 'pass',
+        details: 'No active email-only campaigns',
+        affected_records: 0
+      };
+    }
+
+    // Check for overdue email queue items
+    const campaignIds = emailCampaigns.map((c: any) => c.id);
+    const { data: overdueEmails } = await supabase
+      .from('email_queue')
+      .select('id, campaign_id, scheduled_for')
+      .in('campaign_id', campaignIds)
+      .eq('status', 'pending')
+      .lt('scheduled_for', oneHourAgo)
+      .limit(20);
+
+    const overdueCount = overdueEmails?.length || 0;
+
+    // Get recent activity
+    const { count: recentActivity } = await supabase
+      .from('email_queue')
+      .select('*', { count: 'exact', head: true })
+      .in('campaign_id', campaignIds)
+      .eq('status', 'sent')
+      .gte('sent_at', oneHourAgo);
+
+    return {
+      check_name: 'Email Queue Processing',
+      category: 'messaging',
+      status: overdueCount > 10 ? 'fail' : overdueCount > 3 ? 'warning' : 'pass',
+      details: overdueCount > 0
+        ? `${overdueCount} email queue items overdue. ${emailCampaigns.length} email campaigns active.`
+        : `Email queue healthy. ${recentActivity || 0} emails sent in last hour. ${emailCampaigns.length} campaigns active.`,
+      affected_records: overdueCount,
+      sample_ids: overdueEmails?.slice(0, 5).map((e: any) => e.id),
+      suggested_fix: overdueCount > 0 ? 'Check email queue cron job (process-email-queue)' : undefined
+    };
+  } catch (error) {
+    return {
+      check_name: 'Email Queue Processing',
+      category: 'messaging',
+      status: 'warning',
+      details: `Error checking email queue: ${error instanceof Error ? error.message : 'Unknown'}`,
+      affected_records: 0
     };
   }
 }
