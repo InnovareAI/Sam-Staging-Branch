@@ -68,18 +68,37 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Verify the LinkedIn account exists and is active
+    // Check both workspace_accounts AND user_unipile_accounts (FK references user_unipile_accounts)
     if (campaign.linkedin_account_id) {
-      const { data: linkedinAccount, error: accountError } = await supabase
+      // First try workspace_accounts
+      let { data: linkedinAccount, error: accountError } = await supabase
         .from('workspace_accounts')
         .select('id, account_name, connection_status, is_active')
         .eq('id', campaign.linkedin_account_id)
         .single()
 
+      // Fallback to user_unipile_accounts if not found (FK constraint references this table)
       if (accountError || !linkedinAccount) {
-        throw apiError.validation(
-          'LinkedIn account not found',
-          'The configured LinkedIn account no longer exists. Please select a different account.'
-        )
+        const { data: uniAccount, error: uniError } = await supabase
+          .from('user_unipile_accounts')
+          .select('id, account_name, connection_status')
+          .eq('id', campaign.linkedin_account_id)
+          .single()
+
+        if (uniError || !uniAccount) {
+          throw apiError.validation(
+            'LinkedIn account not found',
+            'The configured LinkedIn account no longer exists. Please select a different account.'
+          )
+        }
+
+        // Map user_unipile_accounts to same shape
+        linkedinAccount = {
+          id: uniAccount.id,
+          account_name: uniAccount.account_name,
+          connection_status: uniAccount.connection_status,
+          is_active: uniAccount.connection_status === 'connected'
+        }
       }
 
       if (!linkedinAccount.is_active) {
