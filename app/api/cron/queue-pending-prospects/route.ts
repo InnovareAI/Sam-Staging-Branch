@@ -334,8 +334,29 @@ export async function POST(req: NextRequest) {
         return next;
       };
 
+      // Helper: Validate linkedin_user_id format
+      // Valid formats: ACo/ACw IDs, LinkedIn URLs, or vanity names
+      const isValidLinkedInId = (id: string | null | undefined): boolean => {
+        if (!id) return false;
+        const trimmed = id.trim();
+        // Valid ACo/ACw ID (preferred)
+        if (trimmed.startsWith('ACo') || trimmed.startsWith('ACw')) return true;
+        // LinkedIn URL (will be resolved at send time)
+        if (trimmed.includes('linkedin.com/in/')) return true;
+        // Vanity name (alphanumeric with dashes, will be resolved)
+        if (/^[a-zA-Z0-9-]+$/.test(trimmed) && trimmed.length >= 3) return true;
+        return false;
+      };
+
       for (let i = 0; i < unqueuedProspects.length; i++) {
         const prospect = unqueuedProspects[i];
+
+        // Pre-validate LinkedIn ID before queuing
+        const linkedinId = prospect.linkedin_user_id || prospect.linkedin_url;
+        if (!isValidLinkedInId(linkedinId)) {
+          console.log(`  ⚠️ Skipping ${prospect.first_name} ${prospect.last_name} - invalid LinkedIn ID: "${linkedinId}"`);
+          continue;
+        }
 
         // Skip weekends
         while (isWeekend(currentTime)) {
