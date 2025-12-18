@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { spinForProspect, personalizeMessage } from '@/lib/anti-detection/spintax';
+import { normalizeCompanyName } from '@/lib/prospect-normalization';
 import {
   getRandomizedFollowUpInterval,
   getPreSendDelayMs,
@@ -277,30 +277,20 @@ export async function POST(req: NextRequest) {
         // Get the raw follow-up message
         const rawMessage = followUpMessages[messageIndex];
 
-        // SPINTAX DISABLED (Dec 15, 2025) - Only use when explicitly enabled
-        const spintaxEnabled = campaign.message_templates?.spintax_enabled === true;
-        let processedMessage = rawMessage;
-
-        if (spintaxEnabled) {
-          const spintaxResult = spinForProspect(rawMessage, prospect.id);
-          processedMessage = spintaxResult.output;
-          if (spintaxResult.variationsCount > 1) {
-            console.log(`🎲 Spintax: ${spintaxResult.variationsCount} variations for FU${messageIndex + 1}`);
-          }
-        }
-
-        // Personalize the message (replace {first_name}, {company_name}, etc.)
+        // SPINTAX REMOVED (Dec 18, 2025) - Feature disabled due to bugs
+        // Direct personalization only - no spintax processing
         const firstName = prospect.first_name || '';
         const lastName = prospect.last_name || '';
-        const companyName = prospect.company_name || '';
+        const rawCompanyName = prospect.company_name || '';
+        const companyName = normalizeCompanyName(rawCompanyName) || rawCompanyName;
         const title = prospect.title || '';
 
-        const message = personalizeMessage(processedMessage, {
-          first_name: firstName,
-          last_name: lastName,
-          company_name: companyName,
-          title: title,
-        });
+        // Personalize the message (replace {first_name}, {company_name}, etc.)
+        const message = rawMessage
+          .replace(/\{first_name\}/gi, firstName)
+          .replace(/\{last_name\}/gi, lastName)
+          .replace(/\{company_name\}/gi, companyName)
+          .replace(/\{title\}/gi, title);
 
         // HUMAN-LIKE DELAYS (Anti-Detection)
         // Simulate: reading conversation history, composing thoughtful response

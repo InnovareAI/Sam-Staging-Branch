@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Calendar, FileText, GripVertical, MessageSquare, Plus, Settings, Shuffle, Tag, Trash2, Upload } from 'lucide-react';
 import { toastError } from '@/lib/toast';
-import { countVariations, validateSpintax, generatePreviews } from '@/lib/anti-detection/spintax';
+// SPINTAX REMOVED (Dec 18, 2025) - Feature disabled due to bugs
 
 
 // Helper to determine if campaign is LinkedIn-based
@@ -94,47 +94,12 @@ export default function CampaignStepsEditor({
   const [emailAccounts, setEmailAccounts] = useState<any[]>([]);
   const [selectedEmailAccountId, setSelectedEmailAccountId] = useState<string>('');
   const [loadingEmailAccounts, setLoadingEmailAccounts] = useState(false);
-  const [spintaxEnabled, setSpintaxEnabled] = useState(false);
-  const [showSpintaxPreview, setShowSpintaxPreview] = useState(false);
+  // SPINTAX REMOVED (Dec 18, 2025) - Feature disabled
+  const spintaxEnabled = false; // Kept for backwards compatibility
 
   const selectedStep = steps.find(s => s.id === selectedStepId);
 
-  // Calculate spintax variations for current message
-  const spintaxInfo = useMemo(() => {
-    if (!selectedStep) return { count: 1, valid: true, errors: [], previews: [] };
-    const message = selectedStep.messageText;
-    const count = countVariations(message);
-    const validation = validateSpintax(message);
-    const previews = count > 1 ? generatePreviews(message, 3) : [message];
-    return { count, valid: validation.valid, errors: validation.errors, previews };
-  }, [selectedStep?.messageText]);
-
-  // Safe spintax suggestions - ONLY greetings and closings, never core content
-  const spintaxSuggestions = [
-    {
-      category: 'Greetings (Safe)',
-      items: [
-        { original: 'Hi', spintax: '{Hi|Hello|Hey}', description: 'Vary greeting style' },
-        { original: 'Hello', spintax: '{Hello|Hi|Hey there}', description: 'Vary greeting style' },
-        { original: 'Hey', spintax: '{Hey|Hi|Hello}', description: 'Vary greeting style' },
-      ]
-    },
-    {
-      category: 'Closings (Safe)',
-      items: [
-        { original: 'Best', spintax: '{Best|Cheers|Thanks}', description: 'Vary sign-off' },
-        { original: 'Cheers', spintax: '{Cheers|Best|Thanks}', description: 'Vary sign-off' },
-        { original: 'Thanks', spintax: '{Thanks|Best|Cheers}', description: 'Vary sign-off' },
-      ]
-    },
-    {
-      category: 'Optional Phrases',
-      items: [
-        { original: "I'd love to connect", spintax: "{I'd love to connect|Would be great to connect|Let's connect}", description: 'Vary CTA phrasing' },
-        { original: 'I noticed', spintax: '{I noticed|I saw|I came across}', description: 'Vary observation intro' },
-      ]
-    }
-  ];
+  // SPINTAX REMOVED (Dec 18, 2025) - Feature disabled due to bugs
 
   const personalizationTags = [
     { tag: '{{first_name}}', description: 'Prospect first name' },
@@ -291,33 +256,7 @@ export default function CampaignStepsEditor({
     updateStepMessage(selectedStepId, newMessage);
   };
 
-  // Apply a spintax suggestion to the message
-  const applySpintaxSuggestion = (original: string, spintax: string) => {
-    if (!selectedStep) return;
-    // Replace first occurrence of original with spintax
-    const message = selectedStep.messageText;
-    if (message.includes(original) && !message.includes(spintax)) {
-      const newMessage = message.replace(original, spintax);
-      updateStepMessage(selectedStepId, newMessage);
-    }
-  };
-
-  // Find which suggestions are applicable to current message
-  const applicableSuggestions = useMemo(() => {
-    if (!selectedStep || !spintaxEnabled) return [];
-    const message = selectedStep.messageText;
-    const applicable: Array<{ original: string; spintax: string; description: string; category: string }> = [];
-
-    for (const category of spintaxSuggestions) {
-      for (const item of category.items) {
-        // Check if original exists and spintax hasn't been applied yet
-        if (message.includes(item.original) && !message.includes(item.spintax)) {
-          applicable.push({ ...item, category: category.category });
-        }
-      }
-    }
-    return applicable;
-  }, [selectedStep?.messageText, spintaxEnabled]);
+  // SPINTAX FUNCTIONS REMOVED (Dec 18, 2025)
 
   const handleSAMChat = () => {
     if (!samInput.trim()) return;
@@ -614,99 +553,7 @@ export default function CampaignStepsEditor({
                       </div>
                     </div>
 
-                    {/* Spintax Toggle & Variations */}
-                    <div className="bg-gray-700 rounded-lg p-4 mb-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <Shuffle size={18} className="text-orange-400" />
-                          <div>
-                            <h4 className="text-white font-medium">Message Variations (Spintax)</h4>
-                            <p className="text-gray-400 text-xs">Create variations to avoid detection patterns</p>
-                          </div>
-                        </div>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <span className="text-gray-300 text-sm">Enable</span>
-                          <input
-                            type="checkbox"
-                            checked={spintaxEnabled}
-                            onChange={(e) => setSpintaxEnabled(e.target.checked)}
-                            className="w-4 h-4 rounded bg-gray-600 border-gray-500"
-                          />
-                        </label>
-                      </div>
-
-                      {/* Variation Count */}
-                      {spintaxInfo.count > 1 && (
-                        <div className="flex items-center justify-between mb-3 p-2 bg-gray-600 rounded">
-                          <div className="flex items-center gap-2">
-                            <span className="text-green-400 font-bold text-lg">{spintaxInfo.count}</span>
-                            <span className="text-gray-300 text-sm">unique variations</span>
-                          </div>
-                          <button
-                            onClick={() => setShowSpintaxPreview(!showSpintaxPreview)}
-                            className="text-purple-400 hover:text-purple-300 text-sm"
-                          >
-                            {showSpintaxPreview ? 'Hide Preview' : 'Preview Variations'}
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Spintax Validation Errors */}
-                      {!spintaxInfo.valid && (
-                        <div className="mb-3 p-2 bg-red-900/30 border border-red-700 rounded text-red-400 text-sm">
-                          <strong>Spintax Error:</strong> {spintaxInfo.errors.join(', ')}
-                        </div>
-                      )}
-
-                      {/* Preview Panel */}
-                      {showSpintaxPreview && spintaxInfo.count > 1 && (
-                        <div className="mb-3 p-3 bg-gray-600 rounded space-y-2">
-                          <div className="text-gray-300 text-xs font-medium mb-2">Sample variations:</div>
-                          {spintaxInfo.previews.map((preview, idx) => (
-                            <div key={idx} className="text-gray-400 text-xs p-2 bg-gray-700 rounded">
-                              <span className="text-gray-500 mr-2">#{idx + 1}</span>
-                              {preview.length > 150 ? preview.substring(0, 150) + '...' : preview}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Suggestions Panel */}
-                      {spintaxEnabled && (
-                        <div>
-                          <div className="text-gray-300 text-xs font-medium mb-2">
-                            Safe suggestions (click to apply):
-                          </div>
-                          {applicableSuggestions.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {applicableSuggestions.map((suggestion, idx) => (
-                                <button
-                                  key={idx}
-                                  onClick={() => applySpintaxSuggestion(suggestion.original, suggestion.spintax)}
-                                  className="px-2 py-1 bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/50 rounded text-xs text-orange-300 transition-colors"
-                                  title={suggestion.description}
-                                >
-                                  "{suggestion.original}" → {suggestion.spintax}
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-gray-500 text-xs italic">
-                              {spintaxInfo.count > 1
-                                ? 'All safe suggestions have been applied'
-                                : 'No matching suggestions found. You can manually add spintax using {option1|option2} syntax.'}
-                            </div>
-                          )}
-
-                          {/* Spintax Syntax Help */}
-                          <div className="mt-3 p-2 bg-gray-600/50 rounded text-xs text-gray-400">
-                            <strong className="text-gray-300">Syntax:</strong> Use {'{option1|option2|option3}'} to create variations.
-                            <br />
-                            <strong className="text-gray-300">Tip:</strong> Only vary greetings and closings. Keep your core message unchanged for best CR rates.
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    {/* Spintax REMOVED (Dec 18, 2025) - Feature disabled due to bugs */}
 
                     {/* Personalization Tags */}
                     <div className="bg-gray-700 rounded-lg p-4">

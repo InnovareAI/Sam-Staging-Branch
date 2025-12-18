@@ -1,4 +1,19 @@
 /**
+ * @deprecated SPINTAX FEATURE REMOVED - December 18, 2025
+ *
+ * This file is DEPRECATED and should NOT be used.
+ *
+ * The spintax feature was disabled because it was causing bugs where
+ * personalization variables like {company_name} were being processed
+ * as single-option spintax and having their braces stripped.
+ *
+ * All personalization is now done via direct string replacement in
+ * the queue processing files (send-connection-requests-fast, process-follow-ups).
+ *
+ * DO NOT IMPORT OR USE THIS FILE.
+ *
+ * ========== ORIGINAL DOCUMENTATION (FOR REFERENCE) ==========
+ *
  * Spintax Parser for Message Variation
  *
  * Spintax allows creating multiple message variations from a single template.

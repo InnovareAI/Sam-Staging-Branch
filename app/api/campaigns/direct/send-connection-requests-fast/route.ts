@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { createClient } from '@supabase/supabase-js';
 import { airtableService } from '@/lib/airtable';
-import { spinForProspect, personalizeMessage, validateSpintax } from '@/lib/anti-detection/spintax';
-import { getMessageVarianceContext, getABTestVariant } from '@/lib/anti-detection/message-variance';
+import { getMessageVarianceContext } from '@/lib/anti-detection/message-variance';
 import { normalizeCompanyName } from '@/lib/prospect-normalization';
 
 /**
@@ -304,15 +303,7 @@ export async function POST(req: NextRequest) {
       campaign.connection_message ? 'connection_message column' :
       linkedinConfig?.connection_message ? 'linkedin_config' : 'draft_data');
 
-    // A/B Testing: Check if enabled and get variant B message
-    const abTestingEnabled = campaign.message_templates?.ab_testing_enabled || false;
-    const connectionMessageB = campaign.message_templates?.connection_request_b || null;
-
-    if (abTestingEnabled && connectionMessageB) {
-      console.log('🧪 A/B Testing ENABLED - will alternate between variants A and B (50/50)');
-    } else if (abTestingEnabled && !connectionMessageB) {
-      console.log('⚠️ A/B Testing enabled but no Variant B message found - using Variant A only');
-    }
+    // A/B TESTING REMOVED (Dec 18, 2025) - Feature disabled
 
     // Start scheduling from now or next business hour
     let scheduledTime = new Date();
@@ -358,12 +349,7 @@ export async function POST(req: NextRequest) {
         scheduledTime = new Date(scheduledTime.getTime() + (randomInterval * 60 * 1000));
       }
 
-      // A/B Testing: Use improved distribution (not just even/odd)
-      // This uses multiple factors (time, day, random) for natural distribution
-      const useAbTesting = abTestingEnabled && connectionMessageB;
-      const abResult = useAbTesting ? getABTestVariant(i, prospect.id) : null;
-      const variant: 'A' | 'B' | null = abResult?.variant || null;
-      const messageToUse = variant === 'B' ? connectionMessageB : connectionMessage;
+      // A/B TESTING REMOVED (Dec 18, 2025)
 
       // Personalize message - handle all variable formats and null values
       // FIX (Dec 18): Normalize company names to human-friendly format
@@ -373,28 +359,16 @@ export async function POST(req: NextRequest) {
       const companyName = normalizeCompanyName(rawCompanyName) || rawCompanyName;
       const title = prospect.title || prospect.job_title || '';
 
-      // SPINTAX DISABLED (Dec 15, 2025) - Only use when explicitly enabled via campaign setting
+      // SPINTAX REMOVED (Dec 18, 2025) - Feature disabled due to bugs
       // Spintax was causing issues by processing {company_name} as single-option spintax
-      // For now, skip spintax and go directly to personalization
-      const spintaxEnabled = campaign.message_templates?.spintax_enabled === true;
-
-      let processedMessage = messageToUse;
-      if (spintaxEnabled) {
-        // Only process spintax if explicitly enabled
-        const spintaxResult = spinForProspect(messageToUse, prospect.id);
-        processedMessage = spintaxResult.output;
-        if (spintaxResult.variationsCount > 1) {
-          console.log(`🎲 Spintax: ${spintaxResult.variationsCount} variations, selected: "${spintaxResult.optionsSelected.slice(0, 3).join(', ')}${spintaxResult.optionsSelected.length > 3 ? '...' : ''}"`);
-        }
-      }
+      // Direct personalization only - no spintax processing
 
       // Personalize the message (replace {first_name}, {company_name}, etc.)
-      const personalizedMessage = personalizeMessage(processedMessage, {
-        first_name: firstName,
-        last_name: lastName,
-        company_name: companyName,
-        title: title,
-      });
+      const personalizedMessage = connectionMessage
+        .replace(/\{first_name\}/gi, firstName)
+        .replace(/\{last_name\}/gi, lastName)
+        .replace(/\{company_name\}/gi, companyName)
+        .replace(/\{title\}/gi, title);
 
       // Log if any variables weren't replaced (debugging)
       // Check for unreplaced personalization vars (not spintax)
@@ -409,8 +383,7 @@ export async function POST(req: NextRequest) {
         linkedin_user_id: prospect.linkedin_user_id || prospect.linkedin_url,
         message: personalizedMessage,
         scheduled_for: scheduledTime.toISOString(),
-        status: 'pending',
-        variant: variant // A/B testing: 'A', 'B', or null
+        status: 'pending'
       });
 
       dailyCount++;
@@ -428,29 +401,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Queued ${queueRecords.length} prospects successfully (${skippedCount} already in queue)`);
 
-    // 4.5. Update campaign_prospects with A/B variant assignments (if A/B testing enabled)
-    if (abTestingEnabled && connectionMessageB) {
-      const variantAProspects = queueRecords.filter(q => q.variant === 'A').map(q => q.prospect_id);
-      const variantBProspects = queueRecords.filter(q => q.variant === 'B').map(q => q.prospect_id);
-
-      // Update Variant A prospects
-      if (variantAProspects.length > 0) {
-        await supabaseAdmin
-          .from('campaign_prospects')
-          .update({ ab_variant: 'A' })
-          .in('id', variantAProspects);
-      }
-
-      // Update Variant B prospects
-      if (variantBProspects.length > 0) {
-        await supabaseAdmin
-          .from('campaign_prospects')
-          .update({ ab_variant: 'B' })
-          .in('id', variantBProspects);
-      }
-
-      console.log(`🧪 A/B variants assigned: ${variantAProspects.length} Variant A, ${variantBProspects.length} Variant B`);
-    }
+    // A/B TESTING REMOVED (Dec 18, 2025)
 
     // Sync prospects to Airtable with "No Response" status (initial state)
     // This runs async in background - don't block the response
