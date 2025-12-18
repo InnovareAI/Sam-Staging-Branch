@@ -260,21 +260,28 @@ export async function POST(request: NextRequest) {
           })
         }
 
-        // Insert in batches
+        // CRITICAL FIX: Insert prospects one by one to avoid losing data on constraint violations
+        // Batch insert fails ALL records if ANY has a constraint violation
         if (newCampaignProspects.length > 0) {
-          for (let i = 0; i < newCampaignProspects.length; i += 50) {
-            const batch = newCampaignProspects.slice(i, i + 50)
+          let insertFailures: string[] = [];
+
+          for (const prospect of newCampaignProspects) {
             const { error: insertError } = await adminClient
               .from('campaign_prospects')
-              .insert(batch)
+              .insert(prospect)
 
             if (insertError) {
-              console.error('Error inserting campaign prospects batch:', insertError.message)
+              insertFailures.push(`${prospect.first_name} ${prospect.last_name}: ${insertError.message}`);
+              console.warn(`⚠️ Failed to insert prospect ${prospect.first_name} ${prospect.last_name}:`, insertError.message);
             } else {
-              transferredCount += batch.length
+              transferredCount++;
             }
           }
-          console.log(`✅ Transferred ${transferredCount} prospects to campaign_prospects`)
+
+          if (insertFailures.length > 0) {
+            console.error(`⚠️ ${insertFailures.length} prospects failed to insert:`, insertFailures.slice(0, 5));
+          }
+          console.log(`✅ Transferred ${transferredCount}/${newCampaignProspects.length} prospects to campaign_prospects`)
 
           // AUTO-QUEUE: Get campaign template and add to send_queue
           const { data: campaign } = await adminClient
@@ -334,20 +341,26 @@ export async function POST(request: NextRequest) {
                   }
                 })
 
-                // Insert queue in batches
-                for (let i = 0; i < queueRecords.length; i += 50) {
-                  const batch = queueRecords.slice(i, i + 50)
+                // CRITICAL FIX: Insert queue items one by one to avoid losing data on constraint violations
+                let queueFailures: string[] = [];
+
+                for (const queueItem of queueRecords) {
                   const { error: queueError } = await adminClient
                     .from('send_queue')
-                    .insert(batch)
+                    .insert(queueItem)
 
                   if (queueError) {
-                    console.error('Error inserting queue batch:', queueError.message)
+                    queueFailures.push(`prospect ${queueItem.prospect_id}: ${queueError.message}`);
+                    console.warn(`⚠️ Failed to queue prospect ${queueItem.prospect_id}:`, queueError.message);
                   } else {
-                    queuedCount += batch.length
+                    queuedCount++;
                   }
                 }
-                console.log(`✅ Queued ${queuedCount} prospects for sending`)
+
+                if (queueFailures.length > 0) {
+                  console.error(`⚠️ ${queueFailures.length} queue items failed:`, queueFailures.slice(0, 5));
+                }
+                console.log(`✅ Queued ${queuedCount}/${queueRecords.length} prospects for sending`)
               }
             }
           }
