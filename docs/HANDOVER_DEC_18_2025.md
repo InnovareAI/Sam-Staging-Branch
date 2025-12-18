@@ -433,6 +433,7 @@ Added validation modal after data upload:
 | `lib/notifications/notification-router.ts` | Unified notifications |
 | `app/api/calendar/*/route.ts` | Calendar integrations |
 | `lib/calendar/unipile-calendar.ts` | Calendar API |
+| `lib/linkedin-utils.ts` | **Centralized LinkedIn URL/slug utilities** |
 | `docs/MEETING_AGENT.md` | Meeting agent docs |
 | `docs/STAGING_ENVIRONMENT.md` | Staging docs |
 | `netlify/functions/withdraw-stale-invitations.ts` | Stale invite cron |
@@ -468,6 +469,8 @@ Added validation modal after data upload:
 | InMail credits not checked | Added credit balance API |
 | Stale invitations wasting quota | Auto-withdraw after 21 days |
 | Provider ID validation too strict | Accept ACw prefix |
+| **"User ID does not match format" errors** | **Centralized `extractLinkedInSlug()` across all 8 entry points** |
+| **Batch inserts failing ALL records silently** | **Converted to one-by-one inserts with individual error tracking** |
 
 ---
 
@@ -499,10 +502,163 @@ The frontend has **TWO** campaign creation flows with different behaviors:
 
 ---
 
+## 15. LinkedIn User ID Standardization (CRITICAL - Dec 18)
+
+### Problem
+
+The `linkedin_user_id` field in `campaign_prospects` and `send_queue` tables was being populated inconsistently across the codebase:
+- Some entry points stored **full URLs** (e.g., `https://linkedin.com/in/john-doe`)
+- Some stored **vanity slugs** (e.g., `john-doe`)
+- Some stored **provider IDs** (e.g., `ACoAAA...` or `ACwAAA...`)
+
+This caused **"User ID does not match provider's expected format"** errors from Unipile API when processing the queue, because Unipile expects slugs or provider IDs, NOT full URLs.
+
+A database CHECK constraint was added to prevent URLs:
+```sql
+ALTER TABLE send_queue
+ADD CONSTRAINT linkedin_user_id_no_urls
+CHECK (linkedin_user_id NOT LIKE '%linkedin.com%');
+```
+
+But only 3 files had been updated to comply - the other entry points would fail silently on batch inserts, losing prospect data.
+
+### Solution
+
+#### 1. Created Centralized Utility Module
+
+**New File: `lib/linkedin-utils.ts`**
+
+```typescript
+/**
+ * Extract LinkedIn vanity slug from URL, or return provider_id/slug as-is
+ * Handles: full URLs, vanity slugs, provider IDs (ACo/ACw)
+ */
+export function extractLinkedInSlug(urlOrSlug: string | null | undefined): string | null {
+  if (!urlOrSlug) return null;
+  const trimmed = urlOrSlug.trim();
+  if (!trimmed) return null;
+
+  // Already a provider ID - return as-is
+  if (trimmed.startsWith('ACo') || trimmed.startsWith('ACw')) return trimmed;
+
+  // Already a slug (no URL characters) - return as-is
+  if (!trimmed.includes('/') && !trimmed.includes('http')) return trimmed;
+
+  // Extract slug from full URL
+  const match = trimmed.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  return match ? match[1] : trimmed;
+}
+
+/**
+ * Get the best LinkedIn identifier from a prospect object
+ * Priority: linkedin_provider_id > provider_id > extracted slug from URL
+ */
+export function getBestLinkedInIdentifier(prospect: any): string | null;
+
+/**
+ * Check if a string is a LinkedIn provider ID
+ */
+export function isLinkedInProviderId(value: string): boolean;
+
+/**
+ * Check if a string is a LinkedIn URL
+ */
+export function isLinkedInUrl(value: string): boolean;
+
+/**
+ * Normalize LinkedIn URL to hash (vanity name only)
+ */
+export function normalizeLinkedInUrl(url: string | null | undefined): string | null;
+```
+
+#### 2. Updated All Entry Points
+
+| File | Changes |
+|------|---------|
+| `app/api/cron/queue-pending-prospects/route.ts` | Slug extraction + one-by-one inserts |
+| `app/api/campaigns/upload-prospects/route.ts` | Slug extraction |
+| `app/api/prospect-approval/upload-csv/route.ts` | Slug extraction |
+| `app/api/prospects/add-to-campaign/route.ts` | Slug extraction + one-by-one inserts |
+| `app/api/campaigns/direct/send-connection-requests-fast/route.ts` | Slug extraction + one-by-one inserts |
+| `app/api/campaigns/direct/send-messages-queued/route.ts` | Slug extraction + one-by-one inserts |
+| `app/api/campaigns/transfer-prospects/route.ts` | Slug extraction + one-by-one inserts |
+
+#### 3. Converted Batch Inserts to One-by-One
+
+**Problem**: Supabase batch inserts fail ALL records if ANY single record violates a constraint. This caused silent data loss.
+
+**Before (dangerous):**
+```typescript
+const { error } = await supabase
+  .from('send_queue')
+  .insert(queueRecords); // If 1 fails, ALL 50 fail silently
+```
+
+**After (safe):**
+```typescript
+let insertedCount = 0;
+const insertErrors: string[] = [];
+
+for (const record of queueRecords) {
+  const { error: insertError } = await supabase
+    .from('send_queue')
+    .insert(record);
+
+  if (insertError) {
+    insertErrors.push(`${record.linkedin_user_id}: ${insertError.message}`);
+    if (insertErrors.length <= 3) {
+      console.warn(`⚠️ Failed to insert: ${insertError.message}`);
+    }
+  } else {
+    insertedCount++;
+  }
+}
+
+console.log(`✅ Inserted ${insertedCount}/${queueRecords.length} records`);
+if (insertErrors.length > 0) {
+  console.error(`❌ ${insertErrors.length} inserts failed`);
+}
+```
+
+### Key Files with Detailed Changes
+
+**`app/api/cron/queue-pending-prospects/route.ts`** (CRITICAL - runs every 5 minutes):
+- Lines 12-13: Added import for `extractLinkedInSlug`, `getBestLinkedInIdentifier`
+- Line 148: Use `getBestLinkedInIdentifier(prospect) || extractLinkedInSlug(prospect.linkedin_url)` for `linkedin_user_id`
+- Lines 165-185: Converted batch insert to one-by-one with error tracking
+
+**`app/api/campaigns/transfer-prospects/route.ts`**:
+- Line 4: Added import for `extractLinkedInSlug`
+- Line 231: `linkedin_user_id: extractLinkedInSlug(contact.linkedin_provider_id || linkedinUrl)`
+- Lines 247-269: One-by-one inserts with error tracking
+
+**`app/api/prospects/add-to-campaign/route.ts`**:
+- Line 3: Added import for `extractLinkedInSlug`
+- Line 125: `linkedin_user_id: extractLinkedInSlug(p.linkedin_provider_id || p.linkedin_url)`
+- Lines 147-175: One-by-one upserts with error tracking
+
+### LinkedIn ID Format Reference
+
+| Format | Example | When Used |
+|--------|---------|-----------|
+| Provider ID | `ACoAAA1234567890ABC` or `ACwAAB9876543210XYZ` | Returned by Unipile API, stored in `linkedin_provider_id` |
+| Vanity Slug | `john-doe-123` | Profile URL path, what we extract and store |
+| Full URL | `https://linkedin.com/in/john-doe-123` | Never store in `linkedin_user_id` |
+
+### Why This Matters
+
+1. **Unipile API Compatibility**: The API rejects full URLs, expects slugs or provider IDs
+2. **Data Integrity**: One-by-one inserts prevent batch failures from losing all records
+3. **Debugging**: Individual errors are logged with prospect identifiers
+4. **Consistency**: All entry points now use the same utility functions
+
+---
+
 ## Next Steps
 
 ### Immediate
 - [x] Test CSV upload → campaign transfer flow end-to-end
+- [x] Standardize linkedin_user_id handling across all entry points
 - [ ] Monitor QA monitor for false positives
 
 ### Short-term
@@ -517,4 +673,4 @@ The frontend has **TWO** campaign creation flows with different behaviors:
 
 ---
 
-*Last Updated: December 18, 2025 12:00 UTC*
+*Last Updated: December 18, 2025 18:30 UTC*
