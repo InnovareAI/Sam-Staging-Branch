@@ -59,6 +59,12 @@
 [functions."process-pending-prospects"]
   schedule = "*/5 * * * *"
 
+# Scheduled function: Queue pending prospects every 5 minutes
+# CRITICAL: Adds prospects with status='pending' to send_queue with proper scheduling
+# Without this, prospects uploaded to campaigns never get queued for sending
+[functions."queue-pending-prospects"]
+  schedule = "*/5 * * * *"
+
 # Scheduled function: Process send queue every minute
 # Checks ALL workspaces for due messages (each user has 30-min spacing)
 # Limits: 20 CRs/day per LinkedIn account, business hours, no weekends/holidays
