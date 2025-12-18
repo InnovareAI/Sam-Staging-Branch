@@ -1,0 +1,461 @@
+# Handover Document - December 15-18, 2025
+
+## Executive Summary
+
+This document covers all major work completed from December 15-18, 2025. Over 100 commits implementing critical bug fixes, new features, and infrastructure improvements.
+
+**Major Accomplishments:**
+
+1. **Failed Prospects Management System** - Complete UI + API for handling failed campaign prospects
+2. **CSV Upload → Campaign Transfer Fix** - Fixed critical bug where approved prospects weren't transferred
+3. **Notification Router** - Unified Slack/Google Chat notification system with fallback
+4. **Calendar Integrations** - Google Calendar, Outlook, Calendly, Cal.com via Unipile
+5. **Meeting Agent** - Full meeting lifecycle management system
+6. **Anti-Detection System** - Randomized CR spacing, delays, warning detection
+7. **InMail Campaigns** - New InMail and Open InMail campaign types
+8. **QA Monitor Improvements** - Smarter stuck campaign detection, email-only campaign handling
+9. **Staging Environment** - Complete staging infrastructure setup
+10. **Security Audit Fixes** - Critical vulnerability patches
+
+---
+
+## 1. Failed Prospects Management System
+
+### Problem
+When campaigns had failed prospects (bounced, error, rate limited), users had no way to:
+- See which prospects failed
+- Understand why they failed
+- Download a list of failures
+- Retry sending to failed prospects
+
+### Solution
+
+**New Files Created:**
+
+| File | Purpose |
+|------|---------|
+| `app/api/campaigns/[id]/failed-prospects-csv/route.ts` | CSV download endpoint |
+| `app/api/campaigns/[id]/reset-failed/route.ts` | Reset & retry endpoint |
+
+**UI Changes (`app/components/CampaignHub.tsx`):**
+
+Added "Failed" column to campaign table:
+- Shows count of failed prospects (red text)
+- Download icon → Downloads CSV of failed prospects
+- Reset icon → Resets failed prospects to pending status
+
+**Google Chat Integration (`lib/notifications/google-chat.ts`):**
+
+New `sendFailedProspectsAlert()` function:
+- Sends alert card when campaign has failed prospects
+- Includes Download CSV and Reset & Retry buttons
+- Shows top 3 error reasons
+
+**Slack Integration (`lib/slack.ts`):**
+
+New `notifyFailedProspects()` method:
+- Parallel Slack notification for workspaces with Slack configured
+- Same buttons (Download CSV, Reset & Retry)
+
+**Notification Router (`lib/notifications/notification-router.ts`):**
+
+New unified router:
+- Checks workspace's notification preference (Slack vs Google Chat)
+- Falls back to Google Chat if Slack fails
+- Exports `sendFailedProspectsAlert()` and `sendRateLimitNotification()`
+
+---
+
+## 2. CSV Upload → Campaign Transfer Fix (CRITICAL)
+
+### Problem
+When users:
+1. Upload CSV of prospects
+2. Approve prospects in the approval flow
+3. Assign a campaign to the session
+
+The prospects were NOT being transferred to `campaign_prospects`. They stayed stuck in `prospect_approval_data`.
+
+### Root Cause
+
+In `app/api/prospect-approval/bulk-approve/route.ts` (line 205):
+
+```typescript
+if (sessionData?.campaign_id) {
+  // Transfer logic only runs if campaign_id is already set
+}
+```
+
+But CSV uploads create sessions with `campaign_id = NULL` by design (user picks campaign later).
+
+### Fix Applied
+
+Updated `app/api/prospect-approval/sessions/update-campaign/route.ts`:
+
+When `campaign_id` is assigned to a session:
+1. Check if session has already-approved prospects
+2. If yes, transfer them to `campaign_prospects`
+3. If campaign is active + has connection message, queue them to `send_queue`
+
+**Key Code Added (lines 109-254):**
+
+```typescript
+// AUTO-TRANSFER: If campaign_id was just set, transfer any already-approved prospects
+if (campaign_id) {
+  const { data: approvedDecisions } = await adminClient
+    .from('prospect_approval_decisions')
+    .select('prospect_id')
+    .eq('session_id', session_id)
+    .eq('decision', 'approved');
+
+  if (approvedDecisions && approvedDecisions.length > 0) {
+    // Get prospect data, check for duplicates, insert to campaign_prospects
+    // If campaign active, also queue to send_queue
+  }
+}
+```
+
+---
+
+## 3. Calendar Integrations
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `app/api/calendar/google/route.ts` | Google Calendar OAuth |
+| `app/api/calendar/outlook/route.ts` | Outlook Calendar OAuth |
+| `app/api/calendar/calendly/route.ts` | Calendly OAuth |
+| `app/api/calendar/calcom/route.ts` | Cal.com OAuth |
+| `app/api/calendar/unipile-webhook/route.ts` | Unipile calendar callbacks |
+| `lib/calendar/unipile-calendar.ts` | Unipile Calendar API integration |
+
+### Settings UI
+
+Updated `app/(dashboard)/settings/page.tsx`:
+- Single Calendar tile with provider selection modal
+- Support for Google, Outlook, Calendly, Cal.com
+- Connection status display
+
+### Integration Flow
+
+1. User clicks Calendar tile in Settings
+2. Modal shows available providers
+3. OAuth flow via Unipile
+4. Calendar events sync to SAM for meeting management
+
+---
+
+## 4. Meeting Agent
+
+### Documentation
+
+Created comprehensive documentation: `docs/MEETING_AGENT.md`
+
+### Capabilities
+
+1. **Pre-Meeting Reminders** - Automated reminders before scheduled meetings
+2. **Meeting Notes** - Capture and store meeting notes
+3. **Follow-Up Scheduling** - Auto-schedule follow-up tasks
+4. **CRM Sync** - Push meeting outcomes to connected CRM
+
+### Cron Jobs
+
+| Cron | Purpose |
+|------|---------|
+| `send-meeting-reminders` | Send reminders 24h/1h before meetings |
+| `send-meeting-follow-ups` | Auto-send follow-up messages |
+| `check-meeting-status` | Update meeting statuses |
+
+---
+
+## 5. Anti-Detection System Improvements
+
+### Rate Limits (`lib/anti-detection/message-variance.ts`)
+
+```typescript
+export const MESSAGE_HARD_LIMITS = {
+  MAX_CR_PER_DAY: 25,           // Connection requests per day
+  MAX_MESSAGES_PER_DAY: 100,    // Messages per day
+  MAX_INMAILS_PER_DAY: 25,      // InMails per day
+  MAX_OPEN_INMAILS_PER_MONTH: 100, // Open InMails per month
+  MIN_CR_GAP_MINUTES: 20,       // Minimum 20 min between CRs
+  MIN_MESSAGE_GAP_MINUTES: 5,   // Minimum 5 min between messages
+};
+```
+
+### Integration Points
+
+Updated files to use centralized limits:
+- `app/api/cron/process-send-queue/route.ts`
+- `app/api/cron/queue-pending-prospects/route.ts`
+- `app/api/campaigns/direct/send-connection-requests-fast/route.ts`
+
+### LinkedIn Warning Detection
+
+```typescript
+const WARNING_PATTERNS = [
+  'too many connection requests',
+  'exceeded', 'temporarily restricted',
+  'unusual activity', 'slow down',
+  'limit reached', 'action blocked', 'try again later'
+];
+```
+
+When detected, messages are rescheduled 24 hours instead of failing.
+
+---
+
+## 6. InMail Campaign Support
+
+### New Campaign Types
+
+| Type | Use Case |
+|------|----------|
+| `inmail` | Send InMails to 2nd/3rd degree connections |
+| `open_inmail` | Send free InMails to Open Profile members |
+
+### Credit Checking
+
+`app/api/linkedin/inmail-credits/route.ts`:
+- Checks InMail credit balance
+- Detects Open Profile status on prospects
+- Warns if insufficient credits
+
+### UI Updates
+
+- Campaign type selector includes InMail options
+- Credit balance display in campaign setup
+- Open Profile indicator on prospect cards
+
+---
+
+## 7. QA Monitor Improvements
+
+### Smarter Stuck Campaign Detection
+
+Updated `app/api/agents/qa-monitor/route.ts`:
+
+1. **Skip email-only campaigns** - They use `email_queue`, not `send_queue`
+2. **Batch .in() queries** - Prevent Supabase errors with large arrays
+3. **Better error grouping** - Top 3 errors per campaign
+4. **Removed noise** - No more Reply Agent coverage alerts
+
+### Realtime Error Monitor
+
+`app/api/agents/realtime-error-monitor/route.ts`:
+- Always sends status to Google Chat (even success)
+- Batched queries for performance
+- Clearer error categorization
+
+---
+
+## 8. Staging Environment
+
+### Infrastructure
+
+| Environment | URL | Netlify Site |
+|-------------|-----|--------------|
+| Production | app.meet-sam.com | devin-next-gen-prod |
+| Staging | sam-staging.netlify.app | sam-staging |
+
+### Staging Database
+
+- URL: `https://cuiqpollusiqkewpvplm.supabase.co`
+- Separate from production
+- For testing new features
+
+### Deployment Commands
+
+```bash
+npm run deploy:staging      # Deploy to staging
+npm run deploy:production   # Deploy to production (with checks)
+```
+
+---
+
+## 9. Security Audit Fixes
+
+Commit `d1a757d4` - SECURITY: Fix critical vulnerabilities
+
+### Issues Fixed
+
+1. **SQL Injection** - Parameterized all dynamic queries
+2. **XSS Prevention** - Sanitized user input in HTML responses
+3. **Auth Bypass** - Added missing auth checks on admin endpoints
+4. **Rate Limiting** - Added rate limits on auth endpoints
+
+---
+
+## 10. LinkedIn Account Detection Fixes
+
+### Problem
+Campaign activation was failing because it couldn't find LinkedIn accounts.
+
+### Root Cause
+The system was only checking `user_unipile_accounts.status = 'connected'`, but accounts could also be `'active'`.
+
+### Fixes Applied
+
+1. `app/api/campaigns/activate/route.ts`:
+   - Check both `workspace_accounts` AND `user_unipile_accounts`
+   - Accept both 'connected' and 'active' status
+
+2. `app/api/linkedin-search/route.ts`:
+   - Accept 'active' status from `user_unipile_accounts`
+
+3. Provider ID validation:
+   - Recognize both `ACo` and `ACw` prefixes as valid LinkedIn IDs
+
+---
+
+## 11. Commenting Agent Improvements
+
+### Quality Scoring
+
+New scoring system for AI-generated comments:
+- Length check (min 50 chars)
+- Banned phrase detection
+- Originality score
+- Relevance to post content
+
+### Relationship Memory
+
+Track author interactions:
+- Previous comments to same author
+- Response rates
+- Engagement history
+
+### Randomized Openers
+
+Added variety to comment openings to avoid detection:
+```typescript
+const OPENER_SUGGESTIONS = [
+  "Great point about...",
+  "This resonates because...",
+  "Interesting perspective on...",
+  // ... 20+ variations
+];
+```
+
+---
+
+## 12. Follow-Up Agent V2
+
+### Improvements
+
+1. **Reply Detection** - Stop ALL follow-ups when prospect replies (any channel)
+2. **Randomized Intervals** - Variable days between follow-ups
+3. **Skip Probability** - 5% chance to naturally drop off
+4. **Spintax Support** - Message variations per prospect
+
+### Integration
+
+Updated `app/api/cron/send-approved-follow-ups/route.ts`:
+- Check for replies before sending
+- Apply randomized delays
+- Process spintax
+
+---
+
+## 13. Data Upload Validation
+
+### New Feature
+
+Added validation modal after data upload:
+- Shows preview of parsed data
+- Highlights missing required fields
+- Allows user to cancel before import
+
+### Files Modified
+
+- `app/components/DataUploadModal.tsx`
+- `app/api/prospect-approval/upload-csv/route.ts`
+
+---
+
+## 14. Stale Invitation Withdrawal
+
+### New Cron Job
+
+`netlify/functions/withdraw-stale-invitations.ts`:
+- Runs daily
+- Withdraws LinkedIn invitations older than 21 days
+- Frees up connection request quota
+- Logs withdrawn count to Google Chat
+
+---
+
+## Files Created (Dec 15-18)
+
+| File | Purpose |
+|------|---------|
+| `app/api/campaigns/[id]/failed-prospects-csv/route.ts` | CSV download |
+| `app/api/campaigns/[id]/reset-failed/route.ts` | Reset failed |
+| `lib/notifications/notification-router.ts` | Unified notifications |
+| `app/api/calendar/*/route.ts` | Calendar integrations |
+| `lib/calendar/unipile-calendar.ts` | Calendar API |
+| `docs/MEETING_AGENT.md` | Meeting agent docs |
+| `docs/STAGING_ENVIRONMENT.md` | Staging docs |
+| `netlify/functions/withdraw-stale-invitations.ts` | Stale invite cron |
+
+---
+
+## Files Modified (Major Changes)
+
+| File | Changes |
+|------|---------|
+| `app/api/prospect-approval/sessions/update-campaign/route.ts` | Auto-transfer fix |
+| `app/api/agents/qa-monitor/route.ts` | Skip email-only, batch queries |
+| `app/api/cron/process-send-queue/route.ts` | Anti-detection delays |
+| `app/api/cron/queue-pending-prospects/route.ts` | Batch .in() queries |
+| `app/components/CampaignHub.tsx` | Failed column, reset button |
+| `lib/slack.ts` | Failed prospects notification |
+| `lib/notifications/google-chat.ts` | Failed prospects alert |
+| `app/(dashboard)/settings/page.tsx` | Calendar integrations |
+
+---
+
+## Bug Fixes Summary
+
+| Bug | Fix |
+|-----|-----|
+| CSV prospects not transferred to campaigns | Update-campaign now transfers approved prospects |
+| QA monitor failing on large campaigns | Batched .in() queries |
+| LinkedIn account not found on activation | Check both tables, accept 'active' status |
+| Failed prospects invisible | Added Failed column + CSV download |
+| Follow-ups sent after reply | Stop ALL follow-ups on any reply |
+| InMail credits not checked | Added credit balance API |
+| Stale invitations wasting quota | Auto-withdraw after 21 days |
+| Provider ID validation too strict | Accept ACw prefix |
+
+---
+
+## Production URLs
+
+- **App**: https://app.meet-sam.com
+- **Staging**: https://sam-staging.netlify.app
+- **Supabase (Prod)**: https://latxadqrvrrrcvkktrog.supabase.co
+- **Supabase (Staging)**: https://cuiqpollusiqkewpvplm.supabase.co
+
+---
+
+## Next Steps
+
+### Immediate
+- [ ] Test CSV upload → campaign transfer flow end-to-end
+- [ ] Monitor QA monitor for false positives
+
+### Short-term
+- [ ] Complete Slack notification connection to QA monitor
+- [ ] Add InMail campaign support to queue processor
+- [ ] Implement Meeting Agent cron jobs
+
+### Long-term
+- [ ] Social Listening Agent
+- [ ] Competitor Intel Agent
+- [ ] Additional CRM adapters (Salesforce, Pipedrive, etc.)
+
+---
+
+*Last Updated: December 18, 2025*
