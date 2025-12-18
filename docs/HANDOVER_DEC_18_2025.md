@@ -287,25 +287,63 @@ Commit `d1a757d4` - SECURITY: Fix critical vulnerabilities
 
 ---
 
-## 10. LinkedIn Account Detection Fixes
+## 10. LinkedIn Account Detection Fixes (CRITICAL - Dec 18)
 
 ### Problem
-Campaign activation was failing because it couldn't find LinkedIn accounts.
+Campaign creation and execution was failing with "LinkedIn account not found" errors, even when accounts existed.
 
 ### Root Cause
-The system was only checking `user_unipile_accounts.status = 'connected'`, but accounts could also be `'active'`.
+Multiple issues:
+1. System only checked `workspace_accounts` table, but LinkedIn accounts can also be in `user_unipile_accounts`
+2. Status check only accepted 'connected', but accounts could also be 'active'
+3. Campaign creation didn't auto-assign LinkedIn account from either table
 
-### Fixes Applied
+### Fixes Applied (Dec 18)
 
-1. `app/api/campaigns/activate/route.ts`:
+1. **`app/api/campaigns/route.ts`** (lines 365-385, 534-548):
+   - Added fallback to check `user_unipile_accounts` when `workspace_accounts` empty
+   - Accept both 'connected' and 'active' connection statuses
+   ```typescript
+   // FIX (Dec 18): Fallback to user_unipile_accounts if workspace_accounts doesn't have it
+   if (!linkedinAccount) {
+     const { data: unipileAccounts } = await supabase
+       .from('user_unipile_accounts')
+       .select('id, account_name, connection_status')
+       .eq('workspace_id', workspace_id)
+       .eq('platform', 'LINKEDIN')
+       .in('connection_status', ['connected', 'active'])
+       .limit(1);
+     if (unipileAccounts?.[0]) {
+       linkedinAccount = { id: unipileAccounts[0].id, account_name: unipileAccounts[0].account_name };
+     }
+   }
+   ```
+
+2. **`app/api/campaigns/direct/send-connection-requests-fast/route.ts`** (lines 114-161):
+   - Removed JOIN on workspace_accounts, now fetches LinkedIn account separately
+   - Checks both tables for LinkedIn account
+   - Accepts both 'connected' and 'active' statuses
+
+3. **`app/api/campaigns/activate/route.ts`**:
    - Check both `workspace_accounts` AND `user_unipile_accounts`
    - Accept both 'connected' and 'active' status
 
-2. `app/api/linkedin-search/route.ts`:
+4. **`app/api/linkedin-search/route.ts`**:
    - Accept 'active' status from `user_unipile_accounts`
 
-3. Provider ID validation:
+5. **Provider ID validation**:
    - Recognize both `ACo` and `ACw` prefixes as valid LinkedIn IDs
+
+### Two LinkedIn Account Tables
+
+The system has TWO tables that store LinkedIn accounts:
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| `workspace_accounts` | Workspace-level account associations | `id`, `unipile_account_id`, `account_type`, `connection_status`, `is_active` |
+| `user_unipile_accounts` | User-level Unipile connections | `id`, `unipile_account_id`, `platform`, `connection_status` |
+
+**Important**: Always check BOTH tables when looking up LinkedIn accounts.
 
 ---
 
@@ -423,6 +461,8 @@ Added validation modal after data upload:
 | CSV prospects not transferred to campaigns | Update-campaign now transfers approved prospects |
 | QA monitor failing on large campaigns | Batched .in() queries |
 | LinkedIn account not found on activation | Check both tables, accept 'active' status |
+| LinkedIn account not found on campaign creation | Check both `workspace_accounts` AND `user_unipile_accounts` |
+| LinkedIn account not found on execution | Separate account fetch instead of JOIN, check both tables |
 | Failed prospects invisible | Added Failed column + CSV download |
 | Follow-ups sent after reply | Stop ALL follow-ups on any reply |
 | InMail credits not checked | Added credit balance API |
@@ -440,10 +480,29 @@ Added validation modal after data upload:
 
 ---
 
+## Known Design Decisions
+
+### Data Approval → Campaign Creation Flow
+
+The frontend has **TWO** campaign creation flows with different behaviors:
+
+1. **Flow 1** (CampaignHub.tsx lines 3920-4100):
+   - Passes `session_id` to API
+   - Auto-transfers ALL approved prospects from session
+
+2. **Flow 2** (CampaignHub.tsx lines 7270-7635 - approval screen):
+   - Does NOT pass `session_id` (intentional Dec 8 fix)
+   - Prevents data leakage when user selects subset of prospects
+   - Requires manual prospect transfer or using `update-campaign` endpoint
+
+**Current Behavior**: When creating campaigns from the approval screen, prospects must be transferred manually OR the session must be linked to the campaign via the `update-campaign/route.ts` endpoint.
+
+---
+
 ## Next Steps
 
 ### Immediate
-- [ ] Test CSV upload → campaign transfer flow end-to-end
+- [x] Test CSV upload → campaign transfer flow end-to-end
 - [ ] Monitor QA monitor for false positives
 
 ### Short-term
@@ -458,4 +517,4 @@ Added validation modal after data upload:
 
 ---
 
-*Last Updated: December 18, 2025*
+*Last Updated: December 18, 2025 12:00 UTC*
