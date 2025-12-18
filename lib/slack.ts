@@ -605,6 +605,70 @@ class SlackService {
   }
 
   /**
+   * Notify about failed prospects in a campaign
+   */
+  async notifyFailedProspects(
+    workspaceId: string,
+    campaignId: string,
+    campaignName: string,
+    failedCount: number,
+    totalProspects: number,
+    topErrors: { error: string; count: number }[],
+    appUrl: string = 'https://app.meet-sam.com'
+  ) {
+    const failRate = totalProspects > 0 ? ((failedCount / totalProspects) * 100).toFixed(1) : '0';
+    const downloadUrl = `${appUrl}/api/campaigns/${campaignId}/failed-prospects-csv`;
+    const resetUrl = `${appUrl}/api/campaigns/${campaignId}/reset-failed`;
+
+    const errorFields = topErrors.slice(0, 3).map(e => ({
+      type: 'mrkdwn',
+      text: `*${e.count}x* ${e.error}`,
+    }));
+
+    const message: SlackMessage = {
+      text: `Failed Prospects Alert: ${campaignName}`,
+      blocks: [
+        { type: 'header', text: { type: 'plain_text', text: 'Failed Prospects Alert', emoji: true } },
+        {
+          type: 'section',
+          fields: [
+            { type: 'mrkdwn', text: `*Campaign*\n${campaignName}` },
+            { type: 'mrkdwn', text: `*Failed*\n${failedCount} of ${totalProspects} (${failRate}%)` },
+          ],
+        },
+        ...(errorFields.length > 0 ? [{
+          type: 'section' as const,
+          text: { type: 'mrkdwn' as const, text: '*Top Errors:*' },
+          fields: errorFields as { type: string; text: string }[],
+        }] : []),
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Download CSV', emoji: true },
+              url: downloadUrl,
+              style: 'primary',
+            },
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: 'Reset & Retry', emoji: true },
+              url: resetUrl,
+            },
+          ],
+        },
+      ],
+    };
+
+    const channel = await this.getDefaultChannel(workspaceId);
+    const botResult = await this.sendBotMessage(workspaceId, channel, message);
+    if (!botResult.success) {
+      return this.sendWorkspaceWebhook(workspaceId, message);
+    }
+    return botResult;
+  }
+
+  /**
    * Notify when a LinkedIn connection is accepted
    */
   async notifyConnectionAccepted(

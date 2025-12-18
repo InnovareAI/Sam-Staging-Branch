@@ -35,7 +35,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { claudeClient } from '@/lib/llm/claude-client';
-import { sendHealthCheckNotification, sendFailedProspectsAlert } from '@/lib/notifications/google-chat';
+import { sendHealthCheckNotification } from '@/lib/notifications/google-chat';
+import { sendFailedProspectsAlert } from '@/lib/notifications/notification-router';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -2459,9 +2460,10 @@ async function checkAndAlertCampaignFailures(supabase: any): Promise<QACheck> {
         .sort((a, b) => b.count - a.count)
         .slice(0, 3);
 
-      // Send alert
+      // Send alert (routes to Slack or Google Chat based on workspace config)
       const campaignName = campaign.campaign_name || campaign.name || 'Unknown Campaign';
       await sendFailedProspectsAlert({
+        workspaceId: campaign.workspace_id,
         campaignId: campaign.id,
         campaignName,
         workspaceName: workspace?.name || 'Unknown',

@@ -13,7 +13,10 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { slackService } from '@/lib/slack';
-import { sendRateLimitNotification as sendGoogleChatRateLimitNotification } from '@/lib/notifications/google-chat';
+import {
+  sendRateLimitNotification as sendGoogleChatRateLimitNotification,
+  sendFailedProspectsAlert as sendGoogleChatFailedProspectsAlert,
+} from '@/lib/notifications/google-chat';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -141,5 +144,78 @@ export async function sendRateLimitNotification(
   return { success: false, channel: 'none', error: 'No notification channel configured' };
 }
 
+export interface FailedProspectsNotificationData {
+  workspaceId: string;
+  campaignId: string;
+  campaignName: string;
+  workspaceName: string;
+  failedCount: number;
+  totalProspects: number;
+  topErrors: { error: string; count: number }[];
+  appUrl: string;
+}
+
+/**
+ * Send a failed prospects alert to the appropriate channel (Slack or Google Chat)
+ */
+export async function sendFailedProspectsAlert(
+  data: FailedProspectsNotificationData
+): Promise<{ success: boolean; channel: NotificationChannel; error?: string }> {
+  const config = await getWorkspaceNotificationChannel(data.workspaceId);
+
+  console.log(`📬 Failed prospects alert for workspace ${data.workspaceId.substring(0, 8)}... → ${config.channel}`);
+
+  if (config.channel === 'slack') {
+    try {
+      const result = await slackService.notifyFailedProspects(
+        data.workspaceId,
+        data.campaignId,
+        data.campaignName,
+        data.failedCount,
+        data.totalProspects,
+        data.topErrors,
+        data.appUrl
+      );
+      return { success: result.success, channel: 'slack', error: result.error };
+    } catch (error) {
+      console.warn('Slack notification failed, trying Google Chat:', error);
+      // Fall back to Google Chat if Slack fails
+      if (config.googleChatConfigured) {
+        const gcResult = await sendGoogleChatFailedProspectsAlert({
+          campaignId: data.campaignId,
+          campaignName: data.campaignName,
+          workspaceName: data.workspaceName,
+          failedCount: data.failedCount,
+          totalProspects: data.totalProspects,
+          topErrors: data.topErrors,
+          appUrl: data.appUrl,
+        });
+        return { success: gcResult.success, channel: 'google_chat', error: gcResult.error };
+      }
+      return {
+        success: false,
+        channel: 'none',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  if (config.channel === 'google_chat') {
+    const result = await sendGoogleChatFailedProspectsAlert({
+      campaignId: data.campaignId,
+      campaignName: data.campaignName,
+      workspaceName: data.workspaceName,
+      failedCount: data.failedCount,
+      totalProspects: data.totalProspects,
+      topErrors: data.topErrors,
+      appUrl: data.appUrl,
+    });
+    return { success: result.success, channel: 'google_chat', error: result.error };
+  }
+
+  console.warn('⚠️ No notification channel configured for workspace');
+  return { success: false, channel: 'none', error: 'No notification channel configured' };
+}
+
 // Re-export for convenience
-export { sendGoogleChatRateLimitNotification };
+export { sendGoogleChatRateLimitNotification, sendGoogleChatFailedProspectsAlert };
