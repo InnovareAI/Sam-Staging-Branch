@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiError, handleApiError } from '@/lib/api-error-handler';
+import { apiError } from '@/lib/api-error-handler';
+import { claudeClient, CLAUDE_MODELS } from '@/lib/llm/claude-client';
 
 // Extend function timeout to 60 seconds for AI generation
 export const maxDuration = 60;
@@ -14,34 +15,28 @@ export async function POST(req: NextRequest) {
 
     console.log('🤖 SAM AI: Processing message:', message);
 
-    // Try to use OpenRouter for AI responses
+    // Direct Claude SDK call - fast and simple
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/api/sam/openrouter`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: `You are Sam, the sales AI agent who runs LinkedIn and email automations for the user. Keep replies to two sentences max plus one question. Stay personable, mention your orchestration role, and always steer toward ICP clarity, knowledge uploads, approvals, and messaging sign-off. The user says: "${message}" — respond in that style.`,
-          use_case: 'sam_reasoning',
-          max_tokens: 300,
-          temperature: 0.7
-        })
+      const result = await claudeClient.chat({
+        model: CLAUDE_MODELS.HAIKU, // Fast model for chat
+        system: 'You are Sam, the sales AI agent who runs LinkedIn and email automations for the user. Keep replies to two sentences max plus one question. Stay personable, mention your orchestration role, and always steer toward ICP clarity, knowledge uploads, approvals, and messaging sign-off.',
+        messages: [{ role: 'user', content: message }],
+        max_tokens: 300,
+        temperature: 0.7
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.message) {
-          console.log('✅ SAM AI: AI-powered response generated');
-          return NextResponse.json({
-            response: result.message,
-            timestamp: new Date().toISOString(),
-            aiPowered: true,
-            model_used: result.model_used,
-            user: { authenticated: false, anonymous: true }
-          });
-        }
+      if (result.content) {
+        console.log('✅ SAM AI: Claude response generated');
+        return NextResponse.json({
+          response: result.content,
+          timestamp: new Date().toISOString(),
+          aiPowered: true,
+          model_used: result.model,
+          user: { authenticated: false, anonymous: true }
+        });
       }
-    } catch {
-      console.log('⚠️ OpenRouter unavailable, using smart fallback');
+    } catch (err) {
+      console.log('⚠️ Claude unavailable, using smart fallback:', err);
     }
 
     // Smart fallback responses with improved keyword matching

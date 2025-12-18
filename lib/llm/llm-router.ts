@@ -1,16 +1,14 @@
 /**
- * LLM Router - Routes chat completion requests to appropriate LLM provider
- * Supports: Claude Direct (EU region), Platform OpenRouter, Customer BYOK OpenRouter, Custom Enterprise endpoints
+ * LLM Router - Routes chat completion requests to Claude SDK
  *
- * GDPR COMPLIANCE (Nov 29, 2025):
- * - Default: Claude Direct API with EU region for GDPR compliance
- * - Fallback: OpenRouter (US) if Claude fails
- * - Enterprise: BYOK or custom endpoints
+ * UPDATED December 18, 2025:
+ * - OpenRouter REMOVED - all calls go directly to Claude SDK
+ * - Uses Anthropic SDK with proper model selection
+ * - GDPR compliant EU region processing
  */
 
 import { createClient } from '@supabase/supabase-js';
-import Anthropic from '@anthropic-ai/sdk';
-import { getDefaultModel, getModelById } from './approved-models';
+import { claudeClient, CLAUDE_MODELS } from './claude-client';
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -29,11 +27,7 @@ interface ChatResponse {
 
 interface CustomerLLMPreferences {
   selected_model: string | null;
-  use_claude_direct: boolean;  // GDPR: Use Claude API directly with EU region
-  use_own_openrouter_key: boolean;
-  openrouter_api_key_encrypted: string | null;
-  use_custom_endpoint: boolean;
-  custom_endpoint_config: any;
+  use_claude_direct: boolean;
   temperature: number;
   max_tokens: number;
   plan_tier: string;
@@ -46,13 +40,8 @@ class LLMRouter {
   );
 
   /**
-   * Main chat method - routes to appropriate LLM based on customer preferences
-   *
-   * Routing priority (Nov 29, 2025):
-   * 1. Custom endpoint (Enterprise BYOK - Azure, AWS, etc.)
-   * 2. Customer's own OpenRouter key (Enterprise BYOK)
-   * 3. Claude Direct API (DEFAULT - GDPR compliant EU region)
-   * 4. OpenRouter fallback (if Claude fails)
+   * Main chat method - routes directly to Claude SDK
+   * OpenRouter removed Dec 18, 2025
    */
   async chat(
     userId: string,
@@ -61,38 +50,35 @@ class LLMRouter {
     options?: {
       temperature?: number;
       maxTokens?: number;
+      model?: string;
     }
   ): Promise<ChatResponse> {
-    // Get customer preferences
     const prefs = await this.getCustomerPreferences(userId);
 
-    // Determine routing
-    if (prefs.use_custom_endpoint && prefs.custom_endpoint_config) {
-      // Enterprise: Custom endpoint (Azure, AWS, self-hosted)
-      return await this.callCustomEndpoint(prefs, messages, systemPrompt, options);
-    } else if (prefs.use_own_openrouter_key && prefs.openrouter_api_key_encrypted) {
-      // Enterprise: BYOK OpenRouter
-      const customerKey = await this.decryptApiKey(prefs.openrouter_api_key_encrypted);
-      const model = prefs.selected_model || getDefaultModel().id;
-      return await this.callOpenRouter(customerKey, model, messages, systemPrompt, options, prefs);
-    } else if (prefs.use_claude_direct !== false) {
-      // DEFAULT: Claude Direct API (GDPR compliant - EU region)
-      // use_claude_direct defaults to true for GDPR compliance
-      try {
-        return await this.callClaudeDirect(messages, systemPrompt, options, prefs);
-      } catch (error) {
-        console.error('Claude Direct API failed, falling back to OpenRouter:', error);
-        // Fallback to OpenRouter if Claude fails
-        const platformKey = process.env.OPENROUTER_API_KEY!;
-        const model = prefs.selected_model || getDefaultModel().id;
-        return await this.callOpenRouter(platformKey, model, messages, systemPrompt, options, prefs);
-      }
-    } else {
-      // Legacy: Platform OpenRouter (US)
-      const platformKey = process.env.OPENROUTER_API_KEY!;
-      const model = prefs.selected_model || getDefaultModel().id;
-      return await this.callOpenRouter(platformKey, model, messages, systemPrompt, options, prefs);
-    }
+    // Determine model - Haiku for chat (fast), Sonnet/Opus for heavy processing
+    const model = options?.model || CLAUDE_MODELS.HAIKU;
+
+    // Direct Claude SDK call
+    const result = await claudeClient.chat({
+      model,
+      system: systemPrompt,
+      messages: messages.map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content
+      })),
+      max_tokens: options?.maxTokens || prefs.max_tokens || 1000,
+      temperature: options?.temperature || prefs.temperature || 0.7
+    });
+
+    return {
+      content: result.content,
+      usage: result.usage ? {
+        promptTokens: result.usage.promptTokens,
+        completionTokens: result.usage.completionTokens,
+        totalTokens: result.usage.totalTokens
+      } : undefined,
+      model: result.model
+    };
   }
 
   /**
@@ -149,261 +135,32 @@ class LLMRouter {
    * Get customer's LLM preferences from database
    */
   private async getCustomerPreferences(userId: string): Promise<CustomerLLMPreferences> {
-    const { data, error } = await this.supabase
-      .from('customer_llm_preferences')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('enabled', true)
-      .single();
+    try {
+      const { data, error } = await this.supabase
+        .from('customer_llm_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('enabled', true)
+        .single();
 
-    if (error || !data) {
-      // Return defaults - Claude Direct is DEFAULT for GDPR compliance
-      return {
-        selected_model: null, // Will use claude-sonnet-4-20250514
-        use_claude_direct: true, // GDPR: Default to Claude Direct with EU region
-        use_own_openrouter_key: false,
-        openrouter_api_key_encrypted: null,
-        use_custom_endpoint: false,
-        custom_endpoint_config: null,
-        temperature: 0.7,
-        max_tokens: 1000,
-        plan_tier: 'standard'
-      };
+      if (error || !data) {
+        return this.getDefaultPreferences();
+      }
+
+      return data as CustomerLLMPreferences;
+    } catch {
+      return this.getDefaultPreferences();
     }
-
-    return data as CustomerLLMPreferences;
   }
 
-  /**
-   * Call OpenRouter API (works for both platform and BYOK)
-   */
-  private async callOpenRouter(
-    apiKey: string,
-    modelId: string,
-    messages: ChatMessage[],
-    systemPrompt: string,
-    options: any,
-    prefs: CustomerLLMPreferences
-  ): Promise<ChatResponse> {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://innovareai.com',
-        'X-Title': 'Sam AI Sales Consultant'
-      },
-      body: JSON.stringify({
-        model: modelId,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ],
-        temperature: options?.temperature || prefs.temperature || 0.7,
-        max_tokens: options?.maxTokens || prefs.max_tokens || 1000,
-        top_p: 0.9,
-        frequency_penalty: 0.1,
-        presence_penalty: 0.1
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json();
-
+  private getDefaultPreferences(): CustomerLLMPreferences {
     return {
-      content: data.choices[0].message.content,
-      usage: {
-        promptTokens: data.usage?.prompt_tokens || 0,
-        completionTokens: data.usage?.completion_tokens || 0,
-        totalTokens: data.usage?.total_tokens || 0
-      },
-      model: data.model
+      selected_model: null,
+      use_claude_direct: true,
+      temperature: 0.7,
+      max_tokens: 1000,
+      plan_tier: 'standard'
     };
-  }
-
-  /**
-   * Call Claude Direct API (GDPR compliant - EU region)
-   * Uses Anthropic SDK with EU regional processing
-   */
-  private async callClaudeDirect(
-    messages: ChatMessage[],
-    systemPrompt: string,
-    options: any,
-    prefs: CustomerLLMPreferences
-  ): Promise<ChatResponse> {
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY!,
-    });
-
-    // Convert messages to Anthropic format (system prompt separate)
-    const anthropicMessages = messages.map(msg => ({
-      role: msg.role as 'user' | 'assistant',
-      content: msg.content
-    }));
-
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20250514', // Haiku 4.5 for chat interface (fast, cheap)
-      max_tokens: options?.maxTokens || prefs.max_tokens || 1000,
-      system: systemPrompt,
-      messages: anthropicMessages,
-      // Note: EU region is automatic based on Anthropic account settings
-    });
-
-    // Extract text content from response
-    const textContent = response.content.find(block => block.type === 'text');
-    const content = textContent?.type === 'text' ? textContent.text : '';
-
-    return {
-      content,
-      usage: {
-        promptTokens: response.usage.input_tokens,
-        completionTokens: response.usage.output_tokens,
-        totalTokens: response.usage.input_tokens + response.usage.output_tokens
-      },
-      model: response.model
-    };
-  }
-
-  /**
-   * Call custom enterprise endpoint (Azure OpenAI, AWS Bedrock, self-hosted)
-   */
-  private async callCustomEndpoint(
-    prefs: CustomerLLMPreferences,
-    messages: ChatMessage[],
-    systemPrompt: string,
-    options: any
-  ): Promise<ChatResponse> {
-    const config = prefs.custom_endpoint_config;
-    const apiKey = await this.decryptApiKey(config.api_key_encrypted);
-
-    if (config.provider === 'azure-openai') {
-      return await this.callAzureOpenAI(config, apiKey, messages, systemPrompt, options, prefs);
-    } else if (config.provider === 'aws-bedrock') {
-      return await this.callAWSBedrock(config, messages, systemPrompt, options, prefs);
-    } else {
-      // Generic OpenAI-compatible endpoint
-      return await this.callGenericOpenAI(config, apiKey, messages, systemPrompt, options, prefs);
-    }
-  }
-
-  /**
-   * Call Azure OpenAI
-   */
-  private async callAzureOpenAI(
-    config: any,
-    apiKey: string,
-    messages: ChatMessage[],
-    systemPrompt: string,
-    options: any,
-    prefs: CustomerLLMPreferences
-  ): Promise<ChatResponse> {
-    const url = `${config.endpoint}/openai/deployments/${config.deployment_name}/chat/completions?api-version=${config.api_version}`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'api-key': apiKey,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ],
-        temperature: options?.temperature || prefs.temperature || 0.7,
-        max_tokens: options?.maxTokens || prefs.max_tokens || 1000
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Azure OpenAI error: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json();
-
-    return {
-      content: data.choices[0].message.content,
-      usage: {
-        promptTokens: data.usage?.prompt_tokens || 0,
-        completionTokens: data.usage?.completion_tokens || 0,
-        totalTokens: data.usage?.total_tokens || 0
-      },
-      model: config.model || 'azure-openai'
-    };
-  }
-
-  /**
-   * Call AWS Bedrock (placeholder - would need AWS SDK)
-   */
-  private async callAWSBedrock(
-    config: any,
-    messages: ChatMessage[],
-    systemPrompt: string,
-    options: any,
-    prefs: CustomerLLMPreferences
-  ): Promise<ChatResponse> {
-    // Would require AWS SDK integration
-    throw new Error('AWS Bedrock integration not yet implemented');
-  }
-
-  /**
-   * Call generic OpenAI-compatible endpoint (Ollama, vLLM, etc.)
-   */
-  private async callGenericOpenAI(
-    config: any,
-    apiKey: string,
-    messages: ChatMessage[],
-    systemPrompt: string,
-    options: any,
-    prefs: CustomerLLMPreferences
-  ): Promise<ChatResponse> {
-    const response = await fetch(`${config.endpoint}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ],
-        temperature: options?.temperature || prefs.temperature || 0.7,
-        max_tokens: options?.maxTokens || prefs.max_tokens || 1000
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Custom endpoint error: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json();
-
-    return {
-      content: data.choices[0].message.content,
-      usage: {
-        promptTokens: data.usage?.prompt_tokens || 0,
-        completionTokens: data.usage?.completion_tokens || 0,
-        totalTokens: data.usage?.total_tokens || 0
-      },
-      model: config.model
-    };
-  }
-
-  /**
-   * Decrypt API key (placeholder - implement based on your encryption method)
-   */
-  private async decryptApiKey(encryptedKey: string): Promise<string> {
-    // TODO: Implement proper decryption
-    // For now, return as-is (in production, use proper encryption)
-    return encryptedKey;
   }
 }
 

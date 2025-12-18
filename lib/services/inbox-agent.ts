@@ -60,7 +60,7 @@ export async function categorizeMessage(
   config: InboxAgentConfig
 ): Promise<CategorizationResult> {
   const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY,
+    apiKey: process.env.ANTHROPIC_API_KEY!,
   });
 
   const categoryList = SYSTEM_CATEGORIES
@@ -153,7 +153,7 @@ export async function generateResponseSuggestion(
   }
 
   const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY,
+    apiKey: process.env.ANTHROPIC_API_KEY!,
   });
 
   const systemPrompt = `You are an AI assistant helping craft professional responses to incoming messages.
