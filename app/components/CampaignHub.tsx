@@ -1172,7 +1172,44 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                   <div className="text-gray-400 group-hover:text-purple-100 text-xs">Replied</div>
                 </div>
                 <div className="text-center">
-                  <div className={`text-xl font-bold mb-1 ${(c.failed || 0) > 0 ? 'text-red-400 group-hover:text-red-300' : 'text-gray-500'}`}>{c.failed || 0}</div>
+                  <div className="flex items-center justify-center gap-1">
+                    <div className={`text-xl font-bold ${(c.failed || 0) > 0 ? 'text-red-400 group-hover:text-red-300' : 'text-gray-500'}`}>{c.failed || 0}</div>
+                    {(c.failed || 0) > 0 && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`/api/campaigns/${c.id}/failed-prospects-csv`, '_blank');
+                          }}
+                          className="text-red-400 hover:text-red-300 p-0.5 rounded hover:bg-red-400/10 transition-colors"
+                          title="Download failed prospects CSV"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Reset ${c.failed} failed prospects to pending? They will be re-queued for sending.`)) {
+                              window.open(`/api/campaigns/${c.id}/reset-failed`, '_blank');
+                            }
+                          }}
+                          className="text-amber-400 hover:text-amber-300 p-0.5 rounded hover:bg-amber-400/10 transition-colors"
+                          title="Reset failed prospects to pending"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                            <path d="M3 21v-5h5"/>
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
                   <div className="text-gray-400 group-hover:text-purple-100 text-xs">Failed</div>
                 </div>
               </div>
