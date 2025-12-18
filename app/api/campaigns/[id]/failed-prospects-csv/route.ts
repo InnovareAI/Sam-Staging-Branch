@@ -29,7 +29,7 @@ export async function GET(
     // Get campaign info
     const { data: campaign, error: campaignError } = await supabaseAdmin
       .from('campaigns')
-      .select('campaign_name, workspace_id')
+      .select('campaign_name, name, workspace_id')
       .eq('id', campaignId)
       .single();
 
@@ -88,7 +88,8 @@ export async function GET(
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
 
     // Return as downloadable CSV
-    const filename = `failed-prospects-${campaign.campaign_name?.replace(/[^a-z0-9]/gi, '-') || campaignId}-${new Date().toISOString().split('T')[0]}.csv`;
+    const campaignDisplayName = campaign.campaign_name || campaign.name || campaignId;
+    const filename = `failed-prospects-${campaignDisplayName.replace(/[^a-z0-9]/gi, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
 
     return new NextResponse(csv, {
       headers: {
