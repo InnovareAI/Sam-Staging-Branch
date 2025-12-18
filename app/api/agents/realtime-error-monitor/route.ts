@@ -128,25 +128,29 @@ export async function POST(req: NextRequest) {
 
       if (!pendingCount || pendingCount === 0) continue;
 
-      // Check if these pending prospects are in the queue
+      // FIX (Dec 18): Get ALL queue entries for campaign and count locally
+      // Don't use .in() with large arrays - it fails silently
       const { data: pendingProspects } = await supabase
         .from('campaign_prospects')
         .select('id')
         .eq('campaign_id', campaign.id)
         .eq('status', 'pending')
-        .not('linkedin_url', 'is', null)
-        .limit(50);
+        .not('linkedin_url', 'is', null);
 
-      const prospectIds = pendingProspects?.map(p => p.id) || [];
-
-      const { count: queuedCount } = await supabase
+      const { data: queueEntries } = await supabase
         .from('send_queue')
-        .select('id', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id)
-        .in('prospect_id', prospectIds);
+        .select('prospect_id')
+        .eq('campaign_id', campaign.id);
+
+      // Count how many pending prospects are in queue
+      const queuedIds = new Set((queueEntries || []).map(q => q.prospect_id));
+      let queuedCount = 0;
+      for (const p of pendingProspects || []) {
+        if (queuedIds.has(p.id)) queuedCount++;
+      }
 
       // Alert if there are pending prospects NOT in queue
-      const unqueuedCount = pendingCount - (queuedCount || 0);
+      const unqueuedCount = (pendingProspects?.length || 0) - queuedCount;
       if (unqueuedCount > 0) {
         errors.push({
           name: 'Unqueued Prospects',

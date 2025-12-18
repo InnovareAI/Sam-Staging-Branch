@@ -625,16 +625,14 @@ async function checkStuckCampaigns(supabase: any): Promise<QACheck> {
 
     if (!approvedProspects || approvedProspects.length === 0) continue;
 
-    // Check if these approved prospects are already in queue
-    const prospectIds = approvedProspects.map((p: any) => p.id);
+    // FIX (Dec 18): Get ALL queue entries for campaign - don't use .in() with large arrays
     const { data: inQueue } = await supabase
       .from('send_queue')
       .select('prospect_id')
-      .eq('campaign_id', campaign.id)
-      .in('prospect_id', prospectIds);
+      .eq('campaign_id', campaign.id);
 
     const queuedIds = new Set((inQueue || []).map((q: any) => q.prospect_id));
-    const notInQueue = prospectIds.filter((id: string) => !queuedIds.has(id));
+    const notInQueue = approvedProspects.filter((p: any) => !queuedIds.has(p.id));
 
     // Only flag as stuck if approved prospects are NOT in queue at all
     // (Rate-limited prospects in queue are NOT stuck - they're just waiting)
@@ -1891,13 +1889,11 @@ async function autoFixStuckCampaigns(supabase: any): Promise<AutoFixResult> {
 
       if (!approvedProspects || approvedProspects.length === 0) continue;
 
-      // Check which are already in queue
-      const prospectIds = approvedProspects.map((p: any) => p.id);
+      // FIX (Dec 18): Get ALL queue entries for campaign - don't use .in() with large arrays
       const { data: existingQueue } = await supabase
         .from('send_queue')
         .select('prospect_id')
-        .eq('campaign_id', campaign.id)
-        .in('prospect_id', prospectIds);
+        .eq('campaign_id', campaign.id);
 
       const existingIds = new Set((existingQueue || []).map((q: any) => q.prospect_id));
       const unqueuedProspects = approvedProspects.filter((p: any) => !existingIds.has(p.id));
