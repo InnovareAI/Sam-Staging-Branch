@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+/**
+ * Extract LinkedIn slug from URL or return as-is if already a slug
+ * e.g., "https://www.linkedin.com/in/john-doe" -> "john-doe"
+ */
+function extractLinkedInSlug(urlOrSlug: string | null): string | null {
+  if (!urlOrSlug) return null;
+  // If it's already just a slug (no URL parts), return it
+  if (!urlOrSlug.includes('/') && !urlOrSlug.includes('http')) return urlOrSlug;
+  // Extract slug from URL like https://www.linkedin.com/in/john-doe/
+  const match = urlOrSlug.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  return match ? match[1] : urlOrSlug;
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -127,9 +140,9 @@ export async function POST(request: NextRequest) {
           title: prospect.title || '',
           location: prospect.location || null,
           linkedin_url: linkedinUrl,
-          // CRITICAL FIX (Dec 10): linkedin_user_id must be set for queue processing
-          // Priority: 1. explicit linkedin_user_id, 2. contact.linkedin_url (same value works for both)
-          linkedin_user_id: prospect.linkedin_user_id || linkedinUrl || null,
+          // CRITICAL FIX (Dec 10, Dec 18): linkedin_user_id must be slug, not full URL
+          // Extract slug from URL to avoid "User ID does not match provider's expected format" errors
+          linkedin_user_id: extractLinkedInSlug(prospect.linkedin_user_id || linkedinUrl),
           connection_degree: connectionDegreeStr,  // CRITICAL: Store connection degree for campaign type validation
           status: 'approved',  // FIX: These prospects were already approved in the workflow
           personalization_data: {

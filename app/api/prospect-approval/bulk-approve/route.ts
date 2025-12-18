@@ -3,6 +3,20 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/app/lib/supabase'
 import { MESSAGE_HARD_LIMITS } from '@/lib/anti-detection/message-variance'
+import { personalizeMessage } from '@/lib/personalization'
+
+/**
+ * Extract LinkedIn slug from URL or return as-is if already a slug
+ * e.g., "https://www.linkedin.com/in/john-doe" -> "john-doe"
+ */
+function extractLinkedInSlug(urlOrSlug: string): string {
+  if (!urlOrSlug) return '';
+  // If it's already just a slug (no URL parts), return it
+  if (!urlOrSlug.includes('/') && !urlOrSlug.includes('http')) return urlOrSlug;
+  // Extract slug from URL like https://www.linkedin.com/in/john-doe/
+  const match = urlOrSlug.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  return match ? match[1] : urlOrSlug;
+}
 
 /**
  * POST /api/prospect-approval/bulk-approve
@@ -240,7 +254,7 @@ export async function POST(request: NextRequest) {
             title: p.title || '',
             company_name: p.company?.name || '',
             linkedin_url: linkedinUrl,
-            linkedin_user_id: linkedinUrl,
+            linkedin_user_id: extractLinkedInSlug(linkedinUrl), // Extract slug, not full URL
             email: p.contact?.email || null,
             status: 'approved'
           })
@@ -297,17 +311,22 @@ export async function POST(request: NextRequest) {
                 const gapMinutes = MESSAGE_HARD_LIMITS.MIN_CR_GAP_MINUTES
 
                 const queueRecords = prospectsToQueue.map((p, idx) => {
-                  const message = connectionMessage
-                    .replace(/\{first_name\}/gi, p.first_name || '')
-                    .replace(/\{company_name\}/gi, p.company_name || '')
-                    .replace(/\{title\}/gi, p.title || '')
+                  // Use universal personalization for message
+                  const message = personalizeMessage(connectionMessage, {
+                    first_name: p.first_name,
+                    company_name: p.company_name,
+                    title: p.title
+                  });
 
                   const scheduledFor = new Date(currentTime.getTime() + idx * gapMinutes * 60 * 1000) // Using anti-detection gap
+
+                  // Extract slug from URL for linkedin_user_id (not full URL)
+                  const linkedinId = extractLinkedInSlug(p.linkedin_user_id || p.linkedin_url);
 
                   return {
                     campaign_id: sessionData.campaign_id,
                     prospect_id: p.id,
-                    linkedin_user_id: p.linkedin_user_id || p.linkedin_url,
+                    linkedin_user_id: linkedinId,
                     message,
                     scheduled_for: scheduledFor.toISOString(),
                     status: 'pending',
