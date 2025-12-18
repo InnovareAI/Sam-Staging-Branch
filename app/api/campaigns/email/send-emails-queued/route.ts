@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import moment from 'moment-timezone';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
+import { personalizeMessage as personalizeMessageUniversal } from '@/lib/personalization';
 
 /**
  * POST /api/campaigns/email/send-emails-queued
@@ -357,15 +358,17 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper: Personalize message with prospect data
+// Helper: Personalize message with prospect data (uses universal personalization)
 function personalizeMessage(template: string, prospect: any): string {
-  return template
-    .replace(/{first_name}/g, prospect.first_name || '')
-    .replace(/{last_name}/g, prospect.last_name || '')
-    .replace(/{company_name}/g, prospect.company_name || '')
-    .replace(/{title}/g, prospect.title || '')
-    .replace(/{location}/g, prospect.location || '')
-    .replace(/{industry}/g, prospect.industry || '')
-    .replace(/{email}/g, prospect.email || '')
-    .replace(/{full_name}/g, `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim());
+  return personalizeMessageUniversal(template, {
+    first_name: prospect.first_name,
+    last_name: prospect.last_name,
+    company_name: prospect.company_name,
+    company: prospect.company,
+    title: prospect.title,
+    job_title: prospect.job_title,
+    email: prospect.email,
+    location: prospect.location,
+    industry: prospect.industry
+  });
 }

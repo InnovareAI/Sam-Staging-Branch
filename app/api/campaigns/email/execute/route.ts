@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
+import { personalizeMessage as personalizeMessageUniversal } from '@/lib/personalization';
 
 // Unipile API configuration
 const UNIPILE_BASE_URL = process.env.UNIPILE_DSN ? `https://${process.env.UNIPILE_DSN}` : 'https://api6.unipile.com:13670';
@@ -340,17 +341,19 @@ async function sendEmailViaUnipile(
   }
 }
 
-// Helper function to personalize messages
+// Helper function to personalize messages (uses universal personalization)
 function personalizeMessage(template: string, prospect: any): string {
-  return template
-    .replace(/{first_name}/g, prospect.first_name || '')
-    .replace(/{last_name}/g, prospect.last_name || '')
-    .replace(/{company_name}/g, prospect.company_name || prospect.company || '')
-    .replace(/{job_title}/g, prospect.job_title || prospect.title || '')
-    .replace(/{title}/g, prospect.title || prospect.job_title || '')
-    .replace(/{location}/g, prospect.location || '')
-    .replace(/{industry}/g, prospect.industry || '')
-    .replace(/{full_name}/g, `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim());
+  return personalizeMessageUniversal(template, {
+    first_name: prospect.first_name,
+    last_name: prospect.last_name,
+    company_name: prospect.company_name,
+    company: prospect.company,
+    title: prospect.title,
+    job_title: prospect.job_title,
+    email: prospect.email,
+    location: prospect.location,
+    industry: prospect.industry
+  });
 }
 
 // Helper function for random delays (2-5 minutes for email)

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/supabase/server';
-import { 
-  detectLanguageFromContent, 
-  getPersonalizationGuidelines, 
-  getLanguageSpecificRecommendations 
+import {
+  detectLanguageFromContent,
+  getPersonalizationGuidelines,
+  getLanguageSpecificRecommendations
 } from '@/utils/linkedin-personalization-languages';
+import { personalizeMessage as personalizeMessageUniversal } from '@/lib/personalization';
 
 // Import MCP tools for Unipile integration
 declare global {
@@ -373,15 +374,19 @@ async function sendLinkedInInvitation(
   }
 }
 
-// Helper function to personalize messages
+// Helper function to personalize messages (uses universal personalization)
 function personalizeMessage(template: string, prospect: any): string {
-  return template
-    .replace(/{first_name}/g, prospect.first_name || '')
-    .replace(/{last_name}/g, prospect.last_name || '')
-    .replace(/{company_name}/g, prospect.company_name || '')
-    .replace(/{job_title}/g, prospect.job_title || '')
-    .replace(/{location}/g, prospect.location || '')
-    .replace(/{full_name}/g, `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim());
+  return personalizeMessageUniversal(template, {
+    first_name: prospect.first_name,
+    last_name: prospect.last_name,
+    company_name: prospect.company_name,
+    company: prospect.company,
+    title: prospect.title,
+    job_title: prospect.job_title,
+    email: prospect.email,
+    location: prospect.location,
+    industry: prospect.industry
+  });
 }
 
 // Helper function to extract LinkedIn user ID from profile URL

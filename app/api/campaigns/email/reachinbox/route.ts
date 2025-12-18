@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/supabase/server';
+import { personalizeMessage as personalizeMessageUniversal } from '@/lib/personalization';
 
 // ReachInbox API Configuration
 const REACHINBOX_API_URL = process.env.REACHINBOX_API_URL || 'https://api.reachinbox.ai/api/v1';
@@ -368,16 +369,19 @@ async function executeReachInboxCampaign(params: {
   }
 }
 
-// Helper function to personalize messages
+// Helper function to personalize messages (uses universal personalization)
 function personalizeMessage(template: string, prospect: any): string {
-  return template
-    .replace(/{first_name}/g, prospect.first_name || '')
-    .replace(/{last_name}/g, prospect.last_name || '')
-    .replace(/{company_name}/g, prospect.company_name || '')
-    .replace(/{job_title}/g, prospect.job_title || '')
-    .replace(/{location}/g, prospect.location || '')
-    .replace(/{industry}/g, prospect.industry || '')
-    .replace(/{full_name}/g, `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim());
+  return personalizeMessageUniversal(template, {
+    first_name: prospect.first_name,
+    last_name: prospect.last_name,
+    company_name: prospect.company_name,
+    company: prospect.company,
+    title: prospect.title,
+    job_title: prospect.job_title,
+    email: prospect.email,
+    location: prospect.location,
+    industry: prospect.industry
+  });
 }
 
 // GET endpoint for checking ReachInbox configuration

@@ -584,7 +584,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       const isMessengerCampaign = campaignToEdit.campaign_type === 'messenger';
 
       // Enforce message count limits
-      const maxFollowUps = isMessengerCampaign ? 4 : isEmailCampaign ? 4 : 5;
+      const maxFollowUps = 15; // Allow up to 15 follow-ups for all campaign types
       const followUps = (editFormData.follow_up_messages || []).slice(0, maxFollowUps);
 
       if (editFormData.follow_up_messages?.length > maxFollowUps) {
@@ -1555,7 +1555,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 {(() => {
                   const isMessengerCampaign = campaignToEdit?.campaign_type === 'messenger';
                   const isEmailCampaign = campaignToEdit?.campaign_type === 'email';
-                  const maxFollowUps = isMessengerCampaign ? 4 : isEmailCampaign ? 4 : 5;
+                  const maxFollowUps = 15; // Allow up to 15 follow-ups for all campaign types
                   const currentFollowUps = editFormData.follow_up_messages || [];
                   const canAddMore = currentFollowUps.length < maxFollowUps;
 
@@ -6821,13 +6821,13 @@ interface CampaignHubProps {
 }
 
 const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects, initialCampaignType, initialDraftId, onCampaignCreated }) => {
-  // Message count limits by campaign type
+  // Message limits - 15 follow-ups max for all campaign types
   const MESSAGE_LIMITS = {
-    connector: { initial: 1, followUps: 5, total: 6 },  // CR + 5 follow-ups
-    messenger: { initial: 1, followUps: 4, total: 5 },  // Direct message + 4 follow-ups
-    inmail: { initial: 1, followUps: 1, total: 2 },     // InMail + 1 follow-up
-    open_inmail: { initial: 1, followUps: 1, total: 2 },// Open InMail + 1 follow-up
-    email: { initial: 1, followUps: 4, total: 5 }       // Initial email + 4 follow-ups
+    connector: { initial: 1, followUps: 15, total: 16 },  // CR + up to 15 follow-ups
+    messenger: { initial: 1, followUps: 15, total: 16 },  // Direct message + up to 15 follow-ups
+    inmail: { initial: 1, followUps: 15, total: 16 },     // InMail + up to 15 follow-ups
+    open_inmail: { initial: 1, followUps: 15, total: 16 },// Open InMail + up to 15 follow-ups
+    email: { initial: 1, followUps: 15, total: 16 }       // Initial email + up to 15 follow-ups
   } as const;
 
   // Use workspaceId from props - no fallback to prevent loading wrong workspace data
@@ -8499,7 +8499,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const isMessengerCampaign = campaignToEdit.campaign_type === 'messenger';
 
       // Enforce message count limits
-      const maxFollowUps = isMessengerCampaign ? 4 : isEmailCampaign ? 4 : 5;
+      const maxFollowUps = 15; // Allow up to 15 follow-ups for all campaign types
       const followUps = (editFormData.follow_up_messages || []).slice(0, maxFollowUps);
 
       if (editFormData.follow_up_messages?.length > maxFollowUps) {
@@ -10939,7 +10939,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
                 // Message count limits based on campaign type
                 const maxMessages = isMessengerCampaign ? 5 : isEmailCampaign ? 5 : 6; // Messenger: 5, Email: 5, Connector: 6
-                const maxFollowUps = isMessengerCampaign ? 4 : isEmailCampaign ? 4 : 5; // Messenger: 4, Email: 4, Connector: 5
+                const maxFollowUps = 15; // Allow up to 15 follow-ups for all campaign types // Messenger: 4, Email: 4, Connector: 5
 
                 return (
                   <>
@@ -11254,7 +11254,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 {(() => {
                   const isMessengerCampaign = campaignToEdit?.campaign_type === 'messenger';
                   const isEmailCampaign = campaignToEdit?.campaign_type === 'email';
-                  const maxFollowUps = isMessengerCampaign ? 4 : isEmailCampaign ? 4 : 5;
+                  const maxFollowUps = 15; // Allow up to 15 follow-ups for all campaign types
                   const currentFollowUps = editFormData.follow_up_messages || [];
 
                   return (
