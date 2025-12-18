@@ -164,9 +164,10 @@
 # Discover Posts (Apify): DISABLED - Costs $4+ per run, ignores all limits
 # Was: Uses Apify to scrape LinkedIn posts
 # Discover Posts (Profiles): Find new posts from PROFILE monitors via Unipile API
-# Runs every 2 hours to check monitored profiles for new posts
+# Runs every 6 hours to check monitored profiles for new posts
+# Changed from 2 hours to 6 hours (Dec 18) - content expires next business day anyway
 [functions."discover-posts"]
-  schedule = "0 */2 * * *"
+  schedule = "0 */6 * * *"
 
 # Discover Posts (Hashtags): REMOVED - Replaced by Unipile API (Dec 17, 2025)
 # Was: Used Bright Data Scraping Browser to scrape linkedin.com/feed/hashtag/{tag}
