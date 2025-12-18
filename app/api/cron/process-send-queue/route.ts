@@ -1056,11 +1056,12 @@ export async function POST(req: NextRequest) {
         prospectStatus = 'invitation_declined';
         queueStatus = 'failed';
         cleanErrorMessage = 'Invitation was withdrawn or declined';
-      } else if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('throttle')) {
-        // Rate limited - can retry later
-        prospectStatus = 'rate_limited';
+      } else if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('throttle') || errorMsg.includes('429') || errorMsg.includes('too_many')) {
+        // Rate limited - can retry later (includes 429 status and too_many_requests)
+        prospectStatus = 'approved'; // FIX: Keep as approved, not rate_limited (avoids status constraint issues)
         queueStatus = 'pending'; // Keep in queue for retry
-        cleanErrorMessage = 'Rate limited - will retry';
+        // Schedule retry for 1 hour later
+        cleanErrorMessage = 'Rate limited - will retry in 1 hour';
       } else if (errorMsg.includes('connected') || errorMsg.includes('first_degree') || errorMsg.includes('1st degree')) {
         // Already connected
         prospectStatus = 'connected';
@@ -1079,13 +1080,20 @@ export async function POST(req: NextRequest) {
       }
 
       // Mark queue item with clean error message
+      // For rate limits, also schedule retry for 1 hour later
+      const queueUpdate: Record<string, any> = {
+        status: queueStatus,
+        error_message: cleanErrorMessage,
+        updated_at: new Date().toISOString()
+      };
+
+      if (queueStatus === 'pending' && cleanErrorMessage.includes('Rate limited')) {
+        queueUpdate.scheduled_for = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour delay
+      }
+
       await supabase
         .from('send_queue')
-        .update({
-          status: queueStatus,
-          error_message: cleanErrorMessage,
-          updated_at: new Date().toISOString()
-        })
+        .update(queueUpdate)
         .eq('id', queueItem.id);
 
       // Update prospect with specific status
