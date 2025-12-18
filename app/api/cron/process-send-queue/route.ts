@@ -795,10 +795,11 @@ export async function POST(req: NextRequest) {
       }
 
       // 4. Update prospect record
+      // FIX (Dec 18): Add error handling to ensure prospect status is updated
       if (isConnectionRequest) {
         // Connection request sent - wait for acceptance before scheduling follow-ups
         // Bug fix: Nov 27 - was incorrectly scheduling follow-ups before acceptance
-        await supabase
+        const { error: prospectUpdateError } = await supabase
           .from('campaign_prospects')
           .update({
             status: 'connection_request_sent',
@@ -810,12 +811,16 @@ export async function POST(req: NextRequest) {
           })
           .eq('id', prospect.id);
 
-        console.log(`✅ CR sent - follow-up will be scheduled when prospect accepts`);
+        if (prospectUpdateError) {
+          console.error(`❌ Failed to update prospect status:`, prospectUpdateError.message);
+        } else {
+          console.log(`✅ CR sent - follow-up will be scheduled when prospect accepts`);
+        }
 
       } else if (isOpenInMail) {
         // Open InMail sent - they're not connected, but we initiated contact
         // Can schedule follow-ups via InMail channel
-        await supabase
+        const { error: prospectUpdateError } = await supabase
           .from('campaign_prospects')
           .update({
             status: 'inmail_sent',
@@ -826,11 +831,15 @@ export async function POST(req: NextRequest) {
           })
           .eq('id', prospect.id);
 
-        console.log(`✅ Open InMail sent - prospect contacted via InMail`);
+        if (prospectUpdateError) {
+          console.error(`❌ Failed to update prospect status:`, prospectUpdateError.message);
+        } else {
+          console.log(`✅ Open InMail sent - prospect contacted via InMail`);
+        }
 
       } else {
         // Messenger message or follow-up sent - update status
-        await supabase
+        const { error: prospectUpdateError } = await supabase
           .from('campaign_prospects')
           .update({
             status: 'messaging',
@@ -841,7 +850,11 @@ export async function POST(req: NextRequest) {
           })
           .eq('id', prospect.id);
 
-        console.log(`✅ ${isMessengerMessage ? 'Direct message' : 'Follow-up'} sent`);
+        if (prospectUpdateError) {
+          console.error(`❌ Failed to update prospect status:`, prospectUpdateError.message);
+        } else {
+          console.log(`✅ ${isMessengerMessage ? 'Direct message' : 'Follow-up'} sent`);
+        }
       }
 
       // 5. Get count of remaining pending messages
