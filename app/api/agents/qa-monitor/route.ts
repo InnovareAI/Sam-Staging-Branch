@@ -28,9 +28,8 @@
  *
  * NEW SAFEGUARD CHECKS (Dec 17, 2025):
  * 19. Unipile Account Status Consistency (auto-fix 'connected' → 'active')
- * 20. Reply Agent Configuration Coverage
- * 21. Workspace Error Rates (>10% threshold)
- * 22. Provider ID Quality (URL/vanity detection)
+ * 20. Workspace Error Rates (>10% threshold)
+ * 21. Provider ID Quality (URL/vanity detection)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -250,10 +249,8 @@ export async function POST(request: NextRequest) {
       autoFixes.push(fix);
     }
 
-    // 16. Reply Agent Configuration Coverage (Dec 17, 2025)
-    // Alerts if active workspaces don't have Reply Agent configured
-    const replyAgentConfigCheck = await checkReplyAgentConfiguration(supabase);
-    allChecks.push(replyAgentConfigCheck);
+    // 16. Reply Agent Configuration Coverage - REMOVED (Dec 18, 2025)
+    // Not important, users can enable Reply Agent when they want
 
     // 17. Error Rate by Workspace (Dec 17, 2025)
     // Flags workspaces with >10% error rate in last 7 days
