@@ -35,7 +35,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { claudeClient } from '@/lib/llm/claude-client';
-import { sendHealthCheckNotification } from '@/lib/notifications/google-chat';
+import { sendHealthCheckNotification, sendFailedProspectsAlert } from '@/lib/notifications/google-chat';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -261,6 +261,11 @@ export async function POST(request: NextRequest) {
     // Checks for invalid linkedin_user_id formats (URLs instead of ACo/ACw IDs)
     const providerIdCheck = await checkProviderIdQuality(supabase);
     allChecks.push(providerIdCheck);
+
+    // 19. Campaign Failure Alerts (Dec 18, 2025)
+    // Send Google Chat alerts with CSV download links for campaigns with failures
+    const failureAlertCheck = await checkAndAlertCampaignFailures(supabase);
+    allChecks.push(failureAlertCheck);
 
     // ============================================
     // PER-WORKSPACE CHECKS
@@ -2376,6 +2381,115 @@ async function checkEmailQueueProcessing(supabase: any): Promise<QACheck> {
       category: 'messaging',
       status: 'warning',
       details: `Error checking email queue: ${error instanceof Error ? error.message : 'Unknown'}`,
+      affected_records: 0
+    };
+  }
+}
+
+/**
+ * CHECK 19: Campaign Failure Alerts (Dec 18, 2025)
+ * Detects campaigns with significant failures and sends Google Chat alerts
+ * with CSV download links for fixing invalid LinkedIn profiles
+ */
+async function checkAndAlertCampaignFailures(supabase: any): Promise<QACheck> {
+  try {
+    const FAILED_STATUSES = ['failed', 'error', 'already_invited', 'invitation_declined', 'bounced'];
+    const MIN_FAILURES_TO_ALERT = 5; // Only alert if >= 5 failures
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    // Get active campaigns with recent failures
+    const { data: campaigns } = await supabase
+      .from('campaigns')
+      .select('id, campaign_name, name, workspace_id, status')
+      .in('status', ['active', 'paused', 'completed']);
+
+    if (!campaigns || campaigns.length === 0) {
+      return {
+        check_name: 'Campaign Failure Alerts',
+        category: 'messaging',
+        status: 'pass',
+        details: 'No campaigns to check',
+        affected_records: 0
+      };
+    }
+
+    const alertsSent: string[] = [];
+
+    for (const campaign of campaigns) {
+      // Count failed prospects (updated in last 24h)
+      const { count: failedCount } = await supabase
+        .from('campaign_prospects')
+        .select('*', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id)
+        .in('status', FAILED_STATUSES)
+        .gte('updated_at', dayAgo);
+
+      if (!failedCount || failedCount < MIN_FAILURES_TO_ALERT) continue;
+
+      // Get total prospects
+      const { count: totalCount } = await supabase
+        .from('campaign_prospects')
+        .select('*', { count: 'exact', head: true })
+        .eq('campaign_id', campaign.id);
+
+      // Get workspace name
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('name')
+        .eq('id', campaign.workspace_id)
+        .single();
+
+      // Get error breakdown from send_queue
+      const { data: queueErrors } = await supabase
+        .from('send_queue')
+        .select('error_message')
+        .eq('campaign_id', campaign.id)
+        .eq('status', 'failed')
+        .gte('updated_at', dayAgo);
+
+      // Aggregate errors
+      const errorCounts: Record<string, number> = {};
+      (queueErrors || []).forEach((q: any) => {
+        const err = q.error_message || 'Unknown error';
+        errorCounts[err] = (errorCounts[err] || 0) + 1;
+      });
+
+      const topErrors = Object.entries(errorCounts)
+        .map(([error, count]) => ({ error, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+
+      // Send alert
+      const campaignName = campaign.campaign_name || campaign.name || 'Unknown Campaign';
+      await sendFailedProspectsAlert({
+        campaignId: campaign.id,
+        campaignName,
+        workspaceName: workspace?.name || 'Unknown',
+        failedCount,
+        totalProspects: totalCount || 0,
+        topErrors,
+        appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'
+      });
+
+      alertsSent.push(`${campaignName} (${failedCount} failures)`);
+    }
+
+    return {
+      check_name: 'Campaign Failure Alerts',
+      category: 'messaging',
+      status: alertsSent.length > 0 ? 'warning' : 'pass',
+      details: alertsSent.length > 0
+        ? `Sent ${alertsSent.length} failure alerts: ${alertsSent.join(', ')}`
+        : 'No campaigns with significant failures (>=5) in last 24h',
+      affected_records: alertsSent.length
+    };
+  } catch (error) {
+    console.error('Campaign failure alerts error:', error);
+    return {
+      check_name: 'Campaign Failure Alerts',
+      category: 'messaging',
+      status: 'warning',
+      details: `Error: ${error instanceof Error ? error.message : 'Unknown'}`,
       affected_records: 0
     };
   }

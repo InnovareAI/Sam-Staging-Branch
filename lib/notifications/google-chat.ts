@@ -620,6 +620,110 @@ export async function sendCampaignReplyNotification(data: {
 }
 
 /**
+ * Send Failed Prospects Alert to Google Chat
+ * Includes download link for CSV of failed prospects
+ */
+export async function sendFailedProspectsAlert(data: {
+  campaignId: string;
+  campaignName: string;
+  workspaceName: string;
+  failedCount: number;
+  totalProspects: number;
+  topErrors: { error: string; count: number }[];
+  appUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  // Dedicated webhook for failed prospects downloads
+  const webhookUrl = process.env.GOOGLE_CHAT_DOWNLOADS_WEBHOOK_URL ||
+    'https://chat.googleapis.com/v1/spaces/AAQAJqjPkBY/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=hQHJlg-4CmazwyWTdiBO4IrbD5MpexRQoellhDjOKpc';
+
+  if (!webhookUrl) {
+    console.warn('⚠️ GOOGLE_CHAT_WEBHOOK_URL not configured - skipping failed prospects alert');
+    return { success: false, error: 'Webhook URL not configured' };
+  }
+
+  const downloadUrl = `${data.appUrl}/api/campaigns/${data.campaignId}/failed-prospects-csv`;
+  const failRate = ((data.failedCount / data.totalProspects) * 100).toFixed(1);
+
+  const errorWidgets = data.topErrors.slice(0, 3).map(e => ({
+    decoratedText: {
+      topLabel: `${e.count}x`,
+      text: e.error,
+      startIcon: { knownIcon: 'BOOKMARK' },
+    },
+  }));
+
+  const message: GoogleChatMessage = {
+    cardsV2: [
+      {
+        cardId: `failed-prospects-${Date.now()}`,
+        card: {
+          header: {
+            title: '⚠️ Failed Prospects Alert',
+            subtitle: new Date().toLocaleString(),
+            imageType: 'CIRCLE',
+          },
+          sections: [
+            {
+              widgets: [
+                {
+                  decoratedText: {
+                    topLabel: 'Campaign',
+                    text: `<b>${data.campaignName}</b>`,
+                    startIcon: { knownIcon: 'BOOKMARK' },
+                  },
+                },
+                {
+                  decoratedText: {
+                    topLabel: 'Workspace',
+                    text: data.workspaceName,
+                    startIcon: { knownIcon: 'PERSON' },
+                  },
+                },
+                {
+                  decoratedText: {
+                    topLabel: 'Failed',
+                    text: `<b>${data.failedCount}</b> of ${data.totalProspects} (${failRate}%)`,
+                    startIcon: { knownIcon: 'CLOCK' },
+                  },
+                },
+              ],
+            },
+            ...(errorWidgets.length > 0 ? [{
+              header: 'Top Errors',
+              widgets: errorWidgets,
+            }] : []),
+            {
+              widgets: [
+                {
+                  buttonList: {
+                    buttons: [
+                      {
+                        text: '📥 Download Failed CSV',
+                        onClick: {
+                          openLink: { url: downloadUrl },
+                        },
+                        color: {
+                          red: 0.063,
+                          green: 0.722,
+                          blue: 0.506,
+                          alpha: 1,
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  return sendGoogleChatNotification(message);
+}
+
+/**
  * Send Rate Limit Notification to Google Chat
  * Notifies when a LinkedIn account hits its daily sending limit
  */
