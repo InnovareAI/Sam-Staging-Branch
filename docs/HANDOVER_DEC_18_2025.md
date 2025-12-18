@@ -828,11 +828,85 @@ if (insertErrors.length > 0) {
 
 ---
 
+## 22. Commenting Agent Content Expiration (Dec 18)
+
+### Problem
+
+Discovered posts and pending comments were accumulating indefinitely in the database. Users had to manually manage old content, and stale posts were consuming AI generation capacity instead of fresh, relevant posts.
+
+### Solution
+
+Implemented automatic content expiration on the next business day:
+
+1. **Posts discovered but not commented on** → expire at 6 AM UTC next business day
+2. **Comments pending approval** → expire at 6 AM UTC next business day
+3. **Weekend posts** → expire Monday 6 AM UTC
+4. **After expiration** → `discover-posts` cron will scrape fresh posts
+
+### Database Changes
+
+**Migration: `sql/migrations/053-commenting-content-expiration.sql`**
+
+```sql
+-- New columns
+ALTER TABLE linkedin_posts_discovered
+ADD COLUMN expires_at TIMESTAMPTZ,
+ADD COLUMN expired_at TIMESTAMPTZ;
+
+ALTER TABLE linkedin_post_comments
+ADD COLUMN expires_at TIMESTAMPTZ,
+ADD COLUMN expired_at TIMESTAMPTZ;
+
+-- Function to calculate next business day 6 AM UTC
+CREATE FUNCTION get_next_business_day_6am_utc(from_timestamp TIMESTAMPTZ)
+RETURNS TIMESTAMPTZ;
+
+-- Auto-set triggers for new posts/comments
+CREATE TRIGGER post_set_expiration BEFORE INSERT ON linkedin_posts_discovered;
+CREATE TRIGGER comment_set_expiration BEFORE INSERT ON linkedin_post_comments;
+
+-- Function called by cron to expire old content
+CREATE FUNCTION expire_commenting_content()
+RETURNS TABLE(posts_expired INTEGER, comments_expired INTEGER);
+
+-- Monitoring view
+CREATE VIEW v_commenting_expiration_status;
+```
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `netlify/functions/expire-comment-content.ts` | Netlify scheduled function wrapper |
+| `app/api/cron/expire-comment-content/route.ts` | API route that performs expiration |
+
+### Cron Schedule
+
+**Added to `netlify.toml`:**
+```toml
+[functions."expire-comment-content"]
+  schedule = "0 6 * * 1-5"  # Daily at 6 AM UTC, Mon-Fri
+```
+
+### Flow
+
+1. **Post discovered** → trigger sets `expires_at` to next business day 6 AM UTC
+2. **Comment generated** → trigger sets `expires_at` to next business day 6 AM UTC
+3. **Cron runs at 6 AM UTC** → marks expired posts/comments as `status='expired'`
+4. **Next discovery run** → only finds non-expired posts, scrapes fresh content
+
+### Backfill
+
+Existing discovered posts and pending comments were backfilled with `expires_at = NOW() + 1 hour` to clear the backlog immediately.
+
+---
+
 ## Next Steps
 
 ### Immediate
 - [x] Test CSV upload → campaign transfer flow end-to-end
 - [x] Standardize linkedin_user_id handling across all entry points
+- [x] Add content expiration for commenting agent
 - [ ] Monitor QA monitor for false positives
 
 ### Short-term
@@ -847,4 +921,4 @@ if (insertErrors.length > 0) {
 
 ---
 
-*Last Updated: December 18, 2025 18:30 UTC*
+*Last Updated: December 18, 2025 22:30 UTC*
