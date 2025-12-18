@@ -2417,12 +2417,8 @@ function CampaignBuilder({
   const [followUpSubjects, setFollowUpSubjects] = useState<string[]>(['', '', '', '', '']);
   const [useThreadedReplies, setUseThreadedReplies] = useState(false); // If true, follow-ups use "RE: {initialSubject}"
 
-  // A/B Testing state
-  const [abTestingEnabled, setAbTestingEnabled] = useState(false);
-  const [connectionMessageB, setConnectionMessageB] = useState(''); // Variant B for connection request
-  const [alternativeMessageB, setAlternativeMessageB] = useState(''); // Variant B for 1st degree direct message
-  const [emailBodyB, setEmailBodyB] = useState(''); // Variant B for email body
-  const [initialSubjectB, setInitialSubjectB] = useState(''); // Variant B for email subject
+  // A/B TESTING REMOVED (Dec 18, 2025) - Feature disabled
+  const abTestingEnabled = false; // Kept for backwards compatibility
 
   const [activeField, setActiveField] = useState<{type: 'connection' | 'alternative' | 'followup', index?: number}>({type: 'connection'});
   const [activeTextarea, setActiveTextarea] = useState<HTMLTextAreaElement | null>(null);
@@ -7228,14 +7224,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const [scheduleEndTime, setScheduleEndTime] = useState('');
   const [scheduleNotes, setScheduleNotes] = useState('');
 
-  // A/B Testing state
-  const [testName, setTestName] = useState('');
-  const [testType, setTestType] = useState('connection_message');
-  const [variantA, setVariantA] = useState('');
-  const [variantB, setVariantB] = useState('');
-  const [sampleSize, setSampleSize] = useState(100);
-  const [splitRatio, setSplitRatio] = useState('50/50');
-  const [testDuration, setTestDuration] = useState(7);
+  // A/B TESTING REMOVED (Dec 18, 2025) - Feature disabled
 
   // Campaign Settings state
   const [campaignSettings, setCampaignSettings] = useState<any>({
@@ -10510,151 +10499,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
         </div>
       )}
 
-      {/* A/B Testing Hub Modal */}
-      {showABTesting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">A/B Testing Hub</h3>
-              <button
-                onClick={() => setShowABTesting(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-6">
-              {/* Create New Test */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3">Create New A/B Test</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Test Name</label>
-                    <input type="text" placeholder="e.g., Subject Line Test - Dec 2024" className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Test Type</label>
-                    <select className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                      <option>Connection Message</option>
-                      <option>Follow-up Message</option>
-                      <option>Message Timing</option>
-                      <option>Subject Line</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Variant A</label>
-                    <textarea rows={3} placeholder="Enter first variant..." className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm"></textarea>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Variant B</label>
-                    <textarea rows={3} placeholder="Enter second variant..." className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm"></textarea>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Sample Size</label>
-                    <input type="number" defaultValue="100" className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Split %</label>
-                    <select className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                      <option>50/50</option>
-                      <option>60/40</option>
-                      <option>70/30</option>
-                      <option>80/20</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Duration (days)</label>
-                    <input type="number" defaultValue="7" className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" />
-                  </div>
-                </div>
-                
-                <button className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">
-                  Start A/B Test
-                </button>
-              </div>
-
-              {/* Active Tests */}
-              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
-                <h4 className="text-blue-400 font-medium mb-3">Active Tests (2)</h4>
-                <div className="space-y-3">
-                  <div className="bg-gray-700 rounded p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="text-white font-medium">Holiday Subject Line Test</div>
-                        <div className="text-gray-400 text-sm">Started 3 days ago • 5 days remaining</div>
-                      </div>
-                      <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded">Running</span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gray-600 p-3 rounded">
-                        <div className="text-sm text-gray-300 mb-1">Variant A: "Quick holiday question"</div>
-                        <div className="text-white font-medium">Response Rate: 18.5%</div>
-                        <div className="text-gray-400 text-xs">45 sent, 8 replies</div>
-                      </div>
-                      <div className="bg-gray-600 p-3 rounded">
-                        <div className="text-sm text-gray-300 mb-1">Variant B: "End-of-year opportunity"</div>
-                        <div className="text-white font-medium">Response Rate: 23.1%</div>
-                        <div className="text-gray-400 text-xs">39 sent, 9 replies</div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-3 flex gap-2">
-                      <button className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded">Pause</button>
-                      <button className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">Stop</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Completed Tests */}
-              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                <h4 className="text-green-400 font-medium mb-3">Completed Tests</h4>
-                <div className="space-y-3">
-                  <div className="bg-gray-700 rounded p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="text-white font-medium">Q4 Connection Message Test</div>
-                        <div className="text-gray-400 text-sm">Completed 1 week ago</div>
-                      </div>
-                      <span className="px-2 py-1 bg-green-600 text-white text-xs rounded">Winner: B</span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gray-600 p-3 rounded">
-                        <div className="text-sm text-gray-300 mb-1">Variant A: Professional approach</div>
-                        <div className="text-white font-medium">Response Rate: 12.3%</div>
-                        <div className="text-gray-400 text-xs">100 sent, 12 replies</div>
-                      </div>
-                      <div className="bg-gray-600 p-3 rounded border-2 border-green-500">
-                        <div className="text-sm text-gray-300 mb-1">Variant B: Value-focused approach</div>
-                        <div className="text-white font-medium">Response Rate: 19.8%</div>
-                        <div className="text-gray-400 text-xs">100 sent, 20 replies</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => setShowABTesting(false)}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* A/B Testing Hub Modal - REMOVED Dec 18, 2025 */}
 
       {/* Campaign Steps Editor */}
       {showStepsEditor && selectedCampaign && (
