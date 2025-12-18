@@ -202,6 +202,13 @@
 [functions."track-comment-performance"]
   schedule = "0 */6 * * *"
 
+# Expire Comment Content: Daily cleanup of unapproved posts/comments at 6 AM UTC
+# Posts/comments not approved expire on next business day
+# After expiration, new posts will be scraped on the next discovery run
+# Added Dec 18, 2025
+[functions."expire-comment-content"]
+  schedule = "0 6 * * 1-5"
+
 # ============================================
 # SELF-POST ENGAGEMENT (Dec 9, 2025)
 # ============================================
