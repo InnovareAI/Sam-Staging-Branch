@@ -642,6 +642,7 @@ export async function sendFailedProspectsAlert(data: {
   }
 
   const downloadUrl = `${data.appUrl}/api/campaigns/${data.campaignId}/failed-prospects-csv`;
+  const resetUrl = `${data.appUrl}/api/campaigns/${data.campaignId}/reset-failed`;
   const failRate = ((data.failedCount / data.totalProspects) * 100).toFixed(1);
 
   const errorWidgets = data.topErrors.slice(0, 3).map(e => ({
@@ -698,7 +699,7 @@ export async function sendFailedProspectsAlert(data: {
                   buttonList: {
                     buttons: [
                       {
-                        text: '📥 Download Failed CSV',
+                        text: '📥 Download CSV',
                         onClick: {
                           openLink: { url: downloadUrl },
                         },
@@ -706,6 +707,18 @@ export async function sendFailedProspectsAlert(data: {
                           red: 0.063,
                           green: 0.722,
                           blue: 0.506,
+                          alpha: 1,
+                        },
+                      },
+                      {
+                        text: '🔄 Reset & Retry',
+                        onClick: {
+                          openLink: { url: resetUrl },
+                        },
+                        color: {
+                          red: 0.937,
+                          green: 0.604,
+                          blue: 0.063,
                           alpha: 1,
                         },
                       },
