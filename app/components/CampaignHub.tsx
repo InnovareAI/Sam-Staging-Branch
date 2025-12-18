@@ -9344,6 +9344,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                     <th className="px-6 py-3 font-medium">Contacted</th>
                     <th className="px-6 py-3 font-medium">Connected</th>
                     <th className="px-6 py-3 font-medium">Replied</th>
+                    <th className="px-6 py-3 font-medium">Failed</th>
                     <th className="px-6 py-3 font-medium"></th>
                   </tr>
                 </thead>
@@ -9391,6 +9392,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       <td className="px-6 py-4">
                         <div className="text-white">{campaign.replies || 0}</div>
                         <div className="text-gray-400 text-sm">{(Number(campaign.response_rate) || 0).toFixed(1)}%</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className={campaign.failed > 0 ? "text-red-400" : "text-white"}>{campaign.failed || 0}</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
