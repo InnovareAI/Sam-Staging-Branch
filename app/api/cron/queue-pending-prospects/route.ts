@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { normalizeCompanyName } from '@/lib/prospect-normalization';
 
 /**
  * Cron job to queue pending prospects for active campaigns
@@ -371,9 +372,12 @@ export async function POST(req: NextRequest) {
         const scheduledTime = new Date(currentTime);
 
         // Full personalization - all variable formats
+        // FIX (Dec 18): Normalize company name to human-friendly format
+        // "Goldman Sachs Group, Inc." → "Goldman Sachs"
         const firstName = prospect.first_name || '';
         const lastName = prospect.last_name || '';
-        const companyName = prospect.company_name || '';
+        const rawCompanyName = prospect.company_name || '';
+        const companyName = normalizeCompanyName(rawCompanyName) || rawCompanyName;
         const title = prospect.title || '';
 
         // Log original template for debugging

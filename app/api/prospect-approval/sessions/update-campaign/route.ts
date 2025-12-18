@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { MESSAGE_HARD_LIMITS } from '@/lib/anti-detection/message-variance';
+import { normalizeCompanyName } from '@/lib/prospect-normalization';
 
 /**
  * PATCH /api/prospect-approval/sessions/update-campaign
@@ -218,9 +219,11 @@ export async function PATCH(request: NextRequest) {
                 const gapMinutes = MESSAGE_HARD_LIMITS.MIN_CR_GAP_MINUTES;
 
                 const queueRecords = prospectsToQueue.map((p, idx) => {
+                  // FIX (Dec 18): Normalize company names before personalization
+                  const normalizedCompany = normalizeCompanyName(p.company_name || '') || p.company_name || '';
                   const message = connectionMessage
                     .replace(/\{first_name\}/gi, p.first_name || '')
-                    .replace(/\{company_name\}/gi, p.company_name || '')
+                    .replace(/\{company_name\}/gi, normalizedCompany)
                     .replace(/\{title\}/gi, p.title || '');
 
                   const scheduledFor = new Date(currentTime.getTime() + idx * gapMinutes * 60 * 1000);

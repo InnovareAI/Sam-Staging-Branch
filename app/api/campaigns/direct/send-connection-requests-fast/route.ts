@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { airtableService } from '@/lib/airtable';
 import { spinForProspect, personalizeMessage, validateSpintax } from '@/lib/anti-detection/spintax';
 import { getMessageVarianceContext, getABTestVariant } from '@/lib/anti-detection/message-variance';
+import { normalizeCompanyName } from '@/lib/prospect-normalization';
 
 /**
  * FAST Queue-Based Campaign Execution
@@ -365,9 +366,11 @@ export async function POST(req: NextRequest) {
       const messageToUse = variant === 'B' ? connectionMessageB : connectionMessage;
 
       // Personalize message - handle all variable formats and null values
+      // FIX (Dec 18): Normalize company names to human-friendly format
       const firstName = prospect.first_name || prospect.firstName || '';
       const lastName = prospect.last_name || prospect.lastName || '';
-      const companyName = prospect.company_name || prospect.company || '';
+      const rawCompanyName = prospect.company_name || prospect.company || '';
+      const companyName = normalizeCompanyName(rawCompanyName) || rawCompanyName;
       const title = prospect.title || prospect.job_title || '';
 
       // SPINTAX DISABLED (Dec 15, 2025) - Only use when explicitly enabled via campaign setting
