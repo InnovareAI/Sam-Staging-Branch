@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeCompanyName } from '@/lib/prospect-normalization';
+import { extractLinkedInSlug, getBestLinkedInIdentifier } from '@/lib/linkedin-utils';
 
 /**
  * Cron job to queue pending prospects for active campaigns
@@ -411,10 +412,14 @@ export async function POST(req: NextRequest) {
           console.log(`  ✨ Personalized (${firstName}): "${personalizedMessage.substring(0, 80)}..."`);
         }
 
+        // CRITICAL FIX (Dec 18): Extract slug from URL to prevent "User ID does not match format" errors
+        // Use getBestLinkedInIdentifier to get the cleanest ID format
+        const cleanLinkedInId = getBestLinkedInIdentifier(prospect) || extractLinkedInSlug(prospect.linkedin_url);
+
         queueRecords.push({
           campaign_id: campaign.id,
           prospect_id: prospect.id,
-          linkedin_user_id: prospect.linkedin_user_id || prospect.linkedin_url,
+          linkedin_user_id: cleanLinkedInId,
           message: personalizedMessage,
           scheduled_for: scheduledTime.toISOString(),
           status: 'pending',
@@ -431,23 +436,39 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 5. Insert queue records
-      const { error: insertError } = await supabase
-        .from('send_queue')
-        .insert(queueRecords);
+      // 5. Insert queue records ONE BY ONE to prevent batch failures
+      // CRITICAL FIX (Dec 18): Batch inserts fail ALL records if ANY has a constraint violation
+      // One-by-one inserts allow partial success and proper error tracking
+      let insertedCount = 0;
+      let insertErrors: string[] = [];
 
-      if (insertError) {
-        console.error(`Error queuing for ${campaign.campaign_name}:`, insertError);
-        continue;
+      for (const record of queueRecords) {
+        const { error: insertError } = await supabase
+          .from('send_queue')
+          .insert(record);
+
+        if (insertError) {
+          insertErrors.push(`${record.linkedin_user_id}: ${insertError.message}`);
+          // Log first few errors only to avoid spam
+          if (insertErrors.length <= 3) {
+            console.warn(`  ⚠️ Failed to queue: ${insertError.message}`);
+          }
+        } else {
+          insertedCount++;
+        }
       }
 
-      totalQueued += queueRecords.length;
+      if (insertErrors.length > 0) {
+        console.error(`  ❌ ${insertErrors.length} queue inserts failed for ${campaign.campaign_name}`);
+      }
+
+      totalQueued += insertedCount;
       campaignsProcessed.push({
         name: campaign.campaign_name,
-        queued: queueRecords.length
+        queued: insertedCount
       });
 
-      console.log(`✅ Queued ${queueRecords.length} for "${campaign.campaign_name}"`);
+      console.log(`✅ Queued ${insertedCount}/${queueRecords.length} for "${campaign.campaign_name}"`);
     }
 
     console.log(`\n📊 Total queued: ${totalQueued} prospects across ${campaignsProcessed.length} campaigns`);

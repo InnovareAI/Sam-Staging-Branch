@@ -1,5 +1,6 @@
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
+import { extractLinkedInSlug } from '@/lib/linkedin-utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -120,6 +121,8 @@ export async function POST(request: NextRequest) {
         phone: p.phone || null,
         linkedin_url: p.linkedin_url || null,
         linkedin_url_hash: p.linkedin_url_hash || null,
+        // CRITICAL FIX (Dec 18): Extract slug from URL to prevent "User ID does not match format" errors
+        linkedin_user_id: extractLinkedInSlug(p.linkedin_provider_id || p.linkedin_url),
         provider_id: p.linkedin_provider_id || null,
         connection_degree: p.connection_degree || null,
         status: 'pending',
@@ -141,22 +144,37 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Insert into campaign_prospects
-    // Using upsert to handle potential duplicates (same linkedin_url_hash in same campaign)
-    const { data: inserted, error: insertError } = await supabase
-      .from('campaign_prospects')
-      .upsert(campaignProspects, {
-        onConflict: 'campaign_id,linkedin_url',
-        ignoreDuplicates: true,
-      })
-      .select('id, master_prospect_id');
+    // Insert into campaign_prospects ONE BY ONE to prevent batch failures
+    // CRITICAL FIX (Dec 18): Batch inserts fail ALL records if ANY has a constraint violation
+    // One-by-one inserts allow partial success and proper error tracking
+    const inserted: { id: string; master_prospect_id: string | null }[] = [];
+    const insertErrors: string[] = [];
 
-    if (insertError) {
-      console.error('Error inserting campaign_prospects:', insertError);
-      return NextResponse.json({ error: 'Failed to add prospects to campaign' }, { status: 500 });
+    for (const prospect of campaignProspects) {
+      const { data: insertedProspect, error: insertError } = await supabase
+        .from('campaign_prospects')
+        .upsert(prospect, {
+          onConflict: 'campaign_id,linkedin_url',
+          ignoreDuplicates: true,
+        })
+        .select('id, master_prospect_id')
+        .single();
+
+      if (insertError) {
+        insertErrors.push(`${prospect.first_name} ${prospect.last_name}: ${insertError.message}`);
+        if (insertErrors.length <= 3) {
+          console.warn(`⚠️ Failed to add prospect: ${insertError.message}`);
+        }
+      } else if (insertedProspect) {
+        inserted.push(insertedProspect);
+      }
     }
 
-    const insertedCount = inserted?.length || 0;
+    if (insertErrors.length > 0) {
+      console.error(`❌ ${insertErrors.length} prospect inserts failed`);
+    }
+
+    const insertedCount = inserted.length;
 
     // Update workspace_prospects.active_campaign_id for successfully added prospects
     if (inserted && inserted.length > 0) {

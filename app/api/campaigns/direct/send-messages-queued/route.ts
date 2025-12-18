@@ -8,6 +8,7 @@ import {
   BUSINESS_HOURS,
   type ScheduleSettings
 } from '@/lib/scheduling-config';
+import { extractLinkedInSlug } from '@/lib/linkedin-utils';
 
 /**
  * POST /api/campaigns/direct/send-messages-queued
@@ -525,10 +526,13 @@ export async function POST(req: NextRequest) {
             ? 'direct_message_1'
             : `direct_message_${messageIndex + 1}`;
 
+          // CRITICAL FIX (Dec 18): Extract slug from URL to prevent "User ID does not match format" errors
+          const cleanProviderId = extractLinkedInSlug(providerId) || providerId;
+
           queueRecords.push({
             campaign_id: campaignId,
             prospect_id: prospect.id,
-            linkedin_user_id: providerId,
+            linkedin_user_id: cleanProviderId,
             message: message,
             scheduled_for: scheduledFor.toISOString(),
             status: 'pending',
@@ -569,23 +573,34 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 6. Insert all queue records in batch
+    // 6. Insert queue records ONE BY ONE to prevent batch failures
+    // CRITICAL FIX (Dec 18): Batch inserts fail ALL records if ANY has a constraint violation
+    let queueInsertedCount = 0;
+    const queueInsertErrors: string[] = [];
+
     if (queueRecords.length > 0) {
-      console.log(`\n💾 Inserting ${queueRecords.length} queue records...`);
+      console.log(`\n💾 Inserting ${queueRecords.length} queue records one by one...`);
 
-      const { error: insertError } = await supabase
-        .from('send_queue')
-        .insert(queueRecords);
+      for (const record of queueRecords) {
+        const { error: insertError } = await supabase
+          .from('send_queue')
+          .insert(record);
 
-      if (insertError) {
-        console.error('Failed to insert queue records:', insertError);
-        return NextResponse.json({
-          success: false,
-          error: `Failed to queue messages: ${insertError.message}`
-        }, { status: 500 });
+        if (insertError) {
+          queueInsertErrors.push(`${record.linkedin_user_id}: ${insertError.message}`);
+          if (queueInsertErrors.length <= 3) {
+            console.warn(`⚠️ Failed to queue: ${insertError.message}`);
+          }
+        } else {
+          queueInsertedCount++;
+        }
       }
 
-      console.log(`✅ Queue created successfully`);
+      if (queueInsertErrors.length > 0) {
+        console.error(`❌ ${queueInsertErrors.length} queue inserts failed`);
+      }
+
+      console.log(`✅ Queue created: ${queueInsertedCount}/${queueRecords.length} messages`);
     }
 
     // 7. Return summary
@@ -594,7 +609,7 @@ export async function POST(req: NextRequest) {
     const errorCount = validationResults.filter(r => r.status === 'error').length;
 
     console.log(`\n📊 QUEUE SUMMARY:`);
-    console.log(`   ✅ Queued: ${queuedCount} prospects (${queueRecords.length} total messages)`);
+    console.log(`   ✅ Queued: ${queuedCount} prospects (${queueInsertedCount}/${queueRecords.length} messages)`);
     console.log(`   ⏭️  Skipped: ${skippedCount} prospects`);
     console.log(`   ❌ Errors: ${errorCount} prospects`);
 
@@ -603,9 +618,10 @@ export async function POST(req: NextRequest) {
       queued: queuedCount,
       skipped: skippedCount,
       errors: errorCount,
-      totalMessages: queueRecords.length,
+      totalMessages: queueInsertedCount,
+      failedInserts: queueInsertErrors.length,
       results: validationResults,
-      message: `✅ Queued ${queueRecords.length} messages for ${queuedCount} prospects. Processing starts immediately via cron job.`
+      message: `✅ Queued ${queueInsertedCount} messages for ${queuedCount} prospects. Processing starts immediately via cron job.`
     });
 
   } catch (error: any) {

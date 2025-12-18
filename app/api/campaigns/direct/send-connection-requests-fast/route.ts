@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { airtableService } from '@/lib/airtable';
 import { getMessageVarianceContext } from '@/lib/anti-detection/message-variance';
 import { normalizeCompanyName } from '@/lib/prospect-normalization';
+import { extractLinkedInSlug, getBestLinkedInIdentifier } from '@/lib/linkedin-utils';
 
 /**
  * FAST Queue-Based Campaign Execution
@@ -377,10 +378,13 @@ export async function POST(req: NextRequest) {
         console.warn(`⚠️ Unreplaced variables for ${firstName}: ${unreplacedVars.join(', ')}`);
       }
 
+      // CRITICAL FIX (Dec 18): Extract slug from URL to prevent "User ID does not match format" errors
+      const cleanLinkedInId = getBestLinkedInIdentifier(prospect) || extractLinkedInSlug(prospect.linkedin_url);
+
       queueRecords.push({
         campaign_id: campaignId,
         prospect_id: prospect.id,
-        linkedin_user_id: prospect.linkedin_user_id || prospect.linkedin_url,
+        linkedin_user_id: cleanLinkedInId,
         message: personalizedMessage,
         scheduled_for: scheduledTime.toISOString(),
         status: 'pending'
@@ -389,17 +393,31 @@ export async function POST(req: NextRequest) {
       dailyCount++;
     }
 
-    // 4. Bulk insert (fast - single transaction)
-    const { error: insertError } = await supabaseAdmin
-      .from('send_queue')
-      .insert(queueRecords);
+    // 4. Insert queue records ONE BY ONE to prevent batch failures
+    // CRITICAL FIX (Dec 18): Batch inserts fail ALL records if ANY has a constraint violation
+    let insertedCount = 0;
+    const insertErrors: string[] = [];
 
-    if (insertError) {
-      console.error('Failed to create queue:', insertError);
-      return NextResponse.json({ error: 'Failed to create queue' }, { status: 500 });
+    for (const record of queueRecords) {
+      const { error: insertError } = await supabaseAdmin
+        .from('send_queue')
+        .insert(record);
+
+      if (insertError) {
+        insertErrors.push(`${record.linkedin_user_id}: ${insertError.message}`);
+        if (insertErrors.length <= 3) {
+          console.warn(`⚠️ Failed to queue: ${insertError.message}`);
+        }
+      } else {
+        insertedCount++;
+      }
     }
 
-    console.log(`✅ Queued ${queueRecords.length} prospects successfully (${skippedCount} already in queue)`);
+    if (insertErrors.length > 0) {
+      console.error(`❌ ${insertErrors.length} queue inserts failed`);
+    }
+
+    console.log(`✅ Queued ${insertedCount}/${queueRecords.length} prospects successfully (${skippedCount} already in queue)`);
 
     // A/B TESTING REMOVED (Dec 18, 2025)
 
@@ -411,11 +429,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      queued: queueRecords.length,
+      queued: insertedCount,
       skipped: skippedCount,
+      failed: insertErrors.length,
       firstScheduled: queueRecords[0]?.scheduled_for,
       lastScheduled: queueRecords[queueRecords.length - 1]?.scheduled_for,
-      message: `${queueRecords.length} prospects queued for sending${skippedCount > 0 ? ` (${skippedCount} already queued)` : ''}`
+      message: `${insertedCount} prospects queued for sending${skippedCount > 0 ? ` (${skippedCount} already queued)` : ''}${insertErrors.length > 0 ? ` (${insertErrors.length} failed)` : ''}`
     });
 
   } catch (error: any) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { enrichProspectName } from '@/lib/enrich-prospect-name';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
+import { extractLinkedInSlug } from '@/lib/linkedin-utils';
 
 // Increase timeout for large prospect uploads (default 10s is too short)
 export const maxDuration = 60; // 60 seconds
@@ -183,7 +184,8 @@ export async function POST(req: NextRequest) {
           company_name: prospect.company_name || prospect.company?.name || prospect.company || '',
           title: prospect.title || prospect.job_title || '',
           linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url || null,
-          linkedin_user_id: prospect.linkedin_user_id || null,
+          // CRITICAL FIX (Dec 18): Extract slug from URL to prevent "User ID does not match format" errors
+          linkedin_user_id: extractLinkedInSlug(prospect.linkedin_user_id || prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url),
           phone: prospect.phone || prospect.contact?.phone || null,
           location: prospect.location || '',
           industry: prospect.industry || prospect.company?.industry?.[0] || prospect.company?.industry || null,

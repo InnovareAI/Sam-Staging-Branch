@@ -7,6 +7,7 @@ import {
   normalizeLocation,
   normalizeIndustry
 } from '@/lib/prospect-normalization';
+import { extractLinkedInSlug } from '@/lib/linkedin-utils';
 
 // Allow up to 60 seconds for CSV uploads (Netlify Pro limit)
 // This is needed for large CSV files with 50+ prospects
@@ -436,6 +437,8 @@ export async function POST(request: NextRequest) {
           phone: prospect.phone || '',
           website: prospect.companyWebsite || null  // Include website in contact for downstream
         },
+        // CRITICAL FIX (Dec 18): Store extracted slug for clean linkedin_user_id downstream
+        linkedin_user_id: extractLinkedInSlug(linkedinUrl),
         connectionDegree: connectionDegree,  // Add connection degree
         companyWebsite: prospect.companyWebsite || null,  // Optional company website
         source: source,

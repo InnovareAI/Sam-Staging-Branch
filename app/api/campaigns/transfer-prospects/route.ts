@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
+import { extractLinkedInSlug } from '@/lib/linkedin-utils';
 
 // Helper to normalize LinkedIn URL to hash (vanity name only)
 function normalizeLinkedInUrl(url: string | null | undefined): string | null {
@@ -226,6 +227,8 @@ export async function POST(req: NextRequest) {
         email: contact.email || null,
         company_name: prospect.company?.name || contact.company || contact.companyName || '',
         linkedin_url: linkedinUrl,
+        // CRITICAL FIX (Dec 18): Extract slug from URL to prevent "User ID does not match format" errors
+        linkedin_user_id: extractLinkedInSlug(contact.linkedin_provider_id || linkedinUrl),
         title: prospect.title || contact.title || contact.headline || '',
         location: prospect.location || contact.location || null,
         industry: prospect.company?.industry?.[0] || 'Not specified',
@@ -241,18 +244,31 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    // Insert prospects into campaign_prospects
-    const { data: inserted, error: insertError } = await supabase
-      .from('campaign_prospects')
-      .insert(campaignProspects)
-      .select();
+    // Insert prospects into campaign_prospects ONE BY ONE to prevent batch failures
+    // CRITICAL FIX (Dec 18): Batch inserts fail ALL records if ANY has a constraint violation
+    let insertedCount = 0;
+    const insertErrors: string[] = [];
 
-    if (insertError) {
-      return NextResponse.json({
-        error: 'Failed to insert prospects',
-        details: insertError.message
-      }, { status: 500 });
+    for (const prospect of campaignProspects) {
+      const { error: insertError } = await supabase
+        .from('campaign_prospects')
+        .insert(prospect);
+
+      if (insertError) {
+        insertErrors.push(`${prospect.first_name} ${prospect.last_name}: ${insertError.message}`);
+        if (insertErrors.length <= 3) {
+          console.warn(`⚠️ Failed to insert prospect: ${insertError.message}`);
+        }
+      } else {
+        insertedCount++;
+      }
     }
+
+    if (insertErrors.length > 0) {
+      console.error(`❌ ${insertErrors.length} prospect inserts failed`);
+    }
+
+    console.log(`✅ Transferred ${insertedCount}/${campaignProspects.length} prospects`);
 
     return NextResponse.json({
       success: true,
@@ -260,7 +276,8 @@ export async function POST(req: NextRequest) {
         id: campaign.id,
         name: campaign.name
       },
-      prospects_transferred: inserted.length,
+      prospects_transferred: insertedCount,
+      failed: insertErrors.length,
       details: {
         from_session: session_id || 'all approved',
         linkedin_account: unipileAccountId || 'none'
