@@ -90,12 +90,12 @@ export async function POST(req: NextRequest) {
       console.log(`  📊 Found ${pendingProspects.length} pending prospects with linkedin_url`);
 
       // 3. Check which are already in queue FOR THIS CAMPAIGN
-      const prospectIds = pendingProspects.map(p => p.id);
+      // FIX (Dec 18): Don't use .in() with large arrays - it can fail silently
+      // Instead, get ALL queue entries for this campaign and filter locally
       const { data: existingQueue, error: queueError } = await supabase
         .from('send_queue')
         .select('prospect_id')
-        .eq('campaign_id', campaign.id)
-        .in('prospect_id', prospectIds);
+        .eq('campaign_id', campaign.id);
 
       if (queueError) {
         console.error(`  ❌ Error checking queue for ${campaign.id}:`, queueError.message);
@@ -106,6 +106,8 @@ export async function POST(req: NextRequest) {
 
       const existingIds = new Set((existingQueue || []).map(q => q.prospect_id));
       let unqueuedProspects = pendingProspects.filter(p => !existingIds.has(p.id));
+
+      console.log(`  🆕 After same-campaign filter: ${unqueuedProspects.length} unqueued`);
 
       // ============================================
       // CROSS-CAMPAIGN DEDUPLICATION (Dec 5, 2025)
@@ -121,22 +123,28 @@ export async function POST(req: NextRequest) {
         // Normalize URLs for comparison (remove trailing slashes, lowercase)
         const normalizeUrl = (url: string) => url?.toLowerCase().replace(/\/+$/, '').trim();
 
-        // 3a. Check if linkedin_url was ALREADY SENT in ANY campaign's send_queue
-        const { data: previouslySent, error: sentError } = await supabase
-          .from('send_queue')
-          .select('linkedin_user_id')
-          .in('status', ['sent', 'pending', 'failed', 'skipped'])
-          .in('linkedin_user_id', linkedinUrls);
+        // FIX (Dec 18): Batch the .in() queries to avoid silent failures with large arrays
+        // Supabase/PostgREST has limits on array size in .in() clauses
+        const BATCH_SIZE = 100;
+        const sentUrls = new Set<string>();
+        const contactedUrls = new Set<string>();
 
-        if (sentError) {
-          console.error(`  ❌ Error checking cross-campaign queue:`, sentError.message);
+        // 3a. Check if linkedin_url was ALREADY SENT in ANY campaign's send_queue (batched)
+        for (let i = 0; i < linkedinUrls.length; i += BATCH_SIZE) {
+          const batch = linkedinUrls.slice(i, i + BATCH_SIZE);
+          const { data: previouslySent, error: sentError } = await supabase
+            .from('send_queue')
+            .select('linkedin_user_id')
+            .in('status', ['sent', 'pending', 'failed', 'skipped'])
+            .in('linkedin_user_id', batch);
+
+          if (sentError) {
+            console.error(`  ❌ Error checking cross-campaign queue (batch ${i}):`, sentError.message);
+          }
+          (previouslySent || []).forEach(s => sentUrls.add(normalizeUrl(s.linkedin_user_id)));
         }
 
-        const sentUrls = new Set(
-          (previouslySent || []).map(s => normalizeUrl(s.linkedin_user_id))
-        );
-
-        // 3b. Check if linkedin_url exists in ANY campaign_prospects with contacted status
+        // 3b. Check if linkedin_url exists in ANY campaign_prospects with contacted status (batched)
         const contactedStatuses = [
           'connection_request_sent',
           'already_invited',
@@ -146,19 +154,19 @@ export async function POST(req: NextRequest) {
           'failed'  // Don't retry failed ones either
         ];
 
-        const { data: previouslyContacted, error: contactedError } = await supabase
-          .from('campaign_prospects')
-          .select('linkedin_url')
-          .in('status', contactedStatuses)
-          .in('linkedin_url', linkedinUrls);
+        for (let i = 0; i < linkedinUrls.length; i += BATCH_SIZE) {
+          const batch = linkedinUrls.slice(i, i + BATCH_SIZE);
+          const { data: previouslyContacted, error: contactedError } = await supabase
+            .from('campaign_prospects')
+            .select('linkedin_url')
+            .in('status', contactedStatuses)
+            .in('linkedin_url', batch);
 
-        if (contactedError) {
-          console.error(`  ❌ Error checking contacted prospects:`, contactedError.message);
+          if (contactedError) {
+            console.error(`  ❌ Error checking contacted prospects (batch ${i}):`, contactedError.message);
+          }
+          (previouslyContacted || []).forEach(c => contactedUrls.add(normalizeUrl(c.linkedin_url)));
         }
-
-        const contactedUrls = new Set(
-          (previouslyContacted || []).map(c => normalizeUrl(c.linkedin_url))
-        );
 
         // Filter out prospects already contacted
         const beforeCount = unqueuedProspects.length;
@@ -168,7 +176,10 @@ export async function POST(req: NextRequest) {
           const wasContacted = contactedUrls.has(normalizedUrl);
 
           if (inSentQueue || wasContacted) {
-            console.log(`  🚫 Skipping ${p.first_name} ${p.last_name} - already contacted (queue: ${inSentQueue}, status: ${wasContacted})`);
+            // Only log first 5 skipped to avoid log spam
+            if (beforeCount - unqueuedProspects.length < 5) {
+              console.log(`  🚫 Skipping ${p.first_name} ${p.last_name} - already contacted (queue: ${inSentQueue}, status: ${wasContacted})`);
+            }
             return false;
           }
           return true;
