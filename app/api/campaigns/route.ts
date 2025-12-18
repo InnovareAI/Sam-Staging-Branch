@@ -348,14 +348,17 @@ export async function POST(req: NextRequest) {
     let linkedinAccountId = null;
     if (campaign_type === 'connector' || campaign_type === 'messenger') {
       // LinkedIn campaigns - assign LinkedIn account
-      const { data: linkedinAccount, error: accountError } = await supabase
+      // FIX (Dec 18): Use .limit(1) instead of .single() to handle workspaces with multiple accounts
+      const { data: linkedinAccounts, error: accountError } = await supabase
         .from('workspace_accounts')
         .select('id, account_name')
         .eq('workspace_id', workspace_id)
         .eq('account_type', 'linkedin')
         .eq('connection_status', 'connected')
         .eq('is_active', true)
-        .single();
+        .limit(1);
+
+      const linkedinAccount = linkedinAccounts?.[0];
 
       if (accountError || !linkedinAccount) {
         console.error('❌ No LinkedIn account found for workspace:', workspace_id, accountError?.message);
