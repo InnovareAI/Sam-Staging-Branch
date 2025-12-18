@@ -178,13 +178,27 @@ export async function POST(req: NextRequest) {
     console.log(`🔴 Error monitor result: ${result.status}`);
     console.log(`   Critical: ${criticalErrors.length}, Warnings: ${warnings.length}`);
 
-    // Alert to Google Chat if critical errors
-    if (criticalErrors.length > 0 && GOOGLE_CHAT_WEBHOOK) {
-      const alertMessage = {
-        text: `🚨 *CRITICAL CAMPAIGN ERRORS*\n\n${criticalErrors.map(e =>
-          `❌ *${e.name}*: ${e.count} issues\n   ${e.details || ''}`
-        ).join('\n\n')}\n\n_Detected at ${now.toISOString()}_`
-      };
+    // Always send status to Google Chat
+    if (GOOGLE_CHAT_WEBHOOK) {
+      let alertMessage: { text: string };
+
+      if (criticalErrors.length > 0) {
+        alertMessage = {
+          text: `🚨 *CRITICAL CAMPAIGN ERRORS*\n\n${criticalErrors.map(e =>
+            `❌ *${e.name}*: ${e.count} issues\n   ${e.details || ''}`
+          ).join('\n\n')}\n\n_Detected at ${now.toISOString()}_`
+        };
+      } else if (warnings.length > 0) {
+        alertMessage = {
+          text: `⚠️ *Campaign Monitor: ${warnings.length} Warning(s)*\n\n${warnings.map(w =>
+            `• *${w.name}*: ${w.count}\n   ${w.details || ''}`
+          ).join('\n\n')}\n\n_Checked at ${now.toISOString()}_`
+        };
+      } else {
+        alertMessage = {
+          text: `✅ *Campaign Monitor: All Systems OK*\n\nNo critical errors or warnings detected.\n\n_Checked at ${now.toISOString()}_`
+        };
+      }
 
       try {
         await fetch(GOOGLE_CHAT_WEBHOOK, {
@@ -192,7 +206,7 @@ export async function POST(req: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(alertMessage)
         });
-        console.log('📨 Alert sent to Google Chat');
+        console.log('📨 Status sent to Google Chat');
       } catch (alertError) {
         console.error('Failed to send alert:', alertError);
       }
