@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { importQueue } from '@/lib/import-queue';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
             .select('unipile_account_id, account_name')
             .eq('workspace_id', workspace_id)
             .eq('account_type', 'linkedin')
-            .eq('connection_status', 'connected')
+            .in('connection_status', VALID_CONNECTION_STATUSES)
             .eq('user_id', user_id);
 
           if (!linkedInAccounts || linkedInAccounts.length === 0) {

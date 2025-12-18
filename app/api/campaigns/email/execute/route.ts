@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Unipile API configuration
 const UNIPILE_BASE_URL = process.env.UNIPILE_DSN ? `https://${process.env.UNIPILE_DSN}` : 'https://api6.unipile.com:13670';
@@ -121,7 +122,7 @@ export async function POST(req: NextRequest) {
       .select('id, unipile_account_id, account_name, connection_status')
       .eq('workspace_id', campaign.workspace_id)
       .eq('account_type', 'email')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .limit(1)
       .maybeSingle();
 

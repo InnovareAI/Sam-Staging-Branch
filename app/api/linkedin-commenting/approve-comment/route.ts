@@ -9,6 +9,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
       .select('unipile_account_id')
       .eq('workspace_id', comment.workspace_id)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .limit(1)
       .single();
 

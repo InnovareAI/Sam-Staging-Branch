@@ -579,32 +579,44 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
     try {
       const isEmailCampaign = campaignToEdit.campaign_type === 'email';
+      const isMessengerCampaign = campaignToEdit.campaign_type === 'messenger';
 
-      // Build message_templates - email uses email_body, LinkedIn uses connection_request
+      // Enforce message count limits
+      const maxFollowUps = isMessengerCampaign ? 4 : isEmailCampaign ? 4 : 5;
+      const followUps = (editFormData.follow_up_messages || []).slice(0, maxFollowUps);
+
+      if (editFormData.follow_up_messages?.length > maxFollowUps) {
+        toastWarning(`Limited to ${maxFollowUps} follow-up messages. Extra messages were removed.`);
+      }
+
+      // Build message_templates - email uses email_body, LinkedIn uses connection_request or alternative_message
       const message_templates = {
-        // LinkedIn fields - empty for email campaigns
-        connection_request: isEmailCampaign ? '' : (editFormData.connection_message || ''),
+        // Connection Request - ONLY for connector campaigns (NOT messenger, NOT email)
+        connection_request: (isEmailCampaign || isMessengerCampaign) ? '' : (editFormData.connection_message || ''),
+        // Alternative Message - For messenger campaigns (initial message) OR connector campaigns (fallback)
         alternative_message: isEmailCampaign ? '' : (editFormData.alternative_message || ''),
         // Email field - empty for LinkedIn campaigns
         email_body: isEmailCampaign ? (editFormData.email_body || '') : '',
         // Shared fields
-        follow_up_messages: editFormData.follow_up_messages || [],
+        follow_up_messages: followUps,
         initial_subject: editFormData.initial_subject || '',
         follow_up_subjects: editFormData.follow_up_subjects || [],
         use_threaded_replies: editFormData.use_threaded_replies || false,
         // A/B Testing fields
         ab_testing_enabled: editFormData.ab_testing_enabled || false,
-        connection_request_b: isEmailCampaign ? '' : (editFormData.connection_request_b || ''),
+        connection_request_b: (isEmailCampaign || isMessengerCampaign) ? '' : (editFormData.connection_request_b || ''),
         alternative_message_b: isEmailCampaign ? '' : (editFormData.alternative_message_b || ''),
         email_body_b: isEmailCampaign ? (editFormData.email_body_b || '') : '',
         initial_subject_b: editFormData.initial_subject_b || ''
       };
 
+      // Direct fields - used for backwards compatibility and quick access
+      // IMPORTANT: Messenger campaigns should NOT have connection_message (only alternative_message)
       const updatePayload = {
         name: editFormData.name,
-        connection_message: isEmailCampaign ? '' : editFormData.connection_message,
-        alternative_message: isEmailCampaign ? '' : editFormData.alternative_message,
-        follow_up_messages: editFormData.follow_up_messages,
+        connection_message: (isEmailCampaign || isMessengerCampaign) ? '' : (editFormData.connection_message || ''),
+        alternative_message: isEmailCampaign ? '' : (editFormData.alternative_message || ''),
+        follow_up_messages: followUps,
         message_templates
       };
 
@@ -8401,32 +8413,44 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
     try {
       const isEmailCampaign = campaignToEdit.campaign_type === 'email';
+      const isMessengerCampaign = campaignToEdit.campaign_type === 'messenger';
 
-      // Build message_templates - email uses email_body, LinkedIn uses connection_request
+      // Enforce message count limits
+      const maxFollowUps = isMessengerCampaign ? 4 : isEmailCampaign ? 4 : 5;
+      const followUps = (editFormData.follow_up_messages || []).slice(0, maxFollowUps);
+
+      if (editFormData.follow_up_messages?.length > maxFollowUps) {
+        toastWarning(`Limited to ${maxFollowUps} follow-up messages. Extra messages were removed.`);
+      }
+
+      // Build message_templates - email uses email_body, LinkedIn uses connection_request or alternative_message
       const message_templates = {
-        // LinkedIn fields - empty for email campaigns
-        connection_request: isEmailCampaign ? '' : (editFormData.connection_message || ''),
+        // Connection Request - ONLY for connector campaigns (NOT messenger, NOT email)
+        connection_request: (isEmailCampaign || isMessengerCampaign) ? '' : (editFormData.connection_message || ''),
+        // Alternative Message - For messenger campaigns (initial message) OR connector campaigns (fallback)
         alternative_message: isEmailCampaign ? '' : (editFormData.alternative_message || ''),
         // Email field - empty for LinkedIn campaigns
         email_body: isEmailCampaign ? (editFormData.email_body || '') : '',
         // Shared fields
-        follow_up_messages: editFormData.follow_up_messages || [],
+        follow_up_messages: followUps,
         initial_subject: editFormData.initial_subject || '',
         follow_up_subjects: editFormData.follow_up_subjects || [],
         use_threaded_replies: editFormData.use_threaded_replies || false,
         // A/B Testing fields
         ab_testing_enabled: editFormData.ab_testing_enabled || false,
-        connection_request_b: isEmailCampaign ? '' : (editFormData.connection_request_b || ''),
+        connection_request_b: (isEmailCampaign || isMessengerCampaign) ? '' : (editFormData.connection_request_b || ''),
         alternative_message_b: isEmailCampaign ? '' : (editFormData.alternative_message_b || ''),
         email_body_b: isEmailCampaign ? (editFormData.email_body_b || '') : '',
         initial_subject_b: editFormData.initial_subject_b || ''
       };
 
+      // Direct fields - used for backwards compatibility and quick access
+      // IMPORTANT: Messenger campaigns should NOT have connection_message (only alternative_message)
       const updatePayload = {
         name: editFormData.name,
-        connection_message: isEmailCampaign ? '' : editFormData.connection_message,
-        alternative_message: isEmailCampaign ? '' : editFormData.alternative_message,
-        follow_up_messages: editFormData.follow_up_messages,
+        connection_message: (isEmailCampaign || isMessengerCampaign) ? '' : (editFormData.connection_message || ''),
+        alternative_message: isEmailCampaign ? '' : (editFormData.alternative_message || ''),
+        follow_up_messages: followUps,
         message_templates
       };
 
@@ -10819,64 +10843,115 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Connection Message - check both direct field and message_templates */}
-              {(selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request) && (
-                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
-                    <MessageCircle size={18} />
-                    Connection Request Message
-                  </h3>
-                  <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                    <p className="text-gray-200 whitespace-pre-wrap">
-                      {selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Alternative Message - check both direct field and message_templates */}
-              {(selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message) && (
-                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
-                    <MessageSquare size={18} />
-                    Alternative Message
-                  </h3>
-                  <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                    <p className="text-gray-200 whitespace-pre-wrap">
-                      {selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Follow-up Messages - check both direct field and message_templates */}
               {(() => {
+                const isMessengerCampaign = selectedCampaignForMessages.campaign_type === 'messenger';
+                const isEmailCampaign = selectedCampaignForMessages.campaign_type === 'email';
+
+                // Get messages from single source of truth (prefer direct fields, fallback to templates)
+                const connectionMsg = selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request || '';
+                const alternativeMsg = selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message || '';
                 const followUps = selectedCampaignForMessages.follow_up_messages?.length > 0
                   ? selectedCampaignForMessages.follow_up_messages
-                  : selectedCampaignForMessages.message_templates?.follow_up_messages;
+                  : selectedCampaignForMessages.message_templates?.follow_up_messages || [];
 
-                return followUps && followUps.length > 0 && (
-                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
-                      <Send size={18} />
-                      Follow-up Messages ({followUps.length})
-                    </h3>
-                    <div className="space-y-4">
-                      {followUps.map((msg: any, index: number) => (
-                        <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-400">Follow-up #{index + 1}</span>
-                            {msg.delay_days && (
-                              <span className="bg-blue-900/20 text-blue-400 border border-blue-500 px-2 py-1 rounded text-xs">
-                                Delay: {msg.delay_days} days
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-gray-200 whitespace-pre-wrap">{typeof msg === 'string' ? msg : (msg.message || msg.content || msg)}</p>
+                // Message count limits based on campaign type
+                const maxMessages = isMessengerCampaign ? 5 : isEmailCampaign ? 5 : 6; // Messenger: 5, Email: 5, Connector: 6
+                const maxFollowUps = isMessengerCampaign ? 4 : isEmailCampaign ? 4 : 5; // Messenger: 4, Email: 4, Connector: 5
+
+                return (
+                  <>
+                    {/* Connection Request Message - ONLY for connector campaigns (not messenger, not email) */}
+                    {!isMessengerCampaign && !isEmailCampaign && connectionMsg && (
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                        <h3 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
+                          <MessageCircle size={18} />
+                          Connection Request Message (Step 1)
+                          <span className="text-xs text-gray-400 ml-2">275 char limit</span>
+                        </h3>
+                        <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                          <p className="text-gray-200 whitespace-pre-wrap">{connectionMsg}</p>
+                          <p className="text-xs text-gray-500 mt-2">{connectionMsg.length} / 275 characters</p>
                         </div>
-                      ))}
+                      </div>
+                    )}
+
+                    {/* Initial Message - For messenger/email campaigns */}
+                    {(isMessengerCampaign || isEmailCampaign) && alternativeMsg && (
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                        <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
+                          <MessageSquare size={18} />
+                          {isEmailCampaign ? 'Email Body (Step 1)' : 'Direct Message (Step 1)'}
+                          {!isEmailCampaign && <span className="text-xs text-gray-400 ml-2">8000 char limit</span>}
+                        </h3>
+                        <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                          <p className="text-gray-200 whitespace-pre-wrap">{alternativeMsg}</p>
+                          {!isEmailCampaign && <p className="text-xs text-gray-500 mt-2">{alternativeMsg.length} / 8000 characters</p>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Alternative Message - ONLY for connector campaigns as fallback */}
+                    {!isMessengerCampaign && !isEmailCampaign && alternativeMsg && (
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                        <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
+                          <MessageSquare size={18} />
+                          Alternative Message (if already connected)
+                          <span className="text-xs text-gray-400 ml-2">8000 char limit</span>
+                        </h3>
+                        <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                          <p className="text-gray-200 whitespace-pre-wrap">{alternativeMsg}</p>
+                          <p className="text-xs text-gray-500 mt-2">{alternativeMsg.length} / 8000 characters</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Follow-up Messages */}
+                    {followUps && followUps.length > 0 && (
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                        <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
+                          <Send size={18} />
+                          Follow-up Messages ({followUps.length}/{maxFollowUps})
+                          {followUps.length > maxFollowUps && (
+                            <span className="text-xs text-red-400 ml-2">⚠ Exceeds limit!</span>
+                          )}
+                        </h3>
+                        <div className="space-y-4">
+                          {followUps.slice(0, maxFollowUps).map((msg: any, index: number) => (
+                            <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-400">
+                                  Follow-up #{index + 1} (Step {isMessengerCampaign || isEmailCampaign ? index + 2 : index + 2})
+                                </span>
+                                {msg.delay_days && (
+                                  <span className="bg-blue-900/20 text-blue-400 border border-blue-500 px-2 py-1 rounded text-xs">
+                                    Delay: {msg.delay_days} days
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-gray-200 whitespace-pre-wrap">{typeof msg === 'string' ? msg : (msg.message || msg.content || msg)}</p>
+                            </div>
+                          ))}
+                          {followUps.length > maxFollowUps && (
+                            <div className="bg-red-900/20 border border-red-500 rounded p-3 text-red-400 text-sm">
+                              ⚠ {followUps.length - maxFollowUps} message(s) exceed the {maxFollowUps} follow-up limit and will be ignored.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Summary */}
+                    <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                      <p className="text-blue-300 text-sm">
+                        <strong>Total Messages:</strong> {
+                          ((connectionMsg || alternativeMsg) ? 1 : 0) + Math.min(followUps.length, maxFollowUps)
+                        } / {maxMessages}
+                        <span className="ml-2 text-gray-400">
+                          ({isMessengerCampaign ? 'Messenger' : isEmailCampaign ? 'Email' : 'Connector'} campaign)
+                        </span>
+                      </p>
                     </div>
-                  </div>
+                  </>
                 );
               })()}
 
@@ -10946,22 +11021,38 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                 />
               </div>
 
-              {/* Connection Message */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Connection Request Message</label>
-                <textarea
-                  value={editFormData.connection_message || ''}
-                  onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
-                  placeholder="Hi {{firstName}}, I noticed..."
-                />
-                <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
-              </div>
+              {/* Connection Request Message - ONLY for connector campaigns (not messenger, not email) */}
+              {campaignToEdit?.campaign_type !== 'messenger' && campaignToEdit?.campaign_type !== 'email' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Connection Request Message (Step 1)
+                    <span className="text-xs text-gray-400 ml-2">275 character limit</span>
+                  </label>
+                  <textarea
+                    value={editFormData.connection_message || ''}
+                    onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
+                    maxLength={275}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
+                    placeholder="Hi {{firstName}}, I noticed..."
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(editFormData.connection_message || '').length} / 275 characters
+                    <span className="ml-2">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</span>
+                  </p>
+                </div>
+              )}
 
-              {/* Email Body (for email campaigns) OR Alternative Message (for LinkedIn) */}
+              {/* Alternative/Direct Message Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message (Optional)'}
+                  {campaignToEdit?.campaign_type === 'email'
+                    ? 'Initial Email Body (Step 1)'
+                    : campaignToEdit?.campaign_type === 'messenger'
+                      ? 'Direct Message (Step 1)'
+                      : 'Alternative Message (if already connected)'}
+                  {campaignToEdit?.campaign_type !== 'email' && (
+                    <span className="text-xs text-gray-400 ml-2">8000 character limit</span>
+                  )}
                 </label>
                 <textarea
                   value={campaignToEdit?.campaign_type === 'email' ? (editFormData.email_body || '') : (editFormData.alternative_message || '')}
@@ -10972,9 +11063,22 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
                       ? { email_body: e.target.value }
                       : { alternative_message: e.target.value })
                   })}
+                  maxLength={campaignToEdit?.campaign_type === 'email' ? undefined : 8000}
                   className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
-                  placeholder={campaignToEdit?.campaign_type === 'email' ? "Initial email body..." : "Alternative message if already connected..."}
+                  placeholder={
+                    campaignToEdit?.campaign_type === 'email'
+                      ? "Initial email body..."
+                      : campaignToEdit?.campaign_type === 'messenger'
+                        ? "Hi {{firstName}}, I saw your post about..."
+                        : "Alternative message if already connected..."
+                  }
                 />
+                {campaignToEdit?.campaign_type !== 'email' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(editFormData.alternative_message || '').length} / 8000 characters
+                    <span className="ml-2">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</span>
+                  </p>
+                )}
               </div>
 
               {/* Email Subject Lines - Only show for email campaigns */}
@@ -11064,46 +11168,104 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
 
               {/* Follow-up Messages */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Follow-up Messages</label>
-                <div className="space-y-3">
-                  {(editFormData.follow_up_messages || []).map((msg: any, index: number) => (
-                    <div key={index} className="bg-gray-800/50 border border-gray-700 rounded p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-400">Follow-up #{index + 1}</span>
+                {(() => {
+                  const isMessengerCampaign = campaignToEdit?.campaign_type === 'messenger';
+                  const isEmailCampaign = campaignToEdit?.campaign_type === 'email';
+                  const maxFollowUps = isMessengerCampaign ? 4 : isEmailCampaign ? 4 : 5;
+                  const currentFollowUps = editFormData.follow_up_messages || [];
+
+                  return (
+                    <>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Follow-up Messages ({currentFollowUps.length}/{maxFollowUps})
+                        {currentFollowUps.length > maxFollowUps && (
+                          <span className="text-red-400 text-xs ml-2">⚠ Exceeds limit!</span>
+                        )}
+                      </label>
+
+                      {currentFollowUps.length > maxFollowUps && (
+                        <div className="bg-red-900/20 border border-red-500 rounded-lg p-3 mb-3 text-red-400 text-sm">
+                          <AlertTriangle size={16} className="inline mr-2" />
+                          Warning: {currentFollowUps.length - maxFollowUps} extra message(s) will be ignored.
+                          {isMessengerCampaign && ' Messenger campaigns allow max 4 follow-ups.'}
+                          {isEmailCampaign && ' Email campaigns allow max 4 follow-ups.'}
+                          {!isMessengerCampaign && !isEmailCampaign && ' Connector campaigns allow max 5 follow-ups.'}
+                        </div>
+                      )}
+
+                      <div className="space-y-3">
+                        {currentFollowUps.map((msg: any, index: number) => (
+                          <div
+                            key={index}
+                            className={`bg-gray-800/50 border rounded p-3 ${
+                              index >= maxFollowUps ? 'border-red-500 opacity-50' : 'border-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-gray-400">
+                                Follow-up #{index + 1} (Step {(isMessengerCampaign || isEmailCampaign) ? index + 2 : index + 2})
+                                {index >= maxFollowUps && (
+                                  <span className="text-red-400 text-xs ml-2">⚠ Will be ignored</span>
+                                )}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  const updated = [...editFormData.follow_up_messages];
+                                  updated.splice(index, 1);
+                                  setEditFormData({ ...editFormData, follow_up_messages: updated });
+                                }}
+                                className="text-red-400 hover:text-red-300 text-sm"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                            <textarea
+                              value={typeof msg === 'string' ? msg : (msg.message || msg.content || '')}
+                              onChange={(e) => {
+                                const updated = [...editFormData.follow_up_messages];
+                                updated[index] = typeof msg === 'string' ? e.target.value : { ...msg, message: e.target.value };
+                                setEditFormData({ ...editFormData, follow_up_messages: updated });
+                              }}
+                              maxLength={8000}
+                              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none min-h-[80px]"
+                            />
+                          </div>
+                        ))}
                         <button
+                          type="button"
                           onClick={() => {
-                            const updated = [...editFormData.follow_up_messages];
-                            updated.splice(index, 1);
+                            if (currentFollowUps.length >= maxFollowUps) {
+                              toastWarning(`Maximum ${maxFollowUps} follow-up messages allowed for ${isMessengerCampaign ? 'messenger' : isEmailCampaign ? 'email' : 'connector'} campaigns`);
+                              return;
+                            }
+                            const updated = [...(editFormData.follow_up_messages || []), ''];
                             setEditFormData({ ...editFormData, follow_up_messages: updated });
                           }}
-                          className="text-red-400 hover:text-red-300 text-sm"
+                          disabled={currentFollowUps.length >= maxFollowUps}
+                          className={`w-full flex items-center justify-center px-3 py-1.5 text-sm border rounded-lg transition-colors ${
+                            currentFollowUps.length >= maxFollowUps
+                              ? 'border-gray-800 text-gray-600 cursor-not-allowed'
+                              : 'border-gray-700 text-gray-300 hover:bg-gray-800'
+                          }`}
                         >
-                          Remove
+                          <Plus size={16} className="mr-2" />
+                          Add Follow-up Message {currentFollowUps.length >= maxFollowUps && '(Max reached)'}
                         </button>
                       </div>
-                      <textarea
-                        value={typeof msg === 'string' ? msg : (msg.message || msg.content || '')}
-                        onChange={(e) => {
-                          const updated = [...editFormData.follow_up_messages];
-                          updated[index] = typeof msg === 'string' ? e.target.value : { ...msg, message: e.target.value };
-                          setEditFormData({ ...editFormData, follow_up_messages: updated });
-                        }}
-                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none min-h-[80px]"
-                      />
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = [...(editFormData.follow_up_messages || []), ''];
-                      setEditFormData({ ...editFormData, follow_up_messages: updated });
-                    }}
-                    className="w-full flex items-center justify-center px-3 py-1.5 text-sm border border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
-                  >
-                    <Plus size={16} className="mr-2" />
-                    Add Follow-up Message
-                  </button>
-                </div>
+
+                      {/* Message Summary */}
+                      <div className="mt-4 bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-300">
+                        <strong>Total Messages:</strong> {
+                          ((editFormData.connection_message || editFormData.alternative_message || editFormData.email_body) ? 1 : 0) +
+                          Math.min(currentFollowUps.length, maxFollowUps)
+                        } / {maxFollowUps + 1}
+                        <span className="ml-2 text-gray-400">
+                          ({isMessengerCampaign ? 'Messenger' : isEmailCampaign ? 'Email' : 'Connector'} campaign)
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 

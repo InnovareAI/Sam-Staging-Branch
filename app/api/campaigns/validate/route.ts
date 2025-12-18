@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const maxDuration = 30;
 
@@ -246,7 +247,7 @@ async function validateCampaign(campaignId: string, autoFix: boolean): Promise<C
         suggestion: 'Re-link LinkedIn account or check account ID',
         autoFixable: false
       });
-    } else if (account.connection_status !== 'connected') {
+    } else if (!VALID_CONNECTION_STATUSES.includes(account.connection_status as any)) {
       issues.push({
         type: 'error',
         code: 'LINKEDIN_ACCOUNT_DISCONNECTED',

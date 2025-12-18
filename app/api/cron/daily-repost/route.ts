@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -192,7 +193,7 @@ export async function POST(req: NextRequest) {
         .select('unipile_account_id')
         .eq('workspace_id', workspace.workspace_id)
         .eq('account_type', 'linkedin')
-        .eq('connection_status', 'connected')
+        .in('connection_status', VALID_CONNECTION_STATUSES)
         .limit(1)
         .single();
 

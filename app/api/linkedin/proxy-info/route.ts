@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
  * Get LinkedIn proxy information from Unipile
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
       .eq('workspace_id', userProfile.current_workspace_id)
       .eq('user_id', user.id)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected');
+      .in('connection_status', VALID_CONNECTION_STATUSES);
 
     if (!linkedinAccounts || linkedinAccounts.length === 0) {
       return NextResponse.json({

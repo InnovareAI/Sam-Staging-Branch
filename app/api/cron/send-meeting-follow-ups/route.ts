@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const maxDuration = 120; // 2 minutes
 
@@ -277,7 +278,7 @@ async function sendLinkedInFollowUp(params: {
       .select('unipile_account_id')
       .eq('workspace_id', params.workspace_id)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .single();
 
     if (!account?.unipile_account_id) {

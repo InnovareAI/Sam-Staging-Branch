@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { enrichProspectName } from '@/lib/enrich-prospect-name';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Increase timeout for large prospect uploads (default 10s is too short)
 export const maxDuration = 60; // 60 seconds
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
       .eq('workspace_id', campaign.workspace_id)
       .eq('user_id', campaignDetails?.created_by)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .single();
 
     const unipileAccountId = linkedInAccount?.unipile_account_id || null;

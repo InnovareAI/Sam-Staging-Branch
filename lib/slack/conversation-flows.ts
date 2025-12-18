@@ -8,6 +8,7 @@
  */
 
 import { supabaseAdmin } from '@/app/lib/supabase';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Conversation state storage (in-memory for now, should move to Redis/DB for production)
 const conversationStates = new Map<string, ConversationState>();
@@ -421,7 +422,7 @@ async function executeLinkedInSearch(workspaceId: string, query: any): Promise<a
       .select('unipile_account_id')
       .eq('workspace_id', workspaceId)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .single();
 
     if (!account) {
@@ -960,7 +961,7 @@ async function createCampaign(workspaceId: string, data: {
       .select('unipile_account_id')
       .eq('workspace_id', workspaceId)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .single();
 
     if (!account) {

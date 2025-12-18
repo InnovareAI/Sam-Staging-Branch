@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import moment from 'moment-timezone';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
  * POST /api/campaigns/email/send-emails-queued
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
       .select('id, unipile_account_id, account_name, account_identifier')
       .eq('workspace_id', campaign.workspace_id)
       .eq('account_type', 'email')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .limit(1);
 
     if (emailAccountError) {

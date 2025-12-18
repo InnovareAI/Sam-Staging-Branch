@@ -13,13 +13,15 @@ export async function GET(request: NextRequest) {
     const supabase = await createCleanRouteHandlerClient();
 
     // Check LinkedIn connection
-    const { data: linkedinAccount } = await supabase
+    const { data: linkedinAccounts } = await supabase
       .from('workspace_accounts')
       .select('id, unipile_account_id, connection_status')
       .eq('workspace_id', workspace_id)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
-      .maybeSingle();
+      .in('connection_status', ['connected', 'active'])
+      .limit(1);
+
+    const linkedinAccount = linkedinAccounts?.[0] || null;
 
     // Check Email connection - use limit(1) instead of maybeSingle()
     // because user may have multiple email accounts connected
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
       .select('id, unipile_account_id, connection_status')
       .eq('workspace_id', workspace_id)
       .eq('account_type', 'email')
-      .eq('connection_status', 'connected')
+      .in('connection_status', ['connected', 'active'])
       .limit(1);
 
     const emailAccount = emailAccounts?.[0] || null;

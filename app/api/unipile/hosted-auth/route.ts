@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status'
 
 // Utility to clean corrupted cookie values
 function cleanCookieValue(value: string): string {
@@ -223,7 +224,7 @@ export async function POST(request: NextRequest) {
         .select('unipile_account_id')
         .eq('workspace_id', workspaceId)
         .eq('account_type', 'email')
-        .eq('connection_status', 'connected')
+        .in('connection_status', VALID_CONNECTION_STATUSES)
 
       if (emailQueryError) {
         console.error('❌ Error querying email accounts:', emailQueryError)

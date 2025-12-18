@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createCleanRouteHandlerClient } from '@/lib/supabase-server';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
@@ -192,7 +193,7 @@ export async function POST(req: NextRequest) {
       .select('unipile_account_id')
       .eq('workspace_id', workspace_id)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .limit(1)
       .single();
 

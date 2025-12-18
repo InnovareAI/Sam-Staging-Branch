@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/app/lib/supabase';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
  * Smart LinkedIn Search Router with Automatic Fallback
@@ -245,7 +246,7 @@ async function detectLinkedInAccountType(
     .eq('workspace_id', workspaceId)
     .eq('user_id', userId)
     .eq('account_type', 'linkedin')
-    .eq('connection_status', 'connected');
+    .in('connection_status', VALID_CONNECTION_STATUSES);
 
   if (!accounts || accounts.length === 0) {
     return {

@@ -3,6 +3,7 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Helper to normalize LinkedIn URL to hash (vanity name only)
 function normalizeLinkedInUrl(url: string | null | undefined): string | null {
@@ -346,6 +347,7 @@ export async function POST(req: NextRequest) {
     // Note: linkedin_account_id column is used for BOTH LinkedIn and email accounts
     // CRITICAL FIX (Dec 16): Fail fast if no account is configured instead of silently proceeding
     // FIX (Dec 18): Check BOTH workspace_accounts AND user_unipile_accounts tables
+    // FIX (Dec 18): Validate account provider matches campaign type
     let linkedinAccountId = null;
     if (campaign_type === 'connector' || campaign_type === 'messenger') {
       // LinkedIn campaigns - assign LinkedIn account
@@ -356,7 +358,7 @@ export async function POST(req: NextRequest) {
         .select('id, account_name')
         .eq('workspace_id', workspace_id)
         .eq('account_type', 'linkedin')
-        .eq('connection_status', 'connected')
+        .in('connection_status', VALID_CONNECTION_STATUSES)
         .eq('is_active', true)
         .limit(1);
 
@@ -367,13 +369,23 @@ export async function POST(req: NextRequest) {
         console.log('⚠️ No LinkedIn account in workspace_accounts, checking user_unipile_accounts...');
         const { data: unipileAccounts, error: unipileError } = await supabase
           .from('user_unipile_accounts')
-          .select('id, account_name, connection_status')
+          .select('id, account_name, connection_status, provider')
           .eq('workspace_id', workspace_id)
-          .eq('platform', 'LINKEDIN')
+          .eq('provider', 'LINKEDIN')
           .in('connection_status', ['connected', 'active'])
           .limit(1);
 
         if (unipileAccounts?.[0]) {
+          // FIX (Dec 18): Validate provider is actually LINKEDIN
+          if (unipileAccounts[0].provider !== 'LINKEDIN') {
+            console.error('❌ Account type mismatch: LinkedIn campaign requires LINKEDIN provider, got:', unipileAccounts[0].provider);
+            await supabase.from('campaigns').delete().eq('id', campaignId);
+            return NextResponse.json({
+              success: false,
+              error: 'Invalid account type',
+              details: `LinkedIn campaigns require a LinkedIn account, not ${unipileAccounts[0].provider}. Please connect a LinkedIn account in Settings → Integrations.`
+            }, { status: 400 });
+          }
           linkedinAccount = {
             id: unipileAccounts[0].id,
             account_name: unipileAccounts[0].account_name
@@ -404,7 +416,7 @@ export async function POST(req: NextRequest) {
         .select('id, account_name')
         .eq('workspace_id', workspace_id)
         .eq('account_type', 'email')
-        .eq('connection_status', 'connected')
+        .in('connection_status', VALID_CONNECTION_STATUSES)
         .eq('is_active', true)
         .single();
 
@@ -550,7 +562,7 @@ export async function POST(req: NextRequest) {
           .eq('workspace_id', workspace_id)
           .eq('user_id', user.id)
           .eq('account_type', 'linkedin')
-          .eq('connection_status', 'connected')
+          .in('connection_status', VALID_CONNECTION_STATUSES)
           .single();
 
         unipileAccountId = linkedInAccount?.unipile_account_id || null;

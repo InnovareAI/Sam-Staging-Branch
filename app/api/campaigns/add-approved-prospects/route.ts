@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { enrichProspectName, normalizeFullName } from '@/lib/enrich-prospect-name'
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Helper to normalize LinkedIn URL to vanity name (for deduplication)
 function normalizeLinkedInUrl(url: string | null | undefined): string | null {
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
       .eq('workspace_id', workspace_id)
       .eq('user_id', campaign?.created_by)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .single()
 
     const unipileAccountId = linkedInAccount?.unipile_account_id || null

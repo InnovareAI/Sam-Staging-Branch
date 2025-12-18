@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status'
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
 
         // Map user_unipile_accounts to same shape
         // Note: user_unipile_accounts uses 'active' or 'connected' for valid status
-        const isValid = uniAccount.connection_status === 'connected' || uniAccount.connection_status === 'active'
+        const isValid = VALID_CONNECTION_STATUSES.includes(uniAccount.connection_status as any)
         linkedinAccount = {
           id: uniAccount.id,
           account_name: uniAccount.account_name,
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      if (linkedinAccount.connection_status !== 'connected') {
+      if (!VALID_CONNECTION_STATUSES.includes(linkedinAccount.connection_status as any)) {
         throw apiError.validation(
           'LinkedIn account disconnected',
           `The account "${linkedinAccount.account_name}" is ${linkedinAccount.connection_status}. Please reconnect it in Settings → LinkedIn Accounts.`

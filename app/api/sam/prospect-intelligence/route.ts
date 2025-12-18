@@ -9,6 +9,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { mcpRegistry, createMCPConfig } from '@/lib/mcp/mcp-registry'
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Initialize MCP if needed
 let mcpInitialized = false
@@ -538,7 +539,7 @@ async function executeICPResearchSearch(
       .select('unipile_account_id, account_name, account_identifier')
       .eq('workspace_id', workspaceId)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
 
     console.log('🔍 LinkedIn account lookup:', {
       found: linkedinAccounts?.length || 0,

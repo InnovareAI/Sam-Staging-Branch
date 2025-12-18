@@ -14,6 +14,7 @@ import {
   getMessageVarianceContext
 } from '@/lib/anti-detection/message-variance';
 import { sendRateLimitNotification } from '@/lib/notifications/notification-router';
+import { personalizeMessage } from '@/lib/personalization';
 
 // Countries with Friday-Saturday weekends (Middle East)
 const FRIDAY_SATURDAY_WEEKEND_COUNTRIES = ['AE', 'SA', 'KW', 'QA', 'BH', 'OM', 'JO', 'EG'];
@@ -170,6 +171,19 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
 }
 
 /**
+ * Extract LinkedIn slug from URL or return as-is if already a slug
+ * FIX (Dec 18): Helper function to extract slug from URLs like https://www.linkedin.com/in/john-doe/
+ */
+function extractLinkedInSlug(urlOrSlug: string): string {
+  if (!urlOrSlug) return '';
+  // If it's already just a slug, return it
+  if (!urlOrSlug.includes('/') && !urlOrSlug.includes('http')) return urlOrSlug;
+  // Extract slug from URL like https://www.linkedin.com/in/john-doe/
+  const match = urlOrSlug.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  return match ? match[1] : urlOrSlug;
+}
+
+/**
  * Resolve LinkedIn URL or vanity to provider_id
  * If already a provider_id (starts with ACo or ACw), return as-is
  * Otherwise, extract vanity from URL and lookup via Unipile
@@ -180,16 +194,8 @@ async function resolveToProviderId(linkedinUserIdOrUrl: string, accountId: strin
     return linkedinUserIdOrUrl;
   }
 
-  // Extract vanity from URL
-  let vanity = linkedinUserIdOrUrl;
-
-  // Handle full URLs
-  if (linkedinUserIdOrUrl.includes('linkedin.com')) {
-    const match = linkedinUserIdOrUrl.match(/linkedin\.com\/in\/([^\/\?#]+)/);
-    if (match) {
-      vanity = match[1];
-    }
-  }
+  // FIX (Dec 18): Extract slug from URL before resolving
+  const vanity = extractLinkedInSlug(linkedinUserIdOrUrl);
 
   console.log(`🔍 Resolving vanity "${vanity}" to provider_id...`);
 
@@ -284,6 +290,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Try each message until we find one we can send
+    // FIX (Dec 18): Atomically lock queue items to prevent race condition duplicates
     let queueItem = null;
     let skippedAccounts: string[] = [];
 
@@ -473,7 +480,27 @@ export async function POST(req: NextRequest) {
       console.log(`📊 Account ${accountId.substring(0, 8)}... today: ${crsSentToday}/${DAILY_CR_LIMIT} CRs, ${messagesSentToday}/${DAILY_MESSAGE_LIMIT} msgs | hour: ${crsSentThisHour}/${HOURLY_CR_LIMIT} CRs, ${messagesSentThisHour}/${HOURLY_MESSAGE_LIMIT} msgs`);
 
       // This message can be sent!
-      queueItem = candidate;
+      // FIX (Dec 18): Atomically claim this queue item to prevent race condition
+      // Update status to 'processing' only if it's still 'pending' (prevents duplicate sends)
+      const { data: lockedItem, error: lockError } = await supabase
+        .from('send_queue')
+        .update({
+          status: 'processing',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', candidate.id)
+        .eq('status', 'pending') // CRITICAL: only update if still pending (optimistic locking)
+        .select()
+        .single();
+
+      if (lockError || !lockedItem) {
+        // Another cron job grabbed this item first - try next candidate
+        console.log(`⚠️  Queue item ${candidate.id} was already claimed by another process`);
+        continue;
+      }
+
+      console.log(`🔒 Locked queue item ${lockedItem.id} for processing`);
+      queueItem = lockedItem;
       break;
     }
 
@@ -506,25 +533,78 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Campaign not found' }, { status: 400 });
     }
 
-    // 3. Fetch workspace account
+    // 3. Fetch workspace account and validate it's the correct type
     console.log(`🔍 Looking for workspace account with ID: ${campaign.linkedin_account_id}`);
-    const { data: linkedinAccount, error: accountError } = await supabase
+
+    // FIX (Dec 18): Try workspace_accounts first, then user_unipile_accounts
+    let linkedinAccount: { unipile_account_id: string; account_name: string; provider?: string } | null = null;
+    let accountError: any = null;
+
+    const { data: workspaceAccount, error: wsError } = await supabase
       .from('workspace_accounts')
-      .select('unipile_account_id, account_name')
+      .select('unipile_account_id, account_name, account_type')
       .eq('id', campaign.linkedin_account_id)
       .single();
+
+    if (workspaceAccount) {
+      linkedinAccount = {
+        unipile_account_id: workspaceAccount.unipile_account_id,
+        account_name: workspaceAccount.account_name,
+        provider: workspaceAccount.account_type === 'linkedin' ? 'LINKEDIN' : workspaceAccount.account_type?.toUpperCase()
+      };
+    } else {
+      // Fallback to user_unipile_accounts
+      const { data: unipileAccount, error: unipileError } = await supabase
+        .from('user_unipile_accounts')
+        .select('unipile_account_id, account_name, provider')
+        .eq('id', campaign.linkedin_account_id)
+        .single();
+
+      if (unipileAccount) {
+        linkedinAccount = unipileAccount;
+      } else {
+        accountError = unipileError || wsError;
+      }
+    }
 
     if (accountError || !linkedinAccount) {
       console.error('❌ LinkedIn account not found:', accountError);
       return NextResponse.json({ error: 'LinkedIn account not found' }, { status: 400 });
     }
 
+    // FIX (Dec 18): Validate the account is actually a LinkedIn account for LinkedIn operations
+    const campaignType = campaign.type || campaign.campaign_type;
+    const isLinkedInCampaign = campaignType === 'connector' || campaignType === 'messenger' || !campaignType;
+
+    if (isLinkedInCampaign && linkedinAccount.provider && linkedinAccount.provider !== 'LINKEDIN') {
+      console.error(`❌ Campaign ${campaign.name} is using a ${linkedinAccount.provider} account for LinkedIn operations`);
+      // Mark as failed with clear error
+      await supabase.from('send_queue').update({
+        status: 'failed',
+        error_message: `Invalid account type: ${linkedinAccount.provider}. LinkedIn campaigns require a LinkedIn account.`,
+        updated_at: new Date().toISOString()
+      }).eq('id', queueItem.id);
+
+      // Also update prospect status
+      await supabase.from('campaign_prospects').update({
+        status: 'failed',
+        notes: `Campaign configuration error: Using ${linkedinAccount.provider} account for LinkedIn campaign`,
+        updated_at: new Date().toISOString()
+      }).eq('id', queueItem.prospect_id);
+
+      return NextResponse.json({
+        success: false,
+        processed: 0,
+        error: `Invalid account type: ${linkedinAccount.provider}. LinkedIn campaigns require a LinkedIn account.`
+      }, { status: 400 });
+    }
+
     // Note: Schedule, spacing, and daily cap checks already done in the selection loop above
 
-    // 4. Fetch prospect details
+    // 4. Fetch prospect details (including company_name and title for personalization)
     const { data: prospect, error: prospectError } = await supabase
       .from('campaign_prospects')
-      .select('id, first_name, last_name, linkedin_url, status')
+      .select('id, first_name, last_name, linkedin_url, status, company_name, title')
       .eq('id', queueItem.prospect_id)
       .single();
 
@@ -623,13 +703,17 @@ export async function POST(req: NextRequest) {
 
     try {
       // 2. Resolve linkedin_user_id to provider_id (handles URLs and vanities)
+      // FIX (Dec 18): Extract slug from URL first to prevent API failures
       let providerId = queueItem.linkedin_user_id;
 
       // If it's a URL or vanity (not ACo/ACw format), resolve it
       // Both ACo and ACw are valid LinkedIn provider_id formats
       if (!providerId.startsWith('ACo') && !providerId.startsWith('ACw')) {
         console.log(`🔄 linkedin_user_id is URL/vanity, resolving to provider_id...`);
-        providerId = await resolveToProviderId(providerId, unipileAccountId);
+        // FIX (Dec 18): Extract slug before resolving (handles full URLs)
+        const slug = extractLinkedInSlug(providerId);
+        console.log(`   Extracted slug: ${slug}`);
+        providerId = await resolveToProviderId(slug, unipileAccountId);
 
         // Update the queue record with resolved provider_id for future retries
         await supabase
@@ -644,6 +728,20 @@ export async function POST(req: NextRequest) {
           .eq('id', prospect.id);
       }
 
+      // 3. Personalize message before sending (safety net in case queue-time personalization missed it)
+      // This ensures {first_name} and other placeholders are always replaced, even if they were
+      // missed during queue creation or if the template changed after queuing
+      const personalizedMessage = personalizeMessage(queueItem.message, {
+        first_name: prospect.first_name,
+        last_name: prospect.last_name,
+        company_name: prospect.company_name,
+        title: prospect.title
+      });
+
+      console.log(`📝 Message personalization check:`);
+      console.log(`   Original: "${queueItem.message.substring(0, 80)}..."`);
+      console.log(`   Personalized: "${personalizedMessage.substring(0, 80)}..."`);
+
       // 3. Send message via Unipile
       // CRITICAL: Different endpoints for different message types
       // - Connection Request: POST /api/v1/users/invite
@@ -654,7 +752,7 @@ export async function POST(req: NextRequest) {
         const payload = {
           account_id: unipileAccountId,
           provider_id: providerId,
-          message: queueItem.message
+          message: personalizedMessage
         };
 
         console.log(`📨 Sending connection request:`, JSON.stringify(payload, null, 2));
@@ -686,7 +784,7 @@ export async function POST(req: NextRequest) {
         const payload = {
           account_id: unipileAccountId,
           attendees_ids: [providerId],
-          text: queueItem.message,
+          text: personalizedMessage,
           options: {
             linkedin: {
               inmail: true  // Critical: enables InMail mode
@@ -713,7 +811,7 @@ export async function POST(req: NextRequest) {
         const payload = {
           account_id: unipileAccountId,
           attendees_ids: [providerId], // Array of provider_ids for attendees
-          text: queueItem.message
+          text: personalizedMessage
         };
 
         console.log(`📨 Starting chat/sending message:`, JSON.stringify(payload, null, 2));
@@ -744,7 +842,7 @@ export async function POST(req: NextRequest) {
         recipient_linkedin_profile: prospect.linkedin_url,
         recipient_name: `${prospect.first_name} ${prospect.last_name}`,
         prospect_id: prospect.id,
-        message_content: queueItem.message,
+        message_content: personalizedMessage,
         message_template_variant: messageType,
         sent_at: new Date().toISOString(),
         sent_via: 'queue_cron',
@@ -772,7 +870,7 @@ export async function POST(req: NextRequest) {
         linkedin_account_id: linkedinAccount.id,
         direction: 'outgoing',
         message_type: isConnectionRequest ? 'connection_request' : (isMessengerMessage ? 'message' : 'follow_up'),
-        content: queueItem.message,
+        content: personalizedMessage,
         recipient_linkedin_url: prospect.linkedin_url,
         recipient_name: `${prospect.first_name} ${prospect.last_name}`,
         recipient_linkedin_id: queueItem.linkedin_user_id,
@@ -913,6 +1011,7 @@ export async function POST(req: NextRequest) {
         await supabase
           .from('send_queue')
           .update({
+            status: 'pending', // FIX (Dec 18): Reset to pending so it can be processed again
             scheduled_for: resumeTime.toISOString(),
             error_message: `LinkedIn warning (${warningCheck.pattern}) - rescheduled for ${resumeTime.toISOString()}`,
             updated_at: new Date().toISOString()

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Helper to normalize LinkedIn URL to hash (vanity name only)
 function normalizeLinkedInUrl(url: string | null | undefined): string | null {
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest) {
       .eq('workspace_id', workspaceId)
       .eq('user_id', user.id)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .single();
 
     const unipileAccountId = linkedInAccount?.unipile_account_id || null;

@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { calculateNextFollowUpDate, FollowUpScenario } from '@/lib/services/follow-up-agent-v2';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const maxDuration = 300; // 5 minutes
 
@@ -183,7 +184,7 @@ export async function POST(req: NextRequest) {
               .select('unipile_account_id, account_name')
               .eq('workspace_id', campaign.workspace_id)
               .eq('account_type', 'email')
-              .eq('connection_status', 'connected')
+              .in('connection_status', VALID_CONNECTION_STATUSES)
               .limit(1)
               .single();
 

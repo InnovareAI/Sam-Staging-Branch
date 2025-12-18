@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Simplified LinkedIn-Workspace Connection API
 // This addresses the connection failures by simplifying the process
@@ -314,7 +315,7 @@ export async function GET(request: NextRequest) {
       workspace_id,
       linkedin_accounts: linkedinAccounts || [],
       total_accounts: linkedinAccounts?.length || 0,
-      connected_accounts: linkedinAccounts?.filter(acc => acc.connection_status === 'connected').length || 0,
+      connected_accounts: linkedinAccounts?.filter(acc => VALID_CONNECTION_STATUSES.includes(acc.connection_status as any)).length || 0,
       needs_verification: linkedinAccounts?.filter(acc => acc.connection_status === 'needs_verification').length || 0
     });
 

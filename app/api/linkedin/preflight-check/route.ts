@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Increase timeout for large prospect batches
 export const maxDuration = 30; // 30 seconds
@@ -128,7 +129,7 @@ export async function POST(req: NextRequest) {
       .select('unipile_account_id')
       .eq('workspace_id', workspaceId)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .single();
 
     if (accountError && accountError.code !== 'PGRST116') { // PGRST116 = no rows found (not an error)

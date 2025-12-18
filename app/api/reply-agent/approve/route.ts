@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -166,7 +167,7 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
         .select('unipile_account_id, account_name')
         .eq('workspace_id', draft.workspace_id)
         .eq('account_type', 'email')
-        .eq('connection_status', 'connected')
+        .in('connection_status', VALID_CONNECTION_STATUSES)
         .limit(1)
         .single();
 

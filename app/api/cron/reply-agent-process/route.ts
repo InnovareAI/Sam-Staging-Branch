@@ -4,6 +4,7 @@ import { getClaudeClient } from '@/lib/llm/claude-client';
 import { sendReplyAgentHITLNotification } from '@/lib/notifications/google-chat';
 import { slackService } from '@/lib/slack';
 import { normalizeCompanyName } from '@/lib/prospect-normalization';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -322,7 +323,7 @@ Respond with just the intent category (e.g., "INTERESTED").`;
       .select('unipile_account_id')
       .eq('workspace_id', config.workspace_id)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .limit(1);
     const unipileAccountId = workspaceAccounts?.[0]?.unipile_account_id;
 

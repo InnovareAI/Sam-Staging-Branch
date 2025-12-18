@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
  * Resolve LinkedIn URLs to provider_ids (chat IDs)
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
       .select('unipile_account_id')
       .eq('workspace_id', workspaceId)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .single();
 
     if (!workspaceAccount?.unipile_account_id) {

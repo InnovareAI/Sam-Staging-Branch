@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/app/lib/supabase';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Extend function timeout to 60 seconds for pagination across many pages
 export const maxDuration = 60;
@@ -223,7 +224,7 @@ export async function POST(request: NextRequest) {
       .select('unipile_account_id, account_name, user_id')
       .eq('workspace_id', workspaceId)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected');
+      .in('connection_status', VALID_CONNECTION_STATUSES);
 
     if (userAccountsError || !userLinkedInAccounts || userLinkedInAccounts.length === 0) {
       console.error('❌ No LinkedIn accounts found for this workspace');

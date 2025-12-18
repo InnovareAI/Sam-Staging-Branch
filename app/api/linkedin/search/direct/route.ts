@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
  * Direct LinkedIn Search - No Background Jobs
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
       .select('unipile_account_id, account_name, account_identifier')
       .eq('workspace_id', workspaceId)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected');
+      .in('connection_status', VALID_CONNECTION_STATUSES);
 
     console.log('🔵 LinkedIn accounts found:', linkedinAccounts?.length || 0);
 

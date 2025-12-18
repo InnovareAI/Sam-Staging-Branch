@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60 second timeout
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
       .from('workspace_accounts')
       .select('id, workspace_id, unipile_account_id, account_name')
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected');
+      .in('connection_status', VALID_CONNECTION_STATUSES);
 
     if (accountsError) {
       throw new Error(`Failed to fetch LinkedIn accounts: ${accountsError.message}`);

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
         .select('unipile_account_id')
         .eq('workspace_id', workspaceId)
         .eq('account_type', 'linkedin')
-        .eq('connection_status', 'connected')
+        .in('connection_status', VALID_CONNECTION_STATUSES)
         .single();
 
       if (accountError || !workspaceAccount) {

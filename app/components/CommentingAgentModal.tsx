@@ -5,6 +5,7 @@ import { X, MessageSquare, Loader2, CheckCircle, AlertTriangle, Sparkles, Trendi
 import { createClient } from '@/app/lib/supabase';
 import { useRouter } from 'next/navigation';
 import CommentingAgentSettings from './CommentingAgentSettings';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 interface CommentingAgentModalProps {
   isOpen: boolean;
@@ -49,7 +50,7 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
         .select('unipile_account_id')
         .eq('workspace_id', workspaceId)
         .eq('account_type', 'linkedin')
-        .eq('connection_status', 'connected')
+        .in('connection_status', VALID_CONNECTION_STATUSES)
         .limit(1);
 
       setHasLinkedInAccount(linkedInAccounts && linkedInAccounts.length > 0);

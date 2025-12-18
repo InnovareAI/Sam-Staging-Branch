@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
  * Create LinkedIn Search Job (Async)
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
       .eq('workspace_id', workspaceId)
       .eq('user_id', session.user.id) // CRITICAL: Only user's own accounts
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected');
+      .in('connection_status', VALID_CONNECTION_STATUSES);
 
     console.log('🔵 LinkedIn accounts found:', linkedinAccounts?.length || 0);
 

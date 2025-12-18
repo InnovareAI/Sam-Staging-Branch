@@ -37,6 +37,7 @@ import { supabaseAdmin } from '@/app/lib/supabase';
 import { claudeClient } from '@/lib/llm/claude-client';
 import { sendHealthCheckNotification } from '@/lib/notifications/google-chat';
 import { sendFailedProspectsAlert } from '@/lib/notifications/notification-router';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -1007,7 +1008,7 @@ async function checkRateLimitStatus(supabase: any): Promise<QACheck> {
       .from('workspace_accounts')
       .select('id, account_name, workspace_id, unipile_account_id')
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected');
+      .in('connection_status', VALID_CONNECTION_STATUSES);
 
     if (!accounts || accounts.length === 0) {
       return {
@@ -2030,7 +2031,7 @@ async function checkUnipileAccountStatus(supabase: any): Promise<QACheck> {
       .from('user_unipile_accounts')
       .select('id, account_name, connection_status, workspace_id')
       .eq('platform', 'LINKEDIN')
-      .eq('connection_status', 'connected');
+      .in('connection_status', VALID_CONNECTION_STATUSES);
 
     if (error) throw error;
 
@@ -2070,7 +2071,7 @@ async function autoFixUnipileAccountStatus(supabase: any): Promise<AutoFixResult
         updated_at: new Date().toISOString()
       })
       .eq('platform', 'LINKEDIN')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .select('id, account_name');
 
     if (error) throw error;

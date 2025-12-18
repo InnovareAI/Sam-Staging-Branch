@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
       .eq('workspace_id', workspaceId)
       .eq('user_id', user.id)
       .eq('account_type', 'linkedin')
-      .eq('connection_status', 'connected')
+      .in('connection_status', VALID_CONNECTION_STATUSES)
       .single();
 
     if (!linkedInAccount) {
