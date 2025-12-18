@@ -1033,11 +1033,19 @@ export async function POST(req: NextRequest) {
       let cleanErrorMessage = errorMessage;
       const errorMsg = errorMessage.toLowerCase();
 
-      if (errorMsg.includes('invalid_parameters') || errorMsg.includes('does not match provider')) {
-        // Profile not found or inaccessible - permanent failure
+      if (errorMsg.includes('does not match provider') && errorMsg.includes('format')) {
+        // FIX (Dec 18): This is a data format error, NOT a missing profile
+        // The linkedin_user_id was a URL instead of a slug/provider_id
+        // This should have been fixed by extractLinkedInSlug - log for investigation
+        prospectStatus = 'approved'; // Keep as approved - retry will work with fixed data
+        queueStatus = 'pending'; // Retry - the slug extraction should fix it
+        cleanErrorMessage = 'LinkedIn ID format error - will retry with corrected format';
+        console.error(`⚠️ Format error still occurring - check extractLinkedInSlug: ${errorMessage}`);
+      } else if (errorMsg.includes('invalid_parameters') && !errorMsg.includes('format')) {
+        // Generic invalid parameters - could be actual missing profile
         prospectStatus = 'failed';
         queueStatus = 'failed';
-        cleanErrorMessage = 'LinkedIn profile not found or inaccessible';
+        cleanErrorMessage = 'LinkedIn API rejected request - invalid parameters';
       } else if (errorMsg.includes('should delay') || errorMsg.includes('invitation') || errorMsg.includes('already')) {
         // Already has pending invitation
         prospectStatus = 'already_invited';
