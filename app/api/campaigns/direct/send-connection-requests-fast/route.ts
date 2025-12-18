@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
     // 1. Fetch campaign - use admin client for cron, or user client for RLS check
     // CRITICAL FIX (Dec 4): Also fetch connection_message column AND linkedin_config
     // CRITICAL FIX (Dec 10): Also fetch linkedin_account_id to validate it exists
+    // FIX (Dec 18): Don't join workspace_accounts - fetch LinkedIn account separately
     const { data: campaign, error: campaignError } = await supabaseAdmin
       .from('campaigns')
       .select(`
@@ -86,13 +87,7 @@ export async function POST(req: NextRequest) {
         draft_data,
         linkedin_config,
         connection_message,
-        linkedin_account_id,
-        workspace_accounts!linkedin_account_id (
-          id,
-          unipile_account_id,
-          account_name,
-          connection_status
-        )
+        linkedin_account_id
       `)
       .eq('id', campaignId)
       .single();
@@ -117,9 +112,35 @@ export async function POST(req: NextRequest) {
     }
 
     // CRITICAL VALIDATION (Dec 10): Verify the LinkedIn account exists and is connected
-    const linkedinAccount = campaign.workspace_accounts as any;
+    // FIX (Dec 18): Check BOTH workspace_accounts AND user_unipile_accounts
+    let linkedinAccount: { id: string; unipile_account_id: string; account_name: string; connection_status: string } | null = null;
+
+    // First try workspace_accounts
+    const { data: wsAccount } = await supabaseAdmin
+      .from('workspace_accounts')
+      .select('id, unipile_account_id, account_name, connection_status')
+      .eq('id', campaign.linkedin_account_id)
+      .single();
+
+    if (wsAccount) {
+      linkedinAccount = wsAccount;
+    } else {
+      // Fallback to user_unipile_accounts
+      const { data: uniAccount } = await supabaseAdmin
+        .from('user_unipile_accounts')
+        .select('id, unipile_account_id, account_name, connection_status')
+        .eq('id', campaign.linkedin_account_id)
+        .single();
+
+      if (uniAccount) {
+        linkedinAccount = uniAccount;
+        console.log('✅ Found LinkedIn account in user_unipile_accounts:', uniAccount.account_name);
+      }
+    }
+
     if (!linkedinAccount) {
-      console.error('❌ CRITICAL: LinkedIn account not found in workspace_accounts!');
+      console.error('❌ CRITICAL: LinkedIn account not found in workspace_accounts OR user_unipile_accounts!');
+      console.error(`   linkedin_account_id: ${campaign.linkedin_account_id}`);
       return NextResponse.json({
         error: 'LinkedIn account not found',
         details: 'The configured LinkedIn account no longer exists. Please select a different account.',
@@ -127,8 +148,9 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    if (linkedinAccount.connection_status !== 'connected') {
-      console.error(`❌ LinkedIn account is ${linkedinAccount.connection_status}, not connected`);
+    // Accept both 'connected' and 'active' as valid statuses
+    if (linkedinAccount.connection_status !== 'connected' && linkedinAccount.connection_status !== 'active') {
+      console.error(`❌ LinkedIn account is ${linkedinAccount.connection_status}, not connected/active`);
       return NextResponse.json({
         error: 'LinkedIn account disconnected',
         details: `The account "${linkedinAccount.account_name}" is ${linkedinAccount.connection_status}. Please reconnect it in Settings → LinkedIn Accounts.`,

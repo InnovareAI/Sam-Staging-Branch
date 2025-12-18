@@ -345,10 +345,12 @@ export async function POST(req: NextRequest) {
     // Auto-assign account based on campaign type
     // Note: linkedin_account_id column is used for BOTH LinkedIn and email accounts
     // CRITICAL FIX (Dec 16): Fail fast if no account is configured instead of silently proceeding
+    // FIX (Dec 18): Check BOTH workspace_accounts AND user_unipile_accounts tables
     let linkedinAccountId = null;
     if (campaign_type === 'connector' || campaign_type === 'messenger') {
       // LinkedIn campaigns - assign LinkedIn account
       // FIX (Dec 18): Use .limit(1) instead of .single() to handle workspaces with multiple accounts
+      // First try workspace_accounts
       const { data: linkedinAccounts, error: accountError } = await supabase
         .from('workspace_accounts')
         .select('id, account_name')
@@ -358,7 +360,29 @@ export async function POST(req: NextRequest) {
         .eq('is_active', true)
         .limit(1);
 
-      const linkedinAccount = linkedinAccounts?.[0];
+      let linkedinAccount = linkedinAccounts?.[0];
+
+      // FIX (Dec 18): Fallback to user_unipile_accounts if workspace_accounts doesn't have it
+      if (!linkedinAccount) {
+        console.log('⚠️ No LinkedIn account in workspace_accounts, checking user_unipile_accounts...');
+        const { data: unipileAccounts, error: unipileError } = await supabase
+          .from('user_unipile_accounts')
+          .select('id, account_name, connection_status')
+          .eq('workspace_id', workspace_id)
+          .eq('platform', 'LINKEDIN')
+          .in('connection_status', ['connected', 'active'])
+          .limit(1);
+
+        if (unipileAccounts?.[0]) {
+          linkedinAccount = {
+            id: unipileAccounts[0].id,
+            account_name: unipileAccounts[0].account_name
+          };
+          console.log('✅ Found LinkedIn account in user_unipile_accounts:', linkedinAccount.account_name);
+        } else {
+          console.error('❌ No LinkedIn account found in either table for workspace:', workspace_id);
+        }
+      }
 
       if (accountError || !linkedinAccount) {
         console.error('❌ No LinkedIn account found for workspace:', workspace_id, accountError?.message);
@@ -516,6 +540,10 @@ export async function POST(req: NextRequest) {
 
       if (approvedProspects && approvedProspects.length > 0) {
         // Get LinkedIn account for prospect ownership
+        // FIX (Dec 18): Check both workspace_accounts and user_unipile_accounts
+        let unipileAccountId: string | null = null;
+
+        // First try workspace_accounts
         const { data: linkedInAccount } = await supabase
           .from('workspace_accounts')
           .select('unipile_account_id')
@@ -525,7 +553,23 @@ export async function POST(req: NextRequest) {
           .eq('connection_status', 'connected')
           .single();
 
-        const unipileAccountId = linkedInAccount?.unipile_account_id || null;
+        unipileAccountId = linkedInAccount?.unipile_account_id || null;
+
+        // Fallback to user_unipile_accounts if not found
+        if (!unipileAccountId) {
+          const { data: userUnipileAccount } = await supabase
+            .from('user_unipile_accounts')
+            .select('unipile_account_id')
+            .eq('workspace_id', workspace_id)
+            .eq('platform', 'LINKEDIN')
+            .in('connection_status', ['connected', 'active'])
+            .limit(1);
+
+          if (userUnipileAccount?.[0]) {
+            unipileAccountId = userUnipileAccount[0].unipile_account_id;
+            console.log('✅ Found unipile_account_id from user_unipile_accounts:', unipileAccountId);
+          }
+        }
 
         // ============================================================
         // DATABASE-FIRST: Upsert to workspace_prospects (master table)
