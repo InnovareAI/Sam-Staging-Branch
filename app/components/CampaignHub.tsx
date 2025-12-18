@@ -535,13 +535,15 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     setCampaignToEdit(campaign);
 
     const isEmailCampaign = campaign.campaign_type === 'email';
+    const isMessengerCampaign = campaign.campaign_type === 'messenger';
 
     // Email campaigns use email_body field, LinkedIn uses connection_request
     const emailBody = isEmailCampaign
       ? (campaign.message_templates?.email_body || campaign.message_templates?.alternative_message || '')
       : '';
 
-    const connectionMessage = isEmailCampaign
+    // Connection message ONLY for connector campaigns (NOT messenger, NOT email)
+    const connectionMessage = (isEmailCampaign || isMessengerCampaign)
       ? ''
       : (campaign.connection_message || campaign.message_templates?.connection_request || '');
 
@@ -1346,40 +1348,58 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                 )}
               </div>
 
-              {/* Connection Message - Variant A */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Connection Request Message {editFormData.ab_testing_enabled && <span className="text-orange-400">(Variant A - 50%)</span>}
-                </label>
-                <textarea
-                  value={editFormData.connection_message || ''}
-                  onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
-                  placeholder="Hi {{firstName}}, I noticed..."
-                />
-                <p className="text-xs text-gray-500 mt-1">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</p>
-              </div>
+              {/* Connection Message - Variant A - ONLY for connector campaigns */}
+              {campaignToEdit?.campaign_type !== 'messenger' && campaignToEdit?.campaign_type !== 'email' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Connection Request Message (Step 1) {editFormData.ab_testing_enabled && <span className="text-orange-400">(Variant A - 50%)</span>}
+                      <span className="text-xs text-gray-400 ml-2">275 character limit</span>
+                    </label>
+                    <textarea
+                      value={editFormData.connection_message || ''}
+                      onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
+                      maxLength={275}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
+                      placeholder="Hi {{firstName}}, I noticed..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {(editFormData.connection_message || '').length} / 275 characters
+                      <span className="ml-2">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</span>
+                    </p>
+                  </div>
 
-              {/* Connection Message - Variant B (only when A/B testing is enabled) */}
-              {editFormData.ab_testing_enabled && campaignToEdit?.campaign_type !== 'email' && (
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Connection Request Message <span className="text-orange-400">(Variant B - 50%)</span>
-                  </label>
-                  <textarea
-                    value={editFormData.connection_request_b || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, connection_request_b: e.target.value })}
-                    className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px] resize-none"
-                    placeholder="Hi {{firstName}}, I came across your profile..."
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Test a different approach - different hook, value prop, or CTA</p>
-                </div>
+                  {/* Connection Message - Variant B (only when A/B testing is enabled) */}
+                  {editFormData.ab_testing_enabled && (
+                    <div className="border-l-4 border-orange-500 pl-4">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Connection Request Message (Step 1) <span className="text-orange-400">(Variant B - 50%)</span>
+                        <span className="text-xs text-gray-400 ml-2">275 character limit</span>
+                      </label>
+                      <textarea
+                        value={editFormData.connection_request_b || ''}
+                        onChange={(e) => setEditFormData({ ...editFormData, connection_request_b: e.target.value })}
+                        maxLength={275}
+                        className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px] resize-none"
+                        placeholder="Hi {{firstName}}, I came across your profile..."
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Test a different approach - different hook, value prop, or CTA</p>
+                    </div>
+                  )}
+                </>
               )}
 
-              {/* Email Body (for email campaigns) OR Alternative Message (for LinkedIn) - Variant A */}
+              {/* Email Body (for email campaigns) OR Direct Message (for messenger) OR Alternative Message (for connector) - Variant A */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message (Optional)'}
+                  {campaignToEdit?.campaign_type === 'email'
+                    ? 'Initial Email Body (Step 1)'
+                    : campaignToEdit?.campaign_type === 'messenger'
+                      ? 'Direct Message (Step 1)'
+                      : 'Alternative Message (if already connected)'}
+                  {campaignToEdit?.campaign_type !== 'email' && (
+                    <span className="text-xs text-gray-400 ml-2">8000 character limit</span>
+                  )}
                   {editFormData.ab_testing_enabled && <span className="text-orange-400 ml-2">(Variant A - 50%)</span>}
                 </label>
                 <textarea
@@ -1391,17 +1411,37 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                       ? { email_body: e.target.value }
                       : { alternative_message: e.target.value })
                   })}
+                  maxLength={campaignToEdit?.campaign_type === 'email' ? undefined : 8000}
                   className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
-                  placeholder={campaignToEdit?.campaign_type === 'email' ? "Initial email body..." : "Alternative message if already connected..."}
+                  placeholder={
+                    campaignToEdit?.campaign_type === 'email'
+                      ? "Initial email body..."
+                      : campaignToEdit?.campaign_type === 'messenger'
+                        ? "Hi {{firstName}}, I saw your post about..."
+                        : "Alternative message if already connected..."
+                  }
                 />
+                {campaignToEdit?.campaign_type !== 'email' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(editFormData.alternative_message || '').length} / 8000 characters
+                    <span className="ml-2">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</span>
+                  </p>
+                )}
               </div>
 
-              {/* Email Body Variant B (for email campaigns) OR Alternative Message Variant B (for Messenger) */}
+              {/* Email Body Variant B (for email campaigns) OR Direct Message Variant B (for messenger) OR Alternative Message Variant B (for connector) */}
               {editFormData.ab_testing_enabled && (
                 <div className="border-l-4 border-orange-500 pl-4">
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {campaignToEdit?.campaign_type === 'email' ? 'Initial Email Body' : 'Alternative Message'}
+                    {campaignToEdit?.campaign_type === 'email'
+                      ? 'Initial Email Body'
+                      : campaignToEdit?.campaign_type === 'messenger'
+                        ? 'Direct Message (Step 1)'
+                        : 'Alternative Message (if already connected)'}
                     <span className="text-orange-400 ml-2">(Variant B - 50%)</span>
+                    {campaignToEdit?.campaign_type !== 'email' && (
+                      <span className="text-xs text-gray-400 ml-2">8000 character limit</span>
+                    )}
                   </label>
                   <textarea
                     value={campaignToEdit?.campaign_type === 'email' ? (editFormData.email_body_b || '') : (editFormData.alternative_message_b || '')}
@@ -1411,8 +1451,15 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                         ? { email_body_b: e.target.value }
                         : { alternative_message_b: e.target.value })
                     })}
+                    maxLength={campaignToEdit?.campaign_type === 'email' ? undefined : 8000}
                     className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px] resize-none"
-                    placeholder={campaignToEdit?.campaign_type === 'email' ? "Try a different email approach..." : "Alternative message variant..."}
+                    placeholder={
+                      campaignToEdit?.campaign_type === 'email'
+                        ? "Try a different email approach..."
+                        : campaignToEdit?.campaign_type === 'messenger'
+                          ? "Hi {{firstName}}, I noticed your comment on..."
+                          : "Alternative message variant..."
+                    }
                   />
                   <p className="text-xs text-gray-500 mt-1">Test a different approach - different hook, value prop, or CTA</p>
                 </div>
@@ -1505,49 +1552,74 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
 
               {/* Follow-up Messages */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Follow-up Messages</label>
-                <div className="space-y-3">
-                  {(editFormData.follow_up_messages || []).map((msg: any, index: number) => (
-                    <div key={index} className="bg-gray-700/50 border border-gray-600 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-400">Follow-up #{index + 1}</span>
+                {(() => {
+                  const isMessengerCampaign = campaignToEdit?.campaign_type === 'messenger';
+                  const isEmailCampaign = campaignToEdit?.campaign_type === 'email';
+                  const maxFollowUps = isMessengerCampaign ? 4 : isEmailCampaign ? 4 : 5;
+                  const currentFollowUps = editFormData.follow_up_messages || [];
+                  const canAddMore = currentFollowUps.length < maxFollowUps;
+
+                  return (
+                    <>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Follow-up Messages
+                        <span className="text-xs text-gray-400 ml-2">
+                          ({currentFollowUps.length} / {maxFollowUps} max)
+                        </span>
+                      </label>
+                      <div className="space-y-3">
+                        {currentFollowUps.map((msg: any, index: number) => (
+                          <div key={index} className="bg-gray-700/50 border border-gray-600 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-gray-400">Follow-up #{index + 1}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...editFormData.follow_up_messages];
+                                  updated.splice(index, 1);
+                                  setEditFormData({ ...editFormData, follow_up_messages: updated });
+                                }}
+                                className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                            <textarea
+                              value={typeof msg === 'string' ? msg : (msg.message || msg.content || '')}
+                              onChange={(e) => {
+                                const updated = [...editFormData.follow_up_messages];
+                                updated[index] = typeof msg === 'string' ? e.target.value : { ...msg, message: e.target.value };
+                                setEditFormData({ ...editFormData, follow_up_messages: updated });
+                              }}
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[80px] resize-none"
+                            />
+                          </div>
+                        ))}
                         <button
                           type="button"
                           onClick={() => {
-                            const updated = [...editFormData.follow_up_messages];
-                            updated.splice(index, 1);
-                            setEditFormData({ ...editFormData, follow_up_messages: updated });
+                            if (canAddMore) {
+                              setEditFormData({
+                                ...editFormData,
+                                follow_up_messages: [...currentFollowUps, '']
+                              });
+                            }
                           }}
-                          className="p-1 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors"
+                          disabled={!canAddMore}
+                          className={`flex items-center gap-1 px-4 py-2 border rounded-lg transition-colors text-sm ${
+                            canAddMore
+                              ? 'border-purple-500 text-purple-400 hover:bg-purple-500/10'
+                              : 'border-gray-600 text-gray-600 cursor-not-allowed'
+                          }`}
+                          title={!canAddMore ? `Maximum ${maxFollowUps} follow-ups allowed for ${isMessengerCampaign ? 'messenger' : isEmailCampaign ? 'email' : 'connector'} campaigns` : ''}
                         >
-                          <X size={14} />
+                          <Plus size={14} />
+                          Add Follow-up {!canAddMore && '(Max reached)'}
                         </button>
                       </div>
-                      <textarea
-                        value={typeof msg === 'string' ? msg : (msg.message || msg.content || '')}
-                        onChange={(e) => {
-                          const updated = [...editFormData.follow_up_messages];
-                          updated[index] = typeof msg === 'string' ? e.target.value : { ...msg, message: e.target.value };
-                          setEditFormData({ ...editFormData, follow_up_messages: updated });
-                        }}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[80px] resize-none"
-                      />
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditFormData({
-                        ...editFormData,
-                        follow_up_messages: [...(editFormData.follow_up_messages || []), '']
-                      });
-                    }}
-                    className="flex items-center gap-1 px-4 py-2 border border-purple-500 text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors text-sm"
-                  >
-                    <Plus size={14} />
-                    Add Follow-up
-                  </button>
-                </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Messaging Cadence */}
@@ -6749,6 +6821,15 @@ interface CampaignHubProps {
 }
 
 const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects, initialCampaignType, initialDraftId, onCampaignCreated }) => {
+  // Message count limits by campaign type
+  const MESSAGE_LIMITS = {
+    connector: { initial: 1, followUps: 5, total: 6 },  // CR + 5 follow-ups
+    messenger: { initial: 1, followUps: 4, total: 5 },  // Direct message + 4 follow-ups
+    inmail: { initial: 1, followUps: 1, total: 2 },     // InMail + 1 follow-up
+    open_inmail: { initial: 1, followUps: 1, total: 2 },// Open InMail + 1 follow-up
+    email: { initial: 1, followUps: 4, total: 5 }       // Initial email + 4 follow-ups
+  } as const;
+
   // Use workspaceId from props - no fallback to prevent loading wrong workspace data
   const actualWorkspaceId = workspaceId;
 
@@ -8374,13 +8455,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     setCampaignToEdit(campaign);
 
     const isEmailCampaign = campaign.campaign_type === 'email';
+    const isMessengerCampaign = campaign.campaign_type === 'messenger';
 
     // Email campaigns use email_body field, LinkedIn uses connection_request
     const emailBody = isEmailCampaign
       ? (campaign.message_templates?.email_body || campaign.message_templates?.alternative_message || '')
       : '';
 
-    const connectionMessage = isEmailCampaign
+    // Connection message ONLY for connector campaigns (NOT messenger, NOT email)
+    const connectionMessage = (isEmailCampaign || isMessengerCampaign)
       ? ''
       : (campaign.connection_message || campaign.message_templates?.connection_request || '');
 
