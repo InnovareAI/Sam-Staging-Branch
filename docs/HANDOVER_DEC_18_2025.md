@@ -471,6 +471,12 @@ Added validation modal after data upload:
 | Provider ID validation too strict | Accept ACw prefix |
 | **"User ID does not match format" errors** | **Centralized `extractLinkedInSlug()` across all 8 entry points** |
 | **Batch inserts failing ALL records silently** | **Converted to one-by-one inserts with individual error tracking** |
+| **Duplicate messages sent (race condition)** | **Optimistic locking: claim items with `status='processing'` before send** |
+| **Rate limited items marked as failed** | **Keep `status='pending'`, auto-retry in 1 hour** |
+| **Spintax stripping personalization braces** | **Removed spintax entirely, direct string replacement only** |
+| **Chatbot slow via OpenRouter hop** | **Direct Claude SDK call, deprecated OpenRouter endpoint** |
+| **Follow-up limit too low (4-5)** | **Increased to 15 follow-ups for all campaign types** |
+| **Wrong account types (email as linkedin)** | **Fixed tl@ and jf@ accounts to 'email' type** |
 
 ---
 
@@ -502,7 +508,175 @@ The frontend has **TWO** campaign creation flows with different behaviors:
 
 ---
 
-## 15. LinkedIn User ID Standardization (CRITICAL - Dec 18)
+## 15. Duplicate Message Race Condition Fix (CRITICAL - Dec 18)
+
+### Problem
+
+The queue processor had a race condition that caused the same message to be sent 2-3 times to real LinkedIn contacts. Multiple concurrent cron jobs would process the same queue item before the status was updated.
+
+**Evidence of duplicates:**
+- Ivonne: 3 messages within 12 seconds
+- Carl: 2 messages within 10 seconds
+- Chudi: 3 messages within 17 seconds
+- Gilad: 2 messages within 9 seconds
+
+### Root Cause
+
+1. Cron job A fetches queue item with `status='pending'`
+2. Cron job B fetches same item (still `pending`) before A updates it
+3. Both jobs send the message
+4. Both jobs update status to `sent`
+5. Prospect receives duplicate messages
+
+### Solution: Optimistic Concurrency Control
+
+**File: `app/api/cron/process-send-queue/route.ts`**
+
+```typescript
+// ATOMIC LOCK: Claim the item by setting status to 'processing'
+// This UPDATE only succeeds if status is still 'pending'
+const { data: claimedItem, error: claimError } = await supabase
+  .from('send_queue')
+  .update({ status: 'processing', updated_at: new Date().toISOString() })
+  .eq('id', item.id)
+  .eq('status', 'pending')  // ← Only succeeds if still pending
+  .select()
+  .single();
+
+if (claimError || !claimedItem) {
+  // Another cron job already claimed this item - skip it
+  console.log(`⏭️ Item ${item.id} already claimed by another process`);
+  continue;
+}
+
+// Now safe to process - we have exclusive lock
+```
+
+### Key Changes
+
+1. **Lines 483-504**: Atomic lock via `UPDATE ... WHERE status='pending'`
+2. **Line 1014**: Fixed warning handler to reset status to `'pending'` (was leaving items stuck)
+3. **Cleanup**: Deleted 6 duplicate messages from `linkedin_messages` table
+
+---
+
+## 16. Rate Limit Auto-Retry (Dec 18)
+
+### Problem
+
+When LinkedIn rate limits occurred, queue items were marked as `failed` and prospects marked as `rate_limited`, which:
+1. Required manual intervention to retry
+2. Violated database constraints (invalid status)
+
+### Solution
+
+**File: `app/api/cron/process-send-queue/route.ts`**
+
+Rate limited items now:
+1. Stay in `pending` status (not `failed`)
+2. Prospect status stays as `approved` (not `rate_limited`)
+3. `scheduled_for` is updated to 1 hour later for automatic retry
+
+```typescript
+// Rate limit detection (expanded)
+const RATE_LIMIT_PATTERNS = [
+  'rate limit', 'too many requests', '429',
+  'temporarily restricted', 'slow down'
+];
+
+// On rate limit: reschedule for 1 hour later
+if (isRateLimited) {
+  const retryTime = new Date(Date.now() + 60 * 60 * 1000); // +1 hour
+  await supabase
+    .from('send_queue')
+    .update({
+      status: 'pending',  // Keep pending, not failed
+      scheduled_for: retryTime.toISOString(),
+      error_message: 'Rate limited - auto-retry in 1 hour'
+    })
+    .eq('id', item.id);
+  // Prospect status unchanged (stays approved)
+}
+```
+
+---
+
+## 17. Spintax & A/B Testing Removal (BREAKING CHANGE - Dec 18)
+
+### Problem
+
+Spintax was causing bugs where personalization variables like `{company_name}` were being processed as single-option spintax and having their braces stripped. This caused messages to show literal `{company_name}` text instead of the actual company name.
+
+### Solution
+
+**Completely removed spintax and A/B testing features.**
+
+**Files Modified:**
+- `app/api/campaigns/direct/send-connection-requests-fast/route.ts` - Removed spintax imports/processing
+- `app/api/campaigns/direct/process-follow-ups/route.ts` - Removed spintax imports/processing
+- `app/components/CampaignStepsEditor.tsx` - Removed spintax UI toggle
+- `lib/anti-detection/spintax.ts` - Deprecated with warning header
+
+**Personalization now uses direct string replacement only:**
+- `{first_name}` → prospect first name
+- `{last_name}` → prospect last name
+- `{company_name}` → normalized company name
+- `{title}` → prospect title
+
+---
+
+## 18. OpenRouter Removal - Direct Claude SDK (Dec 18)
+
+### Problem
+
+The chatbot was making an unnecessary API hop through `/api/sam/openrouter` which added latency and complexity.
+
+### Solution
+
+**Updated `/api/sam/chat` to call Claude SDK directly.**
+
+**Files Modified:**
+- `app/api/sam/chat/route.ts` - Now uses Claude SDK directly
+- `app/api/sam/openrouter/route.ts` - Returns 410 Gone (deprecated)
+- `lib/llm/llm-router.ts` - Simplified to use Claude only
+- `lib/services/inbox-agent.ts` - Uses `ANTHROPIC_API_KEY` only
+- `lib/llm/openrouter-client.ts` - Deprecated
+
+**Result:** Chatbot now uses Claude Haiku directly for fast responses with no intermediate API calls.
+
+---
+
+## 19. Follow-Up Limit Increase & Unified Personalization (Dec 18)
+
+### Changes
+
+1. **Max follow-ups increased from 4-5 to 15** for all campaign types
+2. **Unified personalization** across all campaign endpoints using `lib/personalization.ts`
+3. **All placeholder formats now work**: `{first_name}`, `{{first_name}}`, `{firstName}`
+
+**Files Updated:**
+- `app/api/campaigns/email/send-emails-queued/route.ts`
+- `app/api/campaigns/email/execute/route.ts`
+- `app/api/campaigns/email/reachinbox/route.ts`
+- `app/api/campaigns/linkedin/execute/route.ts`
+
+---
+
+## 20. Campaign Account Type Fixes (Dec 18)
+
+### Problem
+
+Two workspace accounts (`tl@innovareai.com` and `jf@innovareai.com`) were mislabeled as `linkedin` type when they are actually Google OAuth (email) accounts. This caused campaigns to fail when trying to use them for LinkedIn operations.
+
+### Solution
+
+1. Fixed account types from `'linkedin'` to `'email'`
+2. Fixed 2 campaigns that were using wrong accounts
+3. Reset 11 failed queue items that were blocked by wrong account type
+
+---
+
+## 21. LinkedIn User ID Standardization (CRITICAL - Dec 18)
 
 ### Problem
 
