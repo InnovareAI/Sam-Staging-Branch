@@ -931,32 +931,52 @@ export async function POST(req: NextRequest) {
       // Determine specific status based on error message
       let prospectStatus = 'failed';
       let queueStatus = 'failed';
+      let cleanErrorMessage = errorMessage;
       const errorMsg = errorMessage.toLowerCase();
 
-      if (errorMsg.includes('should delay') || errorMsg.includes('invitation') || errorMsg.includes('already')) {
+      if (errorMsg.includes('invalid_parameters') || errorMsg.includes('does not match provider')) {
+        // Profile not found or inaccessible - permanent failure
+        prospectStatus = 'failed';
+        queueStatus = 'failed';
+        cleanErrorMessage = 'LinkedIn profile not found or inaccessible';
+      } else if (errorMsg.includes('should delay') || errorMsg.includes('invitation') || errorMsg.includes('already')) {
         // Already has pending invitation
         prospectStatus = 'already_invited';
         queueStatus = 'skipped';
+        cleanErrorMessage = 'Already has pending invitation';
       } else if (errorMsg.includes('withdrawn') || errorMsg.includes('declined')) {
         // Previously withdrawn or declined
         prospectStatus = 'invitation_declined';
         queueStatus = 'failed';
+        cleanErrorMessage = 'Invitation was withdrawn or declined';
       } else if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('throttle')) {
         // Rate limited - can retry later
         prospectStatus = 'rate_limited';
         queueStatus = 'pending'; // Keep in queue for retry
+        cleanErrorMessage = 'Rate limited - will retry';
       } else if (errorMsg.includes('connected') || errorMsg.includes('first_degree') || errorMsg.includes('1st degree')) {
         // Already connected
         prospectStatus = 'connected';
         queueStatus = 'skipped';
+        cleanErrorMessage = 'Already connected';
+      } else if (errorMsg.includes('cannot_resend_yet') || errorMsg.includes('resend')) {
+        // Cannot resend yet
+        prospectStatus = 'already_invited';
+        queueStatus = 'skipped';
+        cleanErrorMessage = 'Cannot resend invitation yet';
+      } else if (errorMsg.includes('cannot_invite_attendee') || errorMsg.includes('cannot invite')) {
+        // Cannot invite (LinkedIn restriction)
+        prospectStatus = 'failed';
+        queueStatus = 'failed';
+        cleanErrorMessage = 'LinkedIn blocked invitation (account restriction)';
       }
 
-      // Mark queue item
+      // Mark queue item with clean error message
       await supabase
         .from('send_queue')
         .update({
           status: queueStatus,
-          error_message: errorMessage,
+          error_message: cleanErrorMessage,
           updated_at: new Date().toISOString()
         })
         .eq('id', queueItem.id);
@@ -966,7 +986,7 @@ export async function POST(req: NextRequest) {
         .from('campaign_prospects')
         .update({
           status: prospectStatus,
-          notes: `CR send failed: ${errorMessage}`,
+          notes: `CR send failed: ${cleanErrorMessage}`,
           updated_at: new Date().toISOString()
         })
         .eq('id', prospect.id);
