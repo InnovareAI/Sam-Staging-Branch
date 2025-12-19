@@ -1112,11 +1112,38 @@ export async function POST(req: NextRequest) {
         queueStatus = 'failed';
         cleanErrorMessage = 'Invitation was withdrawn or declined';
       } else if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('throttle') || errorMsg.includes('429') || errorMsg.includes('too_many')) {
-        // Rate limited - can retry later (includes 429 status and too_many_requests)
-        prospectStatus = 'approved'; // FIX: Keep as approved, not rate_limited (avoids status constraint issues)
+        // Rate limited by LinkedIn - STOP IMMEDIATELY and cool off for 24 hours
+        prospectStatus = 'approved'; // Keep as approved for retry
         queueStatus = 'pending'; // Keep in queue for retry
-        // Schedule retry for 1 hour later
-        cleanErrorMessage = 'Rate limited - will retry in 1 hour';
+        cleanErrorMessage = 'LinkedIn rate limited - cooling off for 24 hours';
+
+        // CRITICAL: Reschedule ALL pending items for this LinkedIn account to 24 hours
+        const coolOffTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        console.log(`🛑 RATE LIMITED - Rescheduling ALL pending items for account ${unipileAccountId} to ${coolOffTime.toISOString()}`);
+
+        // Get all campaigns using this LinkedIn account
+        const { data: accountCampaigns } = await supabase
+          .from('campaigns')
+          .select('id')
+          .eq('linkedin_account_id', campaign.linkedin_account_id);
+
+        const accountCampaignIds = accountCampaigns?.map(c => c.id) || [];
+
+        if (accountCampaignIds.length > 0) {
+          // Reschedule all pending items for these campaigns
+          const { data: rescheduled, error: rescheduleError } = await supabase
+            .from('send_queue')
+            .update({
+              scheduled_for: coolOffTime.toISOString(),
+              error_message: 'Rate limit cool-off - rescheduled with account',
+              updated_at: new Date().toISOString()
+            })
+            .eq('status', 'pending')
+            .in('campaign_id', accountCampaignIds)
+            .select('id');
+
+          console.log(`🛑 Rescheduled ${rescheduled?.length || 0} pending items for 24-hour cool-off`);
+        }
       } else if (errorMsg.includes('connected') || errorMsg.includes('first_degree') || errorMsg.includes('1st degree')) {
         // Already connected
         prospectStatus = 'connected';
@@ -1135,15 +1162,15 @@ export async function POST(req: NextRequest) {
       }
 
       // Mark queue item with clean error message
-      // For rate limits, also schedule retry for 1 hour later
+      // For LinkedIn rate limits, schedule retry for 24 HOURS later
       const queueUpdate: Record<string, any> = {
         status: queueStatus,
         error_message: cleanErrorMessage,
         updated_at: new Date().toISOString()
       };
 
-      if (queueStatus === 'pending' && cleanErrorMessage.includes('Rate limited')) {
-        queueUpdate.scheduled_for = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour delay
+      if (queueStatus === 'pending' && cleanErrorMessage.includes('rate limited')) {
+        queueUpdate.scheduled_for = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hour cool-off
       }
 
       await supabase
