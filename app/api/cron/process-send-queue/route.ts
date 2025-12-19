@@ -1196,7 +1196,7 @@ export async function POST(req: NextRequest) {
         .from('send_queue')
         .update({
           status: queueStatus,
-          error_message: cleanErrorMessage,
+          error_message: queueStatus === 'skipped' ? null : cleanErrorMessage, // Silent for expected LinkedIn responses
           updated_at: new Date().toISOString()
         })
         .eq('id', queueItem.id);
