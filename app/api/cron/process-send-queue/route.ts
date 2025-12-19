@@ -159,11 +159,15 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
       fullBody: errorBody.substring(0, 500)
     });
 
-    // Include type in error for better status handling
-    const errorMsg = error.title || error.message || `HTTP ${response.status}`;
+    // Include type and detail in error for better status handling
+    // FIX (Dec 19): Include detail in message so error handlers can match specific errors
+    const errorParts = [error.title || error.message || `HTTP ${response.status}`];
+    if (error.detail) errorParts.push(error.detail);
+    const errorMsg = errorParts.join(': ');
     const err = new Error(errorMsg);
     (err as any).type = error.type;
     (err as any).status = response.status;
+    (err as any).detail = error.detail;
     throw err;
   }
 
@@ -703,29 +707,48 @@ export async function POST(req: NextRequest) {
 
     try {
       // 2. Resolve linkedin_user_id to provider_id (handles URLs and vanities)
-      // FIX (Dec 18): Extract slug from URL first to prevent API failures
+      // FIX (Dec 19): Extract slug FIRST and persist to DB to prevent infinite retry loops
       let providerId = queueItem.linkedin_user_id;
 
       // If it's a URL or vanity (not ACo/ACw format), resolve it
       // Both ACo and ACw are valid LinkedIn provider_id formats
       if (!providerId.startsWith('ACo') && !providerId.startsWith('ACw')) {
         console.log(`🔄 linkedin_user_id is URL/vanity, resolving to provider_id...`);
-        // FIX (Dec 18): Extract slug before resolving (handles full URLs)
+
+        // Step 1: Extract slug FIRST (handles full URLs like https://linkedin.com/in/john-doe)
         const slug = extractLinkedInSlug(providerId);
         console.log(`   Extracted slug: ${slug}`);
-        providerId = await resolveToProviderId(slug, unipileAccountId);
 
-        // Update the queue record with resolved provider_id for future retries
+        // Step 2: Persist slug to DB IMMEDIATELY (prevents infinite retry of bad URLs)
+        // This ensures even if resolution fails, retries will use the clean slug
+        if (slug !== providerId) {
+          console.log(`   Updating DB with cleaned slug before resolution...`);
+          await supabase
+            .from('send_queue')
+            .update({ linkedin_user_id: slug })
+            .eq('id', queueItem.id);
+          await supabase
+            .from('campaign_prospects')
+            .update({ linkedin_user_id: slug })
+            .eq('id', prospect.id);
+          providerId = slug;
+        }
+
+        // Step 3: Now try to resolve slug to provider_id
+        const resolvedProviderId = await resolveToProviderId(slug, unipileAccountId);
+        console.log(`   Resolved to provider_id: ${resolvedProviderId}`);
+
+        // Step 4: Update DB with final provider_id
         await supabase
           .from('send_queue')
-          .update({ linkedin_user_id: providerId })
+          .update({ linkedin_user_id: resolvedProviderId })
           .eq('id', queueItem.id);
-
-        // Also update the prospect record
         await supabase
           .from('campaign_prospects')
-          .update({ linkedin_user_id: providerId })
+          .update({ linkedin_user_id: resolvedProviderId })
           .eq('id', prospect.id);
+
+        providerId = resolvedProviderId;
       }
 
       // 3. Personalize message before sending (safety net in case queue-time personalization missed it)
