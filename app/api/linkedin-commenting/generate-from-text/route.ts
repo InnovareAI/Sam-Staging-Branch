@@ -20,6 +20,21 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+// CORS headers for Chrome extension
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Handle OPTIONS preflight request
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+}
+
 /**
  * Validate API key from Authorization header
  */
@@ -100,7 +115,7 @@ export async function POST(request: NextRequest) {
     if (!authResult.valid) {
       return NextResponse.json(
         { error: authResult.error || 'Unauthorized' },
-        { status: 401 }
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -114,14 +129,14 @@ export async function POST(request: NextRequest) {
     if (!body.post_text || body.post_text.trim().length < 20) {
       return NextResponse.json(
         { error: 'post_text is required and must be at least 20 characters' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     if (!body.author_name) {
       return NextResponse.json(
         { error: 'Missing required field: author_name' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -140,7 +155,7 @@ export async function POST(request: NextRequest) {
     if (workspaceError || !workspace) {
       return NextResponse.json(
         { error: 'Workspace not found or access denied' },
-        { status: 404 }
+        { status: 404, headers: corsHeaders }
       );
     }
 
@@ -148,7 +163,7 @@ export async function POST(request: NextRequest) {
     if (!workspace.commenting_agent_enabled) {
       return NextResponse.json(
         { error: 'Commenting agent is not enabled for this workspace' },
-        { status: 403 }
+        { status: 403, headers: corsHeaders }
       );
     }
 
@@ -224,7 +239,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         skipped: true,
         reason: generatedComment.reasoning
-      });
+      }, { headers: corsHeaders });
     }
 
     console.log('✅ Comment generated successfully:', {
@@ -241,13 +256,13 @@ export async function POST(request: NextRequest) {
       quality_indicators: generatedComment.quality_indicators,
       should_auto_post: false, // Always require human review for extension
       generation_metadata: generatedComment.generation_metadata
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('❌ Unexpected error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
 }
