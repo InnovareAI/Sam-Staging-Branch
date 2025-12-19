@@ -272,6 +272,16 @@ const INNOVAREAI_WORKSPACE_IDS = [
 ];
 
 /**
+ * Client workspace IDs that route to the client replies channel
+ * These workspaces send notifications to GOOGLE_CHAT_CLIENT_REPLIES_WEBHOOK_URL
+ */
+const CLIENT_REPLIES_WORKSPACE_IDS = [
+  '5b81ee67-4d41-4997-b5a4-e1432e060d12', // Stan Bounev
+  'dea5a7f2-673c-4429-972d-6ba5fca473fb', // Samantha Truman
+  '8a720935-db68-43e2-b16d-34383ec6c3e8', // Rony Chatterjee
+];
+
+/**
  * Client workspace-specific Google Chat webhook URLs
  * Maps workspace IDs to their dedicated notification channels
  * NOTE: Webhook URLs are stored in env vars to avoid secret exposure
@@ -285,6 +295,7 @@ const CLIENT_WORKSPACE_WEBHOOKS: Record<string, string> = {
  * Send a Reply Agent HITL approval request to Google Chat
  * Routes to different channels based on workspace:
  * - IA workspaces (IA1-IA6) → GOOGLE_CHAT_REPLIES_WEBHOOK_URL (Campaign Replies)
+ * - Client replies workspaces (Stan, Samantha, Rony) → GOOGLE_CHAT_CLIENT_REPLIES_WEBHOOK_URL
  * - Client workspaces with dedicated channel → CLIENT_WORKSPACE_WEBHOOKS
  * - Other client workspaces → GOOGLE_CHAT_CLIENT_WEBHOOK_URL (QC channel)
  */
@@ -292,6 +303,7 @@ export async function sendReplyAgentHITLNotification(
   notification: ReplyAgentHITLNotification
 ): Promise<{ success: boolean; error?: string }> {
   const isIAWorkspace = notification.workspaceId && INNOVAREAI_WORKSPACE_IDS.includes(notification.workspaceId);
+  const isClientRepliesWorkspace = notification.workspaceId && CLIENT_REPLIES_WORKSPACE_IDS.includes(notification.workspaceId);
   const hasClientWebhook = notification.workspaceId && CLIENT_WORKSPACE_WEBHOOKS[notification.workspaceId];
 
   let webhookUrl: string | undefined;
@@ -303,6 +315,14 @@ export async function sendReplyAgentHITLNotification(
     if (!webhookUrl) {
       console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping IA notification');
       return { success: false, error: 'IA webhook URL not configured' };
+    }
+  } else if (isClientRepliesWorkspace) {
+    // Client workspace routed to client replies channel
+    webhookUrl = process.env.GOOGLE_CHAT_CLIENT_REPLIES_WEBHOOK_URL;
+    channelName = `Client Replies: ${notification.clientName || notification.workspaceId}`;
+    if (!webhookUrl) {
+      console.warn('⚠️ GOOGLE_CHAT_CLIENT_REPLIES_WEBHOOK_URL not configured - skipping client replies notification');
+      return { success: false, error: 'Client replies webhook URL not configured' };
     }
   } else if (hasClientWebhook) {
     // Client has dedicated notification channel
@@ -397,11 +417,11 @@ export async function sendReplyAgentHITLNotification(
     ],
   });
 
-  // For IA workspaces and clients with dedicated webhooks: Include SAM's draft reply and action buttons
+  // For IA workspaces, client replies workspaces, and clients with dedicated webhooks: Include SAM's draft reply and action buttons
   // For other client workspaces: Just a notification (no SAM reply, no buttons)
   const finalSections = [...sections];
 
-  if (isIAWorkspace || hasClientWebhook) {
+  if (isIAWorkspace || isClientRepliesWorkspace || hasClientWebhook) {
     // Add SAM's draft reply section
     finalSections.push({
       header: '💡 SAM\'s Draft Reply',
@@ -471,7 +491,7 @@ export async function sendReplyAgentHITLNotification(
 
   const message: GoogleChatMessage = {
     // Add @all mention for client workspaces to notify everyone
-    text: hasClientWebhook ? '<users/all> 🔔 New reply needs review' : undefined,
+    text: (hasClientWebhook || isClientRepliesWorkspace) ? '<users/all> 🔔 New reply needs review' : undefined,
     cardsV2: [
       {
         cardId: `reply-agent-${notification.draftId}`,
