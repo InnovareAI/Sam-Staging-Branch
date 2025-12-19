@@ -1247,6 +1247,109 @@ After deployment:
 
 ---
 
+## 26. Silent Handling for Expected LinkedIn Responses (Dec 19)
+
+### Problem
+
+QA monitor was receiving false alerts every 5 minutes for expected LinkedIn API responses that are NOT actual errors:
+
+- **422 already_invited_recently** - "You have already invited this person to connect"
+- **422 cannot_resend_yet** - "Cannot resend invitation at this time"
+- **Already connected** - Prospect already accepted connection request
+
+These are EXPECTED LinkedIn behavior when:
+1. User already sent a connection request to this prospect
+2. Prospect already accepted the connection (now 1st degree)
+3. LinkedIn is rate-limiting invitation resends
+
+### Root Cause
+
+**File: `app/api/cron/process-send-queue/route.ts`**
+
+The code was correctly setting `status='skipped'` for these expected responses, but was still writing the LinkedIn error message to `error_message` field. This caused the QA monitor to report them as errors (any non-NULL `error_message` triggers an alert).
+
+```typescript
+// OLD CODE (caused false alerts):
+await supabase
+  .from('send_queue')
+  .update({
+    status: 'skipped',
+    error_message: 'Already invited recently'  // ❌ Triggers QA alert
+  })
+  .eq('id', item.id);
+```
+
+### Solution
+
+**Modified Line 1199** to set `error_message=NULL` for all "skipped" status updates:
+
+```typescript
+// NEW CODE (silent skip):
+await supabase
+  .from('send_queue')
+  .update({
+    status: 'skipped',
+    error_message: null  // ✅ Silent skip - no alert
+  })
+  .eq('id', item.id);
+```
+
+### Detection Patterns
+
+**Expected LinkedIn responses that now skip silently:**
+```typescript
+const SKIP_PATTERNS = [
+  'already invited',
+  'already_invited_recently',
+  'cannot_resend_yet',
+  'already connected',
+  'invitation already sent'
+];
+```
+
+### Manual Cleanup
+
+Manually cleared 27 existing "already invited" items by setting `error_message=NULL`:
+
+```sql
+UPDATE send_queue
+SET error_message = NULL
+WHERE status = 'skipped'
+  AND error_message LIKE '%already invited%';
+```
+
+### Result
+
+**BEFORE:**
+- QA monitor reported 20-30 "errors" every hour
+- Alerts contained mostly "already invited" messages (not real errors)
+- Real errors were buried in noise
+
+**AFTER:**
+- Only REAL errors trigger alerts (format errors, network failures, etc.)
+- Expected LinkedIn responses are skipped silently
+- QA monitor signal-to-noise ratio dramatically improved
+
+### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `app/api/cron/process-send-queue/route.ts` | 1199 | Set `error_message=NULL` for `status='skipped'` |
+
+### Convention Summary
+
+| Status | Error Message | Meaning |
+|--------|---------------|---------|
+| `skipped` | `NULL` | Expected LinkedIn behavior (already invited, already connected) - NO ALERT |
+| `pending` | `NULL` | Waiting for retry (rate limit, network error) - NO ALERT |
+| `failed` | `"text"` | Actual permanent failure - REPORT TO QA MONITOR |
+
+### Commit Reference
+
+**Commit:** `3fccea09` - "fix: silent skip for expected LinkedIn responses"
+
+---
+
 ## Next Steps
 
 ### Immediate
@@ -1268,4 +1371,4 @@ After deployment:
 
 ---
 
-*Last Updated: December 19, 2025 20:00 UTC*
+*Last Updated: December 19, 2025 22:00 UTC*
