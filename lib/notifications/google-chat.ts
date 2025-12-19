@@ -591,18 +591,166 @@ export async function sendDailyCampaignSummary(
 }
 
 /**
- * Send Email Reply Notification (placeholder - to be implemented)
- * Used by ReachInbox webhook handler
+ * Send Email Reply Notification
+ * Used by ReachInbox webhook handler to notify about incoming email replies
  */
 export async function sendEmailReplyNotification(data: {
-  from: string;
-  subject: string;
-  text: string;
+  prospectEmail: string;
+  prospectName?: string;
   campaignName?: string;
+  messageText: string;
+  intent?: string;
+  country?: string;
+  emailAccount?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  // TODO: Implement email reply notification
-  console.log("[Email Reply Notification]", data);
-  return { success: true };
+  const webhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping email notification');
+    return { success: false, error: 'Webhook URL not configured' };
+  }
+
+  const intentEmoji: Record<string, string> = {
+    'interested': '🔥',
+    'booking_request': '📅',
+    'question': '❓',
+    'timing': '⏰',
+    'not_interested': '❌',
+    'wrong_person': '🚫',
+    'no_response': '📤',
+  };
+
+  const emoji = data.intent ? (intentEmoji[data.intent] || '💬') : '📧';
+
+  const sections: any[] = [];
+
+  // Email details section
+  const emailWidgets: any[] = [
+    {
+      decoratedText: {
+        topLabel: 'From',
+        text: `<b>${data.prospectName || 'Unknown'}</b> &lt;${data.prospectEmail}&gt;`,
+        startIcon: { knownIcon: 'PERSON' },
+      },
+    },
+  ];
+
+  if (data.emailAccount) {
+    emailWidgets.push({
+      decoratedText: {
+        topLabel: 'To',
+        text: data.emailAccount,
+        startIcon: { knownIcon: 'EMAIL' },
+      },
+    });
+  }
+
+  if (data.campaignName) {
+    emailWidgets.push({
+      decoratedText: {
+        topLabel: 'Campaign',
+        text: data.campaignName,
+        startIcon: { knownIcon: 'BOOKMARK' },
+      },
+    });
+  }
+
+  if (data.country) {
+    emailWidgets.push({
+      decoratedText: {
+        topLabel: 'Region',
+        text: data.country,
+        startIcon: { knownIcon: 'MAP_PIN' },
+      },
+    });
+  }
+
+  sections.push({
+    header: 'Email Details',
+    widgets: emailWidgets,
+  });
+
+  // Message content section
+  const messagePreview = data.messageText.length > 500
+    ? data.messageText.substring(0, 500) + '...'
+    : data.messageText;
+
+  sections.push({
+    header: data.intent ? `Intent: ${emoji} ${data.intent.replace('_', ' ').toUpperCase()}` : 'Message',
+    widgets: [
+      {
+        textParagraph: {
+          text: messagePreview,
+        },
+      },
+    ],
+  });
+
+  // Add reply action button
+  const replyUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(data.prospectEmail)}`;
+  sections.push({
+    widgets: [
+      {
+        buttonList: {
+          buttons: [
+            {
+              text: '📧 Reply in Gmail',
+              onClick: {
+                openLink: { url: replyUrl },
+              },
+              color: {
+                red: 0.063,
+                green: 0.722,
+                blue: 0.506,
+                alpha: 1,
+              },
+            },
+          ],
+        },
+      },
+    ],
+  });
+
+  const message: GoogleChatMessage = {
+    cardsV2: [
+      {
+        cardId: `email-reply-${Date.now()}`,
+        card: {
+          header: {
+            title: `📧 New Email Reply from ${data.prospectName || data.prospectEmail}`,
+            subtitle: new Date().toLocaleString(),
+            imageType: 'CIRCLE',
+          },
+          sections,
+        },
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Email notification failed:', errorText);
+      return { success: false, error: errorText };
+    }
+
+    console.log('✅ Email notification sent to Google Chat');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Email notification error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }
 
 /**
