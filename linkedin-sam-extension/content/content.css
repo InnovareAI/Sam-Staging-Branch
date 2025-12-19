@@ -1,0 +1,106 @@
+/**
+ * SAM LinkedIn Assistant - Styles
+ */
+
+/* SAM Button Container */
+.sam-button-container {
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  border-radius: 8px;
+  border-left: 4px solid #ec4899;
+}
+
+/* SAM Generate Button */
+.sam-comment-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ec4899;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  justify-content: center;
+}
+
+.sam-comment-btn:hover:not(:disabled) {
+  background: #fdf2f8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(236, 72, 153, 0.2);
+}
+
+.sam-comment-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.sam-comment-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.sam-comment-btn svg {
+  flex-shrink: 0;
+}
+
+/* Loading Spinner */
+.sam-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ec4899;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: sam-spin 0.8s linear infinite;
+}
+
+@keyframes sam-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Notification Banners */
+.sam-notification {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: opacity 0.3s ease;
+}
+
+.sam-notification-success {
+  background: #d1fae5;
+  color: #065f46;
+  border-left: 4px solid #10b981;
+}
+
+.sam-notification-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border-left: 4px solid #ef4444;
+}
+
+.sam-notification-warning {
+  background: #fef3c7;
+  color: #92400e;
+  border-left: 4px solid #f59e0b;
+}
+
+.sam-notification-info {
+  background: #dbeafe;
+  color: #1e40af;
+  border-left: 4px solid #3b82f6;
+}
+
+/* Highlight effect for comment box */
+.ql-editor[contenteditable="true"] {
+  transition: background-color 0.3s ease;
+}

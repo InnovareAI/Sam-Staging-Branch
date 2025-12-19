@@ -13,67 +13,10 @@ import {
   generateLinkedInComment,
   CommentGenerationContext
 } from '@/lib/services/linkedin-commenting-agent';
-import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-
-/**
- * Validate API key from Authorization header
- */
-async function validateApiKey(request: NextRequest): Promise<{ valid: boolean; workspace_id?: string; error?: string }> {
-  const authHeader = request.headers.get('Authorization');
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { valid: false, error: 'Missing or invalid Authorization header' };
-  }
-
-  const apiKey = authHeader.replace('Bearer ', '').trim();
-
-  if (!apiKey.startsWith('sk_live_')) {
-    return { valid: false, error: 'Invalid API key format' };
-  }
-
-  // Hash the provided key
-  const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
-
-  // Look up key in database
-  const supabase = await createServerSupabaseClient();
-  const { data: apiKeyRecord, error } = await supabase
-    .from('api_keys')
-    .select('id, workspace_id, is_active, expires_at, scopes')
-    .eq('key_hash', keyHash)
-    .single();
-
-  if (error || !apiKeyRecord) {
-    return { valid: false, error: 'Invalid API key' };
-  }
-
-  // Check if key is active
-  if (!apiKeyRecord.is_active) {
-    return { valid: false, error: 'API key has been deactivated' };
-  }
-
-  // Check if key has expired
-  if (apiKeyRecord.expires_at && new Date(apiKeyRecord.expires_at) < new Date()) {
-    return { valid: false, error: 'API key has expired' };
-  }
-
-  // Check if key has required scope
-  if (!apiKeyRecord.scopes || !apiKeyRecord.scopes.includes('linkedin:comment:generate')) {
-    return { valid: false, error: 'API key does not have required permissions' };
-  }
-
-  // Update last_used_at (fire and forget)
-  supabase
-    .from('api_keys')
-    .update({ last_used_at: new Date().toISOString() })
-    .eq('id', apiKeyRecord.id)
-    .then(() => {});
-
-  return { valid: true, workspace_id: apiKeyRecord.workspace_id };
-}
 
 /**
  * Generate LinkedIn comment from raw post text (Chrome Extension)
@@ -91,21 +34,15 @@ async function validateApiKey(request: NextRequest): Promise<{ valid: boolean; w
  */
 export async function POST(request: NextRequest) {
   try {
-    // Validate API key
-    const authResult = await validateApiKey(request);
-    if (!authResult.valid) {
-      return NextResponse.json(
-        { error: authResult.error || 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
 
-    // Use workspace_id from API key (more secure than trusting request body)
-    const workspaceId = authResult.workspace_id!;
-
-    console.log('💬 Generating comment from extension for workspace:', workspaceId);
+    // Validate required fields
+    if (!body.workspace_id) {
+      return NextResponse.json(
+        { error: 'Missing required field: workspace_id' },
+        { status: 400 }
+      );
+    }
 
     if (!body.post_text || body.post_text.trim().length < 20) {
       return NextResponse.json(
@@ -121,13 +58,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('💬 Generating comment from extension for workspace:', body.workspace_id);
+
     const supabase = await createServerSupabaseClient();
 
     // Get workspace context
-    const { data: workspace, error: workspaceError} = await supabase
+    const { data: workspace, error: workspaceError } = await supabase
       .from('workspaces')
       .select('*')
-      .eq('id', workspaceId)
+      .eq('id', body.workspace_id)
       .single();
 
     if (workspaceError || !workspace) {
@@ -149,7 +88,7 @@ export async function POST(request: NextRequest) {
     const { data: brandGuidelines } = await supabase
       .from('linkedin_brand_guidelines')
       .select('*')
-      .eq('workspace_id', workspaceId)
+      .eq('workspace_id', body.workspace_id)
       .single();
 
     console.log('📋 Brand guidelines loaded:', brandGuidelines ? 'Yes' : 'No (using defaults)');
@@ -160,7 +99,7 @@ export async function POST(request: NextRequest) {
       const { data: kbItems } = await supabase
         .from('knowledge_base')
         .select('content, title')
-        .eq('workspace_id', workspaceId)
+        .eq('workspace_id', body.workspace_id)
         .limit(5);
 
       if (kbItems && kbItems.length > 0) {
