@@ -2190,6 +2190,7 @@ async function checkWorkspaceErrorRates(supabase: any): Promise<QACheck> {
       const campaignIds = campaigns.map((c: any) => c.id);
 
       // Count sent and failed in last 7 days
+      // URGENT FIX (Dec 19): ONLY count actual errors (error_message NOT NULL)
       const { count: sent } = await supabase
         .from('send_queue')
         .select('*', { count: 'exact', head: true })
@@ -2202,6 +2203,7 @@ async function checkWorkspaceErrorRates(supabase: any): Promise<QACheck> {
         .select('*', { count: 'exact', head: true })
         .in('campaign_id', campaignIds)
         .eq('status', 'failed')
+        .not('error_message', 'is', null) // CRITICAL: Skip NULL (silent retries)
         .gte('updated_at', weekAgo);
 
       const total = (sent || 0) + (failed || 0);
@@ -2442,11 +2444,14 @@ async function checkAndAlertCampaignFailures(supabase: any): Promise<QACheck> {
         .single();
 
       // Get error breakdown from send_queue
+      // URGENT FIX (Dec 19): ONLY count actual errors (error_message NOT NULL)
+      // Rate limits and network failures have NULL error_message (silent retry)
       const { data: queueErrors } = await supabase
         .from('send_queue')
         .select('error_message')
         .eq('campaign_id', campaign.id)
         .eq('status', 'failed')
+        .not('error_message', 'is', null) // CRITICAL: Skip NULL (silent retries)
         .gte('updated_at', dayAgo);
 
       // Aggregate errors

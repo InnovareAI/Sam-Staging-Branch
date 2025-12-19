@@ -1,4 +1,4 @@
-// DEPLOYED_MARKER: DEC19_FIX_1766142633
+// DEPLOYED_MARKER: DEC19_SILENT_RETRY_FIX
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import moment from 'moment-timezone';
@@ -1036,7 +1036,72 @@ export async function POST(req: NextRequest) {
       console.error(`❌ Failed to send CR:`, errorMessage);
       console.error(`   🔍 DEBUG: Raw sendError:`, sendError);
 
-      // Check for LinkedIn warning patterns (rate limits, restrictions)
+      const errorMsg = errorMessage.toLowerCase();
+      const errorStatus = (sendError as any).status;
+
+      // URGENT FIX (Dec 19): Network failures and rate limits are NOT errors - silent retry
+      // Check for network errors FIRST (before other checks)
+      if (errorMsg.includes('fetch failed') || errorMsg.includes('network') || errorMsg.includes('econnreset') || errorMsg.includes('timeout')) {
+        console.log(`🔄 Network error - silently retrying in 30 minutes (not an error)`);
+        const retryTime = new Date(Date.now() + 30 * 60 * 1000); // 30 min
+        await supabase
+          .from('send_queue')
+          .update({
+            status: 'pending',
+            error_message: null, // CRITICAL: NULL = not an error, just waiting
+            scheduled_for: retryTime.toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', queueItem.id);
+
+        return NextResponse.json({
+          success: true,
+          processed: 0,
+          message: 'Network error - scheduled retry in 30 min (silent)'
+        });
+      }
+
+      // Check for rate limits (429 or explicit rate limit messages)
+      if (errorStatus === 429 || errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('throttle') || errorMsg.includes('too_many')) {
+        console.log(`🔄 Rate limited - silently retrying in 24 hours (not an error)`);
+        const retryTime = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        await supabase
+          .from('send_queue')
+          .update({
+            status: 'pending',
+            error_message: null, // CRITICAL: NULL = not an error, just waiting
+            scheduled_for: retryTime.toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', queueItem.id);
+
+        // Also reschedule ALL pending items for this account to 24 hours
+        const { data: accountCampaigns } = await supabase
+          .from('campaigns')
+          .select('id')
+          .eq('linkedin_account_id', campaign.linkedin_account_id);
+
+        const accountCampaignIds = accountCampaigns?.map(c => c.id) || [];
+
+        if (accountCampaignIds.length > 0) {
+          await supabase
+            .from('send_queue')
+            .update({
+              scheduled_for: retryTime.toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('status', 'pending')
+            .in('campaign_id', accountCampaignIds);
+        }
+
+        return NextResponse.json({
+          success: true,
+          processed: 0,
+          message: 'Rate limited - scheduled retry in 24h (silent)'
+        });
+      }
+
+      // Check for LinkedIn warning patterns (other than rate limits)
       const warningCheck = isMessageWarning(errorMessage);
       if (warningCheck.isWarning) {
         console.log(`🚨 LINKEDIN WARNING DETECTED: "${warningCheck.pattern}"`);
@@ -1054,33 +1119,31 @@ export async function POST(req: NextRequest) {
           errorMessage: `LinkedIn warning: ${warningCheck.pattern}`
         });
 
-        // Reschedule this message for 24 hours later
+        // Reschedule this message for 24 hours later (silent retry)
         const resumeTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
         await supabase
           .from('send_queue')
           .update({
-            status: 'pending', // FIX (Dec 18): Reset to pending so it can be processed again
+            status: 'pending',
+            error_message: null, // Silent retry
             scheduled_for: resumeTime.toISOString(),
-            error_message: `LinkedIn warning (${warningCheck.pattern}) - rescheduled for ${resumeTime.toISOString()}`,
             updated_at: new Date().toISOString()
           })
           .eq('id', queueItem.id);
 
         return NextResponse.json({
-          success: false,
+          success: true,
           processed: 0,
           warning: warningCheck.pattern,
-          message: `LinkedIn warning detected - rescheduled for 24 hours`,
+          message: `LinkedIn warning detected - rescheduled for 24 hours (silent)`,
           resume_at: resumeTime.toISOString()
         });
       }
 
-      // Determine specific status based on error message
+      // Determine specific status based on error message (actual errors only)
       let prospectStatus = 'failed';
       let queueStatus = 'failed';
       let cleanErrorMessage = errorMessage;
-      const errorMsg = errorMessage.toLowerCase();
-      const errorStatus = (sendError as any).status;
 
       // FIX (Dec 19): Handle 422 "profile not found" as permanent failure
       if (errorStatus === 422 || errorMsg.includes('recipient cannot be reached') || errorMsg.includes('invalid_recipient')) {
@@ -1111,39 +1174,6 @@ export async function POST(req: NextRequest) {
         prospectStatus = 'invitation_declined';
         queueStatus = 'failed';
         cleanErrorMessage = 'Invitation was withdrawn or declined';
-      } else if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('throttle') || errorMsg.includes('429') || errorMsg.includes('too_many')) {
-        // Rate limited by LinkedIn - STOP IMMEDIATELY and cool off for 24 hours
-        prospectStatus = 'approved'; // Keep as approved for retry
-        queueStatus = 'pending'; // Keep in queue for retry
-        cleanErrorMessage = 'LinkedIn rate limited - cooling off for 24 hours';
-
-        // CRITICAL: Reschedule ALL pending items for this LinkedIn account to 24 hours
-        const coolOffTime = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        console.log(`🛑 RATE LIMITED - Rescheduling ALL pending items for account ${unipileAccountId} to ${coolOffTime.toISOString()}`);
-
-        // Get all campaigns using this LinkedIn account
-        const { data: accountCampaigns } = await supabase
-          .from('campaigns')
-          .select('id')
-          .eq('linkedin_account_id', campaign.linkedin_account_id);
-
-        const accountCampaignIds = accountCampaigns?.map(c => c.id) || [];
-
-        if (accountCampaignIds.length > 0) {
-          // Reschedule all pending items for these campaigns
-          const { data: rescheduled, error: rescheduleError } = await supabase
-            .from('send_queue')
-            .update({
-              scheduled_for: coolOffTime.toISOString(),
-              error_message: 'Rate limit cool-off - rescheduled with account',
-              updated_at: new Date().toISOString()
-            })
-            .eq('status', 'pending')
-            .in('campaign_id', accountCampaignIds)
-            .select('id');
-
-          console.log(`🛑 Rescheduled ${rescheduled?.length || 0} pending items for 24-hour cool-off`);
-        }
       } else if (errorMsg.includes('connected') || errorMsg.includes('first_degree') || errorMsg.includes('1st degree')) {
         // Already connected
         prospectStatus = 'connected';
@@ -1161,21 +1191,14 @@ export async function POST(req: NextRequest) {
         cleanErrorMessage = 'LinkedIn blocked invitation (account restriction)';
       }
 
-      // Mark queue item with clean error message
-      // For LinkedIn rate limits, schedule retry for 24 HOURS later
-      const queueUpdate: Record<string, any> = {
-        status: queueStatus,
-        error_message: cleanErrorMessage,
-        updated_at: new Date().toISOString()
-      };
-
-      if (queueStatus === 'pending' && cleanErrorMessage.includes('rate limited')) {
-        queueUpdate.scheduled_for = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hour cool-off
-      }
-
+      // Mark queue item with error message (actual errors only - rate limits handled above)
       await supabase
         .from('send_queue')
-        .update(queueUpdate)
+        .update({
+          status: queueStatus,
+          error_message: cleanErrorMessage,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', queueItem.id);
 
       // Update prospect with specific status

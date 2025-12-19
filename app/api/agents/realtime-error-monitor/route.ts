@@ -45,11 +45,13 @@ export async function POST(req: NextRequest) {
 
   try {
     // CHECK 1: Failed sends in last 15 minutes
-    // SMART FILTER (Dec 17): Ignore auto-cleaned stale items (error contains "stale" or "expired")
+    // URGENT FIX (Dec 19): ONLY report actual errors (error_message NOT NULL)
+    // Rate limits and network failures have NULL error_message (silent retry)
     const { data: failedSends, error: failedError } = await supabase
       .from('send_queue')
       .select('id, campaign_id, error_message, updated_at')
       .eq('status', 'failed')
+      .not('error_message', 'is', null) // CRITICAL: Skip NULL (silent retries)
       .gte('updated_at', fifteenMinAgo.toISOString());
 
     // Filter out auto-cleaned items to avoid noise
@@ -57,10 +59,6 @@ export async function POST(req: NextRequest) {
       const msg = (f.error_message || '').toLowerCase();
       // Ignore auto-fix cleanups
       if (msg.includes('stale') || msg.includes('expired') || msg.includes('auto-cleaned')) {
-        return false;
-      }
-      // Ignore rate limit delays (expected behavior)
-      if (msg.includes('rate limit') || msg.includes('too many requests')) {
         return false;
       }
       return true;
