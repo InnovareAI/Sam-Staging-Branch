@@ -1,66 +1,40 @@
-const { createClient } = require("@supabase/supabase-js");
-require("dotenv").config({ path: ".env.local" });
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-async function check() {
-  // Check failed queue items
+(async () => {
   const { data: failed } = await supabase
-    .from("send_queue")
-    .select("id, campaign_id, status, error_message, scheduled_for")
-    .eq("status", "failed")
-    .limit(10);
+    .from('send_queue')
+    .select('id, linkedin_user_id, error_message')
+    .eq('status', 'failed')
+    .limit(200);
 
-  console.log("\n❌ FAILED QUEUE ITEMS:");
-  failed?.forEach(f => {
-    console.log("  - " + f.error_message);
-    console.log("    Scheduled: " + f.scheduled_for);
+  const vanities = (failed || []).filter(f => {
+    const id = f.linkedin_user_id;
+    return id && !id.startsWith('ACo') && !id.startsWith('ACw');
   });
 
-  // Check skipped items
-  const { data: skipped } = await supabase
-    .from("send_queue")
-    .select("id, campaign_id, status, error_message")
-    .eq("status", "skipped")
-    .limit(5);
-
-  console.log("\n⏭️ SKIPPED QUEUE ITEMS:");
-  skipped?.forEach(s => {
-    console.log("  - " + (s.error_message || "No reason"));
+  const providerIds = (failed || []).filter(f => {
+    const id = f.linkedin_user_id;
+    return id && (id.startsWith('ACo') || id.startsWith('ACw'));
   });
 
-  // Check pending items scheduled for future
-  const { data: pending } = await supabase
-    .from("send_queue")
-    .select("id, campaign_id, status, scheduled_for")
-    .eq("status", "pending")
-    .order("scheduled_for", { ascending: true })
-    .limit(5);
+  console.log('Total failed:', failed?.length || 0);
+  console.log('Vanities:', vanities.length);
+  console.log('Provider IDs:', providerIds.length);
 
-  console.log("\n⏳ PENDING (next 5):");
-  pending?.forEach(p => {
-    console.log("  - " + p.scheduled_for);
-  });
+  console.log('\nVanity slugs that cannot be resolved:');
+  for (const item of vanities.slice(0, 20)) {
+    console.log('  - ' + item.linkedin_user_id);
+  }
 
-  // Check if there are prospects in prospect_approval_data not linked to campaigns
-  const { data: approval } = await supabase
-    .from("prospect_approval_data")
-    .select("id, name, approval_status, campaign_id, session_id")
-    .limit(20);
-
-  console.log("\n📝 APPROVAL DATA (not in campaigns):");
-  const notLinked = approval?.filter(a => !a.campaign_id) || [];
-  console.log("  Without campaign_id: " + notLinked.length);
-
-  // Check total prospects in campaign_prospects
-  const { count: prospectCount } = await supabase
-    .from("campaign_prospects")
-    .select("*", { count: "exact", head: true });
-
-  console.log("\n👥 TOTAL campaign_prospects: " + prospectCount);
-}
-
-check().catch(console.error);
+  console.log('\nProvider IDs failing for other reasons:');
+  for (const item of providerIds.slice(0, 10)) {
+    console.log('  - ' + item.linkedin_user_id);
+    console.log('    Error: ' + (item.error_message?.substring(0, 80) || 'none'));
+  }
+})();

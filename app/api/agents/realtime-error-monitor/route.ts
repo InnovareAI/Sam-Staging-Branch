@@ -9,12 +9,131 @@ const supabaseAdmin = () => createClient(
 );
 
 const GOOGLE_CHAT_WEBHOOK = process.env.GOOGLE_CHAT_WEBHOOK_URL;
+const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
+const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
 
 interface ErrorCheck {
   name: string;
   critical: boolean;
   count: number;
   details?: string;
+  autoFixed?: number;
+}
+
+/**
+ * Resolve LinkedIn vanity slug to provider_id via Unipile API
+ */
+async function resolveVanityToProviderId(vanity: string, unipileAccountId: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `${UNIPILE_BASE_URL}/api/v1/users/${encodeURIComponent(vanity)}?account_id=${unipileAccountId}`,
+      {
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY,
+          'Accept': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const profile = await response.json();
+    return profile.provider_id || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Auto-fix vanity resolution failures
+ * When we detect "User ID does not match provider's expected format" errors,
+ * automatically resolve vanities to provider_ids and reset to pending
+ */
+async function autoFixVanityFailures(supabase: ReturnType<typeof supabaseAdmin>): Promise<number> {
+  console.log('🔧 Auto-fixing vanity resolution failures...');
+
+  // Get failed items with vanity format errors (limit to 20 per run to avoid timeout)
+  const { data: failedItems } = await supabase
+    .from('send_queue')
+    .select('id, linkedin_user_id, campaign_id, error_message')
+    .eq('status', 'failed')
+    .ilike('error_message', '%does not match%')
+    .limit(20);
+
+  if (!failedItems || failedItems.length === 0) {
+    console.log('   No vanity failures to fix');
+    return 0;
+  }
+
+  let fixed = 0;
+
+  for (const item of failedItems) {
+    // Skip if already a provider_id
+    if (item.linkedin_user_id?.startsWith('ACo') || item.linkedin_user_id?.startsWith('ACw')) {
+      // Already resolved, just reset to pending
+      await supabase
+        .from('send_queue')
+        .update({ status: 'pending', error_message: null, retry_count: 0 })
+        .eq('id', item.id);
+      fixed++;
+      continue;
+    }
+
+    // Get campaign's LinkedIn account
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('linkedin_account_id')
+      .eq('id', item.campaign_id)
+      .single();
+
+    if (!campaign) continue;
+
+    // Get Unipile account ID
+    let unipileAccountId: string | null = null;
+
+    const { data: wsAccount } = await supabase
+      .from('workspace_accounts')
+      .select('unipile_account_id')
+      .eq('id', campaign.linkedin_account_id)
+      .single();
+
+    if (wsAccount?.unipile_account_id) {
+      unipileAccountId = wsAccount.unipile_account_id;
+    } else {
+      const { data: uuAccount } = await supabase
+        .from('user_unipile_accounts')
+        .select('unipile_account_id')
+        .eq('id', campaign.linkedin_account_id)
+        .single();
+      unipileAccountId = uuAccount?.unipile_account_id || null;
+    }
+
+    if (!unipileAccountId) continue;
+
+    // Resolve vanity to provider_id
+    const providerId = await resolveVanityToProviderId(item.linkedin_user_id, unipileAccountId);
+
+    if (providerId) {
+      // Update queue item with resolved provider_id and reset to pending
+      await supabase
+        .from('send_queue')
+        .update({
+          linkedin_user_id: providerId,
+          status: 'pending',
+          error_message: null,
+          retry_count: 0
+        })
+        .eq('id', item.id);
+
+      console.log(`   ✅ Resolved ${item.linkedin_user_id} → ${providerId}`);
+      fixed++;
+    }
+  }
+
+  console.log(`🔧 Auto-fixed ${fixed}/${failedItems.length} vanity failures`);
+  return fixed;
 }
 
 /**
@@ -65,12 +184,31 @@ export async function POST(req: NextRequest) {
     });
 
     if (!failedError && realFailures.length > 0) {
-      errors.push({
-        name: 'Failed Sends (15min)',
-        critical: realFailures.length >= 3,
-        count: realFailures.length,
-        details: realFailures.slice(0, 3).map(f => f.error_message).join('; ')
-      });
+      // Check if any failures are vanity resolution errors - auto-fix them
+      const vanityErrors = realFailures.filter(f =>
+        f.error_message?.includes('does not match')
+      );
+
+      let autoFixed = 0;
+      if (vanityErrors.length > 0) {
+        console.log(`🔧 Detected ${vanityErrors.length} vanity resolution errors - auto-fixing...`);
+        autoFixed = await autoFixVanityFailures(supabase);
+      }
+
+      // Only report remaining failures (subtract auto-fixed)
+      const remainingCount = realFailures.length - autoFixed;
+      if (remainingCount > 0) {
+        errors.push({
+          name: 'Failed Sends (15min)',
+          critical: remainingCount >= 3,
+          count: remainingCount,
+          details: realFailures.slice(0, 3).map(f => f.error_message).join('; '),
+          autoFixed: autoFixed > 0 ? autoFixed : undefined
+        });
+      } else if (autoFixed > 0) {
+        // All errors were auto-fixed - report as success
+        console.log(`✅ All ${autoFixed} vanity errors auto-fixed`);
+      }
     }
 
     // CHECK 2: Stuck queue items - DISABLED
@@ -189,7 +327,7 @@ export async function POST(req: NextRequest) {
       } else if (warnings.length > 0) {
         alertMessage = {
           text: `⚠️ *Campaign Monitor: ${warnings.length} Warning(s)*\n\n${warnings.map(w =>
-            `• *${w.name}*: ${w.count}\n   ${w.details || ''}`
+            `• *${w.name}*: ${w.count}${w.autoFixed ? ` (${w.autoFixed} auto-fixed)` : ''}\n   ${w.details || ''}`
           ).join('\n\n')}\n\n_Checked at ${now.toISOString()}_`
         };
       } else {
