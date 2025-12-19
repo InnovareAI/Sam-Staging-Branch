@@ -117,6 +117,10 @@ async function generateComment(postElement, postData, button) {
     // Clean the API key to remove any invisible characters or whitespace
     const cleanApiKey = (apiKey || '').trim().replace(/[\u200B-\u200D\uFEFF]/g, '');
 
+    console.log('SAM Extension: Making API request');
+    console.log('SAM Extension: URL:', `${samApiUrl}/api/linkedin-commenting/generate-from-text`);
+    console.log('SAM Extension: Has API Key:', !!cleanApiKey);
+
     // Create a simplified API endpoint for the extension
     // We'll call a new endpoint that accepts post text directly
     const response = await fetch(`${samApiUrl}/api/linkedin-commenting/generate-from-text`, {
@@ -165,8 +169,13 @@ async function generateComment(postElement, postData, button) {
       <span>Regenerate</span>
     `;
   } catch (error) {
-    console.error('Error generating comment:', error);
-    showNotification(postElement, `❌ Error: ${error.message}`, 'error');
+    console.error('SAM Extension: Error generating comment:', error);
+    console.error('SAM Extension: Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
+    showNotification(postElement, `❌ ${error.message || 'Failed to fetch'}`, 'error');
 
     // Reset button
     button.disabled = false;
