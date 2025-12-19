@@ -735,7 +735,9 @@ export async function POST(req: NextRequest) {
         }
 
         // Step 3: Now try to resolve slug to provider_id
+        console.log(`   🔍 DEBUG: Calling resolveToProviderId("${slug}", "${unipileAccountId}")...`);
         const resolvedProviderId = await resolveToProviderId(slug, unipileAccountId);
+        console.log(`   🔍 DEBUG: resolveToProviderId returned: "${resolvedProviderId}"`);
         console.log(`   Resolved to provider_id: ${resolvedProviderId}`);
 
         // Step 4: Update DB with final provider_id
@@ -771,6 +773,10 @@ export async function POST(req: NextRequest) {
       // - Messenger/Follow-up: POST /api/v1/chats/{chatId}/messages
 
       if (isConnectionRequest) {
+        // CRITICAL DEBUG (Dec 19): Log provider ID to verify resolution worked
+        console.log(`🔍 DEBUG: Final providerId = "${providerId}" (starts with ACo: ${providerId.startsWith('ACo')}, ACw: ${providerId.startsWith('ACw')})`);
+        console.log(`🔍 DEBUG: Original queueItem.linkedin_user_id = "${queueItem.linkedin_user_id}"`);
+
         // Send connection request
         const payload = {
           account_id: unipileAccountId,
