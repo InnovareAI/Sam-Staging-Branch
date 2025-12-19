@@ -712,8 +712,9 @@ export async function POST(req: NextRequest) {
 
       // If it's a URL or vanity (not ACo/ACw format), resolve it
       // Both ACo and ACw are valid LinkedIn provider_id formats
+      console.log(`🔍🔍🔍 RESOLUTION CHECK: providerId="${providerId}", startsWithACo=${providerId.startsWith('ACo')}, startsWithACw=${providerId.startsWith('ACw')}`);
       if (!providerId.startsWith('ACo') && !providerId.startsWith('ACw')) {
-        console.log(`🔄 linkedin_user_id is URL/vanity, resolving to provider_id...`);
+        console.log(`🔄🔄🔄 ENTERING RESOLUTION BRANCH for "${providerId}"`);
 
         // Step 1: Extract slug FIRST (handles full URLs like https://linkedin.com/in/john-doe)
         const slug = extractLinkedInSlug(providerId);
@@ -736,9 +737,15 @@ export async function POST(req: NextRequest) {
 
         // Step 3: Now try to resolve slug to provider_id
         console.log(`   🔍 DEBUG: Calling resolveToProviderId("${slug}", "${unipileAccountId}")...`);
-        const resolvedProviderId = await resolveToProviderId(slug, unipileAccountId);
-        console.log(`   🔍 DEBUG: resolveToProviderId returned: "${resolvedProviderId}"`);
-        console.log(`   Resolved to provider_id: ${resolvedProviderId}`);
+        let resolvedProviderId: string;
+        try {
+          resolvedProviderId = await resolveToProviderId(slug, unipileAccountId);
+          console.log(`   🔍 DEBUG: resolveToProviderId returned: "${resolvedProviderId}"`);
+          console.log(`   Resolved to provider_id: ${resolvedProviderId}`);
+        } catch (resolutionError) {
+          console.error(`   ❌❌❌ RESOLUTION FAILED: ${resolutionError instanceof Error ? resolutionError.message : resolutionError}`);
+          throw resolutionError; // Re-throw to be caught by outer handler
+        }
 
         // Step 4: Update DB with final provider_id
         await supabase
