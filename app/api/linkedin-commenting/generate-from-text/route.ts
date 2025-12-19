@@ -105,7 +105,11 @@ async function validateApiKey(request: NextRequest): Promise<{ valid: boolean; w
  *   post_text: string,
  *   author_name: string,
  *   author_title?: string,
- *   engagement?: { likes: number, comments: number }
+ *   engagement?: { likes: number, comments: number },
+ *   image_url?: string,
+ *   image_description?: string,
+ *   video_captions?: string,
+ *   generate_variations?: boolean (default: true)
  * }
  */
 export async function POST(request: NextRequest) {
@@ -192,13 +196,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Enhance post text with image/video context
+    let enhancedPostText = body.post_text;
+    if (body.image_description) {
+      enhancedPostText += `\n\n[Image in post: ${body.image_description}]`;
+    }
+    if (body.video_captions) {
+      enhancedPostText += `\n\n[Video transcript: ${body.video_captions}]`;
+    }
+
     // Build context for AI
     const context: CommentGenerationContext = {
       post: {
         id: `extension-${Date.now()}`,
         post_linkedin_id: '',
         post_social_id: '',
-        post_text: body.post_text,
+        post_text: enhancedPostText,
         post_type: 'article',
         author: {
           linkedin_id: '',
@@ -229,33 +242,87 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // Generate comment using AI
-    console.log('🤖 Generating comment with SAM AI...');
-    const generatedComment = await generateLinkedInComment(context);
+    // Determine if we should generate variations
+    const generateVariations = body.generate_variations !== false; // default true
 
-    // Check if AI decided to skip
-    if (generatedComment.confidence_score === 0.0) {
-      console.log('⏭️ AI decided to skip this post:', generatedComment.reasoning);
+    if (!generateVariations) {
+      // Single comment generation (legacy behavior)
+      console.log('🤖 Generating single comment with SAM AI...');
+      const generatedComment = await generateLinkedInComment(context);
+
+      if (generatedComment.confidence_score === 0.0) {
+        return NextResponse.json({
+          skipped: true,
+          reason: generatedComment.reasoning
+        }, { headers: corsHeaders });
+      }
+
       return NextResponse.json({
-        skipped: true,
-        reason: generatedComment.reasoning
+        success: true,
+        comment_text: generatedComment.comment_text,
+        confidence_score: generatedComment.confidence_score,
+        reasoning: generatedComment.reasoning,
+        quality_indicators: generatedComment.quality_indicators,
+        should_auto_post: false,
+        generation_metadata: generatedComment.generation_metadata
       }, { headers: corsHeaders });
     }
 
-    console.log('✅ Comment generated successfully:', {
-      length: generatedComment.comment_text.length,
-      confidence: generatedComment.confidence_score
-    });
+    // Generate multiple variations
+    console.log('🤖 Generating 3 comment variations (long/short, comment/question)...');
 
-    // Return the generated comment (don't save to DB for extension)
+    const variations = await Promise.all([
+      // Variation 1: Longer thoughtful comment
+      generateLinkedInComment({
+        ...context,
+        workspace: {
+          ...context.workspace,
+          tone_of_voice: (context.workspace.tone_of_voice || '') + '. Write a longer, more thoughtful comment (3-4 sentences).'
+        }
+      }),
+      // Variation 2: Shorter punchy comment
+      generateLinkedInComment({
+        ...context,
+        workspace: {
+          ...context.workspace,
+          tone_of_voice: (context.workspace.tone_of_voice || '') + '. Write a short, punchy comment (1-2 sentences).'
+        }
+      }),
+      // Variation 3: Thought-provoking question
+      generateLinkedInComment({
+        ...context,
+        workspace: {
+          ...context.workspace,
+          tone_of_voice: (context.workspace.tone_of_voice || '') + '. End with a thought-provoking question to spark discussion.'
+        }
+      })
+    ]);
+
+    // Filter out any skipped variations
+    const validVariations = variations.filter(v => v.confidence_score > 0.0);
+
+    if (validVariations.length === 0) {
+      return NextResponse.json({
+        skipped: true,
+        reason: 'All variations were skipped by AI'
+      }, { headers: corsHeaders });
+    }
+
+    console.log(`✅ Generated ${validVariations.length} variations successfully`);
+
+    // Return all variations
     return NextResponse.json({
       success: true,
-      comment_text: generatedComment.comment_text,
-      confidence_score: generatedComment.confidence_score,
-      reasoning: generatedComment.reasoning,
-      quality_indicators: generatedComment.quality_indicators,
-      should_auto_post: false, // Always require human review for extension
-      generation_metadata: generatedComment.generation_metadata
+      variations: validVariations.map((v, index) => ({
+        id: index + 1,
+        type: index === 0 ? 'long' : index === 1 ? 'short' : 'question',
+        comment_text: v.comment_text,
+        confidence_score: v.confidence_score,
+        reasoning: v.reasoning,
+        quality_indicators: v.quality_indicators
+      })),
+      generation_metadata: variations[0].generation_metadata,
+      should_auto_post: false
     }, { headers: corsHeaders });
 
   } catch (error) {

@@ -52,6 +52,24 @@ function extractPostData(postElement) {
     const commentsText = commentsElement?.innerText?.trim() || '0 comments';
     const commentsCount = parseInt(commentsText.match(/\d+/)?.[0] || '0') || 0;
 
+    // Extract image if present
+    let imageDescription = null;
+    const imageElement = postElement.querySelector('img[src*="media"]');
+    if (imageElement && imageElement.alt) {
+      imageDescription = imageElement.alt;
+    }
+
+    // Extract video captions if present
+    let videoCaptions = null;
+    const videoElement = postElement.querySelector('video');
+    if (videoElement) {
+      // Try to find caption/transcript text
+      const captionElement = postElement.querySelector('.video-caption, [class*="caption"], [class*="transcript"]');
+      if (captionElement) {
+        videoCaptions = captionElement.innerText?.trim();
+      }
+    }
+
     return {
       id: postId,
       text: postText,
@@ -64,6 +82,8 @@ function extractPostData(postElement) {
         comments: commentsCount,
       },
       url: postUrl,
+      imageDescription,
+      videoCaptions,
     };
   } catch (error) {
     console.error('Error extracting post data:', error);
@@ -135,6 +155,9 @@ async function generateComment(postElement, postData, button) {
         author_name: postData.author.name,
         author_title: postData.author.title,
         engagement: postData.engagement,
+        image_description: postData.imageDescription,
+        video_captions: postData.videoCaptions,
+        generate_variations: true,
       }),
     });
 
