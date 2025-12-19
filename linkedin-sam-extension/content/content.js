@@ -283,9 +283,23 @@ function processPost(postElement) {
   postElement.dataset.samProcessed = uniqueId;
   processedPosts.add(uniqueId);
 
-  // Find the action bar (like, comment, share buttons)
-  const actionBar = postElement.querySelector('.social-details-social-activity');
-  if (!actionBar) return;
+  // Find the action bar (like, comment, share buttons) - try multiple selectors
+  let actionBar = postElement.querySelector('.social-details-social-activity');
+
+  if (!actionBar) {
+    // Try alternative selectors
+    actionBar = postElement.querySelector('.feed-shared-social-action-bar');
+  }
+
+  if (!actionBar) {
+    actionBar = postElement.querySelector('[class*="social-actions"]');
+  }
+
+  if (!actionBar) {
+    console.log('SAM Extension: Could not find action bar, trying to insert at bottom of post');
+    // As a fallback, insert at the bottom of the post
+    actionBar = postElement;
+  }
 
   // Create and insert SAM button
   const samButton = createSamButton(postElement, postData);
@@ -295,8 +309,14 @@ function processPost(postElement) {
   buttonContainer.className = 'sam-button-container';
   buttonContainer.appendChild(samButton);
 
-  // Insert after the action bar
-  actionBar.parentElement.insertBefore(buttonContainer, actionBar.nextSibling);
+  // Insert button
+  if (actionBar === postElement) {
+    // Append to end of post
+    actionBar.appendChild(buttonContainer);
+  } else {
+    // Insert after the action bar
+    actionBar.parentElement.insertBefore(buttonContainer, actionBar.nextSibling);
+  }
 
   console.log('✅ Added SAM button to post:', postData.author.name);
 }
