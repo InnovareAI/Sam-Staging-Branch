@@ -889,19 +889,53 @@ async function sendHITLEmail(
   }
 
   try {
-    // Get workspace owner's email and workspace name if not provided
+    // Get workspace info and owner
+    const { data: workspace } = await supabase
+      .from('workspaces')
+      .select('id, name, owner_id')
+      .eq('id', draft.workspace_id)
+      .single();
+
+    if (!workspace?.owner_id) {
+      console.error('No workspace owner found for workspace:', draft.workspace_id);
+      return;
+    }
+
+    // Get owner email
+    const { data: owner } = await supabase
+      .from('users')
+      .select('id, email, first_name, last_name')
+      .eq('id', workspace.owner_id)
+      .single();
+
+    const ownerEmail = owner?.email;
+    const clientName = workspaceName || workspace.name;
+
+    if (!ownerEmail) {
+      console.error('No owner email found for workspace owner:', workspace.owner_id);
+      return;
+    }
+
+    // Get additional workspace members who should receive notifications
     const { data: members } = await supabase
       .from('workspace_members')
-      .select('user_id, users(email), workspaces(name)')
+      .select('user_id, role')
       .eq('workspace_id', draft.workspace_id)
-      .eq('role', 'owner')
-      .limit(1);
+      .eq('status', 'active')
+      .neq('user_id', workspace.owner_id); // Don't duplicate owner
 
-    const ownerEmail = members?.[0]?.users?.email;
-    const clientName = workspaceName || members?.[0]?.workspaces?.name;
-    if (!ownerEmail) {
-      console.error('No owner email found for workspace');
-      return;
+    // Get emails for additional members
+    const additionalRecipients: string[] = [];
+    if (members && members.length > 0) {
+      const memberIds = members.map(m => m.user_id);
+      const { data: memberUsers } = await supabase
+        .from('users')
+        .select('email')
+        .in('id', memberIds);
+
+      if (memberUsers) {
+        additionalRecipients.push(...memberUsers.map(u => u.email).filter(Boolean));
+      }
     }
 
     const approveUrl = `${APP_URL}/api/reply-agent/approve?token=${draft.approval_token}&action=approve`;
@@ -971,6 +1005,24 @@ async function sendHITLEmail(
 </html>
 `;
 
+    // Send email to owner and additional recipients
+    const emailPayload: any = {
+      From: 'sam@innovareai.com',
+      To: ownerEmail,
+      Subject: `📬 ${draft.prospect_name || 'Prospect'} replied - Review SAM's draft`,
+      HtmlBody: emailBody,
+      TextBody: `New reply from ${draft.prospect_name}:\n\n"${inboundText}"\n\nSAM's draft reply:\n\n"${draft.draft_text}"\n\nApprove: ${approveUrl}\nReject: ${rejectUrl}\n\nEdit Reply: ${editUrl}\nAdd Instructions: ${instructionsUrl}`,
+      MessageStream: 'outbound'
+    };
+
+    // Add additional recipients via Cc if any exist
+    if (additionalRecipients.length > 0) {
+      emailPayload.Cc = additionalRecipients.join(',');
+      console.log(`Sending notification to owner (${ownerEmail}) and ${additionalRecipients.length} additional recipients: ${additionalRecipients.join(', ')}`);
+    } else {
+      console.log(`Sending notification to owner only: ${ownerEmail}`);
+    }
+
     const response = await fetch('https://api.postmarkapp.com/email', {
       method: 'POST',
       headers: {
@@ -978,14 +1030,7 @@ async function sendHITLEmail(
         'Content-Type': 'application/json',
         'X-Postmark-Server-Token': POSTMARK_API_KEY
       },
-      body: JSON.stringify({
-        From: 'sam@innovareai.com',
-        To: ownerEmail,
-        Subject: `📬 ${draft.prospect_name || 'Prospect'} replied - Review SAM's draft`,
-        HtmlBody: emailBody,
-        TextBody: `New reply from ${draft.prospect_name}:\n\n"${inboundText}"\n\nSAM's draft reply:\n\n"${draft.draft_text}"\n\nApprove: ${approveUrl}\nReject: ${rejectUrl}\n\nEdit Reply: ${editUrl}\nAdd Instructions: ${instructionsUrl}`,
-        MessageStream: 'outbound'
-      })
+      body: JSON.stringify(emailPayload)
     });
 
     if (!response.ok) {
