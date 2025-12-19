@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
+import { extractLinkedInSlug } from '@/lib/linkedin-utils';
 
 // Helper to normalize LinkedIn URL to hash (vanity name only)
 function normalizeLinkedInUrl(url: string | null | undefined): string | null {
@@ -723,11 +724,9 @@ export async function POST(req: NextRequest) {
 
             await Promise.all(prospectsNeedingResolution.map(async (prospect) => {
               try {
-                // Extract vanity from URL
-                const vanityMatch = prospect.linkedin_url?.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
-                if (!vanityMatch) return;
-
-                const vanity = vanityMatch[1];
+                // FIX (Dec 19): Use centralized slug extraction for consistency
+                const vanity = extractLinkedInSlug(prospect.linkedin_url);
+                if (!vanity) return;
                 const response = await fetch(
                   `https://${unipileDsn}/api/v1/users/${vanity}?account_id=${unipileAccountId}`,
                   { headers: { 'X-API-KEY': unipileApiKey, 'Accept': 'application/json' } }
