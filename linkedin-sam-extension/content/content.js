@@ -114,13 +114,16 @@ async function generateComment(postElement, postData, button) {
       throw new Error('SAM not configured. Please set API URL and Workspace ID in extension settings.');
     }
 
+    // Clean the API key to remove any invisible characters or whitespace
+    const cleanApiKey = (apiKey || '').trim().replace(/[\u200B-\u200D\uFEFF]/g, '');
+
     // Create a simplified API endpoint for the extension
     // We'll call a new endpoint that accepts post text directly
     const response = await fetch(`${samApiUrl}/api/linkedin-commenting/generate-from-text`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey || ''}`,
+        'Authorization': `Bearer ${cleanApiKey}`,
       },
       body: JSON.stringify({
         workspace_id: workspaceId,

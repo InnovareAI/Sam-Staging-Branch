@@ -82,10 +82,11 @@ async function saveConfiguration() {
   const saveBtn = document.getElementById('saveBtn');
   const messageEl = document.getElementById('saveMessage');
 
-  // Get values
+  // Get values and clean them thoroughly
   const samApiUrl = document.getElementById('samApiUrl').value.trim();
   const workspaceId = document.getElementById('workspaceId').value.trim();
-  const apiKey = document.getElementById('apiKey').value.trim();
+  // Clean API key of any invisible characters, zero-width spaces, etc.
+  const apiKey = document.getElementById('apiKey').value.trim().replace(/[\u200B-\u200D\uFEFF]/g, '');
 
   // Validate
   if (!samApiUrl) {
