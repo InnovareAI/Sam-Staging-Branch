@@ -267,9 +267,16 @@ function processPost(postElement) {
   const postId = postElement.dataset.samProcessed;
   if (postId) return;
 
+  console.log('SAM Extension: Processing post element...');
+
   // Extract post data
   const postData = extractPostData(postElement);
-  if (!postData || !postData.text) return;
+  console.log('SAM Extension: Extracted post data:', postData);
+
+  if (!postData || !postData.text) {
+    console.log('SAM Extension: No post text found, skipping');
+    return;
+  }
 
   // Mark as processed
   const uniqueId = `post-${postData.id}`;
@@ -300,9 +307,18 @@ function processPost(postElement) {
 function scanForPosts() {
   const posts = document.querySelectorAll('.feed-shared-update-v2');
 
+  console.log(`SAM Extension: Scanning for posts, found ${posts.length} posts`);
+
   posts.forEach((post) => {
     processPost(post);
   });
+
+  // If no posts found, try alternative selectors
+  if (posts.length === 0) {
+    console.log('SAM Extension: No posts found with .feed-shared-update-v2, trying alternatives...');
+    const altPosts = document.querySelectorAll('[data-id*="urn:li:activity"]');
+    console.log(`SAM Extension: Found ${altPosts.length} posts with alternative selector`);
+  }
 }
 
 // Initial scan
