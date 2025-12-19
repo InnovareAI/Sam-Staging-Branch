@@ -137,13 +137,22 @@ export async function POST(req: NextRequest) {
         const sentSlugs = new Set<string>();
         const contactedUrls = new Set<string>();
 
-        // 3a. Check if linkedin_user_id was ALREADY SENT in ANY campaign's send_queue (batched)
+        // 3a. Check if linkedin_user_id was ALREADY SENT in THIS WORKSPACE's campaigns (batched)
         // FIX (Dec 19): Use slugs, not URLs - send_queue.linkedin_user_id stores slugs/provider_ids
+        // CRITICAL FIX (Dec 19): Filter by workspace to prevent cross-workspace deduplication
+        // Get campaigns in this workspace first
+        const { data: workspaceCampaigns } = await supabase
+          .from('campaigns')
+          .select('id')
+          .eq('workspace_id', campaign.workspace_id);
+        const workspaceCampaignIds = (workspaceCampaigns || []).map(c => c.id);
+
         for (let i = 0; i < linkedinSlugs.length; i += BATCH_SIZE) {
           const batch = linkedinSlugs.slice(i, i + BATCH_SIZE);
           const { data: previouslySent, error: sentError } = await supabase
             .from('send_queue')
             .select('linkedin_user_id')
+            .in('campaign_id', workspaceCampaignIds) // CRITICAL: Only check within same workspace
             .in('status', ['sent', 'pending', 'failed', 'skipped'])
             .in('linkedin_user_id', batch);
 
@@ -153,7 +162,8 @@ export async function POST(req: NextRequest) {
           (previouslySent || []).forEach(s => sentSlugs.add(s.linkedin_user_id?.toLowerCase()));
         }
 
-        // 3b. Check if linkedin_url exists in ANY campaign_prospects with contacted status (batched)
+        // 3b. Check if linkedin_url exists in THIS WORKSPACE's campaign_prospects with contacted status (batched)
+        // CRITICAL FIX (Dec 19): Filter by workspace_id to prevent cross-workspace deduplication
         const contactedStatuses = [
           'connection_request_sent',
           'already_invited',
@@ -168,6 +178,7 @@ export async function POST(req: NextRequest) {
           const { data: previouslyContacted, error: contactedError } = await supabase
             .from('campaign_prospects')
             .select('linkedin_url')
+            .eq('workspace_id', campaign.workspace_id) // CRITICAL: Only check within same workspace
             .in('status', contactedStatuses)
             .in('linkedin_url', batch);
 
