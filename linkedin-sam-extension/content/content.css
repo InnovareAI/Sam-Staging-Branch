@@ -11,12 +11,19 @@
   border-left: 4px solid #ec4899;
 }
 
-/* SAM Generate Button */
+/* Button Grid */
+.sam-buttons-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* SAM Comment Button */
 .sam-comment-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 10px 16px;
   background: white;
   border: none;
   border-radius: 6px;
@@ -26,7 +33,24 @@
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 100%;
+  justify-content: center;
+}
+
+/* SAM Repost Button */
+.sam-repost-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #8b5cf6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   justify-content: center;
 }
 
@@ -36,16 +60,25 @@
   box-shadow: 0 4px 8px rgba(236, 72, 153, 0.2);
 }
 
-.sam-comment-btn:active:not(:disabled) {
+.sam-repost-btn:hover:not(:disabled) {
+  background: #f5f3ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(139, 92, 246, 0.2);
+}
+
+.sam-comment-btn:active:not(:disabled),
+.sam-repost-btn:active:not(:disabled) {
   transform: translateY(0);
 }
 
-.sam-comment-btn:disabled {
+.sam-comment-btn:disabled,
+.sam-repost-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.sam-comment-btn svg {
+.sam-comment-btn svg,
+.sam-repost-btn svg {
   flex-shrink: 0;
 }
 
@@ -235,4 +268,24 @@
   line-height: 1.6;
   color: #374151;
   white-space: pre-wrap;
+}
+
+/* Repost Preview */
+.sam-repost-preview {
+  padding: 16px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  border-radius: 0 0 12px 12px;
+}
+
+.sam-repost-preview small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.sam-repost-preview p {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  color: #9ca3af;
+  font-style: italic;
 }

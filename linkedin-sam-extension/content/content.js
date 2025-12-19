@@ -92,23 +92,45 @@ function extractPostData(postElement) {
 }
 
 /**
- * Create SAM button for a post
+ * Create SAM buttons for a post
  */
-function createSamButton(postElement, postData) {
-  const button = document.createElement('button');
-  button.className = 'sam-comment-btn';
-  button.innerHTML = `
+function createSamButtons(postElement, postData) {
+  const container = document.createElement('div');
+  container.className = 'sam-buttons-grid';
+
+  // Comment button
+  const commentBtn = document.createElement('button');
+  commentBtn.className = 'sam-comment-btn';
+  commentBtn.innerHTML = `
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
     </svg>
-    <span>Generate with SAM</span>
+    <span>Comment</span>
   `;
-
-  button.onclick = async () => {
-    await generateComment(postElement, postData, button);
+  commentBtn.onclick = async () => {
+    await generateComment(postElement, postData, commentBtn);
   };
 
-  return button;
+  // Repost button
+  const repostBtn = document.createElement('button');
+  repostBtn.className = 'sam-repost-btn';
+  repostBtn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path d="M17 1l4 4-4 4"></path>
+      <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+      <path d="M7 23l-4-4 4-4"></path>
+      <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+    </svg>
+    <span>Repost</span>
+  `;
+  repostBtn.onclick = async () => {
+    await generateRepost(postElement, postData, repostBtn);
+  };
+
+  container.appendChild(commentBtn);
+  container.appendChild(repostBtn);
+
+  return container;
 }
 
 /**
@@ -291,6 +313,168 @@ async function generateComment(postElement, postData, button) {
 }
 
 /**
+ * Generate repost blurb using SAM API
+ */
+async function generateRepost(postElement, postData, button) {
+  try {
+    button.disabled = true;
+    button.innerHTML = `
+      <span class="sam-spinner"></span>
+      <span>Generating...</span>
+    `;
+
+    const { samApiUrl, workspaceId, apiKey } = await chrome.storage.sync.get([
+      'samApiUrl',
+      'workspaceId',
+      'apiKey',
+    ]);
+
+    if (!samApiUrl || !workspaceId) {
+      throw new Error('SAM not configured.');
+    }
+
+    const cleanApiKey = (apiKey || '').trim().replace(/[\u200B-\u200D\uFEFF]/g, '');
+
+    console.log('SAM Extension: Generating repost blurb');
+
+    const response = await fetch(`${samApiUrl}/api/linkedin-commenting/generate-repost`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cleanApiKey}`,
+      },
+      body: JSON.stringify({
+        workspace_id: workspaceId,
+        post_text: postData.text,
+        author_name: postData.author.name,
+        author_title: postData.author.title,
+        image_description: postData.imageDescription,
+        video_captions: postData.videoCaptions,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to generate repost');
+    }
+
+    const result = await response.json();
+
+    if (result.skipped) {
+      showNotification(postElement, '⏭️ SAM decided to skip reposting this', 'warning');
+      button.disabled = false;
+      button.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M17 1l4 4-4 4"></path>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+          <path d="M7 23l-4-4 4-4"></path>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+        </svg>
+        <span>Repost</span>
+      `;
+      return;
+    }
+
+    // Show variations in modal
+    if (result.variations && result.variations.length > 0) {
+      showRepostSelector(postElement, postData, result.variations, button);
+    }
+
+  } catch (error) {
+    console.error('SAM Extension: Error generating repost:', error);
+    showNotification(postElement, `❌ ${error.message || 'Failed to generate'}`, 'error');
+
+    button.disabled = false;
+    button.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M17 1l4 4-4 4"></path>
+        <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+        <path d="M7 23l-4-4 4-4"></path>
+        <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+      </svg>
+      <span>Repost</span>
+    `;
+  }
+}
+
+/**
+ * Show repost variation selector
+ */
+function showRepostSelector(postElement, postData, variations, button) {
+  const overlay = document.createElement('div');
+  overlay.className = 'sam-variation-modal-overlay';
+
+  const modal = document.createElement('div');
+  modal.className = 'sam-variation-modal';
+
+  modal.innerHTML = `
+    <div class="sam-variation-header">
+      <h3>Choose Your Repost Blurb</h3>
+      <button class="sam-close-modal">✕</button>
+    </div>
+    <div class="sam-variation-options">
+      ${variations.map((v, i) => `
+        <div class="sam-variation-option" data-index="${i}">
+          <div class="sam-variation-label">
+            <span class="sam-variation-type">${v.type === 'long' ? '📝 Detailed' : v.type === 'short' ? '⚡ Quick' : '❓ Question'}</span>
+            <span class="sam-variation-confidence">${Math.round(v.confidence_score * 100)}%</span>
+          </div>
+          <div class="sam-variation-text">${v.comment_text}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="sam-repost-preview">
+      <small>Original post by ${postData.author.name}</small>
+      <p>${postData.text.substring(0, 200)}${postData.text.length > 200 ? '...' : ''}</p>
+    </div>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  const closeModal = () => {
+    overlay.remove();
+    button.disabled = false;
+    button.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M17 1l4 4-4 4"></path>
+        <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+        <path d="M7 23l-4-4 4-4"></path>
+        <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+      </svg>
+      <span>Repost</span>
+    `;
+  };
+
+  modal.querySelector('.sam-close-modal').addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
+
+  modal.querySelectorAll('.sam-variation-option').forEach((option) => {
+    option.addEventListener('click', () => {
+      const index = parseInt(option.dataset.index);
+      const selected = variations[index];
+      copyRepostToClipboard(selected.comment_text, postData);
+      showNotification(
+        postElement,
+        `✅ Repost blurb copied! Open LinkedIn repost dialog and paste (Cmd/Ctrl+V)`,
+        'success'
+      );
+      closeModal();
+    });
+  });
+}
+
+/**
+ * Copy repost content to clipboard
+ */
+function copyRepostToClipboard(blurb, postData) {
+  const repostText = `${blurb}\n\n[Original post by ${postData.author.name} would appear here when you repost]`;
+  navigator.clipboard.writeText(blurb);
+}
+
+/**
  * Insert generated comment into LinkedIn's comment input
  */
 function insertCommentIntoLinkedIn(postElement, commentText) {
@@ -403,13 +587,13 @@ function processPost(postElement) {
     actionBar = postElement;
   }
 
-  // Create and insert SAM button
-  const samButton = createSamButton(postElement, postData);
+  // Create and insert SAM buttons
+  const samButtons = createSamButtons(postElement, postData);
 
   // Insert button container
   const buttonContainer = document.createElement('div');
   buttonContainer.className = 'sam-button-container';
-  buttonContainer.appendChild(samButton);
+  buttonContainer.appendChild(samButtons);
 
   // Insert button
   if (actionBar === postElement) {
