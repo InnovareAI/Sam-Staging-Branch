@@ -4,19 +4,7 @@ import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/app/lib/supabase'
 import { MESSAGE_HARD_LIMITS } from '@/lib/anti-detection/message-variance'
 import { personalizeMessage } from '@/lib/personalization'
-
-/**
- * Extract LinkedIn slug from URL or return as-is if already a slug
- * e.g., "https://www.linkedin.com/in/john-doe" -> "john-doe"
- */
-function extractLinkedInSlug(urlOrSlug: string): string {
-  if (!urlOrSlug) return '';
-  // If it's already just a slug (no URL parts), return it
-  if (!urlOrSlug.includes('/') && !urlOrSlug.includes('http')) return urlOrSlug;
-  // Extract slug from URL like https://www.linkedin.com/in/john-doe/
-  const match = urlOrSlug.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
-  return match ? match[1] : urlOrSlug;
-}
+import { resolveToProviderId, extractLinkedInSlug } from '@/lib/resolve-linkedin-id'
 
 /**
  * POST /api/prospect-approval/bulk-approve
@@ -317,7 +305,7 @@ export async function POST(request: NextRequest) {
                 // Use MIN_CR_GAP_MINUTES from anti-detection config (20 min minimum)
                 const gapMinutes = MESSAGE_HARD_LIMITS.MIN_CR_GAP_MINUTES
 
-                const queueRecords = prospectsToQueue.map((p, idx) => {
+                const queueRecords = await Promise.all(prospectsToQueue.map(async (p, idx) => {
                   // Use universal personalization for message
                   const message = personalizeMessage(connectionMessage, {
                     first_name: p.first_name,
@@ -328,7 +316,17 @@ export async function POST(request: NextRequest) {
                   const scheduledFor = new Date(currentTime.getTime() + idx * gapMinutes * 60 * 1000) // Using anti-detection gap
 
                   // Extract slug from URL for linkedin_user_id (not full URL)
-                  const linkedinId = extractLinkedInSlug(p.linkedin_user_id || p.linkedin_url);
+                  let linkedinId = extractLinkedInSlug(p.linkedin_user_id || p.linkedin_url);
+
+                  // CRITICAL FIX (Dec 19): Resolve vanity to provider_id before insertion
+                  if (!linkedinId.startsWith('ACo') && !linkedinId.startsWith('ACw')) {
+                    try {
+                      linkedinId = await resolveToProviderId(linkedinId, campaign.linkedin_account_id);
+                    } catch (err) {
+                      console.warn(`⚠️ Could not resolve provider_id for ${p.first_name}: ${err}`);
+                      // Keep the vanity - will be resolved during queue processing
+                    }
+                  }
 
                   return {
                     campaign_id: sessionData.campaign_id,
@@ -339,7 +337,7 @@ export async function POST(request: NextRequest) {
                     status: 'pending',
                     message_type: 'connection_request'
                   }
-                })
+                }))
 
                 // CRITICAL FIX: Insert queue items one by one to avoid losing data on constraint violations
                 let queueFailures: string[] = [];

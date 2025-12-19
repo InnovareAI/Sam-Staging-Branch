@@ -9,6 +9,7 @@ import {
   type ScheduleSettings
 } from '@/lib/scheduling-config';
 import { extractLinkedInSlug } from '@/lib/linkedin-utils';
+import { resolveToProviderId } from '@/lib/resolve-linkedin-id';
 
 /**
  * POST /api/campaigns/direct/send-messages-queued
@@ -527,7 +528,17 @@ export async function POST(req: NextRequest) {
             : `direct_message_${messageIndex + 1}`;
 
           // CRITICAL FIX (Dec 18): Extract slug from URL to prevent "User ID does not match format" errors
-          const cleanProviderId = extractLinkedInSlug(providerId) || providerId;
+          let cleanProviderId = extractLinkedInSlug(providerId) || providerId;
+
+          // CRITICAL FIX (Dec 19): Resolve vanity to provider_id before insertion
+          if (!cleanProviderId.startsWith('ACo') && !cleanProviderId.startsWith('ACw')) {
+            try {
+              cleanProviderId = await resolveToProviderId(cleanProviderId, unipileAccountId);
+            } catch (err) {
+              console.warn(`⚠️ Could not resolve provider_id for ${firstName}: ${err}`);
+              // Keep the vanity - will be resolved during queue processing
+            }
+          }
 
           queueRecords.push({
             campaign_id: campaignId,

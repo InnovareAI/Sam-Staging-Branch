@@ -5,6 +5,7 @@ import { airtableService } from '@/lib/airtable';
 import { getMessageVarianceContext } from '@/lib/anti-detection/message-variance';
 import { normalizeCompanyName } from '@/lib/prospect-normalization';
 import { extractLinkedInSlug, getBestLinkedInIdentifier } from '@/lib/linkedin-utils';
+import { resolveToProviderId } from '@/lib/resolve-linkedin-id';
 
 /**
  * FAST Queue-Based Campaign Execution
@@ -379,7 +380,17 @@ export async function POST(req: NextRequest) {
       }
 
       // CRITICAL FIX (Dec 18): Extract slug from URL to prevent "User ID does not match format" errors
-      const cleanLinkedInId = getBestLinkedInIdentifier(prospect) || extractLinkedInSlug(prospect.linkedin_url);
+      let cleanLinkedInId = getBestLinkedInIdentifier(prospect) || extractLinkedInSlug(prospect.linkedin_url);
+
+      // CRITICAL FIX (Dec 19): Resolve vanity to provider_id before insertion
+      if (!cleanLinkedInId.startsWith('ACo') && !cleanLinkedInId.startsWith('ACw')) {
+        try {
+          cleanLinkedInId = await resolveToProviderId(cleanLinkedInId, linkedinAccount.unipile_account_id);
+        } catch (err) {
+          console.warn(`⚠️ Could not resolve provider_id for ${firstName}: ${err}`);
+          // Keep the vanity - will be resolved during queue processing
+        }
+      }
 
       queueRecords.push({
         campaign_id: campaignId,

@@ -1010,6 +1010,159 @@ This fix ensures proper multi-tenant data isolation:
 
 ---
 
+## 24. Silent Retry for Rate Limits and Network Failures (Dec 19)
+
+### Problem
+
+The QA monitor was being flooded with false alerts from two types of expected, temporary failures:
+
+1. **Rate Limits (429)** - LinkedIn/Unipile API throttling (expected behavior, not an error)
+2. **Network Failures** - "fetch failed" errors from transient network issues or API outages
+
+**User Requirement:** Rate limits are NOT errors - they're expected behavior. The system should silently retry without alerting.
+
+### Root Cause
+
+The queue processor was marking these temporary failures as `status='failed'` with an `error_message`, which triggered QA monitor alerts. Both monitors (`qa-monitor` and `realtime-error-monitor`) reported every item with an error_message as a problem.
+
+**Unipile API Outage (Dec 19):**
+- API endpoint `api6.unipile.com:13670` was down
+- Caused "fetch failed" errors across all LinkedIn campaigns
+- These network errors were incorrectly reported as campaign failures
+
+### Solution: Silent Retry Convention
+
+Introduced a new convention to distinguish temporary failures from permanent errors:
+
+| Status | Error Message | Meaning | Action |
+|--------|---------------|---------|--------|
+| `pending` | `NULL` | Waiting for retry (NOT an error) | Silent retry - no alert |
+| `failed` | `"text"` | Actual permanent failure | Report to QA monitor |
+
+### Changes Made
+
+**1. `app/api/cron/process-send-queue/route.ts` - Network Failures**
+
+```typescript
+// Network failures (fetch failed, timeouts, DNS errors)
+if (isNetworkError) {
+  const retryTime = new Date(Date.now() + 30 * 60 * 1000); // +30 minutes
+  await supabase
+    .from('send_queue')
+    .update({
+      status: 'pending',
+      scheduled_for: retryTime.toISOString(),
+      error_message: null  // ✅ NULL = silent retry
+    })
+    .eq('id', item.id);
+
+  console.log(`🔄 Network error for ${item.linkedin_user_id} - retry in 30 min (silent)`);
+  continue; // Skip to next item, no notification
+}
+```
+
+**2. `app/api/cron/process-send-queue/route.ts` - Rate Limits**
+
+```typescript
+// Rate limit detection (429, "too many requests", etc.)
+if (isRateLimited) {
+  const retryTime = new Date(Date.now() + 24 * 60 * 60 * 1000); // +24 hours
+
+  // Reschedule ALL pending items for this account
+  await supabase
+    .from('send_queue')
+    .update({
+      status: 'pending',
+      scheduled_for: retryTime.toISOString(),
+      error_message: null  // ✅ NULL = silent retry
+    })
+    .eq('linkedin_account_id', item.linkedin_account_id)
+    .in('status', ['pending', 'processing']);
+
+  console.log(`⏸️ Rate limit on account ${accountName} - ALL pending rescheduled for 24h (silent)`);
+  break; // Stop processing this account entirely
+}
+```
+
+**3. `app/api/agents/qa-monitor/route.ts` - Skip Silent Retries**
+
+```typescript
+// Check for recent errors (skip items with NULL error_message)
+const { data: recentErrors } = await supabase
+  .from('send_queue')
+  .select('*')
+  .eq('campaign_id', campaign.id)
+  .in('status', ['failed', 'pending'])
+  .not('error_message', 'is', null)  // ✅ Skip silent retries
+  .gte('updated_at', oneDayAgo.toISOString());
+```
+
+**4. `app/api/agents/realtime-error-monitor/route.ts` - Skip Silent Retries**
+
+```typescript
+// Check for errors in last 15 minutes (skip NULL error_message)
+const { data: recentErrors } = await supabase
+  .from('send_queue')
+  .select('*')
+  .in('status', ['failed', 'pending'])
+  .not('error_message', 'is', null)  // ✅ Skip silent retries
+  .gte('updated_at', fifteenMinsAgo.toISOString());
+```
+
+### Retry Schedules
+
+| Failure Type | Retry Delay | Scope |
+|--------------|-------------|-------|
+| Network error (fetch failed, timeout) | 30 minutes | Single item only |
+| Rate limit (429, too many requests) | 24 hours | ALL pending items for that account |
+
+### Why Different Scopes?
+
+- **Network errors:** Isolated to one prospect - only retry that specific item
+- **Rate limits:** Account-wide restriction - reschedule ALL pending items for that LinkedIn account to prevent cascading rate limits
+
+### Detection Patterns
+
+**Rate Limit Patterns:**
+```typescript
+const RATE_LIMIT_PATTERNS = [
+  'rate limit', 'too many requests', '429',
+  'temporarily restricted', 'slow down',
+  'limit reached', 'quota exceeded'
+];
+```
+
+**Network Error Patterns:**
+```typescript
+const NETWORK_ERROR_PATTERNS = [
+  'fetch failed', 'network error', 'timeout',
+  'ECONNREFUSED', 'ETIMEDOUT', 'DNS',
+  'unable to connect'
+];
+```
+
+### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `app/api/cron/process-send-queue/route.ts` | Network error handling | Set `error_message=NULL` for 30min retry |
+| `app/api/cron/process-send-queue/route.ts` | Rate limit handling | Set `error_message=NULL`, reschedule ALL pending for account |
+| `app/api/agents/qa-monitor/route.ts` | Error query | Added `.not('error_message', 'is', null)` |
+| `app/api/agents/realtime-error-monitor/route.ts` | Error query | Added `.not('error_message', 'is', null)` |
+
+### Commit Reference
+
+**Commit:** `DEC19_SILENT_RETRY_FIX`
+
+### Result
+
+- QA monitor no longer reports rate limits as errors
+- Network outages don't trigger false alerts
+- Temporary failures silently retry on their schedule
+- Only actual permanent failures (invalid prospect data, LinkedIn restrictions, etc.) are reported
+
+---
+
 ## Next Steps
 
 ### Immediate
@@ -1031,4 +1184,4 @@ This fix ensures proper multi-tenant data isolation:
 
 ---
 
-*Last Updated: December 19, 2025 10:00 UTC*
+*Last Updated: December 19, 2025 16:00 UTC*
