@@ -1163,6 +1163,90 @@ const NETWORK_ERROR_PATTERNS = [
 
 ---
 
+## 25. Vanity Slug Resolution at Queue Creation (Dec 19)
+
+### Problem
+
+Queue items were being created with LinkedIn vanity slugs (e.g., `john-doe`) instead of provider IDs (e.g., `ACoAAABEykQB...`), causing Unipile API to reject requests with **"User ID does not match provider's expected format"** errors.
+
+**Evidence:**
+- 21+ format errors appearing hourly in send_queue
+- Error pattern: `"Error: User ID does not match format expected by provider. Please verify the user ID for provider linkedin"`
+
+### Root Cause
+
+Queue insertion code at 3 critical entry points was copying `linkedin_user_id` directly from `campaign_prospects` without resolving vanity slugs to provider IDs first. If the prospect data contained a vanity slug, it would be inserted into send_queue as-is, failing when the queue processor attempted to send.
+
+### Solution
+
+Created centralized resolution utility and added provider ID resolution BEFORE insertion at all queue creation points.
+
+**New File: `lib/resolve-linkedin-id.ts`**
+
+```typescript
+/**
+ * Resolve LinkedIn vanity slug or provider_id to a valid provider_id
+ * Returns as-is if already a provider_id (starts with ACo/ACw)
+ * Calls Unipile API to resolve vanity slug → provider_id
+ */
+export async function resolveToProviderId(
+  linkedinId: string,
+  accountId: string
+): Promise<string>
+```
+
+**Resolution Logic:**
+1. Check if already in provider_id format (`ACo` or `ACw` prefix)
+2. If yes, return as-is
+3. If no (vanity slug), call Unipile API to resolve to provider_id
+4. Update both `send_queue` and `campaign_prospects` with resolved provider_id
+5. Fail-safe: Queue processor also resolves if creation-time resolution fails
+
+### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `app/api/prospect-approval/bulk-approve/route.ts` | Queue insert | Added `resolveToProviderId()` before insertion |
+| `app/api/campaigns/direct/send-connection-requests-fast/route.ts` | Queue insert | Added resolution + update campaign_prospects |
+| `app/api/campaigns/direct/send-messages-queued/route.ts` | Queue insert | Added resolution + update campaign_prospects |
+| `lib/resolve-linkedin-id.ts` | NEW | Provider ID resolution utility |
+
+**Example Fix (bulk-approve/route.ts):**
+
+```typescript
+// BEFORE (broken):
+linkedin_user_id: prospect.linkedin_user_id  // Could be vanity slug
+
+// AFTER (fixed):
+const resolvedId = await resolveToProviderId(
+  prospect.linkedin_user_id || extractLinkedInSlug(prospect.linkedin_url),
+  linkedinAccountId
+);
+linkedin_user_id: resolvedId  // Always provider_id
+```
+
+### Manual Cleanup
+
+Created and ran `temp/fix-failed-format-errors.mjs` to resolve 14 existing failed entries:
+- Read failed items with "does not match format" errors
+- Resolved vanity slugs to provider IDs via Unipile API
+- Updated send_queue with resolved provider IDs
+- Reset status from `failed` to `pending` for retry
+
+### Verification
+
+After deployment:
+- ✅ No new format errors appearing
+- ✅ Queue items created with provider IDs only
+- ✅ Vanity slugs automatically resolved during creation
+- ✅ Fail-safe resolution in queue processor (fallback)
+
+### Commit Reference
+
+**Commit:** `893d1b50` - "fix: resolve vanity slugs to provider IDs at queue creation"
+
+---
+
 ## Next Steps
 
 ### Immediate
@@ -1184,4 +1268,4 @@ const NETWORK_ERROR_PATTERNS = [
 
 ---
 
-*Last Updated: December 19, 2025 16:00 UTC*
+*Last Updated: December 19, 2025 20:00 UTC*

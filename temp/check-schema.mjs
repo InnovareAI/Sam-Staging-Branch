@@ -1,69 +1,75 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-console.log('\n🔍 CHECKING DATABASE SCHEMA\n');
+  'https://latxadqrvrrrcvkktrog.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY5OTk4NiwiZXhwIjoyMDY4Mjc1OTg2fQ.nCcqwHSwGtqatcMmb1uanGxsL4DbD8woPwezMAE41OQ'
+)
 
 // Check campaign_prospects columns
-console.log('📋 campaign_prospects columns:');
-const { data: prospects } = await supabase
+console.log('=== CHECKING ACTUAL SCHEMA ===\n')
+
+console.log('1. Campaign Prospects (first row):')
+const { data: prospect, error: prospectError } = await supabase
   .from('campaign_prospects')
   .select('*')
-  .limit(1);
+  .limit(1)
 
-if (prospects && prospects.length > 0) {
-  const columns = Object.keys(prospects[0]);
-  console.log(`  Found ${columns.length} columns:`);
-  for (const col of columns.sort()) {
-    console.log(`    - ${col}`);
-  }
-  const hasApprovalSessionId = columns.includes('approval_session_id');
-  console.log(`\n  ✅ Has approval_session_id column: ${hasApprovalSessionId}`);
+if (prospectError) {
+  console.error('Error:', prospectError)
+} else if (prospect && prospect.length > 0) {
+  console.log('Columns:', Object.keys(prospect[0]).join(', '))
 }
 
-// Check workspace_accounts columns
-console.log('\n📋 workspace_accounts columns:');
-const { data: accounts } = await supabase
-  .from('workspace_accounts')
+console.log('\n2. Send Queue (first row):')
+const { data: queue, error: queueError } = await supabase
+  .from('send_queue')
   .select('*')
-  .limit(1);
+  .limit(1)
 
-if (accounts && accounts.length > 0) {
-  const columns = Object.keys(accounts[0]);
-  console.log(`  Found ${columns.length} columns:`);
-  for (const col of columns.sort()) {
-    console.log(`    - ${col}`);
-  }
-} else {
-  console.log('  No records found in workspace_accounts');
+if (queueError) {
+  console.error('Error:', queueError)
+} else if (queue && queue.length > 0) {
+  console.log('Columns:', Object.keys(queue[0]).join(', '))
 }
 
-// Check if Irish Maguad's user actually exists
-console.log('\n📋 Irish Maguad user check:');
-const { data: user } = await supabase
-  .from('users')
-  .select('id, email')
-  .eq('id', '83935b70-8067-4b2f-9206-3cad5ce8746b')
-  .single();
+console.log('\n3. User Unipile Accounts (first row):')
+const { data: account, error: accountError } = await supabase
+  .from('user_unipile_accounts')
+  .select('*')
+  .limit(1)
 
-if (user) {
-  console.log(`  ✅ User exists: ${user.email}`);
-
-  // Check workspace memberships
-  const { data: memberships } = await supabase
-    .from('workspace_members')
-    .select('workspace_id, role, workspaces(name)')
-    .eq('user_id', user.id);
-
-  console.log(`  Workspace memberships: ${memberships?.length || 0}`);
-  for (const m of memberships || []) {
-    console.log(`    - ${m.workspaces?.name || 'Unknown'} (${m.role})`);
-  }
-} else {
-  console.log('  ❌ User not found in users table');
+if (accountError) {
+  console.error('Error:', accountError)
+} else if (account && account.length > 0) {
+  console.log('Columns:', Object.keys(account[0]).join(', '))
 }
 
-console.log('\n');
+console.log('\n4. Check for messaging_queue table:')
+const { data: msgQueue, error: msgError } = await supabase
+  .from('messaging_queue')
+  .select('*')
+  .limit(1)
+
+if (msgError) {
+  console.error('Error:', msgError)
+} else if (msgQueue) {
+  console.log('messaging_queue exists')
+  if (msgQueue.length > 0) {
+    console.log('Columns:', Object.keys(msgQueue[0]).join(', '))
+  }
+}
+
+console.log('\n5. Check for linkedin_replies table:')
+const { data: replies, error: repliesError } = await supabase
+  .from('linkedin_replies')
+  .select('*')
+  .limit(1)
+
+if (repliesError) {
+  console.error('Error:', repliesError)
+} else if (replies) {
+  console.log('linkedin_replies exists')
+  if (replies.length > 0) {
+    console.log('Columns:', Object.keys(replies[0]).join(', '))
+  }
+}
