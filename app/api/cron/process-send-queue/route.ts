@@ -1021,8 +1021,19 @@ export async function POST(req: NextRequest) {
       });
 
     } catch (sendError: unknown) {
-      const errorMessage = sendError instanceof Error ? sendError.message : 'Unknown error';
+      // CRITICAL FIX (Dec 19): Ensure error message is NEVER raw JSON
+      let errorMessage = sendError instanceof Error ? sendError.message : 'Unknown error';
+      // If it looks like JSON, try to extract the useful parts
+      if (errorMessage.startsWith('{') || errorMessage.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(errorMessage);
+          errorMessage = parsed.detail || parsed.message || parsed.title || errorMessage;
+        } catch {
+          // Keep as-is if parsing fails
+        }
+      }
       console.error(`❌ Failed to send CR:`, errorMessage);
+      console.error(`   🔍 DEBUG: Raw sendError:`, sendError);
 
       // Check for LinkedIn warning patterns (rate limits, restrictions)
       const warningCheck = isMessageWarning(errorMessage);
