@@ -57,24 +57,30 @@ function canSendNow(timezone = DEFAULT_TIMEZONE): boolean {
 }
 
 /**
+ * Extract LinkedIn vanity slug from URL or return as-is if already a slug/provider_id
+ * FIX (Dec 19): Centralized slug extraction to prevent URL storage
+ */
+function extractLinkedInSlug(urlOrSlug: string): string {
+  if (!urlOrSlug) return '';
+  // If it's already just a slug or provider_id, return it
+  if (!urlOrSlug.includes('/') && !urlOrSlug.includes('http')) return urlOrSlug;
+  // Extract slug from URL like https://www.linkedin.com/in/john-doe/
+  const match = urlOrSlug.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
+  return match ? match[1] : urlOrSlug;
+}
+
+/**
  * Resolve LinkedIn URL or vanity to provider_id
- * If already a provider_id (starts with ACo), return as-is
- * Otherwise, extract vanity from URL and lookup via Unipile
+ * FIX (Dec 19): Support both ACo and ACw formats, use centralized slug extraction
  */
 async function resolveToProviderId(linkedinUserIdOrUrl: string, accountId: string): Promise<string> {
-  // Already a provider_id (ACo format)
-  if (linkedinUserIdOrUrl.startsWith('ACo')) {
+  // Already a provider_id (ACo or ACw format - both are valid LinkedIn provider IDs)
+  if (linkedinUserIdOrUrl.startsWith('ACo') || linkedinUserIdOrUrl.startsWith('ACw')) {
     return linkedinUserIdOrUrl;
   }
 
-  // Extract vanity from URL
-  let vanity = linkedinUserIdOrUrl;
-  if (linkedinUserIdOrUrl.includes('linkedin.com')) {
-    const match = linkedinUserIdOrUrl.match(/linkedin\.com\/in\/([^\/\?#]+)/);
-    if (match) {
-      vanity = match[1];
-    }
-  }
+  // FIX (Dec 19): Use centralized slug extraction
+  const vanity = extractLinkedInSlug(linkedinUserIdOrUrl);
 
   console.log(`🔍 Resolving vanity "${vanity}" to provider_id...`);
 
@@ -91,7 +97,11 @@ async function resolveToProviderId(linkedinUserIdOrUrl: string, accountId: strin
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(error.title || error.message || `HTTP ${response.status}`);
+    // FIX (Dec 19): Include status code for better error handling
+    const errorMessage = error.detail || error.title || error.message || `HTTP ${response.status}`;
+    const err = new Error(errorMessage) as any;
+    err.status = response.status;
+    throw err;
   }
 
   const profile = await response.json();

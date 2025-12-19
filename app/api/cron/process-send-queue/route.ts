@@ -1079,15 +1079,22 @@ export async function POST(req: NextRequest) {
       let queueStatus = 'failed';
       let cleanErrorMessage = errorMessage;
       const errorMsg = errorMessage.toLowerCase();
+      const errorStatus = (sendError as any).status;
 
-      if (errorMsg.includes('does not match provider') && errorMsg.includes('format')) {
-        // FIX (Dec 18): This is a data format error, NOT a missing profile
-        // The linkedin_user_id was a URL instead of a slug/provider_id
-        // This should have been fixed by extractLinkedInSlug - log for investigation
-        prospectStatus = 'approved'; // Keep as approved - retry will work with fixed data
-        queueStatus = 'pending'; // Retry - the slug extraction should fix it
-        cleanErrorMessage = 'LinkedIn ID format error - will retry with corrected format';
-        console.error(`⚠️ Format error still occurring - check extractLinkedInSlug: ${errorMessage}`);
+      // FIX (Dec 19): Handle 422 "profile not found" as permanent failure
+      if (errorStatus === 422 || errorMsg.includes('recipient cannot be reached') || errorMsg.includes('invalid_recipient')) {
+        // Profile doesn't exist or is locked - permanent failure, don't retry
+        prospectStatus = 'failed';
+        queueStatus = 'failed';
+        cleanErrorMessage = 'LinkedIn profile not found or locked - cannot send';
+        console.error(`❌ Profile not found (422): ${errorMessage}`);
+      } else if (errorMsg.includes('does not match provider') && errorMsg.includes('format')) {
+        // FIX (Dec 19): This is a data format error - should be rare now with slug extraction
+        // Mark as failed after the resolution fix - if we still get this, it's a permanent issue
+        prospectStatus = 'failed';
+        queueStatus = 'failed';
+        cleanErrorMessage = 'LinkedIn ID format error - resolution failed';
+        console.error(`⚠️ Format error after resolution fix - marking as failed: ${errorMessage}`);
       } else if (errorMsg.includes('invalid_parameters') && !errorMsg.includes('format')) {
         // Generic invalid parameters - could be actual missing profile
         prospectStatus = 'failed';
