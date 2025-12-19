@@ -274,10 +274,11 @@ const INNOVAREAI_WORKSPACE_IDS = [
 /**
  * Client workspace-specific Google Chat webhook URLs
  * Maps workspace IDs to their dedicated notification channels
+ * NOTE: Webhook URLs are stored in env vars to avoid secret exposure
  */
 const CLIENT_WORKSPACE_WEBHOOKS: Record<string, string> = {
-  // ChillMine (CM1) - Brian Neirby
-  'aa1a214c-02f0-4f3a-8849-92c7a50ee4f7': 'https://chat.googleapis.com/v1/spaces/AAQAbi2nByM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=4yaPXFAKoPQU6E-F4LfssjdgsTB2QWIL3HugweQtEn4',
+  // ChillMine (CM1) - Brian Neirby - uses GOOGLE_CHAT_CHILLMINE_WEBHOOK_URL env var
+  'aa1a214c-02f0-4f3a-8849-92c7a50ee4f7': process.env.GOOGLE_CHAT_CHILLMINE_WEBHOOK_URL || '',
 };
 
 /**
@@ -633,8 +634,8 @@ export async function sendFailedProspectsAlert(data: {
   appUrl: string;
 }): Promise<{ success: boolean; error?: string }> {
   // Dedicated webhook for failed prospects downloads
-  const webhookUrl = process.env.GOOGLE_CHAT_DOWNLOADS_WEBHOOK_URL ||
-    'https://chat.googleapis.com/v1/spaces/AAQAJqjPkBY/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=hQHJlg-4CmazwyWTdiBO4IrbD5MpexRQoellhDjOKpc';
+  // NOTE: Webhook URL stored in env var to avoid secret exposure
+  const webhookUrl = process.env.GOOGLE_CHAT_DOWNLOADS_WEBHOOK_URL;
 
   if (!webhookUrl) {
     console.warn('⚠️ GOOGLE_CHAT_WEBHOOK_URL not configured - skipping failed prospects alert');
