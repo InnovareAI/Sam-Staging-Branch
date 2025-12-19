@@ -112,6 +112,75 @@ function createSamButton(postElement, postData) {
 }
 
 /**
+ * Show variation selector modal
+ */
+function showVariationSelector(postElement, variations, button) {
+  // Create modal overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'sam-variation-modal-overlay';
+
+  // Create modal
+  const modal = document.createElement('div');
+  modal.className = 'sam-variation-modal';
+
+  modal.innerHTML = `
+    <div class="sam-variation-header">
+      <h3>Choose Your Comment</h3>
+      <button class="sam-close-modal">✕</button>
+    </div>
+    <div class="sam-variation-options">
+      ${variations.map((v, i) => `
+        <div class="sam-variation-option" data-index="${i}">
+          <div class="sam-variation-label">
+            <span class="sam-variation-type">${v.type === 'long' ? '📝 Detailed' : v.type === 'short' ? '⚡ Quick' : '❓ Question'}</span>
+            <span class="sam-variation-confidence">${Math.round(v.confidence_score * 100)}%</span>
+          </div>
+          <div class="sam-variation-text">${v.comment_text}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Close handler
+  const closeModal = () => {
+    overlay.remove();
+    button.disabled = false;
+    button.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <span>Regenerate</span>
+    `;
+  };
+
+  // Close button
+  modal.querySelector('.sam-close-modal').addEventListener('click', closeModal);
+
+  // Click outside to close
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
+
+  // Select variation
+  modal.querySelectorAll('.sam-variation-option').forEach((option) => {
+    option.addEventListener('click', () => {
+      const index = parseInt(option.dataset.index);
+      const selected = variations[index];
+      insertCommentIntoLinkedIn(postElement, selected.comment_text);
+      showNotification(
+        postElement,
+        `✅ ${selected.type === 'long' ? 'Detailed' : selected.type === 'short' ? 'Quick' : 'Question'} comment inserted`,
+        'success'
+      );
+      closeModal();
+    });
+  });
+}
+
+/**
  * Generate comment using SAM API
  */
 async function generateComment(postElement, postData, button) {
@@ -170,27 +239,37 @@ async function generateComment(postElement, postData, button) {
 
     if (result.skipped) {
       showNotification(postElement, '⏭️ SAM decided to skip this post: ' + result.reason, 'warning');
+      button.disabled = false;
+      button.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Generate with SAM</span>
+      `;
       return;
     }
 
-    // Insert comment into LinkedIn's comment box
-    insertCommentIntoLinkedIn(postElement, result.comment_text);
+    // Check if we have variations or single comment
+    if (result.variations && result.variations.length > 0) {
+      // Show variation selector modal
+      showVariationSelector(postElement, result.variations, button);
+    } else {
+      // Legacy single comment
+      insertCommentIntoLinkedIn(postElement, result.comment_text);
+      showNotification(
+        postElement,
+        `✅ Comment generated (${Math.round(result.confidence_score * 100)}% confidence)`,
+        'success'
+      );
 
-    // Show success notification
-    showNotification(
-      postElement,
-      `✅ Comment generated (${Math.round(result.confidence_score * 100)}% confidence)`,
-      'success'
-    );
-
-    // Reset button
-    button.disabled = false;
-    button.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-      </svg>
-      <span>Regenerate</span>
-    `;
+      button.disabled = false;
+      button.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Regenerate</span>
+      `;
+    }
   } catch (error) {
     console.error('SAM Extension: Error generating comment:', error);
     console.error('SAM Extension: Error details:', {
