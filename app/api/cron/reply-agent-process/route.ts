@@ -226,29 +226,30 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          // 8. Send HITL notification to Google Chat (if manual approval mode)
-          if (config.approval_mode === 'manual') {
-            // Build LinkedIn URL from prospect data
-            const linkedInUrl = prospect.linkedin_url ||
-              (prospect.linkedin_user_id ? `https://www.linkedin.com/in/${prospect.linkedin_user_id}` : undefined);
+          // 8. Send Google Chat notification for ALL drafts (manual and auto modes)
+          // Build LinkedIn URL from prospect data
+          const linkedInUrl = prospect.linkedin_url ||
+            (prospect.linkedin_user_id ? `https://www.linkedin.com/in/${prospect.linkedin_user_id}` : undefined);
 
-            await sendReplyAgentHITLNotification({
-              draftId: savedDraft.id,
-              approvalToken: savedDraft.approval_token,
-              prospectName: savedDraft.prospect_name || 'Unknown',
-              prospectTitle: prospect.title,
-              prospectCompany: savedDraft.prospect_company,
-              inboundMessage: latestInbound.text,
-              draftReply: savedDraft.draft_text,
-              intent: savedDraft.intent_detected || 'UNCLEAR',
-              appUrl: APP_URL,
-              workspaceId: workspaceId,
-              // Additional fields for client QC notifications
-              campaignName: prospect.campaigns?.campaign_name,
-              prospectLinkedInUrl: linkedInUrl,
-              clientName: config.workspaces?.name,
-            });
-          } else {
+          await sendReplyAgentHITLNotification({
+            draftId: savedDraft.id,
+            approvalToken: savedDraft.approval_token,
+            prospectName: savedDraft.prospect_name || 'Unknown',
+            prospectTitle: prospect.title,
+            prospectCompany: savedDraft.prospect_company,
+            inboundMessage: latestInbound.text,
+            draftReply: savedDraft.draft_text,
+            intent: savedDraft.intent_detected || 'UNCLEAR',
+            appUrl: APP_URL,
+            workspaceId: workspaceId,
+            // Additional fields for client QC notifications
+            campaignName: prospect.campaigns?.campaign_name,
+            prospectLinkedInUrl: linkedInUrl,
+            clientName: config.workspaces?.name,
+          });
+
+          // 9. Handle approval mode
+          if (config.approval_mode === 'auto') {
             // Auto-approve mode - send immediately
             await autoSendReply(savedDraft, linkedinAccount.unipile_account_id, supabase);
           }
@@ -1186,32 +1187,32 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
           .eq('id', draft.id)
           .single();
 
-        // Send HITL notifications (Google Chat + Slack)
+        // Send Google Chat notification for ALL drafts (manual and auto modes)
+        // Build LinkedIn URL from prospect data
+        const linkedInUrl = prospect.linkedin_url ||
+          (prospect.linkedin_user_id ? `https://www.linkedin.com/in/${prospect.linkedin_user_id}` : undefined);
+
+        // Google Chat notification (routes to IA or Client QC channel based on workspace)
+        await sendReplyAgentHITLNotification({
+          draftId: updatedDraft.id,
+          approvalToken: updatedDraft.approval_token,
+          prospectName: updatedDraft.prospect_name || 'Unknown',
+          prospectTitle: prospect.title,
+          prospectCompany: updatedDraft.prospect_company,
+          inboundMessage: draft.inbound_message_text,
+          draftReply: updatedDraft.draft_text,
+          intent: updatedDraft.intent_detected || 'UNCLEAR',
+          appUrl: APP_URL,
+          workspaceId: draft.workspace_id,
+          // Additional fields for client QC notifications
+          campaignName: draft.campaigns?.campaign_name,
+          prospectLinkedInUrl: linkedInUrl,
+          clientName: config.workspaces?.name,
+        });
+        console.log(`✅ Draft ${draft.id} - Google Chat notification sent`);
+
+        // Slack notification (manual mode only to avoid spam)
         if (config.approval_mode === 'manual') {
-          // Build LinkedIn URL from prospect data
-          const linkedInUrl = prospect.linkedin_url ||
-            (prospect.linkedin_user_id ? `https://www.linkedin.com/in/${prospect.linkedin_user_id}` : undefined);
-
-          // Google Chat notification (routes to IA or Client QC channel based on workspace)
-          await sendReplyAgentHITLNotification({
-            draftId: updatedDraft.id,
-            approvalToken: updatedDraft.approval_token,
-            prospectName: updatedDraft.prospect_name || 'Unknown',
-            prospectTitle: prospect.title,
-            prospectCompany: updatedDraft.prospect_company,
-            inboundMessage: draft.inbound_message_text,
-            draftReply: updatedDraft.draft_text,
-            intent: updatedDraft.intent_detected || 'UNCLEAR',
-            appUrl: APP_URL,
-            workspaceId: draft.workspace_id,
-            // Additional fields for client QC notifications
-            campaignName: draft.campaigns?.campaign_name,
-            prospectLinkedInUrl: linkedInUrl,
-            clientName: config.workspaces?.name,
-          });
-          console.log(`✅ Draft ${draft.id} - Google Chat notification sent`);
-
-          // Slack notification
           const approveUrl = `${APP_URL}/api/reply-agent/approve?token=${updatedDraft.approval_token}&action=approve`;
           const rejectUrl = `${APP_URL}/api/reply-agent/approve?token=${updatedDraft.approval_token}&action=reject`;
           const editUrl = `${APP_URL}/reply-agent/edit?id=${updatedDraft.id}&token=${updatedDraft.approval_token}`;
@@ -1234,7 +1235,10 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
           } else {
             console.log(`⚠️ Draft ${draft.id} - Slack notification failed: ${slackResult.error}`);
           }
-        } else {
+        }
+
+        // Handle auto-send mode
+        if (config.approval_mode === 'auto') {
           // Get LinkedIn account for auto-send
           const { data: linkedinAccount } = await supabase
             .from('campaign_linkedin_accounts')
