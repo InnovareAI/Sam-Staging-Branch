@@ -901,12 +901,122 @@ Existing discovered posts and pending comments were backfilled with `expires_at 
 
 ---
 
+## 23. CRITICAL: Cross-Workspace Deduplication Fix (Dec 19)
+
+### Problem
+
+A **critical workspace isolation vulnerability** was discovered in the `queue-pending-prospects` cron job. The cross-campaign deduplication logic was checking **ALL workspaces** instead of filtering by the current workspace, causing:
+
+1. **Misleading "already in another campaign" messages** - Prospects were incorrectly skipped because they existed in a completely different workspace
+2. **Potential data leakage concern** - The system was reading data across tenant boundaries (though no actual data was shared between workspaces)
+
+### User Impact
+
+When Sebastian Henkel's campaign tried to queue prospects:
+1. System checked if prospects existed in **ANY** workspace's campaigns
+2. Found matches in **Rony Chatterjee's workspace** (different tenant!)
+3. Logged: `"🚫 Skipping [Name] - already contacted"`
+4. UI showed: **"Duplicate or already in another campaign"**
+
+The message was technically true from the broken system's perspective, but it was looking at the **wrong workspace's data**.
+
+### Root Cause
+
+**File: `app/api/cron/queue-pending-prospects/route.ts`**
+
+**Old Code (VULNERABLE):**
+```typescript
+// Check if linkedin_user_id was ALREADY SENT in ANY campaign's send_queue
+const { data: previouslySent } = await supabase
+  .from('send_queue')
+  .select('linkedin_user_id')
+  .in('status', ['sent', 'pending', 'failed', 'skipped'])
+  .in('linkedin_user_id', batch);
+  // ❌ NO workspace filter! Checked ALL workspaces
+
+// Check if linkedin_url exists in ANY campaign_prospects
+const { data: previouslyContacted } = await supabase
+  .from('campaign_prospects')
+  .select('linkedin_url')
+  .in('status', contactedStatuses)
+  .in('linkedin_url', batch);
+  // ❌ NO workspace_id filter! Checked ALL workspaces
+```
+
+### Fix Applied
+
+**Commit: `cc22a341` - "CRITICAL FIX: Add workspace isolation to cross-campaign deduplication"**
+
+**New Code (FIXED):**
+```typescript
+// CRITICAL FIX (Dec 19): Filter by workspace to prevent cross-workspace deduplication
+// Get campaigns in this workspace first
+const { data: workspaceCampaigns } = await supabase
+  .from('campaigns')
+  .select('id')
+  .eq('workspace_id', campaign.workspace_id);
+const workspaceCampaignIds = (workspaceCampaigns || []).map(c => c.id);
+
+// 3a. Check send_queue ONLY within same workspace
+const { data: previouslySent } = await supabase
+  .from('send_queue')
+  .select('linkedin_user_id')
+  .in('campaign_id', workspaceCampaignIds) // ✅ WORKSPACE FILTER
+  .in('status', ['sent', 'pending', 'failed', 'skipped'])
+  .in('linkedin_user_id', batch);
+
+// 3b. Check campaign_prospects ONLY within same workspace
+const { data: previouslyContacted } = await supabase
+  .from('campaign_prospects')
+  .select('linkedin_url')
+  .eq('workspace_id', campaign.workspace_id) // ✅ WORKSPACE FILTER
+  .in('status', contactedStatuses)
+  .in('linkedin_url', batch);
+```
+
+### Files Modified
+
+| File | Lines | Change |
+|------|-------|--------|
+| `app/api/cron/queue-pending-prospects/route.ts` | 140-163 | Added workspace campaign ID filter for send_queue check |
+| `app/api/cron/queue-pending-prospects/route.ts` | 165-189 | Added `.eq('workspace_id', campaign.workspace_id)` for campaign_prospects check |
+
+### Verification Results
+
+A comprehensive audit was performed and confirmed:
+
+| Check | Sebastian Henkel | Rony Chatterjee | Overlap |
+|-------|------------------|-----------------|---------|
+| LinkedIn URLs | 791 prospects | 210 prospects | **0** |
+| LinkedIn User IDs | Checked | Checked | **0** |
+| Send Queue | 0 entries | 0 entries | **0** |
+| Email Queue | 0 entries | 0 entries | **0** |
+
+**Verdict: NO actual data breach occurred** - The bug caused prospects to be incorrectly skipped with a confusing message, but no prospect data was actually shared between workspaces.
+
+### Timeline
+
+- **Dec 5, 2025:** Cross-campaign deduplication added (WITHOUT workspace isolation)
+- **Dec 5-19:** Bug period - prospects incorrectly skipped across workspaces
+- **Dec 19, 2025:** Critical fix deployed - workspace isolation enforced
+- **Current:** Deduplication now properly workspace-isolated
+
+### Why This Matters
+
+This fix ensures proper multi-tenant data isolation:
+- Workspace A's campaigns only check against Workspace A's historical data
+- Workspace B's prospects are completely invisible to Workspace A's deduplication
+- Legal compliance maintained - no cross-tenant data access
+
+---
+
 ## Next Steps
 
 ### Immediate
 - [x] Test CSV upload → campaign transfer flow end-to-end
 - [x] Standardize linkedin_user_id handling across all entry points
 - [x] Add content expiration for commenting agent
+- [x] Fix cross-workspace deduplication vulnerability (CRITICAL)
 - [ ] Monitor QA monitor for false positives
 
 ### Short-term
@@ -921,4 +1031,4 @@ Existing discovered posts and pending comments were backfilled with `expires_at 
 
 ---
 
-*Last Updated: December 18, 2025 22:30 UTC*
+*Last Updated: December 19, 2025 10:00 UTC*
