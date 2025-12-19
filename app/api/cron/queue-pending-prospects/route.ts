@@ -122,18 +122,25 @@ export async function POST(req: NextRequest) {
           .map(p => p.linkedin_url)
           .filter(Boolean) as string[];
 
+        // FIX (Dec 19): Also extract slugs for send_queue comparison
+        // send_queue.linkedin_user_id stores slugs/provider_ids, NOT full URLs
+        const linkedinSlugs = unqueuedProspects
+          .map(p => extractLinkedInSlug(p.linkedin_url))
+          .filter(Boolean) as string[];
+
         // Normalize URLs for comparison (remove trailing slashes, lowercase)
         const normalizeUrl = (url: string) => url?.toLowerCase().replace(/\/+$/, '').trim();
 
         // FIX (Dec 18): Batch the .in() queries to avoid silent failures with large arrays
         // Supabase/PostgREST has limits on array size in .in() clauses
         const BATCH_SIZE = 100;
-        const sentUrls = new Set<string>();
+        const sentSlugs = new Set<string>();
         const contactedUrls = new Set<string>();
 
-        // 3a. Check if linkedin_url was ALREADY SENT in ANY campaign's send_queue (batched)
-        for (let i = 0; i < linkedinUrls.length; i += BATCH_SIZE) {
-          const batch = linkedinUrls.slice(i, i + BATCH_SIZE);
+        // 3a. Check if linkedin_user_id was ALREADY SENT in ANY campaign's send_queue (batched)
+        // FIX (Dec 19): Use slugs, not URLs - send_queue.linkedin_user_id stores slugs/provider_ids
+        for (let i = 0; i < linkedinSlugs.length; i += BATCH_SIZE) {
+          const batch = linkedinSlugs.slice(i, i + BATCH_SIZE);
           const { data: previouslySent, error: sentError } = await supabase
             .from('send_queue')
             .select('linkedin_user_id')
@@ -143,7 +150,7 @@ export async function POST(req: NextRequest) {
           if (sentError) {
             console.error(`  ❌ Error checking cross-campaign queue (batch ${i}):`, sentError.message);
           }
-          (previouslySent || []).forEach(s => sentUrls.add(normalizeUrl(s.linkedin_user_id)));
+          (previouslySent || []).forEach(s => sentSlugs.add(s.linkedin_user_id?.toLowerCase()));
         }
 
         // 3b. Check if linkedin_url exists in ANY campaign_prospects with contacted status (batched)
@@ -174,7 +181,9 @@ export async function POST(req: NextRequest) {
         const beforeCount = unqueuedProspects.length;
         unqueuedProspects = unqueuedProspects.filter(p => {
           const normalizedUrl = normalizeUrl(p.linkedin_url);
-          const inSentQueue = sentUrls.has(normalizedUrl);
+          // FIX (Dec 19): Also check by slug for send_queue comparison
+          const slug = extractLinkedInSlug(p.linkedin_url)?.toLowerCase();
+          const inSentQueue = slug ? sentSlugs.has(slug) : false;
           const wasContacted = contactedUrls.has(normalizedUrl);
 
           if (inSentQueue || wasContacted) {
