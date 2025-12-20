@@ -50,7 +50,8 @@ async function sendConnectionRequest(unipileAccountId, providerId, message) {
 }
 
 async function sendMessage(unipileAccountId, providerId, text) {
-  const url = `https://${UNIPILE_DSN}/api/v1/messages/send`;
+  // CORRECT ENDPOINT: /api/v1/chats (NOT /api/v1/messages/send which doesn't exist)
+  const url = `https://${UNIPILE_DSN}/api/v1/chats`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -61,7 +62,7 @@ async function sendMessage(unipileAccountId, providerId, text) {
     },
     body: JSON.stringify({
       account_id: unipileAccountId,
-      attendee_provider_id: providerId,
+      attendees_ids: [providerId],  // Array of provider_ids
       text: text
     })
   });
