@@ -89,20 +89,20 @@
 [functions."poll-accepted-connections"]
   schedule = "*/15 * * * *"
 
-# Scheduled function: Poll for message replies every 15 minutes
+# Scheduled function: Poll for LinkedIn message replies every 5 minutes
 # CRITICAL: Backup for new_message webhook - stops follow-ups when prospect replies
 # Without this, prospects get follow-ups after they've already replied
-# Changed from 2 hours to 15 minutes (Nov 27) - faster reply detection
+# Changed from 15 minutes to 5 minutes (Dec 20) - faster reply detection for better response time
 [functions."poll-message-replies"]
-  schedule = "*/15 * * * *"
+  schedule = "*/5 * * * *"
 
-# Scheduled function: Poll for EMAIL replies every 15 minutes
+# Scheduled function: Poll for EMAIL replies every 5 minutes
 # CRITICAL: Detects email replies for workspaces with email-only accounts (e.g., Jennifer Fleming)
 # Stops follow-up sequences when prospects reply via email
 # Triggers SAM Reply Agent for AI-generated response drafts
-# Added Dec 12, 2025
+# Added Dec 12, 2025 - Changed to 5 min (Dec 20) for faster detection
 [functions."poll-email-replies"]
-  schedule = "*/15 * * * *"
+  schedule = "*/5 * * * *"
 
 # Scheduled function: Reply Agent - Generate AI drafts every 5 minutes
 # Processes drafts in pending_generation status:
