@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { airtableService } from '@/lib/airtable';
 import { classifyIntent } from '@/lib/services/intent-classifier';
+import { syncInterestedLeadToCRM } from '@/lib/services/crm-sync';
 
 /**
  * Cron Job: Poll Message Replies (Backup for Webhook)
@@ -59,15 +60,20 @@ export async function POST(request: NextRequest) {
         id,
         first_name,
         last_name,
+        email,
         linkedin_user_id,
         linkedin_url,
         company_name,
         title,
+        industry,
+        location,
+        company_size,
+        personalization_data,
         status,
         responded_at,
         last_processed_message_id,
         campaign_id,
-        campaigns (
+        campaigns:campaign_id (
           workspace_id,
           linkedin_account_id
         )
@@ -90,10 +96,15 @@ export async function POST(request: NextRequest) {
         id,
         first_name,
         last_name,
+        email,
         linkedin_user_id,
         linkedin_url,
         company_name,
         title,
+        industry,
+        location,
+        company_size,
+        personalization_data,
         status,
         responded_at,
         last_processed_message_id,
@@ -272,7 +283,7 @@ export async function POST(request: NextRequest) {
             const attendeeId = chat.attendee_provider_id || '';
             // Match if either ID starts with the other (handles truncation either way)
             return attendeeId.startsWith(prospectProviderId.slice(0, 20)) ||
-                   prospectProviderId.startsWith(attendeeId.slice(0, 20));
+              prospectProviderId.startsWith(attendeeId.slice(0, 20));
           });
 
           if (!prospectChat) {
@@ -313,7 +324,7 @@ export async function POST(request: NextRequest) {
             const senderId = msg.sender_id || '';
             // Match if either ID starts with the other (handles truncation)
             return senderId.startsWith(prospectProviderId.slice(0, 20)) ||
-                   prospectProviderId.startsWith(senderId.slice(0, 20));
+              prospectProviderId.startsWith(senderId.slice(0, 20));
           });
 
           if (inboundMessages.length === 0) {
@@ -371,6 +382,9 @@ export async function POST(request: NextRequest) {
               name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
               jobTitle: prospect.title,
               companyName: prospect.company_name,
+              industry: prospect.industry,
+              country: prospect.location,
+              companySize: prospect.company_size || (prospect.personalization_data as any)?.company_size,
               intent: intent.intent,
               replyText: messageText,
             });
@@ -379,6 +393,52 @@ export async function POST(request: NextRequest) {
               console.log(`   ✅ Airtable sync successful - Record ID: ${airtableResult.recordId}`);
             } else {
               console.log(`   ⚠️ Airtable sync failed: ${airtableResult.error}`);
+            }
+
+            // ============================================
+            // CRM SYNC (Dec 20, 2025): Sync to ActiveCampaign/other CRMs
+            // ============================================
+            const positiveIntents = ['interested', 'curious', 'question', 'vague_positive'];
+            if (positiveIntents.includes(intent.intent)) {
+              console.log(`   📊 Positive intent detected - syncing to CRM...`);
+              const workspaceId = (prospect.campaigns as any)?.workspace_id;
+              if (workspaceId) {
+                await syncInterestedLeadToCRM(workspaceId, {
+                  prospectId: prospect.id,
+                  firstName: prospect.first_name,
+                  lastName: prospect.last_name,
+                  email: prospect.email,
+                  company: prospect.company_name,
+                  jobTitle: prospect.title,
+                  linkedInUrl: prospect.linkedin_url,
+                  replyText: messageText,
+                  intent: intent.intent,
+                  intentConfidence: intent.confidence,
+                  campaignId: prospect.campaign_id,
+                });
+
+                // ============================================
+                // ACTIVECAMPAIGN LIST SYNC (Dec 20, 2025)
+                // ============================================
+                if (prospect.email) {
+                  const { activeCampaignService } = await import('@/lib/activecampaign');
+                  // Find AC list ID from workspace config or use default 'sam-users'
+                  const { data: acConfig } = await supabase
+                    .from('workspace_crm_config')
+                    .select('activecampaign_list_id')
+                    .eq('workspace_id', workspaceId)
+                    .single();
+
+                  const listId = acConfig?.activecampaign_list_id || 'sam-users';
+
+                  await activeCampaignService.addNewMemberToList(
+                    prospect.email,
+                    prospect.first_name || '',
+                    prospect.last_name || '',
+                    listId
+                  );
+                }
+              }
             }
           } catch (airtableError) {
             console.error('   ❌ Airtable sync error:', airtableError);
@@ -614,10 +674,11 @@ async function processInboundMessagesFirst(
           const { data: exactMatch } = await supabase
             .from('campaign_prospects')
             .select(`
-              id, first_name, last_name, linkedin_user_id, linkedin_url,
-              company_name, title, status, responded_at, campaign_id,
+              id, first_name, last_name, email, linkedin_user_id, linkedin_url,
+              company_name, title, industry, location, company_size,
+              personalization_data, status, responded_at, campaign_id,
               last_processed_message_id,
-              campaigns (workspace_id)
+              campaigns:campaign_id (workspace_id)
             `)
             .eq('linkedin_user_id', senderId)
             .in('campaign_id', campaignIds)
@@ -634,10 +695,11 @@ async function processInboundMessagesFirst(
             const { data: prefixMatches } = await supabase
               .from('campaign_prospects')
               .select(`
-                id, first_name, last_name, linkedin_user_id, linkedin_url,
-                company_name, title, status, responded_at, campaign_id,
+                id, first_name, last_name, email, linkedin_user_id, linkedin_url,
+                company_name, title, industry, location, company_size,
+                personalization_data, status, responded_at, campaign_id,
                 last_processed_message_id,
-                campaigns (workspace_id)
+                campaigns:campaign_id (workspace_id)
               `)
               .like('linkedin_user_id', `${senderPrefix}%`)
               .in('campaign_id', campaignIds)
@@ -659,10 +721,11 @@ async function processInboundMessagesFirst(
               const { data: nameMatches } = await supabase
                 .from('campaign_prospects')
                 .select(`
-                  id, first_name, last_name, linkedin_user_id, linkedin_url,
-                  company_name, title, status, responded_at, campaign_id,
+                  id, first_name, last_name, email, linkedin_user_id, linkedin_url,
+                  company_name, title, industry, location, company_size,
+                  personalization_data, status, responded_at, campaign_id,
                   last_processed_message_id,
-                  campaigns (workspace_id)
+                  campaigns:campaign_id (workspace_id)
                 `)
                 .ilike('first_name', firstName)
                 .ilike('last_name', `%${lastName}%`)
@@ -715,19 +778,74 @@ async function processInboundMessagesFirst(
 
           // Sync to Airtable
           try {
+            const messageText = msg.text || msg.body || '';
             const intent = await classifyIntent(messageText, {
               prospectName: `${matchedProspect.first_name} ${matchedProspect.last_name}`.trim(),
               prospectCompany: matchedProspect.company_name
             });
 
-            await airtableService.syncLinkedInLead({
+            const airtableResult = await airtableService.syncLinkedInLead({
               profileUrl: matchedProspect.linkedin_url,
               name: `${matchedProspect.first_name || ''} ${matchedProspect.last_name || ''}`.trim(),
               jobTitle: matchedProspect.title,
               companyName: matchedProspect.company_name,
+              industry: matchedProspect.industry,
+              country: matchedProspect.location,
+              companySize: matchedProspect.company_size || (matchedProspect.personalization_data as any)?.company_size,
               intent: intent.intent,
               replyText: messageText,
             });
+
+            if (airtableResult.success) {
+              console.log(`      ✅ Airtable sync successful - Record ID: ${airtableResult.recordId}`);
+            } else {
+              console.log(`      ⚠️ Airtable sync failed: ${airtableResult.error}`);
+            }
+
+            // ============================================
+            // CRM SYNC (Dec 20, 2025): Sync to ActiveCampaign/other CRMs
+            // ============================================
+            const positiveIntents = ['interested', 'curious', 'question', 'vague_positive'];
+            if (positiveIntents.includes(intent.intent)) {
+              console.log(`      📊 Positive intent detected - syncing to CRM...`);
+              const workspaceId = (matchedProspect.campaigns as any)?.workspace_id;
+              if (workspaceId) {
+                await syncInterestedLeadToCRM(workspaceId, {
+                  prospectId: matchedProspect.id,
+                  firstName: matchedProspect.first_name,
+                  lastName: matchedProspect.last_name,
+                  email: matchedProspect.email,
+                  company: matchedProspect.company_name,
+                  jobTitle: matchedProspect.title,
+                  linkedInUrl: matchedProspect.linkedin_url,
+                  replyText: messageText,
+                  intent: intent.intent,
+                  intentConfidence: intent.confidence,
+                  campaignId: matchedProspect.campaign_id,
+                });
+
+                // ============================================
+                // ACTIVECAMPAIGN LIST SYNC (Dec 20, 2025)
+                // ============================================
+                if (matchedProspect.email) {
+                  const { activeCampaignService } = await import('@/lib/activecampaign');
+                  const { data: acConfig } = await supabase
+                    .from('workspace_crm_config')
+                    .select('activecampaign_list_id')
+                    .eq('workspace_id', workspaceId)
+                    .single();
+
+                  const listId = acConfig?.activecampaign_list_id || 'sam-users';
+
+                  await activeCampaignService.addNewMemberToList(
+                    matchedProspect.email,
+                    matchedProspect.first_name || '',
+                    matchedProspect.last_name || '',
+                    listId
+                  );
+                }
+              }
+            }
           } catch (airtableError) {
             console.error('      ❌ Airtable sync error:', airtableError);
           }
@@ -793,15 +911,13 @@ async function processInboundMessagesFirst(
             await triggerReplyAgent(supabase, matchedProspect, msg, wsId);
           }
         }
-
-        // Rate limit between accounts
-        await new Promise(resolve => setTimeout(resolve, 500));
-
       } catch (accountError) {
         console.error(`   ❌ Error processing account ${account.account_name}:`, accountError);
       }
-    }
 
+      // Rate limit between accounts
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
   } catch (error) {
     console.error('❌ Inbound-first pass error:', error);
   }

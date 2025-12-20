@@ -287,6 +287,20 @@ class ReachInboxService {
       return null;
     }
   }
+
+  /**
+   * Get all leads for a specific campaign
+   */
+  async getCampaignLeads(campaignId: string, limit = 100): Promise<any[]> {
+    try {
+      // The search result suggested /api/v1/leads with campaignId query param
+      const response = await this.request<any>(`/leads?campaignId=${campaignId}&limit=${limit}`);
+      return response.data || response.leads || [];
+    } catch (error) {
+      console.error(`❌ Failed to fetch leads for campaign ${campaignId}:`, error);
+      return [];
+    }
+  }
 }
 
 export const reachInboxService = new ReachInboxService();

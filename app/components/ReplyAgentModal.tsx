@@ -75,21 +75,29 @@ Sound human, not templated. No "just checking in" or "thanks so much for getting
       const { data: { user } } = await supabase.auth.getUser();
       const userEmail = user?.email || null;
 
-      // Load reply agent config
+      // Load reply agent config from the correct table
       const { data, error } = await supabase
-        .from('workspace_reply_agent_config')
+        .from('reply_agent_settings')
         .select('*')
         .eq('workspace_id', workspaceId)
         .single();
 
       if (data) {
-        // Merge loaded config but preserve defaults for unset fields
+        // Map backend fields to frontend state
         setConfig(prev => ({
           ...prev,
-          ...data,
-          // Keep Opus 4.5 as default if not explicitly set in DB
+          enabled: data.enabled ?? false,
+          approval_mode: (data.approval_mode as 'auto' | 'manual') || 'manual',
+          // Backend uses tone_of_voice, map to response_tone if it matches, else default
+          response_tone: ['professional', 'friendly', 'casual', 'formal'].includes(data.tone_of_voice?.toLowerCase())
+            ? data.tone_of_voice.toLowerCase()
+            : 'professional',
+          // Backend uses minutes, Frontend uses hours
+          reply_delay_hours: data.reply_delay_minutes ? Math.round(data.reply_delay_minutes / 60) : 2,
           ai_model: data.ai_model || 'claude-opus-4-5-20251101',
-          // Use user's login email
+          // Backend uses system_prompt_override for guidelines
+          reply_guidelines: data.system_prompt_override || prev.reply_guidelines,
+          // Use user's login email as connected email since we don't store it in settings
           connected_email: userEmail,
         }));
       } else {
@@ -105,7 +113,7 @@ Sound human, not templated. No "just checking in" or "thanks so much for getting
         if (user?.email) {
           setConfig(prev => ({ ...prev, connected_email: user.email }));
         }
-      } catch {}
+      } catch { }
     } finally {
       setLoading(false);
     }
@@ -118,18 +126,24 @@ Sound human, not templated. No "just checking in" or "thanks so much for getting
     try {
       const supabase = createClient();
 
+      // Map frontend state to backend fields
+      const updates = {
+        workspace_id: workspaceId,
+        enabled: config.enabled,
+        approval_mode: config.approval_mode,
+        // Backend expects specific string for tone_of_voice
+        tone_of_voice: config.response_tone, // 'professional', 'friendly', etc.
+        // Backend expects minutes
+        reply_delay_minutes: config.reply_delay_hours * 60,
+        ai_model: config.ai_model,
+        // Backend uses system_prompt_override
+        system_prompt_override: config.reply_guidelines,
+        updated_at: new Date().toISOString(),
+      };
+
       const { error } = await supabase
-        .from('workspace_reply_agent_config')
-        .upsert({
-          workspace_id: workspaceId,
-          enabled: config.enabled,
-          approval_mode: config.approval_mode,
-          response_tone: config.response_tone,
-          reply_delay_hours: config.reply_delay_hours,
-          ai_model: config.ai_model,
-          reply_guidelines: config.reply_guidelines,
-          updated_at: new Date().toISOString(),
-        }, {
+        .from('reply_agent_settings')
+        .upsert(updates, {
           onConflict: 'workspace_id'
         });
 
@@ -325,9 +339,8 @@ Sound human, not templated. No "just checking in" or "thanks so much for getting
         {/* Footer - Always visible Save and Close buttons */}
         <div className="p-6 border-t border-gray-700 space-y-3">
           {saveMessage && (
-            <p className={`text-sm text-center ${
-              saveMessage.startsWith('✓') ? 'text-green-400' : 'text-red-400'
-            }`}>
+            <p className={`text-sm text-center ${saveMessage.startsWith('✓') ? 'text-green-400' : 'text-red-400'
+              }`}>
               {saveMessage}
             </p>
           )}

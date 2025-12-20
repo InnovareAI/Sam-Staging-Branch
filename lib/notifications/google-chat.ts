@@ -774,18 +774,101 @@ export async function sendEmailReplyNotification(data: {
 }
 
 /**
- * Send Campaign Reply Notification (placeholder - to be implemented)
+ * Send Campaign Reply Notification
  * Used by Unipile messages webhook handler
  */
 export async function sendCampaignReplyNotification(data: {
-  from: string;
-  message: string;
-  campaignName?: string;
-  platform?: string;
+  workspaceId: string;
+  prospectName: string;
+  prospectCompany?: string;
+  messageText: string;
+  intent: string;
+  intentConfidence: number;
+  draft: string;
+  isFromCampaign: boolean;
+  replyId: string;
 }): Promise<{ success: boolean; error?: string }> {
-  // TODO: Implement campaign reply notification
-  console.log("[Campaign Reply Notification]", data);
-  return { success: true };
+  const webhookUrl = process.env.GOOGLE_CHAT_REPLIES_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    console.warn('⚠️ GOOGLE_CHAT_REPLIES_WEBHOOK_URL not configured - skipping campaign reply notification');
+    return { success: false, error: 'Webhook URL not configured' };
+  }
+
+  const intentEmoji: Record<string, string> = {
+    'interested': '🔥',
+    'curious': '🤔',
+    'question': '❓',
+    'vague_positive': '👍',
+    'not_interested': '❌',
+    'wrong_person': '🚫',
+    'timing': '⏰',
+    'unclear': '🤷',
+  };
+
+  const emoji = intentEmoji[data.intent] || '💬';
+  const confidence = (data.intentConfidence * 100).toFixed(0);
+
+  const sections: any[] = [
+    {
+      header: 'Prospect Details',
+      widgets: [
+        {
+          decoratedText: {
+            topLabel: 'Prospect',
+            text: `<b>${data.prospectName}</b>`,
+            bottomLabel: data.prospectCompany || 'Unknown Company',
+            startIcon: { knownIcon: 'PERSON' },
+          },
+        },
+        {
+          decoratedText: {
+            topLabel: 'Type',
+            text: data.isFromCampaign ? 'Campaign Reply' : 'Organic Lead',
+            startIcon: { knownIcon: 'STAR' },
+          },
+        },
+      ],
+    },
+    {
+      header: `${emoji} Intent: ${data.intent.toUpperCase()} (${confidence}% confidence)`,
+      widgets: [
+        {
+          textParagraph: {
+            text: `<b>Message:</b>\n"${data.messageText}"`,
+          },
+        },
+      ],
+    },
+    {
+      header: '💡 SAM\'s AI Draft',
+      widgets: [
+        {
+          textParagraph: {
+            text: data.draft,
+          },
+        },
+      ],
+    },
+  ];
+
+  const message: GoogleChatMessage = {
+    cardsV2: [
+      {
+        cardId: `campaign-reply-${data.replyId}`,
+        card: {
+          header: {
+            title: `🔔 New ${data.isFromCampaign ? 'Campaign' : 'Organic'} Reply`,
+            subtitle: new Date().toLocaleString(),
+            imageType: 'CIRCLE',
+          },
+          sections,
+        },
+      },
+    ],
+  };
+
+  return sendGoogleChatNotification(message);
 }
 
 /**

@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
           id,
           first_name,
           last_name,
+          email,
           title,
           company_name,
           linkedin_url,
@@ -141,6 +142,7 @@ export async function POST(request: NextRequest) {
           id,
           first_name,
           last_name,
+          email,
           title,
           company_name,
           linkedin_url,
@@ -358,16 +360,25 @@ export async function POST(request: NextRequest) {
         const firstName = prospect?.first_name || senderName.split(' ')[0] || 'Unknown';
         const lastName = prospect?.last_name || senderName.split(' ').slice(1).join(' ') || '';
 
-        // Generate placeholder email from LinkedIn profile if no email available
-        const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@linkedin-lead.placeholder`;
+        // Prioritize actual email, fallback to placeholder
+        const email = prospect?.email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@linkedin-lead.placeholder`;
 
-        console.log(`📧 Syncing interested lead to ActiveCampaign Newsletter: ${firstName} ${lastName}`);
+        console.log(`📧 Syncing interested lead to ActiveCampaign: ${firstName} ${lastName}`);
+
+        // Fetch AC list ID from workspace config
+        const { data: acConfig } = await supabase
+          .from('workspace_crm_config')
+          .select('activecampaign_list_id')
+          .eq('workspace_id', account.workspace_id)
+          .single();
+
+        const listId = acConfig?.activecampaign_list_id || 'sam-users';
 
         const acResult = await activeCampaignService.addNewMemberToList(
           email,
           firstName,
           lastName,
-          '4', // Newsletter list ID
+          listId,
           {
             fieldValues: [
               { field: 'LINKEDIN_URL', value: prospect?.linkedin_url || senderProfileUrl || '' },
@@ -625,12 +636,11 @@ async function notifyUserOfLinkedInReply(
             </blockquote>
 
             ${data.intent ? `
-            <div style="background:#fff;padding:15px;border-radius:4px;margin:20px 0;border-left:4px solid ${
-              data.intent === 'interested' ? '#22c55e' :
-              data.intent === 'not_interested' ? '#ef4444' :
+            <div style="background:#fff;padding:15px;border-radius:4px;margin:20px 0;border-left:4px solid ${data.intent === 'interested' ? '#22c55e' :
+            data.intent === 'not_interested' ? '#ef4444' :
               data.intent === 'objection' ? '#f97316' :
-              '#3b82f6'
-            };">
+                '#3b82f6'
+          };">
               <p style="margin:0 0 5px 0;font-size:12px;color:#666;">Detected Intent:</p>
               <p style="margin:0;font-size:14px;font-weight:600;">
                 ${emoji} ${data.intent.replace('_', ' ').toUpperCase()}

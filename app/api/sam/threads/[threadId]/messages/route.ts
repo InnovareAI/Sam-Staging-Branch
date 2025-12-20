@@ -49,7 +49,7 @@ async function callLLMRouter(userId: string, messages: any[], systemPrompt: stri
       })),
       systemPrompt
     );
-    
+
     return response.content;
   } catch (error) {
     console.error('❌ LLM Router error:', error);
@@ -61,32 +61,32 @@ async function callLLMRouter(userId: string, messages: any[], systemPrompt: stri
 // Fallback response when Mistral is not available - American sales style
 function getMockSamResponse(messages: any[]): string {
   const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
-  
+
   // Campaign-related responses
   if (lastMessage.includes('campaign')) {
     return "I can get a campaign rolling—who are we targeting and which channel should I queue up first?";
   }
-  
+
   // Template-related responses
   if (lastMessage.includes('template') || lastMessage.includes('message')) {
     return "Got it. Which template or touchpoint do you want me to tighten so we can keep approvals moving?";
   }
-  
+
   // Performance/analytics responses
   if (lastMessage.includes('performance') || lastMessage.includes('analytics') || lastMessage.includes('stats')) {
     return "Happy to pull the numbers. Which campaign or KPI should I surface first?";
   }
-  
+
   // Revenue/ROI related
   if (lastMessage.includes('revenue') || lastMessage.includes('roi') || lastMessage.includes('deals') || lastMessage.includes('sales')) {
     return "Let's tighten the revenue engine. Which segment or motion should we look at right now?";
   }
-  
+
   // Competitive/market related
   if (lastMessage.includes('competitor') || lastMessage.includes('market') || lastMessage.includes('advantage')) {
     return "I can line up competitor intel and positioning. Which rival or account should we dissect first?";
   }
-  
+
   // Default response - Conversational intro v7.0
   return "Hey! I'm Sam.\n\nI'm part of a team of AI agents that handle your entire GTM process — finding leads, writing campaigns, following up with prospects, all of it.\n\nMy job? Get to know your business through conversation. I ask questions, you answer naturally, and that powers everything else.\n\nTakes about 25 minutes today. After that, you can generate campaigns in 60 seconds whenever you need them.\n\nSound interesting?";
 }
@@ -527,11 +527,11 @@ export async function POST(
     let hasProspectIntelligence = false
     const linkedInUrlPattern = /https?:\/\/(www\.)?linkedin\.com\/in\/[^\s]+/gi
     const linkedInUrls = content.match(linkedInUrlPattern)
-    
+
     // Detect ICP building requests
     const icpKeywords = ['build icp', 'ideal customer', 'find prospects', 'target audience', 'who should i target', 'search for', 'show me examples', 'vp sales', 'director', 'manager', 'cto', 'ceo']
     const isICPRequest = icpKeywords.some(keyword => content.toLowerCase().includes(keyword))
-    
+
     if (linkedInUrls && linkedInUrls.length > 0) {
       try {
         const intelligenceResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/sam/prospect-intelligence`, {
@@ -562,7 +562,7 @@ export async function POST(
                 prospect_company: prospect.company || thread.prospect_company,
                 prospect_linkedin_url: linkedInUrls[0],
                 thread_type: 'linkedin_research',
-                title: prospect.fullName && prospect.company 
+                title: prospect.fullName && prospect.company
                   ? `${prospect.fullName} - ${prospect.company}`
                   : thread.title
               })
@@ -611,6 +611,15 @@ export async function POST(
         hint: userError.hint
       }, { status: 500 })
     }
+
+    // TRACK ANALYTICS (User Message)
+    trackConversationAnalytics(
+      resolvedParams.threadId,
+      workspaceId || '',
+      user.id,
+      thread,
+      nextOrder
+    ).catch(err => console.error('Non-blocking analytics error:', err));
 
     // Trigger ICP research for interactive building sessions
     if (isICPRequest && !linkedInUrls) {
@@ -940,15 +949,15 @@ export async function POST(
     if (completedDiscoverySession?.discovery_payload) {
       const payload = completedDiscoverySession.discovery_payload
       const industry = payload.industry || payload.targetMarket?.industry
-      
+
       if (industry) {
         // Try to match industry to blueprint
         const industryKey = Object.keys(INDUSTRY_BLUEPRINTS).find(key => {
           const blueprint = INDUSTRY_BLUEPRINTS[key]
           return industry.toLowerCase().includes(blueprint.industry.toLowerCase()) ||
-                 blueprint.industry.toLowerCase().includes(industry.toLowerCase())
+            blueprint.industry.toLowerCase().includes(industry.toLowerCase())
         })
-        
+
         if (industryKey) {
           const blueprint = INDUSTRY_BLUEPRINTS[industryKey]
           industryExpertise = `\n\n🎯 INDUSTRY SUBJECT MATTER EXPERT MODE ACTIVATED\n\nYou are now a specialized expert in **${blueprint.industry}**. Use this deep industry knowledge in all responses:\n\n**INDUSTRY INSIGHTS:**\n- Hook: ${blueprint.hook}\n- Why It Matters: ${blueprint.whyItMatters}\n- Solution Approach: ${blueprint.solutionOneLiner}\n- Differentiation: ${blueprint.differentiation}\n\n**BUYER PERSONAS:**\n${blueprint.personas.map((p, i) => `${i + 1}. **${p.titleVariations.join('/')}**: ${p.description}\n   Pain Points: ${p.painPoints.join('; ')}\n   Desired Outcomes: ${p.outcomes.join('; ')}\n   Tone: ${p.tone}`).join('\n\n')}\n\n**COMMON LANGUAGE PATTERNS:**\n${blueprint.commonLanguage.map((lang, i) => `${i + 1}. "${lang}"`).join('\n')}\n\n**SOCIAL PROOF TEMPLATE:**\n${blueprint.proof.label}: ${blueprint.proof.before} → ${blueprint.proof.after}\nMetrics: ${blueprint.proof.metrics.join(', ')}\n\n${blueprint.freeResource ? `**VALUABLE RESOURCE:**\n${blueprint.freeResource.title}: ${blueprint.freeResource.description}\n` : ''}\n**CRITICAL:** Use this industry expertise to:\n1. Speak their language naturally\n2. Reference industry-specific pain points\n3. Provide relevant examples and proof points\n4. Suggest messaging that resonates with this market\n5. Identify the right personas and decision-makers`
@@ -1013,8 +1022,8 @@ export async function POST(
         const completeness = await supabaseKnowledge.checkKBCompleteness(workspaceId);
         kbCompleteness = {
           overall: completeness.overallCompleteness,
-          status: completeness.overallCompleteness >= 70 ? 'complete' : 
-                  completeness.overallCompleteness >= 40 ? 'partial' : 'minimal',
+          status: completeness.overallCompleteness >= 70 ? 'complete' :
+            completeness.overallCompleteness >= 40 ? 'partial' : 'minimal',
           sections: completeness.sections,
           missing_critical: completeness.missingCritical
         };
@@ -1129,9 +1138,9 @@ ${kbCompleteness ? `
 
 **Sections Already Filled:**
 ${Object.entries(kbCompleteness.sections)
-  .filter(([_, data]: [string, any]) => data.percentage >= 70)
-  .map(([name, data]: [string, any]) => `- ${name}: ${data.percentage}% (${data.entries} entries)`)
-  .join('\n')}
+          .filter(([_, data]: [string, any]) => data.percentage >= 70)
+          .map(([name, data]: [string, any]) => `- ${name}: ${data.percentage}% (${data.entries} entries)`)
+          .join('\n')}
 
 **CRITICAL INSTRUCTIONS - UPLOAD-FIRST, GAP-FILLING APPROACH:**
 - ✅ DO start by showing the KB checklist and asking for document uploads FIRST
@@ -1157,18 +1166,18 @@ ${Object.entries(kbCompleteness.sections)
 
 **Missing/Incomplete Sections:**
 ${Object.entries(kbCompleteness.sections)
-  .filter(([_, data]: [string, any]) => data.percentage < 70)
-  .map(([name, data]: [string, any]) => `- ${name}: ${data.percentage}% (needs ${Math.max(0, Math.ceil((70 - data.percentage) / 20))} more entries)`)
-  .join('\n') || 'None - KB is comprehensive!'}
+          .filter(([_, data]: [string, any]) => data.percentage < 70)
+          .map(([name, data]: [string, any]) => `- ${name}: ${data.percentage}% (needs ${Math.max(0, Math.ceil((70 - data.percentage) / 20))} more entries)`)
+          .join('\n') || 'None - KB is comprehensive!'}
 
 ${kbCompleteness.missing_critical.length > 0 ? `🚨 **Priority:** Focus on critical sections: ${kbCompleteness.missing_critical.join(', ')}` : ''}
 
 **Conversation Strategy:**
-${kbCompleteness.overall >= 70 
-  ? '- User has extensive KB. Focus on campaign execution, not discovery. Validate they want to generate campaigns immediately.' 
-  : kbCompleteness.overall >= 40
-  ? '- User has partial KB. Fill critical gaps quickly (5-7 targeted questions max), then move to campaign generation.'
-  : '- User has minimal KB. Do guided discovery, but reference any existing knowledge to save time.'}
+${kbCompleteness.overall >= 70
+          ? '- User has extensive KB. Focus on campaign execution, not discovery. Validate they want to generate campaigns immediately.'
+          : kbCompleteness.overall >= 40
+            ? '- User has partial KB. Fill critical gaps quickly (5-7 targeted questions max), then move to campaign generation.'
+            : '- User has minimal KB. Do guided discovery, but reference any existing knowledge to save time.'}
 ` : '- No KB data available. Proceed with normal discovery flow if user seems new.'}
 
 LEAD SEARCH & INTEGRATION
@@ -1717,7 +1726,7 @@ ${userKnowledge && userKnowledge.length > 0 ? `LEARNED CONTEXT FROM PREVIOUS CON
       const prospectData = prospectIntelligence.data.prospect
       const insights = prospectIntelligence.data.insights
       const icpData = prospectIntelligence.data
-      
+
       if (prospectData) {
         // Single prospect intelligence (LinkedIn URL)
         systemPrompt += `\n\nPROSPECT INTELLIGENCE:
@@ -1734,9 +1743,9 @@ Use this intelligence naturally to provide valuable sales insights and suggestio
         systemPrompt += `\n\nICP RESEARCH RESULTS:
 I just searched and found ${icpData.prospects.length} real prospects matching the criteria:
 
-${icpData.prospects.slice(0, 5).map((p: any, i: number) => 
-  `${i + 1}. **${p.name}** - ${p.title} at ${p.company} (${p.location || 'N/A'})`
-).join('\n')}
+${icpData.prospects.slice(0, 5).map((p: any, i: number) =>
+          `${i + 1}. **${p.name}** - ${p.title} at ${p.company} (${p.location || 'N/A'})`
+        ).join('\n')}
 
 **Analysis Insights:**
 ${icpData.marketSize ? `- Market Size: ${icpData.marketSize.totalProspects} potential prospects` : ''}
@@ -1780,14 +1789,14 @@ Use this data to refine the ICP iteratively based on user feedback.`
 
     // Generate AI response
     let aiResponse: string
-    
+
     // Debug: Log conversation history state
     console.log('🔍 Conversation History Check:', {
       historyLength: conversationHistory.length,
       history: conversationHistory,
       isFirstMessage: conversationHistory.length === 0 || (conversationHistory.length === 1 && conversationHistory[0].role === 'user')
     });
-    
+
     // For first message, let AI respond naturally with personality
     if (conversationHistory.length === 0 || (conversationHistory.length === 1 && conversationHistory[0].role === 'user')) {
       console.log('✅ First message - using AI for concise intro');
@@ -2010,12 +2019,12 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         }))
 
         aiResponse = await callLLMRouter(user.id, messages, systemPrompt)
-        
+
         // Clean up prompt leakage
         aiResponse = aiResponse.replace(/\([^)]*script[^)]*\)/gi, '')
         aiResponse = aiResponse.replace(/\[[^\]]*script[^\]]*\]/gi, '')
         aiResponse = aiResponse.trim()
-        
+
       } catch (error) {
         console.error('OpenRouter API error:', error)
         if (structuredKnowledge?.hasData && structuredKnowledge.summary) {
@@ -2034,13 +2043,13 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
     if (savedSearchMatch) {
       const savedSearchUrl = savedSearchMatch[0]
       const searchType = savedSearchUrl.includes('/sales/') ? 'Sales Navigator'
-                       : savedSearchUrl.includes('/talent/') ? 'Recruiter'
-                       : 'Classic LinkedIn'
+        : savedSearchUrl.includes('/talent/') ? 'Recruiter'
+          : 'Classic LinkedIn'
       console.log(`🔍 Detected ${searchType} search URL - using streaming import`)
 
       // Extract prospect count from user message (e.g., "150 startup CEOs", "find 200 prospects")
       const countMatch = content.match(/\b(\d+)\s*(prospects?|leads?|people|contacts?|CEOs?|founders?|profiles?)\b/i) ||
-                         content.match(/(?:find|get|search for|looking for)\s+(\d+)/i)
+        content.match(/(?:find|get|search for|looking for)\s+(\d+)/i)
       const targetCount = countMatch ? parseInt(countMatch[1]) : undefined
       if (targetCount) {
         console.log(`🎯 User requested ${targetCount} prospects`)
@@ -2197,7 +2206,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
       message_order: nextOrder + 1,
       model_used: 'llm-router'
     })
-    
+
     const { data: samMessage, error: samError } = await supabase
       .from('sam_conversation_messages')
       .insert({
@@ -2227,7 +2236,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
           model_used: 'llm-router'
         }
       }, null, 2))
-      
+
       return NextResponse.json({
         success: false,
         error: 'Failed to save AI response',
@@ -2236,6 +2245,15 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
         code: samError.code
       }, { status: 500 })
     }
+
+    // TRACK ANALYTICS (Assistant Message)
+    trackConversationAnalytics(
+      resolvedParams.threadId,
+      workspaceId || '',
+      user.id,
+      thread,
+      nextOrder + 1
+    ).catch(err => console.error('Non-blocking analytics error:', err));
 
     // ================================================================
     // 🚀 REAL-TIME KB UPDATES (Phase 2)
@@ -2325,7 +2343,7 @@ Keep responses conversational, max 6 lines, 2 paragraphs.`;
     console.error('❌ Send message API error (FULL DETAILS):', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     console.error('Error message:', error instanceof Error ? error.message : String(error))
-    
+
     return NextResponse.json({
       success: false,
       error: 'Internal server error',
@@ -2388,16 +2406,16 @@ function extractJobTitles(content: string): string[] {
     /\b(?:Account Executive|Sales Development Representative|SDR|BDR|Business Development)\b/gi,
     /\b(?:Software Engineer|DevOps|Data Scientist|Product Manager|Project Manager)\b/gi
   ]
-  
+
   const titles = new Set<string>()
-  
+
   jobTitlePatterns.forEach(pattern => {
     const matches = content.match(pattern)
     if (matches) {
       matches.forEach(match => titles.add(match.trim()))
     }
   })
-  
+
   // Also check for common title keywords
   const commonTitles = ['VP Sales', 'Sales Director', 'Marketing Director', 'CTO', 'CEO', 'VP Marketing', 'Head of Sales']
   commonTitles.forEach(title => {
@@ -2405,24 +2423,24 @@ function extractJobTitles(content: string): string[] {
       titles.add(title)
     }
   })
-  
+
   return Array.from(titles).slice(0, 5) // Limit to 5 titles
 }
 
 function extractIndustry(content: string): string | null {
   const industries = [
     'Technology', 'SaaS', 'Software', 'Healthcare', 'Finance', 'Financial Services', 'Fintech',
-    'E-commerce', 'Retail', 'Manufacturing', 'Consulting', 'Real Estate', 'Education', 
+    'E-commerce', 'Retail', 'Manufacturing', 'Consulting', 'Real Estate', 'Education',
     'Media', 'Entertainment', 'Automotive', 'Energy', 'Construction', 'Agriculture',
     'Transportation', 'Logistics', 'Telecommunications', 'Pharma', 'Pharmaceutical'
   ]
-  
+
   for (const industry of industries) {
     if (content.toLowerCase().includes(industry.toLowerCase())) {
       return industry
     }
   }
-  
+
   return null
 }
 
@@ -2436,7 +2454,7 @@ function extractCompanySize(content: string): string | null {
   if (content.includes('large') || content.includes('enterprise') || content.includes('500+')) {
     return '500+'
   }
-  
+
   const sizePattern = /(\d+)-(\d+)\s*(?:employees|people|staff)/i
   const match = content.match(sizePattern)
   if (match) {
@@ -2446,7 +2464,7 @@ function extractCompanySize(content: string): string | null {
     if (size <= 1000) return '201-1000'
     return '1000+'
   }
-  
+
   return null
 }
 

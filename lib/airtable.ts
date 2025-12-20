@@ -7,9 +7,10 @@
  * - Interested Leads Emails 25' (tblQhqprE7YrrBOiV)
  */
 
-const AIRTABLE_BASE_ID = 'appbBGI8aqW6Lxm5O';
-const LINKEDIN_TABLE_ID = 'tblMqDWVazMY1TD1l';
-const EMAIL_TABLE_ID = 'tblQhqprE7YrrBOiV';
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || 'appbBGI8aqW6Lxm5O';
+const LINKEDIN_TABLE_ID = process.env.LINKEDIN_TABLE_ID || 'tblMqDWVazMY1TD1l';
+const EMAIL_TABLE_ID = process.env.EMAIL_TABLE_ID || 'tblQhqprE7YrrBOiV';
+const CONTACTS_TABLE_ID = process.env.CONTACTS_TABLE_ID || 'tbllDKwyUngifQVeN';
 
 // Map SAM intents to Airtable status values
 // Airtable dropdown options: Not Interested, Interested, Info Requested, Meeting Booked, Trial, MRR Client, Went Silent
@@ -38,6 +39,7 @@ export interface LinkedInLeadData {
   replyText?: string;
   industry?: string;
   country?: string;
+  companySize?: string;
 }
 
 export interface EmailLeadData {
@@ -47,6 +49,8 @@ export interface EmailLeadData {
   replyText?: string;
   intent?: string;
   country?: string;
+  industry?: string;
+  companySize?: string;
 }
 
 class AirtableService {
@@ -124,18 +128,53 @@ class AirtableService {
   }
 
   /**
-   * Find a record by Email
+   * Find a record in any table by Email
    */
-  async findEmailLead(email: string): Promise<any | null> {
+  async findRecordByEmail(tableId: string, email: string): Promise<any | null> {
     try {
       const formula = encodeURIComponent(`{Email} = "${email}"`);
       const response = await this.request(
-        `${EMAIL_TABLE_ID}?filterByFormula=${formula}&maxRecords=1`,
+        `${tableId}?filterByFormula=${formula}&maxRecords=1`,
         'GET'
       );
       return response.records?.[0] || null;
     } catch (error) {
-      console.error('Error finding email lead:', error);
+      console.error(`Error finding record by email in ${tableId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Find a record by Email in Email leads table
+   */
+  async findEmailLead(email: string): Promise<any | null> {
+    return this.findRecordByEmail(EMAIL_TABLE_ID, email);
+  }
+
+  /**
+   * Find a record in Master Contacts by Email or Profile URL
+   */
+  async findMasterContact(params: { email?: string; profileUrl?: string }): Promise<any | null> {
+    try {
+      if (!params.email && !params.profileUrl) return null;
+
+      let formula = '';
+      if (params.email && params.profileUrl) {
+        formula = `OR({Email} = "${params.email}", {Profile URL} = "${params.profileUrl}")`;
+      } else if (params.email) {
+        formula = `{Email} = "${params.email}"`;
+      } else {
+        formula = `{Profile URL} = "${params.profileUrl}"`;
+      }
+
+      const encodedFormula = encodeURIComponent(formula);
+      const response = await this.request(
+        `${CONTACTS_TABLE_ID}?filterByFormula=${encodedFormula}&maxRecords=1`,
+        'GET'
+      );
+      return response.records?.[0] || null;
+    } catch (error) {
+      console.error('Error finding master contact:', error);
       return null;
     }
   }
@@ -184,6 +223,7 @@ class AirtableService {
       if (data.replyText) fields['Last Messages/ Responses'] = data.replyText;
       if (data.industry) fields['Industry'] = data.industry;
       if (data.country) fields['Country'] = data.country;
+      if (data.companySize) fields['Company Size'] = data.companySize;
 
       // Check if record exists
       let existingRecord = null;
@@ -195,6 +235,14 @@ class AirtableService {
         // Update existing record
         console.log(`📝 Updating existing Airtable record: ${existingRecord.id}`);
         const response = await this.request(LINKEDIN_TABLE_ID, 'PATCH', { fields }, existingRecord.id);
+
+        // Dual-sync to Master Contacts
+        await this.syncToMasterContacts({
+          ...data,
+          source: 'LinkedIn',
+          status
+        });
+
         console.log(`✅ Updated LinkedIn lead in Airtable: ${data.name}`);
         return { success: true, recordId: response.id };
       } else {
@@ -203,6 +251,14 @@ class AirtableService {
           records: [{ fields }],
         });
         const recordId = response.records?.[0]?.id;
+
+        // Dual-sync to Master Contacts
+        await this.syncToMasterContacts({
+          ...data,
+          source: 'LinkedIn',
+          status
+        });
+
         console.log(`✅ Created LinkedIn lead in Airtable: ${data.name} (${recordId})`);
         return { success: true, recordId };
       }
@@ -255,6 +311,8 @@ class AirtableService {
       if (data.replyText) fields['Message'] = data.replyText;
       if (status) fields['Status'] = status;
       if (data.country) fields['Country'] = data.country;
+      if (data.industry) fields['Industry'] = data.industry;
+      if (data.companySize) fields['Company Size'] = data.companySize;
 
       // Check if record exists
       const existingRecord = await this.findEmailLead(data.email);
@@ -263,6 +321,20 @@ class AirtableService {
         // Update existing record
         console.log(`📝 Updating existing email record: ${existingRecord.id}`);
         const response = await this.request(EMAIL_TABLE_ID, 'PATCH', { fields }, existingRecord.id);
+
+        // Dual-sync to Master Contacts
+        await this.syncToMasterContacts({
+          email: data.email,
+          name: data.name,
+          country: data.country,
+          industry: data.industry,
+          companySize: data.companySize,
+          replyText: data.replyText,
+          intent: data.intent,
+          source: 'Email',
+          status
+        });
+
         console.log(`✅ Updated email lead in Airtable: ${data.email}`);
         return { success: true, recordId: response.id };
       } else {
@@ -271,6 +343,20 @@ class AirtableService {
           records: [{ fields }],
         });
         const recordId = response.records?.[0]?.id;
+
+        // Dual-sync to Master Contacts
+        await this.syncToMasterContacts({
+          email: data.email,
+          name: data.name,
+          country: data.country,
+          industry: data.industry,
+          companySize: data.companySize,
+          replyText: data.replyText,
+          intent: data.intent,
+          source: 'Email',
+          status
+        });
+
         console.log(`✅ Created email lead in Airtable: ${data.email} (${recordId})`);
         return { success: true, recordId };
       }
@@ -280,6 +366,82 @@ class AirtableService {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
+    }
+  }
+
+  /**
+   * Create or update a Master Contact entry
+   */
+  async syncToMasterContacts(data: any): Promise<{ success: boolean; recordId?: string }> {
+    try {
+      console.log(`📊 Syncing to Master Contacts: ${data.name || data.email}`);
+
+      const fields: Record<string, any> = {
+        'Name': data.name,
+        'Email': data.email,
+        'Profile URL': data.profileUrl,
+        'Job Title': data.jobTitle,
+        'Company Name': data.companyName,
+        'Industry': data.industry,
+        'Country': data.country,
+        'Company Size': data.companySize,
+        'Source': data.source || 'Manual',
+        'Status': data.status,
+        'Last Interaction': new Date().toISOString()
+      };
+
+      // Find existing record
+      const existingRecord = await this.findMasterContact({
+        email: data.email,
+        profileUrl: data.profileUrl
+      });
+
+      if (existingRecord) {
+        await this.request(CONTACTS_TABLE_ID, 'PATCH', { fields }, existingRecord.id);
+        return { success: true, recordId: existingRecord.id };
+      } else {
+        fields['Date Added'] = new Date().toISOString().split('T')[0];
+        const response = await this.request(CONTACTS_TABLE_ID, 'POST', {
+          records: [{ fields }]
+        });
+        return { success: true, recordId: response.records?.[0]?.id };
+      }
+    } catch (error) {
+      console.error('❌ Master Contacts sync failed:', error);
+      return { success: false };
+    }
+  }
+
+  /**
+   * Sync any prospect to Airtable (even without a reply)
+   */
+  async syncProspectToAirtable(prospect: any): Promise<{ success: boolean; recordId?: string; error?: string }> {
+    return this.syncLinkedInLead({
+      profileUrl: prospect.linkedin_url,
+      name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+      jobTitle: prospect.title,
+      companyName: prospect.company_name,
+      industry: prospect.industry,
+      country: prospect.location, // Mapping location to country
+      companySize: prospect.company_size || prospect.personalization_data?.company_size,
+    });
+  }
+
+  /**
+   * List recently modified contacts from the Master Contacts table
+   */
+  async listRecentContacts(limit = 100): Promise<any[]> {
+    try {
+      // Sort by last modified - requires a 'Last Modified' field in Airtable or just poll
+      // For now, we'll poll the most recent records based on our own 'Last Interaction' field
+      const response = await this.request(
+        `${CONTACTS_TABLE_ID}?sort%5B0%5D%5Bfield%5D=Last+Interaction&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=${limit}`,
+        'GET'
+      );
+      return response.records || [];
+    } catch (error) {
+      console.error('❌ Error listing recent Airtable contacts:', error);
+      return [];
     }
   }
 

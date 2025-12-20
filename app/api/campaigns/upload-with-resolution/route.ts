@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { parse } from 'csv-parse/sync';
+import { airtableService } from '@/lib/airtable';
 
 // Prevent 504 timeout on large uploads with LinkedIn resolution
 export const maxDuration = 120; // 120 seconds (LinkedIn resolution takes longer)
@@ -17,6 +18,7 @@ interface CSVProspect {
   email_address?: string;
   location?: string;
   industry?: string;
+  company_size?: string;
 }
 
 interface UploadResult {
@@ -37,25 +39,25 @@ interface UploadResult {
 // Validate and clean prospect data
 function validateProspectData(prospect: any, rowIndex: number): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
-  
+
   if (!prospect.first_name?.trim()) {
     errors.push('First name is required');
   }
-  
+
   if (!prospect.last_name?.trim()) {
     errors.push('Last name is required');
   }
-  
+
   if (!prospect.linkedin_profile_url?.trim()) {
     errors.push('LinkedIn profile URL is required');
   } else if (!prospect.linkedin_profile_url.includes('linkedin.com/in/')) {
     errors.push('Invalid LinkedIn profile URL format');
   }
-  
+
   if (prospect.email_address && !prospect.email_address.includes('@')) {
     errors.push('Invalid email address format');
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors
@@ -72,14 +74,15 @@ function cleanProspectData(prospect: any): CSVProspect {
     linkedin_profile_url: prospect.linkedin_profile_url?.trim() || prospect.linkedin_url?.trim() || '',
     email_address: prospect.email_address?.trim() || prospect.email?.trim() || null,
     location: prospect.location?.trim() || null,
-    industry: prospect.industry?.trim() || null
+    industry: prospect.industry?.trim() || null,
+    company_size: prospect.company_size?.trim() || prospect['company size']?.trim() || null
   };
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
+    const supabase = await createClient();
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -90,11 +93,11 @@ export async function POST(req: NextRequest) {
     const csvFile = formData.get('csv_file') as File;
     const campaignId = formData.get('campaign_id') as string;
     const autoResolveIds = formData.get('auto_resolve_ids') === 'true';
-    
+
     if (!csvFile) {
       return NextResponse.json({ error: 'CSV file is required' }, { status: 400 });
     }
-    
+
     if (!campaignId) {
       return NextResponse.json({ error: 'Campaign ID is required' }, { status: 400 });
     }
@@ -114,7 +117,7 @@ export async function POST(req: NextRequest) {
     // Parse CSV file
     const csvContent = await csvFile.text();
     let prospects: any[];
-    
+
     try {
       prospects = parse(csvContent, {
         columns: true,
@@ -154,7 +157,7 @@ export async function POST(req: NextRequest) {
       try {
         const rawProspect = prospects[i];
         const cleanedProspect = cleanProspectData(rawProspect);
-        
+
         // Validate prospect data
         const validation = validateProspectData(cleanedProspect, i + 1);
         if (!validation.isValid) {
@@ -179,7 +182,7 @@ export async function POST(req: NextRequest) {
           // Prospect already exists
           prospectId = existingProspect.id;
           result.existing_prospects++;
-          
+
           // Update existing prospect data
           await supabase
             .from('workspace_prospects')
@@ -191,6 +194,7 @@ export async function POST(req: NextRequest) {
               email_address: cleanedProspect.email_address,
               location: cleanedProspect.location,
               industry: cleanedProspect.industry,
+              company_size: cleanedProspect.company_size,
               updated_at: new Date().toISOString()
             })
             .eq('id', prospectId);
@@ -207,7 +211,8 @@ export async function POST(req: NextRequest) {
               linkedin_profile_url: cleanedProspect.linkedin_profile_url,
               email_address: cleanedProspect.email_address,
               location: cleanedProspect.location,
-              industry: cleanedProspect.industry
+              industry: cleanedProspect.industry,
+              company_size: cleanedProspect.company_size
             })
             .select('id')
             .single();
@@ -246,6 +251,32 @@ export async function POST(req: NextRequest) {
 
       if (addError) {
         console.error('Error adding prospects to campaign:', addError);
+      } else {
+        // ============================================
+        // AIRTABLE SYNC (Dec 20, 2025): Sync ALL uploaded prospects to Airtable
+        // ============================================
+        console.log(`📊 Syncing ${prospectIds.length} prospects to Airtable...`);
+
+        // Fetch the prospects with all details for Airtable sync
+        const { data: prospectsToSync } = await supabase
+          .from('workspace_prospects')
+          .select('*')
+          .in('id', prospectIds);
+
+        if (prospectsToSync) {
+          for (const p of prospectsToSync) {
+            // Mapping workspace_prospects to the format expected by syncProspectToAirtable
+            // which internally expects linkedin_url, first_name, last_name, etc.
+            const prospectForAirtable = {
+              ...p,
+              linkedin_url: p.linkedin_profile_url, // Airtable service expects linkedin_url
+            };
+
+            airtableService.syncProspectToAirtable(prospectForAirtable).catch(err => {
+              console.error(`   ⚠️ Failed to sync prospect ${p.id} to Airtable:`, err);
+            });
+          }
+        }
       }
     }
 
@@ -253,7 +284,7 @@ export async function POST(req: NextRequest) {
     if (autoResolveIds && prospectIds.length > 0) {
       try {
         console.log('Auto-resolving LinkedIn IDs for uploaded prospects...');
-        
+
         // Check existing LinkedIn contacts for ID resolution
         const { data: resolutionResults, error: resolutionError } = await supabase
           .rpc('resolve_campaign_linkedin_ids', {
@@ -268,7 +299,7 @@ export async function POST(req: NextRequest) {
           result.linkedin_ids_missing = resolutionResults.filter(
             (r: any) => r.resolution_status === 'not_found'
           ).length;
-          
+
           // Update campaign prospects with resolved LinkedIn IDs
           for (const resolution of resolutionResults) {
             if (resolution.resolution_status === 'found') {
@@ -280,7 +311,7 @@ export async function POST(req: NextRequest) {
                 })
                 .eq('campaign_id', campaignId)
                 .eq('prospect_id', resolution.prospect_id);
-              
+
               result.ready_for_messaging++;
             } else {
               result.ready_for_connection++;
@@ -311,11 +342,11 @@ export async function POST(req: NextRequest) {
       },
       results: result,
       next_steps: {
-        ready_for_messaging: result.ready_for_messaging > 0 ? 
+        ready_for_messaging: result.ready_for_messaging > 0 ?
           `${result.ready_for_messaging} prospects ready for direct messaging` : null,
-        ready_for_connection: result.ready_for_connection > 0 ? 
+        ready_for_connection: result.ready_for_connection > 0 ?
           `${result.ready_for_connection} prospects ready for connection requests` : null,
-        linkedin_id_discovery: result.linkedin_ids_missing > 0 ? 
+        linkedin_id_discovery: result.linkedin_ids_missing > 0 ?
           'Run LinkedIn ID discovery to resolve remaining prospects' : null
       }
     });
@@ -331,8 +362,8 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
+    const supabase = await createClient();
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -353,7 +384,7 @@ export async function GET(req: NextRequest) {
         csv_format: {
           required_columns: [
             'first_name',
-            'last_name', 
+            'last_name',
             'linkedin_profile_url'
           ],
           optional_columns: [

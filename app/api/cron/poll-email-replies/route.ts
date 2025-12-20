@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { airtableService } from '@/lib/airtable';
+import { classifyIntent } from '@/lib/services/intent-classifier';
+import { syncInterestedLeadToCRM } from '@/lib/services/crm-sync';
+import { sendEmailReplyNotification } from '@/lib/notifications/google-chat';
+import crypto from 'crypto';
 
 /**
  * Cron Job: Poll Email Replies (Backup for Webhook)
@@ -10,13 +15,13 @@ import { createClient } from '@supabase/supabase-js';
  * Why needed:
  * - Email webhooks can fail or be delayed
  * - Without this, prospects get follow-ups after they've replied
- * - LinkedIn has polling backup, email needs one too
+ * - ReachInbox/Mass-emailing platforms can have delayed sync
  *
  * POST /api/cron/poll-email-replies
  * Header: x-cron-secret (for security)
  */
 
-export const maxDuration = 300; // 5 minutes max - need time for email fetching
+export const maxDuration = 300; // 5 minutes max
 
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
@@ -32,42 +37,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('📧 Poll email replies starting...');
+    console.log('📧 Poll email replies starting (Inbound-First)...');
 
-    // Create Supabase client with service role key (bypasses RLS)
+    // Create Supabase client
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Get all workspaces with email/Google accounts (for email polling)
-    // FIXED (Dec 17): Query user_unipile_accounts instead of workspace_accounts
-    // Google accounts (platform: GOOGLE) are email accounts for inbox polling
+    // Get all active email accounts via Unipile
     const { data: emailAccounts, error: accountsError } = await supabase
       .from('user_unipile_accounts')
-      .select(`
-        id,
-        workspace_id,
-        account_name,
-        unipile_account_id,
-        platform
-      `)
+      .select('id, workspace_id, account_name, unipile_account_id, platform')
       .in('platform', ['GOOGLE', 'OUTLOOK', 'EMAIL'])
       .eq('connection_status', 'active');
 
-    if (accountsError) {
+    if (accountsError || !emailAccounts) {
       console.error('❌ Error fetching email accounts:', accountsError);
       return NextResponse.json({ success: false, error: 'Failed to fetch email accounts' }, { status: 500 });
-    }
-
-    if (!emailAccounts || emailAccounts.length === 0) {
-      console.log('ℹ️  No email accounts to check');
-      return NextResponse.json({
-        success: true,
-        message: 'No email accounts configured',
-        checked: 0,
-        replies_found: 0
-      });
     }
 
     console.log(`📧 Checking ${emailAccounts.length} email accounts for replies...`);
@@ -79,266 +66,184 @@ export async function POST(request: NextRequest) {
       accounts_processed: [] as string[]
     };
 
-    // Process each email account
     for (const account of emailAccounts) {
       try {
-        console.log(`\n🔍 Checking account: ${account.account_name} (${account.unipile_account_id})`);
+        console.log(`\n🔍 Checking account: ${account.account_name}`);
         results.accounts_processed.push(account.account_name);
 
-        // FIX (Dec 20): Find prospects that have been sent emails via email_send_queue
-        // Instead of checking campaign_prospects.status, check email_send_queue.status='sent'
-        // This properly handles email-only campaigns where prospect status may vary
-
-        // Get prospects who were sent emails from this account
-        const { data: sentEmails, error: sentError } = await supabase
-          .from('email_send_queue')
-          .select(`
-            id,
-            prospect_id,
-            recipient_email,
-            sent_at,
-            campaign_prospects!inner (
-              id,
-              first_name,
-              last_name,
-              email,
-              company_name,
-              title,
-              status,
-              responded_at,
-              campaign_id
-            )
-          `)
-          .eq('email_account_id', account.unipile_account_id)
-          .eq('status', 'sent')
-          .is('campaign_prospects.responded_at', null)
-          .order('sent_at', { ascending: false })
-          .limit(50);
-
-        // Transform to prospect format
-        const prospects = sentEmails?.map(e => ({
-          id: e.campaign_prospects.id,
-          first_name: e.campaign_prospects.first_name,
-          last_name: e.campaign_prospects.last_name,
-          email: e.recipient_email || e.campaign_prospects.email,
-          company_name: e.campaign_prospects.company_name,
-          title: e.campaign_prospects.title,
-          status: e.campaign_prospects.status,
-          responded_at: e.campaign_prospects.responded_at,
-          campaign_id: e.campaign_prospects.campaign_id
-        })) || [];
-
-        // Deduplicate by prospect ID (may have multiple emails sent)
-        const uniqueProspects = [...new Map(prospects.map(p => [p.id, p])).values()];
-
-        if (sentError || uniqueProspects.length === 0) {
-          console.log(`   ℹ️ No prospects to check for ${account.account_name}`);
-          if (sentError) console.log(`   Error: ${sentError.message}`);
-          continue;
-        }
-
-        console.log(`   📋 Checking ${uniqueProspects.length} prospects for replies...`);
-
-        // Fetch recent emails for this account (inbox - received emails)
+        // 1. Fetch recent emails from INBOX
         const emailsResponse = await fetch(
           `${UNIPILE_BASE_URL}/api/v1/emails?account_id=${account.unipile_account_id}&folder=INBOX&limit=50`,
           {
             method: 'GET',
-            headers: {
-              'X-API-KEY': UNIPILE_API_KEY,
-              'Accept': 'application/json'
-            }
+            headers: { 'X-API-KEY': UNIPILE_API_KEY, 'Accept': 'application/json' }
           }
         );
 
         if (!emailsResponse.ok) {
           console.error(`   ❌ Failed to fetch emails for ${account.account_name}`);
-          results.errors.push(`Failed to fetch emails for ${account.account_name}`);
+          results.errors.push(`Failed to fetch for ${account.account_name}`);
           continue;
         }
 
         const emailsData = await emailsResponse.json();
         const emails = emailsData.items || [];
+        if (emails.length === 0) {
+          console.log(`   ℹ️ No recent emails in inbox`);
+          continue;
+        }
 
-        console.log(`   📨 Found ${emails.length} emails in inbox`);
+        // 2. Match senders against campaign_prospects
+        const uniqueSenders = [...new Set(emails.map((e: any) =>
+          (e.from_attendee?.identifier || e.from || '').toLowerCase()
+        ).filter(Boolean))];
 
-        // Check each prospect for replies
-        for (const prospect of uniqueProspects) {
+        const { data: matchedProspects, error: pError } = await supabase
+          .from('campaign_prospects')
+          .select(`
+            id, first_name, last_name, email, company_name, title, status, responded_at, campaign_id,
+            location, industry, company_size, personalization_data,
+            campaigns!inner (workspace_id, name)
+          `)
+          .in('email', uniqueSenders)
+          .is('responded_at', null)
+          .eq('campaigns.workspace_id', account.workspace_id);
+
+        if (pError || !matchedProspects || matchedProspects.length === 0) {
+          console.log(`   ℹ️ No matching prospects in this batch of ${emails.length} emails`);
+          continue;
+        }
+
+        console.log(`   📋 Found ${matchedProspects.length} matching prospects who replied!`);
+
+        // 3. Process each reply
+        for (const prospect of matchedProspects) {
           results.checked++;
+          results.replies_found++;
 
-          if (!prospect.email) continue;
-
-          // Look for emails from this prospect
-          const prospectEmail = prospect.email.toLowerCase();
-          const replyEmail = emails.find((email: any) => {
-            const from = email.from_attendee?.identifier?.toLowerCase() ||
-                        email.from?.toLowerCase() || '';
+          const prospectEmail = (prospect.email || '').toLowerCase();
+          const replyEmail = emails.find((e: any) => {
+            const from = (e.from_attendee?.identifier || e.from || '').toLowerCase();
             return from === prospectEmail || from.includes(prospectEmail);
           });
 
           if (replyEmail) {
-            console.log(`   ✅ Found reply from ${prospect.first_name} ${prospect.last_name} (${prospect.email})`);
-            results.replies_found++;
+            console.log(`   ✅ Processing: ${prospect.first_name} ${prospect.last_name} (${prospectEmail})`);
 
-            // Update prospect as replied - STOP all messaging
+            // Update Supabase
             await supabase
               .from('campaign_prospects')
               .update({
                 status: 'replied',
                 responded_at: replyEmail.date || new Date().toISOString(),
-                follow_up_due_at: null, // CRITICAL: Stop follow-ups
+                follow_up_due_at: null,
                 updated_at: new Date().toISOString()
               })
               .eq('id', prospect.id);
 
-            // Cancel any pending send_queue items for this prospect
-            await supabase
-              .from('send_queue')
-              .update({
-                status: 'cancelled',
-                error_message: 'Prospect replied via email - sequence stopped',
-                updated_at: new Date().toISOString()
-              })
-              .eq('prospect_id', prospect.id)
-              .eq('status', 'pending');
+            // Stop sequences
+            await supabase.from('send_queue').update({ status: 'cancelled' }).eq('prospect_id', prospect.id).eq('status', 'pending');
+            await supabase.from('email_send_queue').update({ status: 'cancelled' }).eq('prospect_id', prospect.id).eq('status', 'pending');
 
-            // Cancel any pending email queue items
-            await supabase
-              .from('email_send_queue')
-              .update({
-                status: 'cancelled',
-                error_message: 'Prospect replied - sequence stopped (polling)',
-                updated_at: new Date().toISOString()
-              })
-              .eq('prospect_id', prospect.id)
-              .eq('status', 'pending');
+            const messageText = replyEmail.body_plain || replyEmail.body || replyEmail.subject || '';
+            const intent = await classifyIntent(messageText, {
+              prospectName: `${prospect.first_name} ${prospect.last_name}`.trim(),
+              prospectCompany: prospect.company_name
+            });
 
-            // TRIGGER SAM REPLY AGENT - Create draft for approval
-            const wsId = account.workspace_id;
-            console.log(`   🤖 Triggering SAM Reply Agent for ${prospect.first_name}...`);
+            // Airtable Sync
+            await airtableService.syncEmailLead({
+              email: prospect.email,
+              name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+              campaignName: (prospect.campaigns as any)?.name,
+              replyText: messageText,
+              intent: intent.intent,
+              country: prospect.location,
+              industry: prospect.industry,
+              companySize: prospect.company_size || (prospect.personalization_data as any)?.company_size,
+            });
 
-            await triggerReplyAgent(
-              supabase,
-              prospect,
-              replyEmail,
-              wsId,
-              'email'
-            );
+            // CRM Sync
+            const positiveIntents = ['interested', 'curious', 'question', 'vague_positive'];
+            if (positiveIntents.includes(intent.intent)) {
+              await syncInterestedLeadToCRM(account.workspace_id, {
+                prospectId: prospect.id,
+                firstName: prospect.first_name,
+                lastName: prospect.last_name,
+                email: prospect.email,
+                company: prospect.company_name,
+                jobTitle: prospect.title,
+                replyText: messageText,
+                intent: intent.intent,
+                intentConfidence: intent.confidence,
+                campaignId: prospect.campaign_id,
+              });
+
+              const { data: acConfig } = await supabase.from('workspace_crm_config').select('activecampaign_list_id').eq('workspace_id', account.workspace_id).single();
+              const { activeCampaignService } = await import('@/lib/activecampaign');
+              await activeCampaignService.addNewMemberToList(prospect.email, prospect.first_name || '', prospect.last_name || '', acConfig?.activecampaign_list_id || 'sam-users');
+            }
+
+            // Notifications
+            await sendEmailReplyNotification({
+              prospectEmail: prospect.email,
+              prospectName: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+              campaignName: (prospect.campaigns as any)?.name,
+              messageText: messageText,
+              intent: intent.intent,
+              country: prospect.location,
+              emailAccount: account.account_name
+            });
+
+            // Reply Agent
+            await triggerReplyAgent(supabase, prospect, replyEmail, account.workspace_id, 'email');
           }
         }
-
-        // Rate limit between accounts
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-      } catch (accountError) {
-        console.error(`❌ Error processing account ${account.account_name}:`, accountError);
-        results.errors.push(`Account ${account.account_name}: ${accountError}`);
+      } catch (err) {
+        console.error(`❌ Error in account ${account.account_name}:`, err);
+        results.errors.push(`${account.account_name}: ${err}`);
       }
     }
 
     const duration = Date.now() - startTime;
-    console.log(`\n⏱️  Poll completed in ${duration}ms`);
-    console.log(`📊 Results: ${results.checked} checked, ${results.replies_found} replies found`);
-
-    return NextResponse.json({
-      success: true,
-      message: `Checked ${results.checked} prospects, found ${results.replies_found} email replies`,
-      ...results,
-      execution_time_ms: duration
-    });
+    return NextResponse.json({ success: true, ...results, execution_time_ms: duration });
 
   } catch (error) {
-    console.error('❌ Poll email replies error:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error('❌ Cron failed:', error);
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }
 }
 
-/**
- * Trigger SAM Reply Agent when a prospect replies via email
- * Creates a draft for human approval via email/chat
- */
-async function triggerReplyAgent(
-  supabase: any,
-  prospect: any,
-  inboundEmail: any,
-  workspaceId: string,
-  channel: string
-) {
+async function triggerReplyAgent(supabase: any, prospect: any, inboundEmail: any, workspaceId: string, channel: string) {
   try {
-    // Check if workspace has Reply Agent enabled
-    const { data: config } = await supabase
-      .from('workspace_reply_agent_config')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('enabled', true)
-      .single();
+    const { data: config } = await supabase.from('workspace_reply_agent_config').select('*').eq('workspace_id', workspaceId).eq('enabled', true).single();
+    if (!config) return;
 
-    if (!config) {
-      console.log(`   ℹ️ Reply Agent not enabled for workspace ${workspaceId}`);
-      return;
-    }
-
-    // Get message ID (Unipile email ID)
     const messageId = inboundEmail.id || inboundEmail.message_id || `email-${Date.now()}`;
+    const { data: existing } = await supabase.from('reply_agent_drafts').select('id').eq('inbound_message_id', messageId).maybeSingle();
+    if (existing) return;
 
-    // Check if we already have a draft for this message
-    const { data: existingDraft } = await supabase
-      .from('reply_agent_drafts')
-      .select('id')
-      .eq('inbound_message_id', messageId)
-      .single();
+    const emailBody = inboundEmail.body_plain || inboundEmail.body?.replace(/<[^>]*>/g, '') || inboundEmail.text || '[No content]';
 
-    if (existingDraft) {
-      console.log(`   ℹ️ Draft already exists for email ${messageId}`);
-      return;
-    }
-
-    // Generate approval token
-    const approvalToken = crypto.randomUUID();
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 48); // 48 hour expiry
-
-    // Extract email body text
-    const emailBody = inboundEmail.body_plain ||
-                      inboundEmail.body?.replace(/<[^>]*>/g, '') ||
-                      inboundEmail.text ||
-                      '[Email body not available]';
-
-    // Create draft record (Reply Agent cron will pick this up and generate AI reply)
-    const { data: draft, error: draftError } = await supabase
-      .from('reply_agent_drafts')
-      .insert({
-        workspace_id: workspaceId,
-        campaign_id: prospect.campaign_id,
-        prospect_id: prospect.id,
-        inbound_message_id: messageId,
-        inbound_message_text: emailBody,
-        inbound_message_at: inboundEmail.date || new Date().toISOString(),
-        channel: channel,
-        prospect_name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
-        prospect_email: prospect.email,
-        prospect_company: prospect.company_name || prospect.company,
-        prospect_title: prospect.title,
-        email_subject: inboundEmail.subject,
-        draft_text: '[Pending AI generation]', // Required field - will be replaced by reply-agent-process cron
-        approval_token: approvalToken,
-        expires_at: expiresAt.toISOString(),
-        status: 'pending_generation', // Will be processed by reply-agent-process cron
-      })
-      .select()
-      .single();
-
-    if (draftError) {
-      console.error(`   ❌ Error creating draft:`, draftError);
-      return;
-    }
-
-    console.log(`   ✅ Draft created: ${draft.id} - SAM will generate reply`);
-
+    await supabase.from('reply_agent_drafts').insert({
+      workspace_id: workspaceId,
+      campaign_id: prospect.campaign_id,
+      prospect_id: prospect.id,
+      inbound_message_id: messageId,
+      inbound_message_text: emailBody,
+      inbound_message_at: inboundEmail.date || new Date().toISOString(),
+      channel,
+      prospect_name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+      prospect_email: prospect.email,
+      prospect_company: prospect.company_name || prospect.company,
+      prospect_title: prospect.title,
+      email_subject: inboundEmail.subject,
+      draft_text: '[Pending AI generation]',
+      approval_token: crypto.randomUUID(),
+      expires_at: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
+      status: 'pending_generation',
+    });
   } catch (error) {
-    console.error(`   ❌ Error triggering Reply Agent:`, error);
+    console.error(`   ❌ Reply Agent trigger failed:`, error);
   }
 }
