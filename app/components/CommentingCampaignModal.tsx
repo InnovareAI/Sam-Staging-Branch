@@ -36,9 +36,13 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
   const [hashtagTargets, setHashtagTargets] = useState<string[]>(['']);
 
   const [saving, setSaving] = useState(false);
+  const [existingMonitors, setExistingMonitors] = useState<Monitor[]>([]);
+  const [loadingMonitors, setLoadingMonitors] = useState(false);
 
   // Load existing monitor data in edit mode
+  // Load existing monitor data
   useEffect(() => {
+    loadExistingMonitors();
     if (editMode && existingMonitor) {
       // Load campaign name
       if (existingMonitor.name) {
@@ -75,7 +79,36 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
         setActiveTab('hashtags');
       }
     }
-  }, [editMode, existingMonitor]);
+  }, [editMode, existingMonitor, workspaceId]);
+
+  const loadExistingMonitors = async () => {
+    setLoadingMonitors(true);
+    try {
+      const res = await fetch(`/api/linkedin-commenting/monitors?workspace_id=${workspaceId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setExistingMonitors(data.monitors || []);
+      }
+    } catch (err) {
+      console.error('Failed to load existing monitors:', err);
+    } finally {
+      setLoadingMonitors(false);
+    }
+  };
+
+  const handleRemoveExisting = async (monitorId: string) => {
+    if (!confirm('Are you sure you want to stop monitoring this profile?')) return;
+    try {
+      const res = await fetch(`/api/linkedin-commenting/monitors/${monitorId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setExistingMonitors(prev => prev.filter(m => m.id !== monitorId));
+      }
+    } catch (err) {
+      console.error('Failed to remove monitor:', err);
+    }
+  };
 
   const handleAddTarget = () => {
     if (activeTab === 'profiles') {
@@ -375,33 +408,30 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
           <div className="flex gap-2 p-1 bg-gray-700/50 rounded-lg">
             <button
               onClick={() => setActiveTab('profiles')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${
-                activeTab === 'profiles'
-                  ? 'bg-pink-600 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-600'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'profiles'
+                ? 'bg-pink-600 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                }`}
             >
               <User size={18} />
               <span className="font-medium">Personal Profiles</span>
             </button>
             <button
               onClick={() => setActiveTab('companies')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${
-                activeTab === 'companies'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-600'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'companies'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                }`}
             >
               <Building2 size={18} />
               <span className="font-medium">Company Pages</span>
             </button>
             <button
               onClick={() => setActiveTab('hashtags')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${
-                activeTab === 'hashtags'
-                  ? 'bg-green-600 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-600'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'hashtags'
+                ? 'bg-green-600 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                }`}
             >
               <Hash size={18} />
               <span className="font-medium">Hashtags</span>
@@ -414,16 +444,16 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
               {activeTab === 'profiles'
                 ? 'LinkedIn Profiles to Monitor (Max 30)'
                 : activeTab === 'companies'
-                ? 'LinkedIn Company Pages to Monitor (Max 30)'
-                : 'Hashtags to Monitor (Max 10)'
+                  ? 'LinkedIn Company Pages to Monitor (Max 30)'
+                  : 'Hashtags to Monitor (Max 10)'
               }
             </label>
             <p className="text-sm text-gray-400 mb-3">
               {activeTab === 'profiles'
                 ? 'Enter LinkedIn profile vanity names (e.g., sama, andrewng, ylecun)'
                 : activeTab === 'companies'
-                ? 'Enter LinkedIn company page URLs or names (e.g., microsoft, google, linkedin.com/company/openai)'
-                : 'Enter hashtags to search for posts (e.g., #genAI, #sales, #marketing)'
+                  ? 'Enter LinkedIn company page URLs or names (e.g., microsoft, google, linkedin.com/company/openai)'
+                  : 'Enter hashtags to search for posts (e.g., #genAI, #sales, #marketing)'
               }
             </p>
             {(activeTab === 'profiles' ? profileTargets : activeTab === 'companies' ? companyTargets : hashtagTargets).map((target, index) => (
@@ -435,8 +465,8 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
                   placeholder={activeTab === 'profiles'
                     ? 'e.g., sama, andrewng, or linkedin.com/in/username'
                     : activeTab === 'companies'
-                    ? 'e.g., microsoft, openai, or linkedin.com/company/google'
-                    : 'e.g., genAI, sales, or #marketing'
+                      ? 'e.g., microsoft, openai, or linkedin.com/company/google'
+                      : 'e.g., genAI, sales, or #marketing'
                   }
                   className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
@@ -455,6 +485,62 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
             >
               + Add another {activeTab === 'profiles' ? 'profile' : activeTab === 'companies' ? 'company page' : 'hashtag'}
             </button>
+
+            {/* Currently Following Section */}
+            <div className="mt-8">
+              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <Clock size={16} className="text-gray-400" />
+                Currently Following
+              </h3>
+              {loadingMonitors ? (
+                <div className="flex items-center gap-2 text-gray-500 text-sm italic">
+                  <Clock size={14} className="animate-spin" />
+                  Loading followed {activeTab}...
+                </div>
+              ) : existingMonitors.filter(m => {
+                if (activeTab === 'profiles') return m.hashtags.some(h => h.startsWith('PROFILE:'));
+                if (activeTab === 'companies') return m.hashtags.some(h => h.startsWith('COMPANY:'));
+                return m.hashtags.some(h => h.startsWith('HASHTAG:'));
+              }).length === 0 ? (
+                <p className="text-sm text-gray-500 italic">No {activeTab} followed yet</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {existingMonitors.filter(m => {
+                    if (activeTab === 'profiles') return m.hashtags.some(h => h.startsWith('PROFILE:'));
+                    if (activeTab === 'companies') return m.hashtags.some(h => h.startsWith('COMPANY:'));
+                    return m.hashtags.some(h => h.startsWith('HASHTAG:'));
+                  }).map(monitor => {
+                    const tag = monitor.hashtags[0] || '';
+                    let displayName = monitor.name || tag;
+                    if (tag.startsWith('PROFILE:')) displayName = tag.replace('PROFILE:', '');
+                    if (tag.startsWith('COMPANY:')) displayName = tag.replace('COMPANY:', '');
+                    if (tag.startsWith('HASHTAG:')) displayName = '#' + tag.replace('HASHTAG:', '');
+
+                    return (
+                      <div key={monitor.id} className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg border border-gray-700">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTab === 'profiles' ? 'bg-pink-600/20 text-pink-400' :
+                            activeTab === 'companies' ? 'bg-blue-600/20 text-blue-400' :
+                              'bg-green-600/20 text-green-400'
+                            }`}>
+                            {activeTab === 'profiles' ? <User size={14} /> :
+                              activeTab === 'companies' ? <Building2 size={14} /> :
+                                <Hash size={14} />}
+                          </div>
+                          <span className="text-sm text-white font-medium truncate">{displayName}</span>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveExisting(monitor.id)}
+                          className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* AI Settings Note */}

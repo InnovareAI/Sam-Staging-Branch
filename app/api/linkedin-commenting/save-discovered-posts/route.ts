@@ -35,9 +35,17 @@ export async function POST(request: NextRequest) {
       posts_count: Array.isArray(body.posts) ? body.posts.length : 1
     });
 
-    const supabase = await createClient();
+    const { supabaseAdmin } = await import('@/app/lib/supabase');
+    const supabase = supabaseAdmin();
     const monitor = body.monitor;
-    const posts = Array.isArray(body.posts) ? body.posts : [body.posts];
+    const SCRAPING_LIMIT = 10;
+    let posts = Array.isArray(body.posts) ? body.posts : [body.posts];
+
+    // Enforce scraping limit of 10 posts twice daily (per run)
+    if (posts.length > SCRAPING_LIMIT) {
+      console.log(`✂️ Trimming posts to limit of ${SCRAPING_LIMIT} (was ${posts.length})`);
+      posts = posts.slice(0, SCRAPING_LIMIT);
+    }
 
     let savedCount = 0;
     let skippedCount = 0;
@@ -83,6 +91,7 @@ export async function POST(request: NextRequest) {
 
           // Status
           status: 'pending',
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 
           // Metadata
           metadata: {

@@ -59,6 +59,7 @@ export default function ApproveCommentsPage() {
   const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<PendingComment[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending_approval');
+  const [dateFilter, setDateFilter] = useState<'today' | 'history'>('today');
   const [statusCounts, setStatusCounts] = useState<Record<StatusFilter, number>>({
     pending_approval: 0,
     scheduled: 0,
@@ -77,10 +78,11 @@ export default function ApproveCommentsPage() {
     loadStatusCounts();
   }, [workspaceId, campaignFilter]);
 
-  // Reload comments when status filter changes
+  // Reload comments when status or date filter changes
   useEffect(() => {
     loadComments();
-  }, [statusFilter]);
+    loadStatusCounts();
+  }, [statusFilter, dateFilter]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -128,7 +130,10 @@ export default function ApproveCommentsPage() {
 
   const loadStatusCounts = async () => {
     try {
-      const params = new URLSearchParams({ workspace_id: workspaceId });
+      const params = new URLSearchParams({
+        workspace_id: workspaceId,
+        date_filter: dateFilter
+      });
       if (campaignFilter) params.append('monitor_id', campaignFilter);
 
       // Fetch counts for all statuses
@@ -156,10 +161,13 @@ export default function ApproveCommentsPage() {
   const loadComments = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ workspace_id: workspaceId });
+      const params = new URLSearchParams({
+        workspace_id: workspaceId,
+        date_filter: dateFilter
+      });
       if (campaignFilter) params.append('monitor_id', campaignFilter);
 
-      const res = await fetch(`/api/linkedin-commenting/comments?${params}&status=${statusFilter}&limit=50`);
+      const res = await fetch(`/api/linkedin-commenting/comments?${params}&status=${statusFilter}&limit=100`);
 
       if (res.ok) {
         const data = await res.json();
@@ -300,11 +308,34 @@ export default function ApproveCommentsPage() {
             </button>
             <div>
               <h1 className="text-xl font-bold text-white">Comment Approval</h1>
-              <p className="text-gray-400 text-sm">{comments.length} pending approval</p>
+              <p className="text-gray-400 text-sm">
+                {dateFilter === 'today' ? "Today's Arrivals" : "History"} - {comments.length} items
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-6">
+            {/* Today/History Toggle */}
+            <div className="flex p-1 bg-gray-800 rounded-lg border border-gray-700">
+              <button
+                onClick={() => setDateFilter('today')}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${dateFilter === 'today'
+                  ? 'bg-pink-600 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+                  }`}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setDateFilter('history')}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${dateFilter === 'history'
+                  ? 'bg-pink-600 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+                  }`}
+              >
+                History
+              </button>
+            </div>
             {/* Keyboard Shortcuts Help */}
             {statusFilter === 'pending_approval' && (
               <div className="hidden md:flex items-center gap-2 text-xs text-gray-500 mr-4">
@@ -337,9 +368,9 @@ export default function ApproveCommentsPage() {
                   const current = STATUS_OPTIONS.find(s => s.value === statusFilter);
                   const Icon = current?.icon || Clock;
                   const colorClass = current?.color === 'amber' ? 'text-amber-400' :
-                                     current?.color === 'blue' ? 'text-blue-400' :
-                                     current?.color === 'green' ? 'text-green-400' :
-                                     current?.color === 'red' ? 'text-red-400' : 'text-gray-400';
+                    current?.color === 'blue' ? 'text-blue-400' :
+                      current?.color === 'green' ? 'text-green-400' :
+                        current?.color === 'red' ? 'text-red-400' : 'text-gray-400';
                   return (
                     <>
                       <Icon size={16} className={colorClass} />
@@ -356,13 +387,13 @@ export default function ApproveCommentsPage() {
                   {STATUS_OPTIONS.map((option) => {
                     const Icon = option.icon;
                     const colorClass = option.color === 'amber' ? 'text-amber-400' :
-                                       option.color === 'blue' ? 'text-blue-400' :
-                                       option.color === 'green' ? 'text-green-400' :
-                                       option.color === 'red' ? 'text-red-400' : 'text-gray-400';
+                      option.color === 'blue' ? 'text-blue-400' :
+                        option.color === 'green' ? 'text-green-400' :
+                          option.color === 'red' ? 'text-red-400' : 'text-gray-400';
                     const bgHoverClass = option.color === 'amber' ? 'hover:bg-amber-900/20' :
-                                         option.color === 'blue' ? 'hover:bg-blue-900/20' :
-                                         option.color === 'green' ? 'hover:bg-green-900/20' :
-                                         option.color === 'red' ? 'hover:bg-red-900/20' : 'hover:bg-gray-700';
+                      option.color === 'blue' ? 'hover:bg-blue-900/20' :
+                        option.color === 'green' ? 'hover:bg-green-900/20' :
+                          option.color === 'red' ? 'hover:bg-red-900/20' : 'hover:bg-gray-700';
                     return (
                       <button
                         key={option.value}
@@ -372,9 +403,8 @@ export default function ApproveCommentsPage() {
                           setShowStatusDropdown(false);
                           setSelectedComment(null);
                         }}
-                        className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${bgHoverClass} ${
-                          statusFilter === option.value ? 'bg-gray-700' : ''
-                        }`}
+                        className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${bgHoverClass} ${statusFilter === option.value ? 'bg-gray-700' : ''
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <Icon size={18} className={colorClass} />
@@ -402,39 +432,39 @@ export default function ApproveCommentsPage() {
               <MessageSquare size={48} className="text-gray-600 mb-4" />
               <h3 className="text-lg font-medium text-white mb-2">
                 {statusFilter === 'pending_approval' ? 'No pending comments' :
-                 statusFilter === 'scheduled' ? 'No scheduled comments' :
-                 statusFilter === 'posted' ? 'No posted comments yet' :
-                 'No rejected comments'}
+                  statusFilter === 'scheduled' ? 'No scheduled comments' :
+                    statusFilter === 'posted' ? 'No posted comments yet' :
+                      'No rejected comments'}
               </h3>
               <p className="text-gray-400 text-sm">
                 {statusFilter === 'pending_approval'
                   ? 'New comments will appear here when posts are discovered'
                   : statusFilter === 'scheduled'
-                  ? 'Approved comments waiting to be posted will appear here'
-                  : statusFilter === 'posted'
-                  ? 'Comments that have been posted to LinkedIn appear here'
-                  : 'Rejected comments are shown here for reference'}
+                    ? 'Approved comments waiting to be posted will appear here'
+                    : statusFilter === 'posted'
+                      ? 'Comments that have been posted to LinkedIn appear here'
+                      : 'Rejected comments are shown here for reference'}
               </p>
             </div>
           ) : (
             <div className="divide-y divide-gray-800">
               {comments.map((comment) => {
                 const statusIcon = comment.status === 'pending_approval' ? Clock :
-                                   comment.status === 'scheduled' ? Calendar :
-                                   comment.status === 'posted' ? CheckCircle2 : Ban;
+                  comment.status === 'scheduled' ? Calendar :
+                    comment.status === 'posted' ? CheckCircle2 : Ban;
                 const StatusIcon = statusIcon;
                 const iconBgClass = comment.status === 'pending_approval' ? 'bg-amber-600/20' :
-                                    comment.status === 'scheduled' ? 'bg-blue-600/20' :
-                                    comment.status === 'posted' ? 'bg-green-600/20' : 'bg-red-600/20';
+                  comment.status === 'scheduled' ? 'bg-blue-600/20' :
+                    comment.status === 'posted' ? 'bg-green-600/20' : 'bg-red-600/20';
                 const iconColorClass = comment.status === 'pending_approval' ? 'text-amber-400' :
-                                       comment.status === 'scheduled' ? 'text-blue-400' :
-                                       comment.status === 'posted' ? 'text-green-400' : 'text-red-400';
+                  comment.status === 'scheduled' ? 'text-blue-400' :
+                    comment.status === 'posted' ? 'text-green-400' : 'text-red-400';
 
                 // Determine the date to show based on status
                 const displayDate = comment.status === 'posted' && comment.posted_at ? comment.posted_at :
-                                    comment.status === 'scheduled' && comment.scheduled_for ? comment.scheduled_for :
-                                    comment.status === 'rejected' && comment.rejected_at ? comment.rejected_at :
-                                    comment.created_at;
+                  comment.status === 'scheduled' && comment.scheduled_for ? comment.scheduled_for :
+                    comment.status === 'rejected' && comment.rejected_at ? comment.rejected_at :
+                      comment.created_at;
 
                 return (
                   <button
@@ -444,11 +474,10 @@ export default function ApproveCommentsPage() {
                       setIsEditing(false);
                       setEditedComment('');
                     }}
-                    className={`w-full p-4 text-left transition-colors ${
-                      selectedComment?.id === comment.id
-                        ? 'bg-gray-800 border-l-2 border-pink-500'
-                        : 'hover:bg-gray-800/50'
-                    }`}
+                    className={`w-full p-4 text-left transition-colors ${selectedComment?.id === comment.id
+                      ? 'bg-gray-800 border-l-2 border-pink-500'
+                      : 'hover:bg-gray-800/50'
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${iconBgClass}`}>
@@ -508,7 +537,7 @@ export default function ApproveCommentsPage() {
               <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-white">Generated Comment</h3>
-                  {activeTab === 'pending' && (
+                  {statusFilter === 'pending_approval' && (
                     <button
                       onClick={() => handleRegenerate(selectedComment.id)}
                       disabled={actionLoading === selectedComment.id}

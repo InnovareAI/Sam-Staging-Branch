@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const monitorId = searchParams.get('monitor_id');
     const limit = parseInt(searchParams.get('limit') || '50');
     const countOnly = searchParams.get('count_only') === 'true';
+    const dateFilter = searchParams.get('date_filter'); // 'today' or 'history'
 
     if (!workspaceId) {
       return NextResponse.json({ error: 'workspace_id required' }, { status: 400 });
@@ -28,6 +29,16 @@ export async function GET(request: NextRequest) {
 
       if (monitorId) {
         countQuery = countQuery.eq('monitor_id', monitorId);
+      }
+
+      if (dateFilter === 'today') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        countQuery = countQuery.gte('created_at', today.toISOString());
+      } else if (dateFilter === 'history') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        countQuery = countQuery.lt('created_at', today.toISOString());
       }
 
       const { count, error } = await countQuery;
@@ -71,6 +82,17 @@ export async function GET(request: NextRequest) {
     // Filter by monitor if specified
     if (monitorId) {
       query = query.eq('monitor_id', monitorId);
+    }
+
+    // Filter by date
+    if (dateFilter === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      query = query.gte('created_at', today.toISOString());
+    } else if (dateFilter === 'history') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      query = query.lt('created_at', today.toISOString());
     }
 
     // Order by appropriate date field based on status

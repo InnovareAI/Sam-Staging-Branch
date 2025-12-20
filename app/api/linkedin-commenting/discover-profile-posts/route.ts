@@ -118,8 +118,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Using workspace account: ${ACCOUNT_ID}`);
 
+    const SCRAPING_LIMIT = 10;
+
     // Process each profile monitor
     for (const monitor of profileMonitors) {
+      if (totalDiscovered >= SCRAPING_LIMIT) {
+        console.log(`🛑 Reached scraping limit of ${SCRAPING_LIMIT} posts. Stopping.`);
+        break;
+      }
       try {
         // Extract vanity name from PROFILE:vanity_name
         const profileHashtag = monitor.hashtags.find((h: string) => h.startsWith('PROFILE:'));
@@ -239,7 +245,7 @@ export async function POST(request: NextRequest) {
             try {
               postDate = new Date(post.parsed_datetime);
               if (isNaN(postDate.getTime())) postDate = null;
-            } catch (e) {}
+            } catch (e) { }
           }
 
           // Finally, try to parse dateValue as ISO date
@@ -249,7 +255,7 @@ export async function POST(request: NextRequest) {
               if (!isNaN(isoDate.getTime())) {
                 postDate = isoDate;
               }
-            } catch (e) {}
+            } catch (e) { }
           }
 
           if (!postDate) {
@@ -340,7 +346,7 @@ export async function POST(request: NextRequest) {
               try {
                 postDate = new Date(post.parsed_datetime);
                 if (isNaN(postDate.getTime())) postDate = null;
-              } catch (e) {}
+              } catch (e) { }
             }
 
             // Try parsing as ISO date
@@ -350,7 +356,7 @@ export async function POST(request: NextRequest) {
                 if (!isNaN(isoDate.getTime())) {
                   postDate = isoDate;
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
 
             // Use current date as fallback (should never happen for valid posts)
@@ -374,7 +380,8 @@ export async function POST(request: NextRequest) {
                 reactions: post.reaction_counter || post.reactions_count || 0,
                 reposts: post.repost_counter || post.reposts_count || 0
               },
-              status: 'discovered'
+              status: 'discovered',
+              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
             };
 
             // Log the first post being inserted for debugging

@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
         responded_at,
         last_processed_message_id,
         campaign_id,
+        their_messages,
         campaigns:campaign_id (
           workspace_id,
           linkedin_account_id
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
         responded_at,
         last_processed_message_id,
         campaign_id,
+        their_messages,
         campaigns (
           workspace_id,
           linkedin_account_id
@@ -445,13 +447,21 @@ export async function POST(request: NextRequest) {
           }
 
           if (isFirstReply) {
-            // First reply - update prospect status and stop follow-ups
+            // Dec 20 FIX: Update their_messages for context
+            const currentMessages = prospect.their_messages ? (typeof prospect.their_messages === 'string' ? JSON.parse(prospect.their_messages) : prospect.their_messages) : [];
+            const updatedMessages = [...currentMessages, {
+              id: latestInbound.id,
+              text: latestInbound.text || latestInbound.body,
+              timestamp: latestInbound.created_at || latestInbound.timestamp || new Date().toISOString()
+            }];
+
             await supabase
               .from('campaign_prospects')
               .update({
                 status: 'replied',
                 responded_at: latestInbound.created_at || new Date().toISOString(),
                 last_processed_message_id: latestInbound.id,
+                their_messages: updatedMessages,
                 follow_up_due_at: null, // CRITICAL: Stop follow-ups
                 updated_at: new Date().toISOString()
               })
@@ -498,10 +508,18 @@ export async function POST(request: NextRequest) {
             }
           } else {
             // Follow-up reply - just update last_processed_message_id
+            const currentMessages = prospect.their_messages ? (typeof prospect.their_messages === 'string' ? JSON.parse(prospect.their_messages) : prospect.their_messages) : [];
+            const updatedMessages = [...currentMessages, {
+              id: latestInbound.id,
+              text: latestInbound.text || latestInbound.body,
+              timestamp: latestInbound.created_at || latestInbound.timestamp || new Date().toISOString()
+            }];
+
             await supabase
               .from('campaign_prospects')
               .update({
                 last_processed_message_id: latestInbound.id,
+                their_messages: updatedMessages,
                 updated_at: new Date().toISOString()
               })
               .eq('id', prospect.id);
@@ -677,7 +695,7 @@ async function processInboundMessagesFirst(
               id, first_name, last_name, email, linkedin_user_id, linkedin_url,
               company_name, title, industry, location, company_size,
               personalization_data, status, responded_at, campaign_id,
-              last_processed_message_id,
+              last_processed_message_id, their_messages,
               campaigns:campaign_id (workspace_id)
             `)
             .eq('linkedin_user_id', senderId)
@@ -698,7 +716,7 @@ async function processInboundMessagesFirst(
                 id, first_name, last_name, email, linkedin_user_id, linkedin_url,
                 company_name, title, industry, location, company_size,
                 personalization_data, status, responded_at, campaign_id,
-                last_processed_message_id,
+                last_processed_message_id, their_messages,
                 campaigns:campaign_id (workspace_id)
               `)
               .like('linkedin_user_id', `${senderPrefix}%`)
@@ -724,7 +742,7 @@ async function processInboundMessagesFirst(
                   id, first_name, last_name, email, linkedin_user_id, linkedin_url,
                   company_name, title, industry, location, company_size,
                   personalization_data, status, responded_at, campaign_id,
-                  last_processed_message_id,
+                  last_processed_message_id, their_messages,
                   campaigns:campaign_id (workspace_id)
                 `)
                 .ilike('first_name', firstName)
@@ -852,12 +870,21 @@ async function processInboundMessagesFirst(
 
           // Update prospect
           if (isFirstReply) {
+            // Dec 20 FIX: Update their_messages for context
+            const currentMessages = matchedProspect.their_messages ? (typeof matchedProspect.their_messages === 'string' ? JSON.parse(matchedProspect.their_messages) : matchedProspect.their_messages) : [];
+            const updatedMessages = [...currentMessages, {
+              id: messageId,
+              text: msg.text || msg.body,
+              timestamp: msg.created_at || msg.timestamp || new Date().toISOString()
+            }];
+
             await supabase
               .from('campaign_prospects')
               .update({
                 status: 'replied',
                 responded_at: msg.created_at || new Date().toISOString(),
                 last_processed_message_id: messageId,
+                their_messages: updatedMessages,
                 follow_up_due_at: null,
                 updated_at: new Date().toISOString()
               })
@@ -896,10 +923,19 @@ async function processInboundMessagesFirst(
               .in('status', ['pending_generation', 'pending_approval', 'approved']);
 
           } else {
+            // Follow-up reply - update their_messages
+            const currentMessages = matchedProspect.their_messages ? (typeof matchedProspect.their_messages === 'string' ? JSON.parse(matchedProspect.their_messages) : matchedProspect.their_messages) : [];
+            const updatedMessages = [...currentMessages, {
+              id: messageId,
+              text: msg.text || msg.body,
+              timestamp: msg.created_at || msg.timestamp || new Date().toISOString()
+            }];
+
             await supabase
               .from('campaign_prospects')
               .update({
                 last_processed_message_id: messageId,
+                their_messages: updatedMessages,
                 updated_at: new Date().toISOString()
               })
               .eq('id', matchedProspect.id);

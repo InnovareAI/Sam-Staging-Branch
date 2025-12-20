@@ -237,6 +237,7 @@ export async function POST(request: NextRequest) {
           if (processedMessage) continue; // Already processed
 
           // 6. Generate AI reply
+          // 6. Generate AI reply
           const draft = await generateAIReply(
             latestInbound,
             prospect,
@@ -245,6 +246,37 @@ export async function POST(request: NextRequest) {
           );
 
           if (!draft) continue;
+
+          // ============================================
+          // CALENDAR AGENT INTEGRATION (Dec 20, 2025)
+          // Detect if prospect sent their calendar link
+          // ============================================
+          const prospectCalendarLinks = detectCalendarLinks(latestInbound.text || '');
+          if (prospectCalendarLinks.length > 0) {
+            const primaryCalendarLink = prospectCalendarLinks[0];
+            console.log(`📅 Prospect ${prospect.first_name} sent calendar link: ${primaryCalendarLink.url}`);
+            await handleProspectCalendarLink(prospect.id, primaryCalendarLink);
+          }
+
+          // Dec 20 FIX: Update their_messages for context
+          const currentMessages = prospect.their_messages ? (typeof prospect.their_messages === 'string' ? JSON.parse(prospect.their_messages) : prospect.their_messages) : [];
+          const updatedMessages = [...currentMessages, {
+            id: latestInbound.id,
+            text: latestInbound.text,
+            timestamp: latestInbound.timestamp || new Date().toISOString()
+          }];
+
+          await supabase
+            .from('campaign_prospects')
+            .update({
+              status: 'replied',
+              responded_at: latestInbound.timestamp || new Date().toISOString(),
+              last_processed_message_id: latestInbound.id,
+              their_messages: updatedMessages,
+              follow_up_due_at: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', prospect.id);
 
           // 7. Save draft to database
           const { data: savedDraft, error: saveError } = await supabase
