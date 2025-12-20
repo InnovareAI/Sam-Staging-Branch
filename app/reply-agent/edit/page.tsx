@@ -282,6 +282,24 @@ function EditReplyContent() {
             <div ref={chatBottomRef} />
           </div>
 
+          {/* Suggestion Chips */}
+          <div className="px-4 pb-2 bg-gray-900 overflow-x-auto whitespace-nowrap scrollbar-hide">
+            <div className="flex gap-2">
+              <button onClick={() => setChatInput("Research this prospect")} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-1.5 rounded-full border border-gray-700 transition-colors">
+                🔍 Research Prospect
+              </button>
+              <button onClick={() => setChatInput("Add a link to our demo video")} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-1.5 rounded-full border border-gray-700 transition-colors">
+                🔗 Add Link
+              </button>
+              <button onClick={() => setChatInput("Make it shorter and more casual")} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-1.5 rounded-full border border-gray-700 transition-colors">
+                ✨ Rewrite
+              </button>
+              <button onClick={() => setChatInput("Add context: We met at the Tech Summit")} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white px-3 py-1.5 rounded-full border border-gray-700 transition-colors">
+                📝 Add Context
+              </button>
+            </div>
+          </div>
+
           {/* Chat Input */}
           <div className="p-4 bg-gray-900 border-t border-gray-800">
             <form onSubmit={handleChatSubmit} className="relative">
