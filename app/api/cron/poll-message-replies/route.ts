@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
     // 2. Then get prospects who HAVE replied (second/third reply detection)
 
     // Query 1: Prospects awaiting first reply
+    // FIX (Dec 20): Remove broken workspace_accounts join - look up unipile_account_id separately
     const { data: firstReplyProspects, error: firstError } = await supabase
       .from('campaign_prospects')
       .select(`
@@ -66,17 +67,14 @@ export async function POST(request: NextRequest) {
         campaign_id,
         campaigns (
           workspace_id,
-          linkedin_account_id,
-          workspace_accounts!linkedin_account_id (
-            unipile_account_id
-          )
+          linkedin_account_id
         )
       `)
       .in('status', ['connected', 'connection_request_sent'])
       .is('responded_at', null)
       .not('linkedin_user_id', 'is', null)
       .order('updated_at', { ascending: false })
-      .limit(20);
+      .limit(50); // Increased limit for faster detection
 
     // Query 2: Prospects who already replied (check for follow-up messages)
     // Only check those updated in last 7 days to avoid checking stale conversations
@@ -99,17 +97,14 @@ export async function POST(request: NextRequest) {
         campaign_id,
         campaigns (
           workspace_id,
-          linkedin_account_id,
-          workspace_accounts!linkedin_account_id (
-            unipile_account_id
-          )
+          linkedin_account_id
         )
       `)
       .eq('status', 'replied')
       .not('linkedin_user_id', 'is', null)
       .gte('responded_at', sevenDaysAgo.toISOString())
       .order('responded_at', { ascending: false })
-      .limit(30); // Check more replied prospects for multi-turn
+      .limit(50); // Increased limit for faster detection
 
     const prospectsError = firstError || repliedError;
 
@@ -137,42 +132,52 @@ export async function POST(request: NextRequest) {
     console.log(`📧 Checking ${prospects.length} prospects for replies...`);
 
     // Group prospects by LinkedIn account
-    // FIX (Dec 20): Also check user_unipile_accounts as fallback when workspace_accounts join fails
+    // FIX (Dec 20): Look up unipile_account_id from workspace_accounts or user_unipile_accounts
     const byAccount: Record<string, typeof prospects> = {};
     const prospectLog: string[] = [];
 
-    // Cache for user_unipile_accounts lookups to avoid repeated queries
-    const userUnipileCache: Record<string, string | null> = {};
+    // Cache for account lookups to avoid repeated queries
+    const accountCache: Record<string, string | null> = {};
 
     for (const prospect of prospects) {
       const campaign = prospect.campaigns as any;
-      let accountId = campaign?.workspace_accounts?.unipile_account_id;
+      const linkedinAccountId = campaign?.linkedin_account_id;
+      let accountId: string | undefined;
 
-      // FIX (Dec 20): Fallback to user_unipile_accounts if workspace_accounts join failed
-      if (!accountId && campaign?.linkedin_account_id) {
-        const linkedinAccountId = campaign.linkedin_account_id;
-
+      if (linkedinAccountId) {
         // Check cache first
-        if (linkedinAccountId in userUnipileCache) {
-          accountId = userUnipileCache[linkedinAccountId] || undefined;
+        if (linkedinAccountId in accountCache) {
+          accountId = accountCache[linkedinAccountId] || undefined;
         } else {
-          // Look up in user_unipile_accounts
-          const { data: unipileAccount } = await supabase
-            .from('user_unipile_accounts')
+          // Try workspace_accounts first (primary)
+          const { data: wsAccount } = await supabase
+            .from('workspace_accounts')
             .select('unipile_account_id')
             .eq('id', linkedinAccountId)
             .single();
 
-          userUnipileCache[linkedinAccountId] = unipileAccount?.unipile_account_id || null;
-          accountId = unipileAccount?.unipile_account_id;
+          if (wsAccount?.unipile_account_id) {
+            accountCache[linkedinAccountId] = wsAccount.unipile_account_id;
+            accountId = wsAccount.unipile_account_id;
+          } else {
+            // Fallback to user_unipile_accounts
+            const { data: unipileAccount } = await supabase
+              .from('user_unipile_accounts')
+              .select('unipile_account_id')
+              .eq('id', linkedinAccountId)
+              .single();
+
+            accountCache[linkedinAccountId] = unipileAccount?.unipile_account_id || null;
+            accountId = unipileAccount?.unipile_account_id;
+          }
 
           if (accountId) {
-            console.log(`   ✅ Found account in user_unipile_accounts for ${prospect.first_name}: ${accountId}`);
+            console.log(`   ✅ Found Unipile account for ${prospect.first_name}: ${accountId.slice(0, 10)}...`);
           }
         }
       }
 
-      prospectLog.push(`${prospect.first_name}: ${accountId || 'NO_ACCOUNT'}`);
+      prospectLog.push(`${prospect.first_name}: ${accountId ? accountId.slice(0, 8) : 'NO_ACCOUNT'}`);
       if (accountId) {
         if (!byAccount[accountId]) byAccount[accountId] = [];
         byAccount[accountId].push(prospect);
