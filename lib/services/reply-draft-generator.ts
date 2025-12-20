@@ -23,6 +23,9 @@ export interface ReplyAgentSettings {
   dos_and_donts?: string;
   default_cta?: string;
   calendar_link?: string;
+  demo_video_link?: string;
+  one_pager_link?: string;
+  free_trial_link?: string;
   pushiness_level?: 'soft' | 'balanced' | 'direct';
   handle_not_interested?: string;
   handle_pricing?: string;
@@ -316,7 +319,17 @@ Pushiness level: ${settings.pushiness_level || 'balanced'}
 - **Balanced**: Clear CTA but not aggressive, respect their pace
 - **Direct**: Confident ask, assumes they want to move forward
 
-${settings.calendar_link ? `\nCalendar link (use if appropriate): ${settings.calendar_link}` : ''}
+${settings.calendar_link ? `\nCalendar link (use to book a call): ${settings.calendar_link}` : ''}
+${settings.demo_video_link ? `Demo video link (use for "send me more info" or "how does it work" requests): ${settings.demo_video_link}` : ''}
+${settings.one_pager_link ? `One-pager/PDF (use for "send me details" or "send documentation" requests): ${settings.one_pager_link}` : ''}
+${settings.free_trial_link ? `Free trial link (use as alternative to call if they want to try it first): ${settings.free_trial_link}` : ''}
+
+**Link Usage Guidelines:**
+- If they want to schedule: Use calendar link
+- If they say "send me more info" or want details: Send demo video link OR one-pager
+- If they want to try before committing: Offer free trial link
+- If they ask about pricing: Deflect to call (calendar link) or trial
+- Never send multiple links at once - pick the ONE most relevant
 
 ---
 

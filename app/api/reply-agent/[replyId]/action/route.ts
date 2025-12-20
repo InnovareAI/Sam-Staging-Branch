@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { wrapLinksWithTracking } from '@/lib/services/link-tracking'
 
 interface HITLAction {
   action: 'approve' | 'edit' | 'refuse'
@@ -120,7 +121,8 @@ async function handleApprove(supabase: any, reply: any, userId: string) {
     channel: reply.campaigns.channel || 'email',
     message: reply.ai_suggested_response,
     prospectEmail: reply.workspace_prospects.email,
-    prospectLinkedIn: reply.workspace_prospects.linkedin_url
+    prospectLinkedIn: reply.workspace_prospects.linkedin_url,
+    workspaceId: reply.campaigns.workspace_id
   })
 
   console.log('📤 Message queued for sending:', queueResult.messageId)
@@ -167,7 +169,8 @@ async function handleEdit(supabase: any, reply: any, editedMessage: string, user
     channel: reply.campaigns.channel || 'email',
     message: editedMessage,
     prospectEmail: reply.workspace_prospects.email,
-    prospectLinkedIn: reply.workspace_prospects.linkedin_url
+    prospectLinkedIn: reply.workspace_prospects.linkedin_url,
+    workspaceId: reply.campaigns.workspace_id
   })
 
   console.log('📤 Edited message queued for sending:', queueResult.messageId)
@@ -217,6 +220,7 @@ async function handleRefuse(supabase: any, reply: any, refusalReason: string | u
 /**
  * Queue message for sending via appropriate channel
  * Creates outbox record and schedules via N8N or Unipile
+ * Also updates campaign_prospects with agent tracking fields
  */
 async function queueMessageForSending(params: {
   replyId: string
@@ -226,10 +230,78 @@ async function queueMessageForSending(params: {
   message: string
   prospectEmail?: string
   prospectLinkedIn?: string
+  workspaceId: string
 }) {
   const supabase = await createClient()
 
-  // 1. Create outbox record
+  // 0a. Wrap links with tracking
+  let trackedMessage = params.message
+  try {
+    const { message: messageWithTracking, trackedLinks } = await wrapLinksWithTracking({
+      message: params.message,
+      prospectId: params.prospectId,
+      workspaceId: params.workspaceId,
+      campaignId: params.campaignId,
+      sourceType: 'reply_agent',
+      sourceId: params.replyId,
+    })
+    trackedMessage = messageWithTracking
+    if (trackedLinks.length > 0) {
+      console.log(`📊 Wrapped ${trackedLinks.length} links with tracking:`, trackedLinks.map(l => l.linkType))
+    }
+  } catch (err) {
+    console.error('⚠️ Link tracking failed, using original message:', err)
+    // Continue with original message if tracking fails
+  }
+
+  // 0b. Check if original message includes a calendar link (check original, not tracked)
+  const calendarLinkPatterns = [
+    /calendly\.com\/[^\s"<>]+/i,
+    /cal\.com\/[^\s"<>]+/i,
+    /hubspot\.com\/meetings\/[^\s"<>]+/i,
+    /outlook\.office365\.com\/owa\/calendar\/[^\s"<>]+/i,
+    /links\.innovareai\.com\/SamAIDemo/i
+  ]
+  const includesCalendarLink = calendarLinkPatterns.some(pattern => pattern.test(params.message))
+
+  // Calculate when Follow-up Agent should check for meeting booking (3 days from now)
+  const calendarFollowUpDueAt = includesCalendarLink
+    ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+    : null
+
+  // Update campaign_prospects with agent tracking fields
+  const { error: prospectUpdateError } = await supabase
+    .from('campaign_prospects')
+    .update({
+      sam_reply_sent_at: new Date().toISOString(),
+      sam_reply_included_calendar: includesCalendarLink,
+      conversation_stage: includesCalendarLink ? 'awaiting_booking' : 'awaiting_response',
+      calendar_follow_up_due_at: calendarFollowUpDueAt,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', params.prospectId)
+
+  if (prospectUpdateError) {
+    console.error('⚠️ Failed to update prospect tracking fields:', prospectUpdateError)
+    // Don't throw - continue with message sending
+  } else {
+    console.log('✅ Updated prospect tracking fields:', {
+      sam_reply_sent_at: new Date().toISOString(),
+      includesCalendarLink,
+      calendarFollowUpDueAt
+    })
+  }
+
+  // Update reply_agent_drafts with calendar link info
+  await supabase
+    .from('reply_agent_drafts')
+    .update({
+      included_calendar_link: includesCalendarLink
+    })
+    .eq('id', params.replyId)
+    .catch(err => console.error('Failed to update draft with calendar info:', err))
+
+  // 1. Create outbox record (with tracked links)
   const { data: outboxMessage, error: outboxError } = await supabase
     .from('message_outbox')
     .insert({
@@ -237,12 +309,13 @@ async function queueMessageForSending(params: {
       prospect_id: params.prospectId,
       reply_id: params.replyId,
       channel: params.channel,
-      message_content: params.message,
+      message_content: trackedMessage,  // Use tracked message
       status: 'queued',
       scheduled_send_time: new Date(Date.now() + 60000).toISOString(), // Send in 1 minute
       metadata: {
         created_via: 'reply_agent_hitl',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        has_tracked_links: trackedMessage !== params.message
       }
     })
     .select()
@@ -255,12 +328,12 @@ async function queueMessageForSending(params: {
 
   console.log('📦 Outbox record created:', outboxMessage.id)
 
-  // 2. Trigger sending via appropriate service
+  // 2. Trigger sending via appropriate service (with tracked message)
   if (params.channel === 'email' || params.channel === 'both') {
     await scheduleEmailSend({
       messageId: outboxMessage.id,
       to: params.prospectEmail!,
-      body: params.message,
+      body: trackedMessage,  // Use tracked message
       prospectId: params.prospectId,
       campaignId: params.campaignId
     })
@@ -270,7 +343,7 @@ async function queueMessageForSending(params: {
     await scheduleLinkedInSend({
       messageId: outboxMessage.id,
       prospectLinkedInUrl: params.prospectLinkedIn!,
-      message: params.message,
+      message: trackedMessage,  // Use tracked message
       prospectId: params.prospectId,
       campaignId: params.campaignId
     })

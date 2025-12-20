@@ -451,7 +451,9 @@ Before sending any follow-up:
 ## Links
 
 - **Book a Call:** https://links.innovareai.com/SamAIDemo
+- **Watch Demo Video:** https://links.innovareai.com/SAM_Demo
 - **Free Trial:** https://app.meet-sam.com/signup/innovareai
+- **One-Pager/PDF:** docs/sales-collateral/SAM_ONE_PAGER.md (for "send me more info" requests)
 
 ---
 

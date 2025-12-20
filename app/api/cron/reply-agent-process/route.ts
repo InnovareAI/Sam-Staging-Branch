@@ -5,6 +5,7 @@ import { sendReplyAgentHITLNotification } from '@/lib/notifications/google-chat'
 import { slackService } from '@/lib/slack';
 import { normalizeCompanyName } from '@/lib/prospect-normalization';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
+import { detectCalendarLinks, handleProspectCalendarLink, updateDraftWithProspectCalendarLink } from '@/lib/services/calendar-agent';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -1138,6 +1139,22 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
             .update({ status: 'error', error_message: 'Prospect not found', updated_at: new Date().toISOString() })
             .eq('id', draft.id);
           continue;
+        }
+
+        // ============================================
+        // CALENDAR AGENT INTEGRATION (Dec 20, 2025)
+        // Detect if prospect sent their calendar link
+        // ============================================
+        const prospectCalendarLinks = detectCalendarLinks(draft.inbound_message_text || '');
+        if (prospectCalendarLinks.length > 0) {
+          const primaryCalendarLink = prospectCalendarLinks[0];
+          console.log(`📅 Prospect ${draft.prospect_name} sent calendar link: ${primaryCalendarLink.url}`);
+
+          // Store in campaign_prospects for Calendar Agent to process
+          await handleProspectCalendarLink(draft.prospect_id, primaryCalendarLink);
+
+          // Also store in draft record
+          await updateDraftWithProspectCalendarLink(draft.id, primaryCalendarLink.url);
         }
 
         // Generate AI reply using the inbound message stored in draft
