@@ -4,8 +4,8 @@
  * Full meeting lifecycle: booking, reminders, no-show handling, follow-ups
  *
  * Runs every 2 hours
- * Schedule: "0 */2 * * * " (see netlify.toml)
-    */
+ * Schedule: "0 *\/2 * * *" (see netlify.toml)
+ */
 
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 
