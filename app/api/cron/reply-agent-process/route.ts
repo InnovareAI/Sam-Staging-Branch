@@ -54,7 +54,8 @@ function getContextualGreeting(): string | null {
   // Christmas/New Year period
   if (month === 11 && date >= 20) {
     if (date >= 26) return "Hope you're enjoying the holiday week!";
-    return "Hope you have a great holiday season!";
+    if (date >= 24) return "Merry Christmas!";
+    return "Merry Christmas and happy holidays!";
   }
   if (month === 0 && date <= 5) {
     return "Happy New Year!";
@@ -583,6 +584,9 @@ Respond with just the intent category (e.g., "INTERESTED").`;
     // Sender name (the person using SAM - workspace owner)
     const senderName = config.sender_name || 'Pete'; // Default fallback
 
+    // Get contextual greeting (holidays, day of week, etc.)
+    const contextualGreeting = getContextualGreeting();
+
     // Get original outreach message from campaign if available
     let originalOutreachMessage = '';
     if (prospect.campaign_id) {
@@ -707,6 +711,7 @@ ${research?.website?.productsServices ? `- Products/Services: ${research.website
 
 - Intent: ${intent}
 - Original outreach: "${originalOutreachMessage}"
+${contextualGreeting ? `- **Holiday/Seasonal Note:** Today is a good time to add "${contextualGreeting}" naturally at the end of your reply.` : ''}
 
 ---
 
@@ -788,6 +793,7 @@ Connect SAM to their specific situation:
 - Reply Agent: Drafts responses for your approval
 - $199/month, $99/month early adopter pricing
 - 14-day free trial, no credit card
+- **Demo video link:** https://links.innovareai.com/SAM_Demo (use this exact URL when sharing a demo)
 
 ---
 
@@ -847,7 +853,7 @@ Always use "${companyDisplayName}" — NOT "${prospectCompany}"
 
 ## OUTPUT
 
-Write the reply only. No preamble. No "Here's a draft:". No greeting like "Hi ${prospectName}" or "Happy Friday". Just the message to send.`;
+Write the reply only. No preamble. No "Here's a draft:". Start with "Hi ${prospectName}," then your message. ${contextualGreeting ? `End with "${contextualGreeting}" or a similar warm closing.` : ''} Just the message to send.`;
 
     // Generate full reply using unified prompt with Claude Opus
     console.log(`   🤖 Generating reply with unified prompt (intent: ${intent})`);
