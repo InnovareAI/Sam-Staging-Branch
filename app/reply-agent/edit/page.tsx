@@ -22,6 +22,10 @@ function EditReplyContent() {
   const [samResponse, setSamResponse] = useState('');
   const [askingSam, setAskingSam] = useState(false);
 
+  // Regenerate state
+  const [regenerating, setRegenerating] = useState(false);
+  const [regeneratedText, setRegeneratedText] = useState('');
+
   useEffect(() => {
     if (draftId && token) {
       fetchDraft();
@@ -70,6 +74,7 @@ function EditReplyContent() {
 
     setAskingSam(true);
     setSamResponse('');
+    setRegeneratedText('');
     try {
       const res = await fetch('/api/reply-agent/ask-sam', {
         method: 'POST',
@@ -89,6 +94,42 @@ function EditReplyContent() {
     } finally {
       setAskingSam(false);
     }
+  }
+
+  async function handleRegenerate() {
+    if (!question.trim()) return;
+
+    setRegenerating(true);
+    setSamResponse('');
+    setRegeneratedText('');
+    try {
+      const res = await fetch('/api/reply-agent/regenerate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          draftId,
+          token,
+          instructions: question.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to regenerate');
+      }
+      const data = await res.json();
+      setRegeneratedText(data.newDraftText);
+    } catch (err: any) {
+      setSamResponse(`Error: ${err.message}`);
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
+  function applyRegeneratedText() {
+    setEditedText(regeneratedText);
+    setRegeneratedText('');
+    setQuestion('');
+    setShowAskSam(false);
   }
 
   if (loading) {
@@ -171,19 +212,52 @@ function EditReplyContent() {
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   className="w-full h-20 p-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm"
-                  placeholder="e.g., How should I handle their pricing objection? Should I mention our case studies?"
+                  placeholder="e.g., Add the demo link, make it shorter, include a holiday greeting, mention case studies..."
                 />
-                <button
-                  onClick={handleAskSam}
-                  disabled={askingSam || !question.trim()}
-                  className="mt-2 bg-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                >
-                  {askingSam ? 'Thinking...' : 'Get Advice'}
-                </button>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={handleAskSam}
+                    disabled={askingSam || regenerating || !question.trim()}
+                    className="bg-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    {askingSam ? 'Thinking...' : '💡 Get Advice'}
+                  </button>
+                  <button
+                    onClick={handleRegenerate}
+                    disabled={askingSam || regenerating || !question.trim()}
+                    className="bg-indigo-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    {regenerating ? 'Regenerating...' : '✨ Rewrite Message'}
+                  </button>
+                </div>
 
+                {/* Sam's advice response */}
                 {samResponse && (
                   <div className="mt-4 bg-white rounded-lg p-4 border border-purple-200">
+                    <p className="text-xs font-medium text-purple-600 mb-2">Sam's Advice:</p>
                     <p className="text-sm text-gray-800 whitespace-pre-wrap">{samResponse}</p>
+                  </div>
+                )}
+
+                {/* Regenerated text for approval */}
+                {regeneratedText && (
+                  <div className="mt-4 bg-green-50 rounded-lg p-4 border border-green-300">
+                    <p className="text-xs font-medium text-green-700 mb-2">✨ New Version:</p>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap mb-4">{regeneratedText}</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={applyRegeneratedText}
+                        className="bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 text-sm"
+                      >
+                        ✅ Use This Version
+                      </button>
+                      <button
+                        onClick={() => setRegeneratedText('')}
+                        className="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-300 text-sm"
+                      >
+                        Keep Original
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

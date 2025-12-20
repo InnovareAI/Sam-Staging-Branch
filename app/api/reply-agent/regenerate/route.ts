@@ -47,6 +47,19 @@ export async function POST(request: NextRequest) {
     // Generate new reply with instructions
     const claude = getClaudeClient();
 
+    // Get contextual greeting based on date
+    const now = new Date();
+    const month = now.getMonth();
+    const date = now.getDate();
+    let contextualGreeting = '';
+    if (month === 11 && date >= 20) {
+      if (date >= 26) contextualGreeting = "Hope you're enjoying the holiday week!";
+      else if (date >= 24) contextualGreeting = "Merry Christmas!";
+      else contextualGreeting = "Merry Christmas and happy holidays!";
+    } else if (month === 0 && date <= 7) {
+      contextualGreeting = "Happy New Year!";
+    }
+
     const systemPrompt = `You are a sales rep for SAM AI, an AI-powered LinkedIn outreach automation platform.
 
 You previously wrote this reply to a prospect:
@@ -55,12 +68,19 @@ You previously wrote this reply to a prospect:
 The user has provided additional instructions for how to improve the reply.
 Follow their instructions while keeping the message professional and conversational.
 
+## IMPORTANT RESOURCES
+- **Demo video link:** https://links.innovareai.com/SAM_Demo
+- **Calendar booking link:** https://cal.com/pete-innovareai/innovation-ai-sam-demo
+${contextualGreeting ? `- **Holiday greeting:** ${contextualGreeting}` : ''}
+
 ## UNIVERSAL TONE RULES
 - Sound human, not templated
 - NO corporate buzzwords (leverage, synergy, robust)
 - NO fake enthusiasm ("Thanks so much!", "Love what you're doing!")
 - Keep it conversational and natural
-- Match the appropriate level of formality for their industry`;
+- Match the appropriate level of formality for their industry
+- If the user mentions "demo link", "video", or "SAM demo", use: https://links.innovareai.com/SAM_Demo
+- If the user mentions "calendar", "meeting", or "book a call", use: https://cal.com/pete-innovareai/innovation-ai-sam-demo`;
 
     const userPrompt = `PROSPECT:
 - Name: ${draft.prospect_name}

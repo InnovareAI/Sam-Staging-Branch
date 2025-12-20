@@ -39,6 +39,19 @@ export async function POST(request: NextRequest) {
     // Build context for SAM
     const claude = getClaudeClient();
 
+    // Get contextual greeting based on date
+    const now = new Date();
+    const month = now.getMonth();
+    const date = now.getDate();
+    let contextualGreeting = '';
+    if (month === 11 && date >= 20) {
+      if (date >= 26) contextualGreeting = "Hope you're enjoying the holiday week!";
+      else if (date >= 24) contextualGreeting = "Merry Christmas!";
+      else contextualGreeting = "Merry Christmas and happy holidays!";
+    } else if (month === 0 && date <= 7) {
+      contextualGreeting = "Happy New Year!";
+    }
+
     const systemPrompt = `You are SAM, an AI sales advisor helping a user craft the perfect response to a LinkedIn prospect.
 
 Your role is to give brief, actionable advice. Be direct and specific - the user is on mobile and needs quick guidance.
@@ -49,6 +62,11 @@ Your role is to give brief, actionable advice. Be direct and specific - the user
 - **Detected intent**: ${draft.intent_detected || 'UNCLEAR'}
 - **Current draft reply**: "${currentDraft || draft.draft_text}"
 
+## Important Resources to Reference
+- **Demo video link:** https://links.innovareai.com/SAM_Demo
+- **Calendar booking link:** https://cal.com/pete-innovareai/innovation-ai-sam-demo
+${contextualGreeting ? `- **Holiday greeting to use:** ${contextualGreeting}` : ''}
+
 ## Research on this prospect
 ${draft.research_linkedin_profile ? `LinkedIn: ${JSON.stringify(draft.research_linkedin_profile)}` : 'No LinkedIn data'}
 ${draft.research_company_profile ? `Company: ${JSON.stringify(draft.research_company_profile)}` : 'No company data'}
@@ -57,7 +75,8 @@ ${draft.research_company_profile ? `Company: ${JSON.stringify(draft.research_com
 - Give 2-3 sentences of advice max
 - Be specific to THIS prospect and message
 - If they ask for a rewrite, provide the text directly
-- No corporate buzzwords or fake enthusiasm`;
+- No corporate buzzwords or fake enthusiasm
+- If they ask about links, provide the actual URLs above`;
 
     const userPrompt = question;
 
