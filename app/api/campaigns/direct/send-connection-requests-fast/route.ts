@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
         id,
         campaign_name,
         name,
+        campaign_type,
         message_templates,
         workspace_id,
         draft_data,
@@ -97,6 +98,17 @@ export async function POST(req: NextRequest) {
     if (campaignError || !campaign) {
       console.error('Campaign not found or access denied:', campaignError);
       return NextResponse.json({ error: 'Campaign not found or access denied' }, { status: 404 });
+    }
+
+    // CRITICAL FIX (Dec 20): Prevent double-sending by rejecting messenger campaigns
+    // Messenger campaigns must use /api/campaigns/direct/send-messages-queued
+    if (campaign.campaign_type === 'messenger') {
+      console.warn(`⚠️ Blocked incorrect endpoint usage for messenger campaign: ${campaign.campaign_name || campaign.name}`);
+      return NextResponse.json({
+        error: 'Incorrect endpoint for Messenger campaign',
+        details: 'Messenger campaigns must use /api/campaigns/direct/send-messages-queued. This endpoint initiates connection requests which are not for messenger campaigns.',
+        suggestion: 'Use the correct API endpoint for messenger campaigns.'
+      }, { status: 400 });
     }
 
     // CRITICAL VALIDATION (Dec 10): LinkedIn account MUST be configured
@@ -302,8 +314,8 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ Using connection message from:',
       campaign.message_templates?.connection_request ? 'message_templates.connection_request' :
-      campaign.connection_message ? 'connection_message column' :
-      linkedinConfig?.connection_message ? 'linkedin_config' : 'draft_data');
+        campaign.connection_message ? 'connection_message column' :
+          linkedinConfig?.connection_message ? 'linkedin_config' : 'draft_data');
 
     // A/B TESTING REMOVED (Dec 18, 2025) - Feature disabled
 

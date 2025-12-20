@@ -108,68 +108,54 @@ export async function POST(req: NextRequest) {
         }
 
         const campaignName = campaign.campaign_name || campaign.name || 'Unknown Campaign';
-        console.log(`\n🔍 Processing ${prospects.length} prospects for campaign: ${campaignName}`);
+        const campaignType = campaign.campaign_type || 'connector';
 
-        // Process prospects one at a time to avoid rate limits
-        for (const prospect of prospects) {
-          try {
-            const prospectName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim() || 'Unknown';
-            console.log(`  → ${prospectName} at ${prospect.company_name || 'Unknown company'}`);
+        console.log(`\n🔍 Processing ${prospects.length} prospects for campaign: ${campaignName} (Type: ${campaignType})`);
 
-            // Call queue-based API to send connection request
-            // CRITICAL FIX (Nov 25): Use -fast endpoint, not disabled direct endpoint
-            const response = await fetch(`${baseUrl}/api/campaigns/direct/send-connection-requests-fast`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-internal-trigger': 'cron-pending-prospects'
-              },
-              body: JSON.stringify({
-                campaignId: campaignId
-              })
-            });
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error(`    ❌ Failed to process ${prospectName}:`, errorText);
-              results.push({
-                prospect_id: prospect.id,
-                prospect_name: prospectName,
-                campaign_id: campaignId,
-                campaign_name: campaign.name,
-                status: 'error',
-                error: errorText
-              });
-              continue;
-            }
-
-            const result = await response.json();
-            console.log(`    ✅ Processed ${prospectName}`);
-
-            results.push({
-              prospect_id: prospect.id,
-              prospect_name: prospectName,
-              campaign_id: campaignId,
-              campaign_name: campaign.name,
-              status: 'success',
-              message: result.message
-            });
-
-            // Add a small delay between prospects to avoid rate limits (1-2 seconds)
-            await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-
-          } catch (prospectError) {
-            console.error(`    ❌ Error processing prospect ${prospect.id}:`, prospectError);
-            results.push({
-              prospect_id: prospect.id,
-              prospect_name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
-              campaign_id: campaignId,
-              campaign_name: campaign.name,
-              status: 'error',
-              error: prospectError instanceof Error ? prospectError.message : 'Unknown error'
-            });
-          }
+        // CRITICAL FIX (Dec 20): Route to correct endpoint based on campaign type
+        // This prevents double-sending by ensuring messenger campaigns don't use the connector endpoint
+        let endpoint = '/api/campaigns/direct/send-connection-requests-fast';
+        if (campaignType === 'messenger') {
+          endpoint = '/api/campaigns/direct/send-messages-queued';
         }
+
+        console.log(`🚀 Triggering execution via: ${endpoint}`);
+
+        // Execute for the whole campaign (endpoints now handle batch queuing)
+        const response = await fetch(`${baseUrl}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-trigger': 'cron-pending-prospects'
+          },
+          body: JSON.stringify({
+            campaignId: campaignId
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ Failed to execute campaign ${campaignName}:`, errorText);
+          results.push({
+            campaign_id: campaignId,
+            campaign_name: campaignName,
+            status: 'error',
+            error: errorText
+          });
+        } else {
+          const result = await response.json();
+          console.log(`✅ Successfully executed ${campaignName}`);
+          results.push({
+            campaign_id: campaignId,
+            campaign_name: campaignName,
+            status: 'success',
+            message: result.message,
+            prospects_count: prospects.length
+          });
+        }
+
+        // Add a small delay between campaigns
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (campaignError) {
         console.error(`❌ Error processing campaign ${campaignId}:`, campaignError);

@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     // Query 1: Scheduled campaigns
     const { data: scheduledCampaigns, error: queryError } = await supabase
       .from('campaigns')
-      .select('id, name, workspace_id, next_execution_time, timezone, working_hours_start, working_hours_end, skip_weekends, skip_holidays, country_code, n8n_execution_id')
+      .select('id, name, campaign_type, workspace_id, next_execution_time, timezone, working_hours_start, working_hours_end, skip_weekends, skip_holidays, country_code, n8n_execution_id')
       .eq('status', 'scheduled')
       .eq('auto_execute', true)
       .lte('next_execution_time', now)
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     // Query 2: Active campaigns that were never executed
     const { data: activeCampaigns, error: activeError } = await supabase
       .from('campaigns')
-      .select('id, name, workspace_id, timezone, working_hours_start, working_hours_end, skip_weekends, skip_holidays, country_code, n8n_execution_id')
+      .select('id, name, campaign_type, workspace_id, timezone, working_hours_start, working_hours_end, skip_weekends, skip_holidays, country_code, n8n_execution_id')
       .eq('status', 'active')
       .eq('auto_execute', true)
       .is('n8n_execution_id', null)
@@ -186,9 +186,17 @@ export async function POST(req: NextRequest) {
         }
 
         // Trigger the queue-based Unipile API
-        // CRITICAL FIX (Nov 25): Use -fast endpoint, not disabled direct endpoint
+        // CRITICAL FIX (Dec 20): Route to correct endpoint based on campaign type
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const response = await fetch(`${baseUrl}/api/campaigns/direct/send-connection-requests-fast`, {
+        let endpoint = '/api/campaigns/direct/send-connection-requests-fast';
+
+        if (campaign.campaign_type === 'messenger') {
+          endpoint = '/api/campaigns/direct/send-messages-queued';
+        }
+
+        console.log(`🎯 Routing execution to: ${endpoint} (Type: ${campaign.campaign_type || 'connector'})`);
+
+        const response = await fetch(`${baseUrl}${endpoint}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

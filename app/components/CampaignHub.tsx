@@ -113,7 +113,7 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {}
+    onConfirm: () => { }
   });
 
   // Helper to show confirm modal
@@ -296,8 +296,20 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
       // If activating campaign, trigger it via queue-based execution (30 min spacing)
       if (newStatus === 'active' && workspaceId) {
         try {
-          console.log(`🚀 Auto-launching campaign ${campaignId} (queued, 30 min spacing)...`);
-          const launchResponse = await fetch('/api/campaigns/direct/send-connection-requests-fast', {
+          // CRITICAL FIX (Dec 20): Route to correct endpoint based on campaign type
+          // Fetch campaign type first
+          const campaignResponse = await fetch(`/api/campaigns/${campaignId}`);
+          const campaignData = await campaignResponse.json();
+          const campaignType = campaignData.data?.campaign_type || 'connector';
+
+          let endpoint = '/api/campaigns/direct/send-connection-requests-fast';
+          if (campaignType === 'messenger') {
+            endpoint = '/api/campaigns/direct/send-messages-queued';
+          }
+
+          console.log(`🚀 Auto-launching campaign ${campaignId} via ${endpoint} (Type: ${campaignType})`);
+
+          const launchResponse = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -988,300 +1000,300 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
             boxShadow: "0 25px 50px -12px rgba(168, 85, 247, 0.25)"
           }}
         >
-        <div
-          className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-xl border border-gray-700 hover:border-purple-500/50 hover:bg-gradient-to-br hover:from-purple-600/20 hover:to-purple-900/20 shadow-xl hover:shadow-purple-500/20 group transition-all duration-300"
-        >
-          <div className="p-6 pb-4">
-            <div className="flex justify-between items-start">
-              <div className="flex-1 flex items-start gap-3">
-                {/* Checkbox selector for draft campaigns */}
-                {c.status === 'draft' && (
-                  <label className="relative flex items-center cursor-pointer mt-1" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selectedCampaigns.has(c.id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        const newSelected = new Set(selectedCampaigns);
-                        if (e.target.checked) {
-                          newSelected.add(c.id);
-                        } else {
-                          newSelected.delete(c.id);
-                        }
-                        setSelectedCampaigns(newSelected);
-                      }}
-                      className="w-5 h-5 rounded border-2 border-gray-500 bg-gray-700 checked:bg-purple-500 checked:border-purple-500 focus:ring-2 focus:ring-purple-400 focus:ring-offset-0 cursor-pointer appearance-none transition-colors"
-                    />
-                    <svg
-                      className={`absolute w-5 h-5 pointer-events-none text-white transition-opacity ${selectedCampaigns.has(c.id) ? 'opacity-100' : 'opacity-0'}`}
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </label>
-                )}
-                <div>
-                <h3 className="text-white font-semibold text-lg group-hover:text-white mb-2">
-                  {c.name}
-                </h3>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border ${getStatusColor(c.status)}`}>
-                  {getStatusIcon(c.status)}
-                  {getStatusLabel(c.status)}
-                </span>
+          <div
+            className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-xl border border-gray-700 hover:border-purple-500/50 hover:bg-gradient-to-br hover:from-purple-600/20 hover:to-purple-900/20 shadow-xl hover:shadow-purple-500/20 group transition-all duration-300"
+          >
+            <div className="p-6 pb-4">
+              <div className="flex justify-between items-start">
+                <div className="flex-1 flex items-start gap-3">
+                  {/* Checkbox selector for draft campaigns */}
+                  {c.status === 'draft' && (
+                    <label className="relative flex items-center cursor-pointer mt-1" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedCampaigns.has(c.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          const newSelected = new Set(selectedCampaigns);
+                          if (e.target.checked) {
+                            newSelected.add(c.id);
+                          } else {
+                            newSelected.delete(c.id);
+                          }
+                          setSelectedCampaigns(newSelected);
+                        }}
+                        className="w-5 h-5 rounded border-2 border-gray-500 bg-gray-700 checked:bg-purple-500 checked:border-purple-500 focus:ring-2 focus:ring-purple-400 focus:ring-offset-0 cursor-pointer appearance-none transition-colors"
+                      />
+                      <svg
+                        className={`absolute w-5 h-5 pointer-events-none text-white transition-opacity ${selectedCampaigns.has(c.id) ? 'opacity-100' : 'opacity-0'}`}
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </label>
+                  )}
+                  <div>
+                    <h3 className="text-white font-semibold text-lg group-hover:text-white mb-2">
+                      {c.name}
+                    </h3>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border ${getStatusColor(c.status)}`}>
+                      {getStatusIcon(c.status)}
+                      {getStatusLabel(c.status)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-2 ml-4 relative z-10">
-                {c.status === 'active' ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleCampaignStatus(c.id, c.status);
-                    }}
-                    className="p-2 rounded-md text-yellow-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
-                    title="Pause campaign"
-                    type="button"
-                  >
-                    <Pause size={16} />
-                  </button>
-                ) : (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleCampaignStatus(c.id, c.status);
-                    }}
-                    className="p-2 rounded-md text-green-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
-                    title="Resume campaign"
-                    type="button"
-                  >
-                    <Play size={16} />
-                  </button>
-                )}
-                {(c.status === 'active' || c.status === 'paused') && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      executeCampaign(c.id);
-                    }}
-                    className="p-2 rounded-md text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
-                    title="Launch campaign now"
-                    type="button"
-                  >
-                    <Rocket size={16} />
-                  </button>
-                )}
-                {c.status !== 'archived' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      archiveCampaign(c.id);
-                    }}
-                    className="p-2 rounded-md text-gray-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
-                    title="Archive campaign"
-                    type="button"
-                  >
-                    <Archive size={16} />
-                  </button>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    console.log('🔵 Eye button clicked!', c.id);
-                    viewMessages(c);
-                  }}
-                  className="p-2 rounded-md text-cyan-400 hover:bg-gray-700 hover:text-white transition-colors"
-                  title="View messages"
-                  type="button"
-                >
-                  <Eye size={16} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    console.log('🟠 Users button clicked!', c.id);
-                    viewProspects(c.id);
-                  }}
-                  className="p-2 rounded-md text-orange-400 hover:bg-gray-700 hover:text-white transition-colors"
-                  title="View prospects"
-                  type="button"
-                >
-                  <Users size={16} />
-                </button>
-                {c.status !== 'archived' && (
+                <div className="flex gap-2 ml-4 relative z-10">
+                  {c.status === 'active' ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleCampaignStatus(c.id, c.status);
+                      }}
+                      className="p-2 rounded-md text-yellow-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
+                      title="Pause campaign"
+                      type="button"
+                    >
+                      <Pause size={16} />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleCampaignStatus(c.id, c.status);
+                      }}
+                      className="p-2 rounded-md text-green-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
+                      title="Resume campaign"
+                      type="button"
+                    >
+                      <Play size={16} />
+                    </button>
+                  )}
+                  {(c.status === 'active' || c.status === 'paused') && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        executeCampaign(c.id);
+                      }}
+                      className="p-2 rounded-md text-purple-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
+                      title="Launch campaign now"
+                      type="button"
+                    >
+                      <Rocket size={16} />
+                    </button>
+                  )}
+                  {c.status !== 'archived' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        archiveCampaign(c.id);
+                      }}
+                      className="p-2 rounded-md text-gray-400 hover:bg-gray-700 group-hover:bg-purple-500 group-hover:text-white transition-colors"
+                      title="Archive campaign"
+                      type="button"
+                    >
+                      <Archive size={16} />
+                    </button>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      console.log('🟢 Add Prospects button clicked!', c.id);
-                      openAddProspectsModal(c);
+                      console.log('🔵 Eye button clicked!', c.id);
+                      viewMessages(c);
                     }}
-                    className="p-2 rounded-md text-green-400 hover:bg-gray-700 hover:text-white transition-colors"
-                    title="Add prospects to campaign"
+                    className="p-2 rounded-md text-cyan-400 hover:bg-gray-700 hover:text-white transition-colors"
+                    title="View messages"
                     type="button"
                   >
-                    <UserPlus size={16} />
+                    <Eye size={16} />
                   </button>
-                )}
-                {c.campaign_type === 'email' && c.status !== 'archived' && reachInboxConfigured && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      console.log('📧 Push to ReachInbox button clicked!', c.id);
-                      openReachInboxModal(c);
+                      console.log('🟠 Users button clicked!', c.id);
+                      viewProspects(c.id);
                     }}
-                    className="p-2 rounded-md text-pink-400 hover:bg-gray-700 hover:text-white transition-colors"
-                    title="Push to ReachInbox"
+                    className="p-2 rounded-md text-orange-400 hover:bg-gray-700 hover:text-white transition-colors"
+                    title="View prospects"
                     type="button"
                   >
-                    <Send size={16} />
+                    <Users size={16} />
                   </button>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    console.log('🔷 Analytics button clicked!', c.id);
-                    showCampaignAnalytics(c.id);
-                  }}
-                  className="p-2 rounded-md text-blue-400 hover:bg-gray-700 hover:text-white transition-colors"
-                  title="View analytics"
-                  type="button"
-                >
-                  <BarChart3 size={16} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    console.log('🟣 Edit button clicked!', c.id);
-                    editCampaign(c);
-                  }}
-                  className="p-2 rounded-md text-purple-400 hover:bg-gray-700 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={c.sent > 0 ? "Cannot edit (messages sent)" : "Edit campaign"}
-                  disabled={c.sent > 0}
-                  type="button"
-                >
-                  <Edit size={16} />
-                </button>
+                  {c.status !== 'archived' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        console.log('🟢 Add Prospects button clicked!', c.id);
+                        openAddProspectsModal(c);
+                      }}
+                      className="p-2 rounded-md text-green-400 hover:bg-gray-700 hover:text-white transition-colors"
+                      title="Add prospects to campaign"
+                      type="button"
+                    >
+                      <UserPlus size={16} />
+                    </button>
+                  )}
+                  {c.campaign_type === 'email' && c.status !== 'archived' && reachInboxConfigured && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        console.log('📧 Push to ReachInbox button clicked!', c.id);
+                        openReachInboxModal(c);
+                      }}
+                      className="p-2 rounded-md text-pink-400 hover:bg-gray-700 hover:text-white transition-colors"
+                      title="Push to ReachInbox"
+                      type="button"
+                    >
+                      <Send size={16} />
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      console.log('🔷 Analytics button clicked!', c.id);
+                      showCampaignAnalytics(c.id);
+                    }}
+                    className="p-2 rounded-md text-blue-400 hover:bg-gray-700 hover:text-white transition-colors"
+                    title="View analytics"
+                    type="button"
+                  >
+                    <BarChart3 size={16} />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      console.log('🟣 Edit button clicked!', c.id);
+                      editCampaign(c);
+                    }}
+                    className="p-2 rounded-md text-purple-400 hover:bg-gray-700 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={c.sent > 0 ? "Cannot edit (messages sent)" : "Edit campaign"}
+                    disabled={c.sent > 0}
+                    type="button"
+                  >
+                    <Edit size={16} />
+                  </button>
+                </div>
               </div>
             </div>
+
+            <div className="px-6 pb-6">
+              {c.status !== 'draft' && (
+                <div className="grid grid-cols-4 gap-3 pt-4 border-t border-gray-700 group-hover:border-purple-400">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-white group-hover:text-white mb-1">{c.sent}</div>
+                    <div className="text-gray-400 group-hover:text-purple-100 text-xs">Sent</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-green-400 group-hover:text-green-300 mb-1">{c.connections || 0}</div>
+                    <div className="text-gray-400 group-hover:text-purple-100 text-xs">Connected</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-blue-400 group-hover:text-blue-300 mb-1">{c.replied}</div>
+                    <div className="text-gray-400 group-hover:text-purple-100 text-xs">Replied</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <div className={`text-xl font-bold ${(c.failed || 0) > 0 ? 'text-red-400 group-hover:text-red-300' : 'text-gray-500'}`}>{c.failed || 0}</div>
+                      {(c.failed || 0) > 0 && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`/api/campaigns/${c.id}/failed-prospects-csv`, '_blank');
+                            }}
+                            className="text-red-400 hover:text-red-300 p-0.5 rounded hover:bg-red-400/10 transition-colors"
+                            title="Download failed prospects CSV"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="7 10 12 15 17 10" />
+                              <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`Reset ${c.failed} failed prospects to pending? They will be re-queued for sending.`)) {
+                                window.open(`/api/campaigns/${c.id}/reset-failed`, '_blank');
+                              }
+                            }}
+                            className="text-amber-400 hover:text-amber-300 p-0.5 rounded hover:bg-amber-400/10 transition-colors"
+                            title="Reset failed prospects to pending"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                              <path d="M21 3v5h-5" />
+                              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                              <path d="M3 21v-5h5" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    <div className="text-gray-400 group-hover:text-purple-100 text-xs">Failed</div>
+                  </div>
+                </div>
+              )}
+
+              {/* A/B Testing Results - Only shown if A/B testing was enabled */}
+              {c.message_templates?.ab_testing_enabled && c.ab_stats && c.status !== 'draft' && (
+                <div className="mt-3 pt-3 border-t border-orange-500/30">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FlaskConical className="text-orange-400" size={14} />
+                    <span className="text-orange-400 text-xs font-medium">A/B Test Results</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-gray-700/50 rounded p-2 text-center">
+                      <div className="text-xs text-gray-400 mb-1">Variant A</div>
+                      <div className="text-sm font-bold text-white">
+                        {c.ab_stats.a_connected || 0}/{c.ab_stats.a_sent || 0}
+                      </div>
+                      <div className="text-xs text-green-400">
+                        {c.ab_stats.a_sent > 0 ? Math.round((c.ab_stats.a_connected / c.ab_stats.a_sent) * 100) : 0}% rate
+                      </div>
+                    </div>
+                    <div className="bg-gray-700/50 rounded p-2 text-center">
+                      <div className="text-xs text-gray-400 mb-1">Variant B</div>
+                      <div className="text-sm font-bold text-white">
+                        {c.ab_stats.b_connected || 0}/{c.ab_stats.b_sent || 0}
+                      </div>
+                      <div className="text-xs text-green-400">
+                        {c.ab_stats.b_sent > 0 ? Math.round((c.ab_stats.b_connected / c.ab_stats.b_sent) * 100) : 0}% rate
+                      </div>
+                    </div>
+                  </div>
+                  {/* Winner indicator */}
+                  {c.ab_stats.a_sent >= 5 && c.ab_stats.b_sent >= 5 && (
+                    <div className="mt-2 text-center text-xs">
+                      {(() => {
+                        const aRate = c.ab_stats.a_sent > 0 ? (c.ab_stats.a_connected / c.ab_stats.a_sent) : 0;
+                        const bRate = c.ab_stats.b_sent > 0 ? (c.ab_stats.b_connected / c.ab_stats.b_sent) : 0;
+                        const diff = Math.abs(aRate - bRate) * 100;
+                        if (diff < 5) return <span className="text-gray-400">Too close to call</span>;
+                        return aRate > bRate
+                          ? <span className="text-green-400">🏆 Variant A winning (+{diff.toFixed(0)}%)</span>
+                          : <span className="text-green-400">🏆 Variant B winning (+{diff.toFixed(0)}%)</span>;
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {c.status === 'draft' && (
+                <div className="pt-4 border-t border-gray-700 group-hover:border-purple-400">
+                  <div className="text-center text-gray-400 group-hover:text-purple-100 text-sm">
+                    Ready to configure and launch
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-
-          <div className="px-6 pb-6">
-            {c.status !== 'draft' && (
-              <div className="grid grid-cols-4 gap-3 pt-4 border-t border-gray-700 group-hover:border-purple-400">
-                <div className="text-center">
-                  <div className="text-xl font-bold text-white group-hover:text-white mb-1">{c.sent}</div>
-                  <div className="text-gray-400 group-hover:text-purple-100 text-xs">Sent</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-green-400 group-hover:text-green-300 mb-1">{c.connections || 0}</div>
-                  <div className="text-gray-400 group-hover:text-purple-100 text-xs">Connected</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-blue-400 group-hover:text-blue-300 mb-1">{c.replied}</div>
-                  <div className="text-gray-400 group-hover:text-purple-100 text-xs">Replied</div>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <div className={`text-xl font-bold ${(c.failed || 0) > 0 ? 'text-red-400 group-hover:text-red-300' : 'text-gray-500'}`}>{c.failed || 0}</div>
-                    {(c.failed || 0) > 0 && (
-                      <>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(`/api/campaigns/${c.id}/failed-prospects-csv`, '_blank');
-                          }}
-                          className="text-red-400 hover:text-red-300 p-0.5 rounded hover:bg-red-400/10 transition-colors"
-                          title="Download failed prospects CSV"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm(`Reset ${c.failed} failed prospects to pending? They will be re-queued for sending.`)) {
-                              window.open(`/api/campaigns/${c.id}/reset-failed`, '_blank');
-                            }
-                          }}
-                          className="text-amber-400 hover:text-amber-300 p-0.5 rounded hover:bg-amber-400/10 transition-colors"
-                          title="Reset failed prospects to pending"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                            <path d="M21 3v5h-5"/>
-                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-                            <path d="M3 21v-5h5"/>
-                          </svg>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  <div className="text-gray-400 group-hover:text-purple-100 text-xs">Failed</div>
-                </div>
-              </div>
-            )}
-
-            {/* A/B Testing Results - Only shown if A/B testing was enabled */}
-            {c.message_templates?.ab_testing_enabled && c.ab_stats && c.status !== 'draft' && (
-              <div className="mt-3 pt-3 border-t border-orange-500/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <FlaskConical className="text-orange-400" size={14} />
-                  <span className="text-orange-400 text-xs font-medium">A/B Test Results</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-gray-700/50 rounded p-2 text-center">
-                    <div className="text-xs text-gray-400 mb-1">Variant A</div>
-                    <div className="text-sm font-bold text-white">
-                      {c.ab_stats.a_connected || 0}/{c.ab_stats.a_sent || 0}
-                    </div>
-                    <div className="text-xs text-green-400">
-                      {c.ab_stats.a_sent > 0 ? Math.round((c.ab_stats.a_connected / c.ab_stats.a_sent) * 100) : 0}% rate
-                    </div>
-                  </div>
-                  <div className="bg-gray-700/50 rounded p-2 text-center">
-                    <div className="text-xs text-gray-400 mb-1">Variant B</div>
-                    <div className="text-sm font-bold text-white">
-                      {c.ab_stats.b_connected || 0}/{c.ab_stats.b_sent || 0}
-                    </div>
-                    <div className="text-xs text-green-400">
-                      {c.ab_stats.b_sent > 0 ? Math.round((c.ab_stats.b_connected / c.ab_stats.b_sent) * 100) : 0}% rate
-                    </div>
-                  </div>
-                </div>
-                {/* Winner indicator */}
-                {c.ab_stats.a_sent >= 5 && c.ab_stats.b_sent >= 5 && (
-                  <div className="mt-2 text-center text-xs">
-                    {(() => {
-                      const aRate = c.ab_stats.a_sent > 0 ? (c.ab_stats.a_connected / c.ab_stats.a_sent) : 0;
-                      const bRate = c.ab_stats.b_sent > 0 ? (c.ab_stats.b_connected / c.ab_stats.b_sent) : 0;
-                      const diff = Math.abs(aRate - bRate) * 100;
-                      if (diff < 5) return <span className="text-gray-400">Too close to call</span>;
-                      return aRate > bRate
-                        ? <span className="text-green-400">🏆 Variant A winning (+{diff.toFixed(0)}%)</span>
-                        : <span className="text-green-400">🏆 Variant B winning (+{diff.toFixed(0)}%)</span>;
-                    })()}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {c.status === 'draft' && (
-              <div className="pt-4 border-t border-gray-700 group-hover:border-purple-400">
-                <div className="text-center text-gray-400 group-hover:text-purple-100 text-sm">
-                  Ready to configure and launch
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
         </motion.div>
       ))}
 
@@ -1606,11 +1618,10 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                             }
                           }}
                           disabled={!canAddMore}
-                          className={`flex items-center gap-1 px-4 py-2 border rounded-lg transition-colors text-sm ${
-                            canAddMore
+                          className={`flex items-center gap-1 px-4 py-2 border rounded-lg transition-colors text-sm ${canAddMore
                               ? 'border-purple-500 text-purple-400 hover:bg-purple-500/10'
                               : 'border-gray-600 text-gray-600 cursor-not-allowed'
-                          }`}
+                            }`}
                           title={!canAddMore ? `Maximum ${maxFollowUps} follow-ups allowed for ${isMessengerCampaign ? 'messenger' : isEmailCampaign ? 'email' : 'connector'} campaigns` : ''}
                         >
                           <Plus size={14} />
@@ -1777,25 +1788,24 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                           <td className="text-gray-300 px-4 py-3">{prospect.company || '-'}</td>
                           <td className="px-4 py-3">
                             <span
-                              className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border ${
-                                prospect.status === 'cr_sent' ? 'bg-green-900/20 text-green-400 border-green-500' :
-                                prospect.status === 'fu1_sent' ? 'bg-blue-900/20 text-blue-400 border-blue-500' :
-                                prospect.status === 'fu2_sent' ? 'bg-blue-900/20 text-blue-400 border-blue-500' :
-                                prospect.status === 'fu3_sent' ? 'bg-purple-900/20 text-purple-400 border-purple-500' :
-                                prospect.status === 'fu4_sent' ? 'bg-purple-900/20 text-purple-400 border-purple-500' :
-                                prospect.status === 'fu5_sent' ? 'bg-purple-900/20 text-purple-400 border-purple-500' :
-                                prospect.status === 'completed' ? 'bg-cyan-900/20 text-cyan-400 border-cyan-500' :
-                                prospect.status === 'failed' ? 'bg-red-900/20 text-red-400 border-red-500' :
-                                prospect.status === 'daily_limit_exceeded' ? 'bg-orange-900/20 text-orange-400 border-orange-500' :
-                                prospect.status === 'weekly_limit_exceeded' ? 'bg-red-900/20 text-red-400 border-red-500' :
-                                prospect.status === 'approved' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-500' :
-                                prospect.status === 'pending' ? 'bg-gray-900/20 text-gray-400 border-gray-500' :
-                                'bg-gray-900/20 text-gray-400 border-gray-500'
-                              }`}
+                              className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full border ${prospect.status === 'cr_sent' ? 'bg-green-900/20 text-green-400 border-green-500' :
+                                  prospect.status === 'fu1_sent' ? 'bg-blue-900/20 text-blue-400 border-blue-500' :
+                                    prospect.status === 'fu2_sent' ? 'bg-blue-900/20 text-blue-400 border-blue-500' :
+                                      prospect.status === 'fu3_sent' ? 'bg-purple-900/20 text-purple-400 border-purple-500' :
+                                        prospect.status === 'fu4_sent' ? 'bg-purple-900/20 text-purple-400 border-purple-500' :
+                                          prospect.status === 'fu5_sent' ? 'bg-purple-900/20 text-purple-400 border-purple-500' :
+                                            prospect.status === 'completed' ? 'bg-cyan-900/20 text-cyan-400 border-cyan-500' :
+                                              prospect.status === 'failed' ? 'bg-red-900/20 text-red-400 border-red-500' :
+                                                prospect.status === 'daily_limit_exceeded' ? 'bg-orange-900/20 text-orange-400 border-orange-500' :
+                                                  prospect.status === 'weekly_limit_exceeded' ? 'bg-red-900/20 text-red-400 border-red-500' :
+                                                    prospect.status === 'approved' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-500' :
+                                                      prospect.status === 'pending' ? 'bg-gray-900/20 text-gray-400 border-gray-500' :
+                                                        'bg-gray-900/20 text-gray-400 border-gray-500'
+                                }`}
                             >
                               {prospect.status === 'daily_limit_exceeded' ? 'Daily Limit' :
-                               prospect.status === 'weekly_limit_exceeded' ? 'Weekly Limit' :
-                               prospect.status?.replace(/_/g, ' ') || 'pending'}
+                                prospect.status === 'weekly_limit_exceeded' ? 'Weekly Limit' :
+                                  prospect.status?.replace(/_/g, ' ') || 'pending'}
                             </span>
                           </td>
                           <td className="text-center px-4 py-3">
@@ -1811,11 +1821,11 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                           <td className="text-center px-4 py-3">
                             <span className={prospect.status?.startsWith('fu') ? "text-purple-400 font-semibold" : "text-gray-500"}>
                               {prospect.status === 'fu1_sent' ? '1' :
-                               prospect.status === 'fu2_sent' ? '2' :
-                               prospect.status === 'fu3_sent' ? '3' :
-                               prospect.status === 'fu4_sent' ? '4' :
-                               prospect.status === 'fu5_sent' ? '5' :
-                               prospect.status === 'completed' ? '5' : '0'}
+                                prospect.status === 'fu2_sent' ? '2' :
+                                  prospect.status === 'fu3_sent' ? '3' :
+                                    prospect.status === 'fu4_sent' ? '4' :
+                                      prospect.status === 'fu5_sent' ? '5' :
+                                        prospect.status === 'completed' ? '5' : '0'}
                             </span>
                           </td>
                           <td className="text-center px-4 py-3">
@@ -1954,11 +1964,11 @@ function CampaignList({ workspaceId }: { workspaceId: string }) {
                       p.title?.toLowerCase().includes(searchLower)
                     );
                   }).length === 0 && (
-                    <div className="text-center py-12 text-gray-400">
-                      <Users size={48} className="mx-auto mb-4 text-gray-600" />
-                      <p>No prospects found</p>
-                    </div>
-                  )}
+                      <div className="text-center py-12 text-gray-400">
+                        <Users size={48} className="mx-auto mb-4 text-gray-600" />
+                        <p>No prospects found</p>
+                      </div>
+                    )}
                 </div>
               )}
             </div>
@@ -2359,11 +2369,11 @@ function CampaignBuilder({
       console.log('⚠️ No initialProspects provided to CampaignBuilder');
     }
   }, [initialProspects, initialCampaignType, initialDraftId]);
-  const [samMessages, setSamMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([]);
+  const [samMessages, setSamMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
   const [samInput, setSamInput] = useState('');
   const [isGeneratingTemplates, setIsGeneratingTemplates] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  
+
   // Approved prospects state
   const [dataSource, setDataSource] = useState<'approved' | 'upload' | 'quick-add'>('approved');
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]); // Selected session IDs
@@ -2489,7 +2499,7 @@ function CampaignBuilder({
   // Extract for backwards compatibility
   const approvalSessions = approvalSessionsData.sessions;
   const approvedProspects = approvalSessionsData.prospects;
-  
+
   // Message templates
   const [connectionMessage, setConnectionMessage] = useState('');
   const [alternativeMessage, setAlternativeMessage] = useState('');
@@ -2504,7 +2514,7 @@ function CampaignBuilder({
   // A/B TESTING REMOVED (Dec 18, 2025) - Feature disabled
   const abTestingEnabled = false; // Kept for backwards compatibility
 
-  const [activeField, setActiveField] = useState<{type: 'connection' | 'alternative' | 'followup', index?: number}>({type: 'connection'});
+  const [activeField, setActiveField] = useState<{ type: 'connection' | 'alternative' | 'followup', index?: number }>({ type: 'connection' });
   const [activeTextarea, setActiveTextarea] = useState<HTMLTextAreaElement | null>(null);
 
   // Draft/Auto-save state
@@ -2816,8 +2826,8 @@ function CampaignBuilder({
       // Check multiple possible field names (case-insensitive)
       // IMPORTANT: Check contact.connectionDegree for SAM prospects
       const degree = p.connection_degree || p.degree || p.connectionDegree ||
-                     p.contact?.connectionDegree || p.contact?.connection_degree ||
-                     p.Connection || p['Connection Degree'] || p.linkedin_connection_degree;
+        p.contact?.connectionDegree || p.contact?.connection_degree ||
+        p.Connection || p['Connection Degree'] || p.linkedin_connection_degree;
 
       // DETAILED DEBUG LOGGING for first 3 prospects
       if (index < 3) {
@@ -2842,16 +2852,16 @@ function CampaignBuilder({
 
       // Check for 1st degree
       if (degreeStr === '1' || degreeStr === '1st' || degreeStr === 'first' ||
-          degreeStr === '1st degree' || degreeStr.includes('1st')) return '1st';
+        degreeStr === '1st degree' || degreeStr.includes('1st')) return '1st';
 
       // Check for 2nd degree
       if (degreeStr === '2' || degreeStr === '2nd' || degreeStr === 'second' ||
-          degreeStr === '2nd degree' || degreeStr.includes('2nd')) return '2nd';
+        degreeStr === '2nd degree' || degreeStr.includes('2nd')) return '2nd';
 
       // Check for 3rd degree
       if (degreeStr === '3' || degreeStr === '3rd' || degreeStr === 'third' ||
-          degreeStr === '3rd degree' || degreeStr === '3+' || degreeStr.includes('3rd') ||
-          degreeStr.includes('3+')) return '3rd';
+        degreeStr === '3rd degree' || degreeStr === '3+' || degreeStr.includes('3rd') ||
+        degreeStr.includes('3+')) return '3rd';
 
       return 'unknown';
     });
@@ -3208,7 +3218,7 @@ function CampaignBuilder({
     setFollowUpSubjects([...followUpSubjects, '']);
     // Add default delay for new message
     const newDelays = [...(campaignSettings.message_delays || []), { value: 3, unit: 'days' }];
-    setCampaignSettings({...campaignSettings, message_delays: newDelays});
+    setCampaignSettings({ ...campaignSettings, message_delays: newDelays });
   };
 
   const updateFollowUpMessage = (index: number, value: string) => {
@@ -3229,7 +3239,7 @@ function CampaignBuilder({
       // Also remove the corresponding subject and delay
       setFollowUpSubjects(followUpSubjects.filter((_, i) => i !== index));
       const newDelays = (campaignSettings.message_delays || []).filter((_: any, i: number) => i !== index);
-      setCampaignSettings({...campaignSettings, message_delays: newDelays});
+      setCampaignSettings({ ...campaignSettings, message_delays: newDelays });
     }
   };
 
@@ -3243,7 +3253,7 @@ function CampaignBuilder({
       current.unit = newValue as string;
     }
     newDelays[index] = current;
-    setCampaignSettings({...campaignSettings, message_delays: newDelays});
+    setCampaignSettings({ ...campaignSettings, message_delays: newDelays });
   };
 
   // Update follow-up delay (single value, not array)
@@ -3254,7 +3264,7 @@ function CampaignBuilder({
     } else {
       current.unit = newValue as string;
     }
-    setCampaignSettings({...campaignSettings, follow_up_delay: current});
+    setCampaignSettings({ ...campaignSettings, follow_up_delay: current });
   };
 
   const insertPlaceholder = (placeholder: string, messageType?: 'connection' | 'alternative' | 'followup', index?: number) => {
@@ -3262,7 +3272,7 @@ function CampaignBuilder({
     if (!messageType && activeTextarea) {
       const start = activeTextarea.selectionStart;
       const end = activeTextarea.selectionEnd;
-      
+
       // Determine which field this textarea belongs to and update accordingly
       if (activeTextarea.placeholder.includes('Hi {first_name}')) {
         const currentValue = connectionMessage;
@@ -3278,7 +3288,7 @@ function CampaignBuilder({
         const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
         updateFollowUpMessage(followupIndex, newValue);
       }
-      
+
       // Restore cursor position after the inserted placeholder
       setTimeout(() => {
         activeTextarea.focus();
@@ -3386,7 +3396,7 @@ Let's create messages that get responses! 🎯`
       }
 
       const result = await response.json();
-      
+
       setSamMessages(prev => [...prev, {
         role: 'assistant',
         content: result.response || 'Generated templates based on your requirements!'
@@ -3408,7 +3418,7 @@ Let's create messages that get responses! 🎯`
 
     } catch (error: any) {
       console.error('SAM API error:', error);
-      
+
       // Fallback to local messaging generation
       setSamMessages(prev => [...prev, {
         role: 'assistant',
@@ -3568,13 +3578,11 @@ Would you like me to adjust these or create more variations?`
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          rawText: `CONNECTION MESSAGE:\n${parsedPreview.connectionMessage}\n\n${
-            parsedPreview.alternativeMessage ? `ALTERNATIVE MESSAGE:\n${parsedPreview.alternativeMessage}\n\n` : ''
-          }${
-            parsedPreview.followUpMessages && parsedPreview.followUpMessages.length > 0
+          rawText: `CONNECTION MESSAGE:\n${parsedPreview.connectionMessage}\n\n${parsedPreview.alternativeMessage ? `ALTERNATIVE MESSAGE:\n${parsedPreview.alternativeMessage}\n\n` : ''
+            }${parsedPreview.followUpMessages && parsedPreview.followUpMessages.length > 0
               ? parsedPreview.followUpMessages.map((msg, idx) => `FOLLOW-UP ${idx + 1}:\n${msg}`).join('\n\n')
               : ''
-          }`,
+            }`,
           workspaceId,
           enhancePrompt: 'Improve this messaging to be more engaging, persuasive, and professional while maintaining the tone and structure. Keep all placeholders intact.'
         })
@@ -3890,17 +3898,17 @@ Would you like me to adjust these or create more variations?`
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
     const csvFile = files.find(file => file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv'));
-    
+
     if (csvFile) {
       processFile(csvFile);
     } else {
       toastError('Please drop a CSV file');
     }
   };
-  
+
   const submit = async () => {
     // Validate prospect data based on source - check all possible prospect sources
     const hasProspectData = csvData.length > 0 || selectedProspects.length > 0 || (initialProspects?.length || 0) > 0;
@@ -4011,10 +4019,10 @@ Would you like me to adjust these or create more variations?`
       // Extract session_id from multiple sources (for auto-transfer)
       // Priority: 1. uploadedSessionId state, 2. initialProspects, 3. csvData[0]
       const sessionId = uploadedSessionId ||
-                       initialProspects?.[0]?.sessionId ||
-                       initialProspects?.[0]?.session_id ||
-                       csvData?.[0]?.sessionId ||
-                       csvData?.[0]?.session_id;
+        initialProspects?.[0]?.sessionId ||
+        initialProspects?.[0]?.session_id ||
+        csvData?.[0]?.sessionId ||
+        csvData?.[0]?.session_id;
 
       console.log('🔍 Campaign creation - session_id detection:', {
         hasInitialProspects: !!initialProspects?.length,
@@ -4160,78 +4168,78 @@ Would you like me to adjust these or create more variations?`
           })
         });
 
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to upload prospects: ${uploadResponse.status}`);
-      }
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to upload prospects: ${uploadResponse.status}`);
+        }
 
-      const uploadResult = await uploadResponse.json();
+        const uploadResult = await uploadResponse.json();
 
-      // Calculate connection degrees for these prospects
-      const prospectDegrees = prospects.map((p: any) => {
-        const degree = p.connection_degree || p.degree || 'unknown';
-        return degree.toLowerCase().includes('1st') ? '1st' :
-               (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
-      });
-      const firstDegreeCount = prospectDegrees.filter((d: string) => d === '1st').length;
-      const secondThirdCount = prospectDegrees.filter((d: string) => d === '2nd/3rd').length;
-      const hasOnly1stDegreeLocal = firstDegreeCount > 0 && secondThirdCount === 0;
+        // Calculate connection degrees for these prospects
+        const prospectDegrees = prospects.map((p: any) => {
+          const degree = p.connection_degree || p.degree || 'unknown';
+          return degree.toLowerCase().includes('1st') ? '1st' :
+            (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
+        });
+        const firstDegreeCount = prospectDegrees.filter((d: string) => d === '1st').length;
+        const secondThirdCount = prospectDegrees.filter((d: string) => d === '2nd/3rd').length;
+        const hasOnly1stDegreeLocal = firstDegreeCount > 0 && secondThirdCount === 0;
 
-      // Step 2.5: Auto-sync LinkedIn IDs for MESSENGER campaigns (1st degree connections only)
-      let syncedCount = 0;
-      if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegreeLocal && campaignType === 'messenger') {
-        console.log('🔄 Auto-syncing LinkedIn IDs for 1st degree connections (Messenger campaign)...');
+        // Step 2.5: Auto-sync LinkedIn IDs for MESSENGER campaigns (1st degree connections only)
+        let syncedCount = 0;
+        if (uploadResult.prospects_with_linkedin_ids === 0 && hasOnly1stDegreeLocal && campaignType === 'messenger') {
+          console.log('🔄 Auto-syncing LinkedIn IDs for 1st degree connections (Messenger campaign)...');
 
-        try {
-          const syncResponse = await fetch('/api/campaigns/sync-linkedin-ids', {
+          try {
+            const syncResponse = await fetch('/api/campaigns/sync-linkedin-ids', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                campaignId: campaign.id,
+                workspaceId: workspaceId
+              })
+            });
+
+            if (syncResponse.ok) {
+              const syncResult = await syncResponse.json();
+              syncedCount = syncResult.resolved || 0;
+              console.log(`✅ Synced ${syncedCount} LinkedIn IDs from message history`);
+            } else {
+              console.warn('⚠️ LinkedIn ID sync failed, will need manual resolution');
+            }
+          } catch (error) {
+            console.error('LinkedIn ID sync error:', error);
+            // Continue anyway - user can manually resolve later
+          }
+        }
+
+        // Update prospects count to include synced IDs
+        const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
+
+        // Step 3: Auto-execute via queue-based Unipile integration (30 min spacing)
+        if (totalProspectsWithIds > 0 || campaign.campaign_type === 'connector') {
+          const executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast';
+
+          const executeResponse = await fetch(executeEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Include cookies for Supabase auth
             body: JSON.stringify({
-              campaignId: campaign.id,
-              workspaceId: workspaceId
+              campaignId: campaign.id
             })
           });
 
-          if (syncResponse.ok) {
-            const syncResult = await syncResponse.json();
-            syncedCount = syncResult.resolved || 0;
-            console.log(`✅ Synced ${syncedCount} LinkedIn IDs from message history`);
+          if (executeResponse.ok) {
+            const syncMessage = syncedCount > 0
+              ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
+              : '';
+            toastError(`✅ Campaign "${name}" created and launched!\n\n📊 ${csvData.length} prospects uploaded${syncMessage}\n🚀 ${totalProspectsWithIds} ready for messaging\n📬 Campaign sent to execution queue`);
           } else {
-            console.warn('⚠️ LinkedIn ID sync failed, will need manual resolution');
+            toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• ${totalProspectsWithIds} with LinkedIn IDs\n• Ready for manual launch`);
           }
-        } catch (error) {
-          console.error('LinkedIn ID sync error:', error);
-          // Continue anyway - user can manually resolve later
-        }
-      }
-
-      // Update prospects count to include synced IDs
-      const totalProspectsWithIds = uploadResult.prospects_with_linkedin_ids + syncedCount;
-
-      // Step 3: Auto-execute via queue-based Unipile integration (30 min spacing)
-      if (totalProspectsWithIds > 0 || campaign.campaign_type === 'connector') {
-        const executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast';
-
-        const executeResponse = await fetch(executeEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include', // Include cookies for Supabase auth
-          body: JSON.stringify({
-            campaignId: campaign.id
-          })
-        });
-
-        if (executeResponse.ok) {
-          const syncMessage = syncedCount > 0
-            ? `\n🔗 ${syncedCount} LinkedIn IDs auto-resolved from message history`
-            : '';
-          toastError(`✅ Campaign "${name}" created and launched!\n\n📊 ${csvData.length} prospects uploaded${syncMessage}\n🚀 ${totalProspectsWithIds} ready for messaging\n📬 Campaign sent to execution queue`);
         } else {
-          toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• ${totalProspectsWithIds} with LinkedIn IDs\n• Ready for manual launch`);
+          toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• LinkedIn ID discovery needed for messaging\n• Run connection campaign first to capture IDs`);
         }
-      } else {
-        toastError(`✅ Campaign "${name}" created!\n\n📊 Upload Results:\n• ${csvData.length} prospects uploaded\n• LinkedIn ID discovery needed for messaging\n• Run connection campaign first to capture IDs`);
-      }
       } // Close else block for raw prospect upload
 
       // Reset form and refresh campaign list
@@ -4242,12 +4250,12 @@ Would you like me to adjust these or create more variations?`
       setConnectionMessage('');
       setAlternativeMessage('');
       setFollowUpMessages(['']);
-      
+
       // Close the campaign builder
       if (onClose) {
         onClose();
       }
-      
+
       // Trigger refresh of campaign list
       window.dispatchEvent(new CustomEvent('refreshCampaigns'));
 
@@ -4268,683 +4276,1047 @@ Would you like me to adjust these or create more variations?`
       }
     }
   };
-  
+
   return (
     <>
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-6 border-b border-gray-700 mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
-            <Rocket size={20} className="text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-white">{name || 'New Campaign'}</h2>
-            <p className="text-gray-400 text-sm">{getCampaignTypeLabel(campaignType)} Campaign</p>
-          </div>
-        </div>
-        {onClose && (
-          <button
-            onClick={() => {
-              if (currentStep > 1) {
-                // Go back to Step 1
-                setCurrentStep(1);
-              } else {
-                // On step 1, close the modal
-                onClose();
-              }
-            }}
-            className="text-gray-400 hover:text-gray-300 transition-colors"
-            title={currentStep > 1 ? 'Back' : 'Close'}
-          >
-            <X size={24} />
-          </button>
-        )}
-      </div>
-
-      {/* Step Indicator - 2 steps: Campaign Setup → Message Templates */}
-      <div className="flex items-center mb-8">
-        {[1, 2].map((step) => (
-          <div key={step} className="flex items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-              step <= currentStep ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-400'
-            }`}>
-              {step}
+      <div className="p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between pb-6 border-b border-gray-700 mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
+              <Rocket size={20} className="text-white" />
             </div>
-            {step < 2 && (
-              <div className={`w-16 h-1 mx-2 ${
-                step < currentStep ? 'bg-purple-600' : 'bg-gray-600'
-              }`} />
-            )}
-          </div>
-        ))}
-        <div className="ml-4 text-sm text-gray-400">
-          Step {currentStep} of 2: {
-            currentStep === 1 ? 'Campaign Setup' : 'Message Templates'
-          }
-        </div>
-      </div>
-
-      {/* Step 1: Campaign Setup */}
-      {currentStep === 1 && (
-        <div className="space-y-6">
-          {/* Hero Section */}
-          <div className="p-6 bg-gradient-to-br from-purple-900/30 to-blue-900/30 rounded-lg border border-purple-700/50">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Sparkles size={24} className="text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white mb-2">Launch Your Campaign</h3>
-                <p className="text-gray-300 text-sm leading-relaxed mb-4">
-                  Create intelligent, multi-channel outreach campaigns. SAM AI personalizes every message
-                  to maximize engagement and conversions.
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <TrendingUp size={16} className="text-purple-400" />
-                    <span className="text-gray-300">AI-powered personalization</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users size={16} className="text-purple-400" />
-                    <span className="text-gray-300">Multi-channel reach</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Target size={16} className="text-purple-400" />
-                    <span className="text-gray-300">Smart targeting</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock size={16} className="text-purple-400" />
-                    <span className="text-gray-300">Automated follow-ups</span>
-                  </div>
-                </div>
-              </div>
+            <div>
+              <h2 className="text-xl font-semibold text-white">{name || 'New Campaign'}</h2>
+              <p className="text-gray-400 text-sm">{getCampaignTypeLabel(campaignType)} Campaign</p>
             </div>
           </div>
-
-          <div className="space-y-2">
-            <label htmlFor="campaign-name" className="block text-sm font-medium text-gray-400">
-              Campaign Name
-            </label>
-            <input
-              id="campaign-name"
-              type="text"
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Enter campaign name..."
-            />
-          </div>
-
-          {/* Timezone Override */}
-          <div className="space-y-2">
-            <label htmlFor="campaign-timezone" className="block text-sm font-medium text-gray-400">
-              Prospect Timezone
-            </label>
-            <p className="text-xs text-gray-500 mb-2">
-              Messages will be sent during business hours (9 AM - 6 PM) in this timezone
-            </p>
-            <select
-              id="campaign-timezone"
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-              value={campaignSettings.timezone}
-              onChange={e => setCampaignSettings({...campaignSettings, timezone: e.target.value})}
+          {onClose && (
+            <button
+              onClick={() => {
+                if (currentStep > 1) {
+                  // Go back to Step 1
+                  setCurrentStep(1);
+                } else {
+                  // On step 1, close the modal
+                  onClose();
+                }
+              }}
+              className="text-gray-400 hover:text-gray-300 transition-colors"
+              title={currentStep > 1 ? 'Back' : 'Close'}
             >
-              <option value="America/New_York">US Eastern (New York)</option>
-              <option value="America/Chicago">US Central (Chicago)</option>
-              <option value="America/Denver">US Mountain (Denver)</option>
-              <option value="America/Los_Angeles">US Pacific (Los Angeles)</option>
-              <option value="Europe/London">UK (London)</option>
-              <option value="Europe/Paris">Central Europe (Paris)</option>
-              <option value="Europe/Berlin">Germany (Berlin)</option>
-              <option value="Europe/Amsterdam">Netherlands (Amsterdam)</option>
-              <option value="Europe/Zurich">Switzerland (Zurich)</option>
-              <option value="Asia/Singapore">Singapore</option>
-              <option value="Asia/Tokyo">Japan (Tokyo)</option>
-              <option value="Asia/Shanghai">China (Shanghai)</option>
-              <option value="Asia/Dubai">UAE (Dubai)</option>
-              <option value="Australia/Sydney">Australia (Sydney)</option>
-              <option value="Pacific/Auckland">New Zealand (Auckland)</option>
-            </select>
+              <X size={24} />
+            </button>
+          )}
+        </div>
+
+        {/* Step Indicator - 2 steps: Campaign Setup → Message Templates */}
+        <div className="flex items-center mb-8">
+          {[1, 2].map((step) => (
+            <div key={step} className="flex items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step <= currentStep ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-400'
+                }`}>
+                {step}
+              </div>
+              {step < 2 && (
+                <div className={`w-16 h-1 mx-2 ${step < currentStep ? 'bg-purple-600' : 'bg-gray-600'
+                  }`} />
+              )}
+            </div>
+          ))}
+          <div className="ml-4 text-sm text-gray-400">
+            Step {currentStep} of 2: {
+              currentStep === 1 ? 'Campaign Setup' : 'Message Templates'
+            }
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-3">
-              Campaign Type
-            </label>
+        {/* Step 1: Campaign Setup */}
+        {currentStep === 1 && (
+          <div className="space-y-6">
+            {/* Hero Section */}
+            <div className="p-6 bg-gradient-to-br from-purple-900/30 to-blue-900/30 rounded-lg border border-purple-700/50">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Sparkles size={24} className="text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-white mb-2">Launch Your Campaign</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed mb-4">
+                    Create intelligent, multi-channel outreach campaigns. SAM AI personalizes every message
+                    to maximize engagement and conversions.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      <TrendingUp size={16} className="text-purple-400" />
+                      <span className="text-gray-300">AI-powered personalization</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users size={16} className="text-purple-400" />
+                      <span className="text-gray-300">Multi-channel reach</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Target size={16} className="text-purple-400" />
+                      <span className="text-gray-300">Smart targeting</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock size={16} className="text-purple-400" />
+                      <span className="text-gray-300">Automated follow-ups</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            {/* PRE-SELECTED: Show simple confirmation when type was chosen in approval screen */}
-            {isTypePreSelected && (
-              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+            <div className="space-y-2">
+              <label htmlFor="campaign-name" className="block text-sm font-medium text-gray-400">
+                Campaign Name
+              </label>
+              <input
+                id="campaign-name"
+                type="text"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Enter campaign name..."
+              />
+            </div>
+
+            {/* Timezone Override */}
+            <div className="space-y-2">
+              <label htmlFor="campaign-timezone" className="block text-sm font-medium text-gray-400">
+                Prospect Timezone
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                Messages will be sent during business hours (9 AM - 6 PM) in this timezone
+              </p>
+              <select
+                id="campaign-timezone"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                value={campaignSettings.timezone}
+                onChange={e => setCampaignSettings({ ...campaignSettings, timezone: e.target.value })}
+              >
+                <option value="America/New_York">US Eastern (New York)</option>
+                <option value="America/Chicago">US Central (Chicago)</option>
+                <option value="America/Denver">US Mountain (Denver)</option>
+                <option value="America/Los_Angeles">US Pacific (Los Angeles)</option>
+                <option value="Europe/London">UK (London)</option>
+                <option value="Europe/Paris">Central Europe (Paris)</option>
+                <option value="Europe/Berlin">Germany (Berlin)</option>
+                <option value="Europe/Amsterdam">Netherlands (Amsterdam)</option>
+                <option value="Europe/Zurich">Switzerland (Zurich)</option>
+                <option value="Asia/Singapore">Singapore</option>
+                <option value="Asia/Tokyo">Japan (Tokyo)</option>
+                <option value="Asia/Shanghai">China (Shanghai)</option>
+                <option value="Asia/Dubai">UAE (Dubai)</option>
+                <option value="Australia/Sydney">Australia (Sydney)</option>
+                <option value="Pacific/Auckland">New Zealand (Auckland)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-3">
+                Campaign Type
+              </label>
+
+              {/* PRE-SELECTED: Show simple confirmation when type was chosen in approval screen */}
+              {isTypePreSelected && (
+                <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
+                      {campaignType === 'connector' && <UserPlus className="text-green-400" size={20} />}
+                      {campaignType === 'messenger' && <MessageSquare className="text-green-400" size={20} />}
+                      {campaignType === 'email' && <Mail className="text-green-400" size={20} />}
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">
+                        {campaignType === 'connector' && 'LinkedIn Connector Campaign'}
+                        {campaignType === 'messenger' && 'LinkedIn Messenger Campaign'}
+                        {campaignType === 'email' && 'Email Campaign'}
+                      </p>
+                      <p className="text-green-400 text-sm">✓ Pre-verified from approval screen</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MANUAL SELECTION: Show full type picker when not pre-selected */}
+              {!isTypePreSelected && connectionDegrees.total > 0 && (
+                <div className={`border rounded-lg p-3 mb-4 ${!hasConnectionDegreeData
+                    ? 'bg-yellow-900/20 border-yellow-500/30'
+                    : 'bg-blue-900/20 border-blue-500/30'
+                  }`}>
+                  <p className={`text-sm ${!hasConnectionDegreeData ? 'text-yellow-300' : 'text-blue-300'
+                    }`}>
+                    {!hasConnectionDegreeData && (
+                      <span>
+                        ⚠️ <strong>No LinkedIn connection degree detected</strong> - Only Email campaigns available.
+                        <br />
+                        To enable LinkedIn campaigns: Add a column named <strong>"Connection Degree"</strong> or <strong>"Connection"</strong> to your CSV with values like "1st", "2nd", or "3rd", then re-upload.
+                      </span>
+                    )}
+                    {hasConnectionDegreeData && hasOnly1stDegree && (
+                      <span>✓ All prospects are 1st degree connections - Messenger available, Connector disabled</span>
+                    )}
+                    {hasConnectionDegreeData && !hasOnly1stDegree && connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && (
+                      <span>✓ All prospects are 2nd/3rd degree - Connector available, Messenger disabled</span>
+                    )}
+                    {hasConnectionDegreeData && connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird > 0 && (
+                      <span>📊 Mixed connection degrees: {connectionDegrees.firstDegree} × 1st degree, {connectionDegrees.secondThird} × 2nd/3rd degree</span>
+                    )}
+                    {hasConnectionDegreeData && connectionDegrees.firstDegree === 0 && connectionDegrees.secondThird === 0 && (initialProspects && initialProspects.length > 0) && (
+                      <span>✓ LinkedIn prospects loaded - All campaign types available based on your connections</span>
+                    )}
+                  </p>
+                </div>
+              )}
+              {!isTypePreSelected && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {campaignTypes.map((type) => {
+                    const IconComponent = type.icon;
+                    const isConnector = type.value === 'connector';
+                    const isMessenger = type.value === 'messenger';
+                    const isMultichannel = type.value === 'multichannel';
+                    const isEmail = type.value === 'email';
+
+                    // Calculate percentages for stricter enforcement
+                    const firstDegreePercent = connectionDegrees.total > 0
+                      ? (connectionDegrees.firstDegree / connectionDegrees.total) * 100
+                      : 0;
+                    const secondThirdPercent = connectionDegrees.total > 0
+                      ? (connectionDegrees.secondThird / connectionDegrees.total) * 100
+                      : 0;
+
+                    // Check if prospects have email addresses
+                    const prospects = csvData.length > 0 ? csvData : (initialProspects || []);
+                    const prospectsWithEmail = prospects.filter(p => p.email || p.email_address || p.contact?.email);
+                    const hasEmailAddresses = prospectsWithEmail.length > 0;
+                    const emailProspectCount = prospectsWithEmail.length;
+
+                    let isDisabled = false;
+                    let disabledReason = '';
+                    let needsConnection: 'linkedin' | 'email' | 'both' | null = null;
+
+                    // NEW: For mixed connection degrees/email, show how many will be included
+                    // Messenger → only 1st degree, Connector → only 2nd/3rd degree, Email → only with email
+                    let matchingProspectCount = 0;
+                    let prospectBadge = '';
+
+                    if (isMessenger && connectionDegrees.total > 0) {
+                      matchingProspectCount = connectionDegrees.firstDegree;
+                      if (connectionDegrees.secondThird > 0) {
+                        prospectBadge = `${matchingProspectCount} of ${connectionDegrees.total} prospects`;
+                      }
+                    } else if (isConnector && connectionDegrees.total > 0) {
+                      matchingProspectCount = connectionDegrees.secondThird;
+                      if (connectionDegrees.firstDegree > 0) {
+                        prospectBadge = `${matchingProspectCount} of ${connectionDegrees.total} prospects`;
+                      }
+                    } else if (isEmail && prospects.length > 0) {
+                      matchingProspectCount = emailProspectCount;
+                      const prospectsWithoutEmail = prospects.length - emailProspectCount;
+                      if (prospectsWithoutEmail > 0) {
+                        prospectBadge = `${matchingProspectCount} of ${prospects.length} prospects (have email)`;
+                      }
+                    }
+
+                    // Multi is always disabled (in development)
+                    if (isMultichannel) {
+                      isDisabled = true;
+                      disabledReason = '🚧 In Development - Multi-channel campaigns coming soon';
+                    }
+                    // Check connection degree restrictions - ONLY disable if 0 matching prospects
+                    else if (connectionDegrees.total > 0) {
+                      // Disable Connector ONLY if there are NO 2nd/3rd degree prospects
+                      if (isConnector && connectionDegrees.secondThird === 0) {
+                        isDisabled = true;
+                        disabledReason = 'All prospects are 1st degree - use Messenger for direct messages';
+                      }
+                      // Disable Messenger ONLY if there are NO 1st degree prospects
+                      if (isMessenger && connectionDegrees.firstDegree === 0) {
+                        isDisabled = true;
+                        disabledReason = 'All prospects are 2nd/3rd degree - use Connector to send connection requests first';
+                      }
+                      // Check email availability for Email campaigns
+                      if (isEmail && !hasEmailAddresses && prospects.length > 0) {
+                        isDisabled = true;
+                        disabledReason = 'No email addresses in prospects - add email column to CSV';
+                      }
+                      // Check account connections (lower priority) - only if not already disabled
+                      if (!isDisabled && (isConnector || isMessenger) && !connectedAccounts.linkedin) {
+                        isDisabled = true;
+                        disabledReason = 'LinkedIn account not connected';
+                        needsConnection = 'linkedin';
+                      }
+                      if (!isDisabled && isEmail && !connectedAccounts.email) {
+                        isDisabled = true;
+                        disabledReason = 'Email account not connected';
+                        needsConnection = 'email';
+                      }
+                    }
+                    // No prospects loaded yet - check account connections only
+                    else {
+                      if ((isConnector || isMessenger) && !connectedAccounts.linkedin) {
+                        isDisabled = true;
+                        disabledReason = 'LinkedIn account not connected';
+                        needsConnection = 'linkedin';
+                      } else if (isEmail && !connectedAccounts.email) {
+                        isDisabled = true;
+                        disabledReason = 'Email account not connected';
+                        needsConnection = 'email';
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={type.value}
+                        onClick={() => {
+                          if (!isDisabled && !needsConnection) {
+                            setCampaignType(type.value);
+                            setUserSelectedCampaignType(true); // Mark as manually selected
+                          }
+                        }}
+                        className={`p-5 border-2 rounded-lg transition-all ${isDisabled
+                            ? 'border-gray-700 bg-gray-800/50 opacity-50'
+                            : campaignType === type.value
+                              ? 'border-purple-500 bg-gradient-to-br from-purple-900/40 to-blue-900/40 cursor-pointer shadow-lg shadow-purple-500/20'
+                              : 'border-gray-600 bg-gray-700/50 hover:border-purple-400 hover:bg-gray-700 cursor-pointer'
+                          } ${needsConnection ? '' : isDisabled ? 'cursor-not-allowed' : ''}`}
+                        title={isDisabled && !needsConnection ? `Not available: ${disabledReason}` : ''}
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${campaignType === type.value
+                              ? 'bg-purple-600'
+                              : 'bg-gray-600'
+                            }`}>
+                            <IconComponent className="text-white" size={20} />
+                          </div>
+                          <h4 className="text-white font-semibold text-base">{type.label}</h4>
+                        </div>
+                        <p className="text-gray-300 text-sm leading-relaxed">{type.description}</p>
+                        {/* Show prospect count badge for mixed connection degrees */}
+                        {!isDisabled && prospectBadge && (
+                          <div className="mt-2 inline-flex items-center px-2 py-1 bg-purple-900/40 border border-purple-500/30 rounded text-xs text-purple-300">
+                            📊 {prospectBadge}
+                          </div>
+                        )}
+                        {isDisabled && needsConnection && (
+                          <div className="mt-3">
+                            <p className="text-yellow-400 text-xs mb-2">
+                              ⚠️ {disabledReason}
+                            </p>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (needsConnection === 'linkedin') {
+                                  setUnipileProvider('LINKEDIN');
+                                  setShowUnipileWizard(true);
+                                } else if (needsConnection === 'email') {
+                                  setUnipileProvider('GOOGLE'); // Default to Google for email
+                                  setShowUnipileWizard(true);
+                                } else if (needsConnection === 'both') {
+                                  setUnipileProvider('LINKEDIN');
+                                  setShowUnipileWizard(true);
+                                }
+                              }}
+                              className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors flex items-center justify-center gap-1"
+                            >
+                              <Link size={12} />
+                              Connect {needsConnection === 'both' ? 'Accounts' : needsConnection === 'linkedin' ? 'LinkedIn' : 'Email'} Now
+                            </button>
+                          </div>
+                        )}
+                        {isDisabled && !needsConnection && (
+                          <p className="text-red-400 text-xs mt-2">
+                            ⚠️ Not available: {disabledReason}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {!isTypePreSelected && connectionDegrees.total > 0 && (campaignType === 'messenger' || campaignType === 'connector') && (
+                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
+                  <p className="text-blue-300 text-sm">
+                    <strong>{userSelectedCampaignType ? 'Selected:' : 'Auto-selected:'}</strong> {campaignType === 'messenger' ? 'Messenger' : 'Connector'} campaign
+                    {hasOnly1stDegree && ` (all ${connectionDegrees.firstDegree} prospects are 1st degree connections)`}
+                    {connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && ` (all ${connectionDegrees.secondThird} prospects are 2nd/3rd degree connections)`}
+                    {!hasOnly1stDegree && connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird > 0 &&
+                      ` (${Math.round((campaignType === 'messenger' ? connectionDegrees.firstDegree : connectionDegrees.secondThird) / connectionDegrees.total * 100)}% match)`}
+                  </p>
+                </div>
+              )}
+              {!isTypePreSelected && campaignType === 'email' && (
+                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
+                  <p className="text-blue-300 text-sm">
+                    <strong>Selected:</strong> Email campaign - Direct email outreach without LinkedIn connection requests
+                  </p>
+                </div>
+              )}
+              {!isTypePreSelected && campaignType === 'multichannel' && (
+                <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3 mt-3">
+                  <p className="text-purple-300 text-sm">
+                    <strong>Selected:</strong> Multichannel campaign - Combine LinkedIn and email outreach
+                  </p>
+                </div>
+              )}
+              {!isTypePreSelected && has1stDegree && !hasOnly1stDegree && campaignType === 'connector' && (
+                <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3 mt-3">
+                  <p className="text-yellow-300 text-sm">
+                    ⚠️ <strong>Warning:</strong> {connectionDegrees.firstDegree} of your prospects are 1st degree connections and will be skipped in Connector campaigns. Consider using <strong>Builder</strong> instead.
+                  </p>
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
+
+        {/* Step 2: Message Templates (Connector Campaign) */}
+        {currentStep === 2 && campaignType === 'connector' && (
+          <div className="space-y-6">
+            {/* Campaign Name - Editable in Step 2 */}
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+              <label className="block text-sm font-medium text-gray-400 mb-2">Campaign Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                placeholder="Enter campaign name..."
+              />
+            </div>
+
+            {/* SAM Messaging Generation */}
+            <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
+              <div className="flex items-center mb-3">
+                <Zap className="text-purple-400 mr-2" size={20} />
+                <h4 className="text-white font-medium">SAM AI Messaging Generator</h4>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Let SAM create personalized messaging sequences based on your campaign goals and target audience.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                  onClick={() => {
+                    setManualConnection('');
+                    setManualAlternative('');
+                    setManualFollowUps(['']);
+                    setShowManualTemplateModal(true);
+                  }}
+                >
+                  <Edit size={16} className="mr-1" />
+                  Create Manually
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const campaignTypeLabel = campaignType === 'connector' ? '**connector campaign** (for 2nd/3rd degree LinkedIn connections)' : '**messenger campaign** (for 1st degree connections - already connected)';
+                    const messageType = campaignType === 'connector' ? 'connection request + follow-up messages' : 'direct messages (no connection request needed)';
+
+                    setSamMessages([{
+                      role: 'assistant',
+                      content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging sequences for your ${campaignTypeLabel} "${name}".\n\n**Campaign Type:** ${campaignType === 'connector' ? 'Connector - I will generate a connection request message and follow-ups' : 'Messenger - I will generate direct messages for your existing connections (no connection request)'}\n\nI can see you have ${csvData.length} prospects loaded. To create the best ${messageType}, tell me:\n\n1. What's your main goal with this campaign? (networking, lead generation, partnerships, etc.)\n2. What value can you offer these prospects?\n3. Any specific tone you'd like? (professional, casual, friendly, etc.)\n\nLet's create messages that get responses! 🎯`
+                    }]);
+                    setShowSamGenerationModal(true);
+                  }}
+                  className="flex items-center px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                >
+                  <Zap size={16} className="mr-1" />
+                  Generate Messaging with SAM
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
+                  onClick={openKBModal}
+                >
+                  <Brain size={16} className="mr-1" />
+                  Load from Knowledgebase
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30 rounded-lg transition-colors"
+                  onClick={openPreviousMessagesModal}
+                >
+                  <Clock size={16} className="mr-1" />
+                  Load Previous Messages
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-pink-600/20 hover:bg-pink-600/30 text-pink-400 border border-pink-500/30 rounded-lg transition-colors"
+                  onClick={() => setShowTemplateLibraryModal(true)}
+                >
+                  <FileText size={16} className="mr-1" />
+                  Load from Template
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 rounded-lg transition-colors"
+                  onClick={() => setShowPasteModal(true)}
+                >
+                  <Upload size={16} className="mr-1" />
+                  Paste Template
+                </button>
+              </div>
+            </div>
+
+            {/* A/B Testing Toggle */}
+            <div className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
-                    {campaignType === 'connector' && <UserPlus className="text-green-400" size={20} />}
-                    {campaignType === 'messenger' && <MessageSquare className="text-green-400" size={20} />}
-                    {campaignType === 'email' && <Mail className="text-green-400" size={20} />}
-                  </div>
+                  <BarChart3 className="text-orange-400" size={20} />
                   <div>
-                    <p className="text-white font-medium">
-                      {campaignType === 'connector' && 'LinkedIn Connector Campaign'}
-                      {campaignType === 'messenger' && 'LinkedIn Messenger Campaign'}
-                      {campaignType === 'email' && 'Email Campaign'}
-                    </p>
-                    <p className="text-green-400 text-sm">✓ Pre-verified from approval screen</p>
+                    <h4 className="text-orange-400 font-medium">A/B Testing</h4>
+                    <p className="text-xs text-gray-400">Test different message variants (50/50 split)</p>
                   </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={abTestingEnabled}
+                    onChange={(e) => setAbTestingEnabled(e.target.checked)}
+                  />
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                </label>
+              </div>
+              {abTestingEnabled && (
+                <p className="text-xs text-orange-300 mt-2">
+                  Variant B inputs will appear below each message field. 50% of prospects will receive Variant A, 50% will receive Variant B.
+                </p>
+              )}
+            </div>
+
+            {/* ONLY show Connection Request for Connector campaigns */}
+            {campaignType === 'connector' && (
+              <div className="space-y-2">
+                <label htmlFor="connection-message" className="block text-sm font-medium text-gray-400">
+                  Connection Request Message {abTestingEnabled && <span className="text-orange-400">(Variant A - 50%)</span>}
+                </label>
+                <p className="text-xs text-gray-500">
+                  This message will be sent with your connection request
+                </p>
+                <textarea
+                  id="connection-message"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
+                  rows={4}
+                  value={connectionMessage}
+                  onChange={e => setConnectionMessage(e.target.value)}
+                  onFocus={(e) => {
+                    setActiveField({ type: 'connection' });
+                    setActiveTextarea(e.target as HTMLTextAreaElement);
+                  }}
+                  placeholder="Hi {first_name}, I saw your profile and would love to connect..."
+                  maxLength={275}
+                />
+                <div className="flex justify-between items-center">
+                  <span className={`text-xs font-medium ${connectionMessage.length > 250 ? 'text-orange-400' :
+                      connectionMessage.length > 270 ? 'text-red-400' :
+                        'text-gray-400'
+                    }`}>
+                    {connectionMessage.length}/275 characters
+                    {connectionMessage.length > 250 && connectionMessage.length <= 275 && (
+                      <span className="ml-2 text-xs">({275 - connectionMessage.length} remaining)</span>
+                    )}
+                  </span>
+                  {connectionMessage.length > 0 && (
+                    <button
+                      type="button"
+                      className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
+                      onClick={async () => {
+                        // Call SAM API directly to improve the message
+                        try {
+                          toastInfo('SAM is improving your message...');
+
+                          console.log('Improve with SAM - Request:', {
+                            workspaceId,
+                            campaignName: name,
+                            messageLength: connectionMessage.length,
+                            prospectCount: csvData.length
+                          });
+
+                          const response = await fetch('/api/sam/generate-templates', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              workspace_id: workspaceId,
+                              campaign_name: name,
+                              campaign_type: 'connector',
+                              prospect_count: csvData.length,
+                              user_input: `Please improve this connection request message. Keep it under 275 characters and maintain personalization placeholders like {first_name}, {company_name}, etc.\n\nCurrent message (${connectionMessage.length} chars):\n"${connectionMessage}"\n\nMake it more engaging while staying professional and concise.`,
+                              conversation_history: [],
+                              prospect_sample: csvData.slice(0, 3)
+                            })
+                          });
+
+                          console.log('Improve with SAM - Response status:', response.status);
+
+                          if (response.ok) {
+                            const result = await response.json();
+                            console.log('Improve with SAM - Result:', result);
+
+                            if (result.templates?.connection_message) {
+                              const improved = result.templates.connection_message;
+                              if (improved.length <= 275) {
+                                setConnectionMessage(improved);
+                                toastSuccess(`Message improved! (${improved.length}/275 characters)`);
+                              } else {
+                                toastWarning(`Improved message is ${improved.length} characters. Truncating to 275.`);
+                                setConnectionMessage(improved.substring(0, 275));
+                              }
+                            } else {
+                              console.error('No connection_message in result:', result);
+                              toastError('Could not extract improved message. Check console for details.');
+                            }
+                          } else {
+                            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                            console.error('Improve with SAM - API error:', response.status, errorData);
+                            toastError(`Failed to improve message: ${errorData.error || errorData.details || 'Unknown error'}`);
+                          }
+                        } catch (error) {
+                          console.error('Improve message error:', error);
+                          toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                        }
+                      }}
+                    >
+                      <Zap size={12} className="mr-1" />
+                      Improve with SAM
+                    </button>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* MANUAL SELECTION: Show full type picker when not pre-selected */}
-            {!isTypePreSelected && connectionDegrees.total > 0 && (
-              <div className={`border rounded-lg p-3 mb-4 ${
-                !hasConnectionDegreeData
-                  ? 'bg-yellow-900/20 border-yellow-500/30'
-                  : 'bg-blue-900/20 border-blue-500/30'
-              }`}>
-                <p className={`text-sm ${
-                  !hasConnectionDegreeData ? 'text-yellow-300' : 'text-blue-300'
-                }`}>
-                  {!hasConnectionDegreeData && (
-                    <span>
-                      ⚠️ <strong>No LinkedIn connection degree detected</strong> - Only Email campaigns available.
-                      <br />
-                      To enable LinkedIn campaigns: Add a column named <strong>"Connection Degree"</strong> or <strong>"Connection"</strong> to your CSV with values like "1st", "2nd", or "3rd", then re-upload.
-                    </span>
-                  )}
-                  {hasConnectionDegreeData && hasOnly1stDegree && (
-                    <span>✓ All prospects are 1st degree connections - Messenger available, Connector disabled</span>
-                  )}
-                  {hasConnectionDegreeData && !hasOnly1stDegree && connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && (
-                    <span>✓ All prospects are 2nd/3rd degree - Connector available, Messenger disabled</span>
-                  )}
-                  {hasConnectionDegreeData && connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird > 0 && (
-                    <span>📊 Mixed connection degrees: {connectionDegrees.firstDegree} × 1st degree, {connectionDegrees.secondThird} × 2nd/3rd degree</span>
-                  )}
-                  {hasConnectionDegreeData && connectionDegrees.firstDegree === 0 && connectionDegrees.secondThird === 0 && (initialProspects && initialProspects.length > 0) && (
-                    <span>✓ LinkedIn prospects loaded - All campaign types available based on your connections</span>
-                  )}
+            {/* Connection Request Message - Variant B (only when A/B testing is enabled) */}
+            {campaignType === 'connector' && abTestingEnabled && (
+              <div className="border-l-4 border-orange-500 pl-4 space-y-2">
+                <label htmlFor="connection-message-b" className="block text-sm font-medium text-gray-400">
+                  Connection Request Message <span className="text-orange-400">(Variant B - 50%)</span>
+                </label>
+                <p className="text-xs text-gray-500">
+                  Alternative version to test against Variant A
                 </p>
+                <textarea
+                  id="connection-message-b"
+                  className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
+                  rows={4}
+                  value={connectionMessageB}
+                  onChange={e => setConnectionMessageB(e.target.value)}
+                  placeholder="Hi {first_name}, I came across your profile and..."
+                  maxLength={275}
+                />
+                <div className="flex justify-between items-center">
+                  <span className={`text-xs font-medium ${connectionMessageB.length > 250 ? 'text-orange-400' :
+                      connectionMessageB.length > 270 ? 'text-red-400' :
+                        'text-gray-400'
+                    }`}>
+                    {connectionMessageB.length}/275 characters
+                  </span>
+                  <p className="text-xs text-gray-500">Test a different hook, value prop, or CTA</p>
+                </div>
               </div>
             )}
-            {!isTypePreSelected && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {campaignTypes.map((type) => {
-                const IconComponent = type.icon;
-                const isConnector = type.value === 'connector';
-                const isMessenger = type.value === 'messenger';
-                const isMultichannel = type.value === 'multichannel';
-                const isEmail = type.value === 'email';
 
-                // Calculate percentages for stricter enforcement
-                const firstDegreePercent = connectionDegrees.total > 0
-                  ? (connectionDegrees.firstDegree / connectionDegrees.total) * 100
-                  : 0;
-                const secondThirdPercent = connectionDegrees.total > 0
-                  ? (connectionDegrees.secondThird / connectionDegrees.total) * 100
-                  : 0;
+            {/* ONLY show Alternative Message for Connector campaigns */}
+            {campaignType === 'connector' && (
+              <div className="space-y-2">
+                <label htmlFor="alternative-message" className="block text-sm font-medium text-gray-400">
+                  Alternative Message (Optional) {abTestingEnabled && <span className="text-orange-400">(Variant A)</span>}
+                </label>
+                <p className="text-xs text-gray-500">
+                  Shorter alternative message for connection requests
+                </p>
+                <textarea
+                  id="alternative-message"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
+                  rows={2}
+                  value={alternativeMessage}
+                  onChange={e => setAlternativeMessage(e.target.value)}
+                  onFocus={(e) => {
+                    setActiveField({ type: 'alternative' });
+                    setActiveTextarea(e.target as HTMLTextAreaElement);
+                  }}
+                  placeholder="Would love to connect with you on LinkedIn!"
+                  maxLength={115}
+                />
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">
+                    Characters remaining: {115 - alternativeMessage.length}/115
+                  </span>
+                  {alternativeMessage.length > 0 && (
+                    <button
+                      type="button"
+                      className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
+                      onClick={async () => {
+                        // Call SAM API directly to improve the message
+                        try {
+                          toastInfo('SAM is improving your alternative message...');
 
-                // Check if prospects have email addresses
-                const prospects = csvData.length > 0 ? csvData : (initialProspects || []);
-                const prospectsWithEmail = prospects.filter(p => p.email || p.email_address || p.contact?.email);
-                const hasEmailAddresses = prospectsWithEmail.length > 0;
-                const emailProspectCount = prospectsWithEmail.length;
+                          const response = await fetch('/api/sam/generate-templates', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              workspace_id: workspaceId,
+                              campaign_name: name,
+                              campaign_type: 'connector',
+                              prospect_count: csvData.length,
+                              user_input: `Please improve this alternative message. Keep it under 115 characters and maintain a friendly, concise tone.\n\nCurrent message (${alternativeMessage.length} chars):\n"${alternativeMessage}"\n\nMake it more engaging while staying brief.`,
+                              conversation_history: [],
+                              prospect_sample: csvData.slice(0, 3)
+                            })
+                          });
 
-                let isDisabled = false;
-                let disabledReason = '';
-                let needsConnection: 'linkedin' | 'email' | 'both' | null = null;
+                          if (response.ok) {
+                            const result = await response.json();
 
-                // NEW: For mixed connection degrees/email, show how many will be included
-                // Messenger → only 1st degree, Connector → only 2nd/3rd degree, Email → only with email
-                let matchingProspectCount = 0;
-                let prospectBadge = '';
+                            if (result.templates?.alternative_message) {
+                              const improved = result.templates.alternative_message;
+                              if (improved.length <= 115) {
+                                setAlternativeMessage(improved);
+                                toastSuccess(`Alternative message improved! (${improved.length}/115 characters)`);
+                              } else {
+                                toastWarning(`Improved message is ${improved.length} characters. Truncating to 115.`);
+                                setAlternativeMessage(improved.substring(0, 115));
+                              }
+                            } else {
+                              toastError('Could not extract improved message.');
+                            }
+                          } else {
+                            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                            toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
+                          }
+                        } catch (error) {
+                          console.error('Improve alternative message error:', error);
+                          toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                        }
+                      }}
+                    >
+                      <Zap size={12} className="mr-1" />
+                      Improve with SAM
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
-                if (isMessenger && connectionDegrees.total > 0) {
-                  matchingProspectCount = connectionDegrees.firstDegree;
-                  if (connectionDegrees.secondThird > 0) {
-                    prospectBadge = `${matchingProspectCount} of ${connectionDegrees.total} prospects`;
-                  }
-                } else if (isConnector && connectionDegrees.total > 0) {
-                  matchingProspectCount = connectionDegrees.secondThird;
-                  if (connectionDegrees.firstDegree > 0) {
-                    prospectBadge = `${matchingProspectCount} of ${connectionDegrees.total} prospects`;
-                  }
-                } else if (isEmail && prospects.length > 0) {
-                  matchingProspectCount = emailProspectCount;
-                  const prospectsWithoutEmail = prospects.length - emailProspectCount;
-                  if (prospectsWithoutEmail > 0) {
-                    prospectBadge = `${matchingProspectCount} of ${prospects.length} prospects (have email)`;
-                  }
-                }
+            {/* Alternative Message - Variant B (only when A/B testing is enabled) */}
+            {campaignType === 'connector' && abTestingEnabled && (
+              <div className="border-l-4 border-orange-500 pl-4 space-y-2">
+                <label htmlFor="alternative-message-b" className="block text-sm font-medium text-gray-400">
+                  Alternative Message <span className="text-orange-400">(Variant B)</span>
+                </label>
+                <textarea
+                  id="alternative-message-b"
+                  className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
+                  rows={2}
+                  value={alternativeMessageB}
+                  onChange={e => setAlternativeMessageB(e.target.value)}
+                  placeholder="Great to connect with professionals like you!"
+                  maxLength={115}
+                />
+                <span className="text-xs text-gray-500">
+                  Characters remaining: {115 - alternativeMessageB.length}/115
+                </span>
+              </div>
+            )}
 
-                // Multi is always disabled (in development)
-                if (isMultichannel) {
-                  isDisabled = true;
-                  disabledReason = '🚧 In Development - Multi-channel campaigns coming soon';
-                }
-                // Check connection degree restrictions - ONLY disable if 0 matching prospects
-                else if (connectionDegrees.total > 0) {
-                  // Disable Connector ONLY if there are NO 2nd/3rd degree prospects
-                  if (isConnector && connectionDegrees.secondThird === 0) {
-                    isDisabled = true;
-                    disabledReason = 'All prospects are 1st degree - use Messenger for direct messages';
-                  }
-                  // Disable Messenger ONLY if there are NO 1st degree prospects
-                  if (isMessenger && connectionDegrees.firstDegree === 0) {
-                    isDisabled = true;
-                    disabledReason = 'All prospects are 2nd/3rd degree - use Connector to send connection requests first';
-                  }
-                  // Check email availability for Email campaigns
-                  if (isEmail && !hasEmailAddresses && prospects.length > 0) {
-                    isDisabled = true;
-                    disabledReason = 'No email addresses in prospects - add email column to CSV';
-                  }
-                  // Check account connections (lower priority) - only if not already disabled
-                  if (!isDisabled && (isConnector || isMessenger) && !connectedAccounts.linkedin) {
-                    isDisabled = true;
-                    disabledReason = 'LinkedIn account not connected';
-                    needsConnection = 'linkedin';
-                  }
-                  if (!isDisabled && isEmail && !connectedAccounts.email) {
-                    isDisabled = true;
-                    disabledReason = 'Email account not connected';
-                    needsConnection = 'email';
-                  }
-                }
-                // No prospects loaded yet - check account connections only
-                else {
-                  if ((isConnector || isMessenger) && !connectedAccounts.linkedin) {
-                    isDisabled = true;
-                    disabledReason = 'LinkedIn account not connected';
-                    needsConnection = 'linkedin';
-                  } else if (isEmail && !connectedAccounts.email) {
-                    isDisabled = true;
-                    disabledReason = 'Email account not connected';
-                    needsConnection = 'email';
-                  }
-                }
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-400">
+                  6-Step Messaging Sequence (5 Follow-ups)
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">
+                Messages 2-6 sent after connection is accepted
+              </p>
+
+              {followUpMessages.map((message, index) => {
+                // Helper function to get message label
+                const getMessageLabel = () => {
+                  if (index === 0) return 'Message 2 (First Follow-up)';
+                  if (index === 4) return 'Message 6 (Goodbye message)';
+                  return `Message ${index + 2}`;
+                };
+
+                const getMessagePlaceholder = () => {
+                  if (index === 0) return 'Your first follow-up message...';
+                  if (index === 4) return 'Polite goodbye message leaving door open for future connection...';
+                  return `Follow-up message ${index + 2}...`;
+                };
 
                 return (
-                  <div
-                    key={type.value}
-                    onClick={() => {
-                      if (!isDisabled && !needsConnection) {
-                        setCampaignType(type.value);
-                        setUserSelectedCampaignType(true); // Mark as manually selected
-                      }
-                    }}
-                    className={`p-5 border-2 rounded-lg transition-all ${
-                      isDisabled
-                        ? 'border-gray-700 bg-gray-800/50 opacity-50'
-                        : campaignType === type.value
-                        ? 'border-purple-500 bg-gradient-to-br from-purple-900/40 to-blue-900/40 cursor-pointer shadow-lg shadow-purple-500/20'
-                        : 'border-gray-600 bg-gray-700/50 hover:border-purple-400 hover:bg-gray-700 cursor-pointer'
-                    } ${needsConnection ? '' : isDisabled ? 'cursor-not-allowed' : ''}`}
-                    title={isDisabled && !needsConnection ? `Not available: ${disabledReason}` : ''}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        campaignType === type.value
-                          ? 'bg-purple-600'
-                          : 'bg-gray-600'
-                      }`}>
-                        <IconComponent className="text-white" size={20} />
+                  <div key={index} className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-400">
+                          {getMessageLabel()}
+                        </label>
+                        <span className="text-xs text-gray-500">• Wait:</span>
                       </div>
-                      <h4 className="text-white font-semibold text-base">{type.label}</h4>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="99"
+                          className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                          value={parseDelay((campaignSettings.message_delays || [])[index]).value}
+                          onChange={(e) => updateMessageDelay(index, 'value', parseInt(e.target.value) || 1)}
+                        />
+                        <select
+                          className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                          value={parseDelay((campaignSettings.message_delays || [])[index]).unit}
+                          onChange={(e) => updateMessageDelay(index, 'unit', e.target.value)}
+                        >
+                          <option value="hours">Hours</option>
+                          <option value="days">Days</option>
+                          <option value="weeks">Weeks</option>
+                          <option value="months">Months</option>
+                        </select>
+                      </div>
                     </div>
-                    <p className="text-gray-300 text-sm leading-relaxed">{type.description}</p>
-                    {/* Show prospect count badge for mixed connection degrees */}
-                    {!isDisabled && prospectBadge && (
-                      <div className="mt-2 inline-flex items-center px-2 py-1 bg-purple-900/40 border border-purple-500/30 rounded text-xs text-purple-300">
-                        📊 {prospectBadge}
-                      </div>
-                    )}
-                    {isDisabled && needsConnection && (
-                      <div className="mt-3">
-                        <p className="text-yellow-400 text-xs mb-2">
-                          ⚠️ {disabledReason}
-                        </p>
+                    <textarea
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
+                      rows={3}
+                      value={message}
+                      onChange={e => updateFollowUpMessage(index, e.target.value)}
+                      onFocus={(e) => {
+                        setActiveField({ type: 'followup', index });
+                        setActiveTextarea(e.target as HTMLTextAreaElement);
+                      }}
+                      placeholder={getMessagePlaceholder()}
+                      data-followup-index={index}
+                    />
+                    {message.length > 0 && (
+                      <div className="flex justify-between items-center mt-2">
+                        {/* Remove button */}
+                        {followUpMessages.length > 1 && (
+                          <button
+                            type="button"
+                            className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
+                            onClick={() => {
+                              showConfirmModal({
+                                title: 'Remove Message',
+                                message: `Remove Message ${index + 2}?`,
+                                confirmText: 'Remove',
+                                confirmVariant: 'danger',
+                                onConfirm: () => {
+                                  removeFollowUpMessage(index);
+                                  toastSuccess(`Message ${index + 2} removed`);
+                                }
+                              });
+                            }}
+                          >
+                            <X size={12} className="mr-1" />
+                            Remove
+                          </button>
+                        )}
+                        <div className="flex-grow"></div>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (needsConnection === 'linkedin') {
-                              setUnipileProvider('LINKEDIN');
-                              setShowUnipileWizard(true);
-                            } else if (needsConnection === 'email') {
-                              setUnipileProvider('GOOGLE'); // Default to Google for email
-                              setShowUnipileWizard(true);
-                            } else if (needsConnection === 'both') {
-                              setUnipileProvider('LINKEDIN');
-                              setShowUnipileWizard(true);
+                          type="button"
+                          className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
+                          onClick={async () => {
+                            // Call SAM API directly to improve the message
+                            try {
+                              toastInfo(`SAM is improving message ${index + 2}...`);
+
+                              const messageType = index === 0 ? 'Message 2 (first follow-up)' :
+                                index === 4 ? 'Message 6 (goodbye message)' :
+                                  `Message ${index + 2}`;
+
+                              const response = await fetch('/api/sam/generate-templates', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  workspace_id: workspaceId,
+                                  campaign_name: name,
+                                  campaign_type: 'connector',
+                                  prospect_count: csvData.length,
+                                  user_input: `Please improve this follow-up message (${messageType}). ${index === 4 ? 'This is a goodbye message - keep it polite and leave the door open.' : 'Make it engaging and valuable.'}\n\nCurrent message:\n"${message}"\n\nMake it more effective while optionally using personalization placeholders like {first_name}, {company_name}, {title}.`,
+                                  conversation_history: [],
+                                  prospect_sample: csvData.slice(0, 3)
+                                })
+                              });
+
+                              if (response.ok) {
+                                const result = await response.json();
+
+                                if (result.templates?.follow_up_messages?.[index]) {
+                                  const improved = result.templates.follow_up_messages[index];
+                                  updateFollowUpMessage(index, improved);
+                                  toastSuccess(`Message ${index + 2} improved!`);
+                                } else if (result.templates?.message) {
+                                  // Fallback to generic message field
+                                  updateFollowUpMessage(index, result.templates.message);
+                                  toastSuccess(`Message ${index + 2} improved!`);
+                                } else {
+                                  toastError('Could not extract improved message.');
+                                }
+                              } else {
+                                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                                toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
+                              }
+                            } catch (error) {
+                              console.error(`Improve follow-up ${index} error:`, error);
+                              toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
                             }
                           }}
-                          className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors flex items-center justify-center gap-1"
                         >
-                          <Link size={12} />
-                          Connect {needsConnection === 'both' ? 'Accounts' : needsConnection === 'linkedin' ? 'LinkedIn' : 'Email'} Now
+                          <Zap size={12} className="mr-1" />
+                          Improve with SAM
                         </button>
                       </div>
-                    )}
-                    {isDisabled && !needsConnection && (
-                      <p className="text-red-400 text-xs mt-2">
-                        ⚠️ Not available: {disabledReason}
-                      </p>
                     )}
                   </div>
                 );
               })}
+
+              {/* Add Follow-Up Message Button */}
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={addFollowUpMessage}
+                  className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
+                >
+                  <Plus size={16} className="mr-2" />
+                  Add Follow-Up Message
+                </button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Add additional steps to your messaging sequence (currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''})
+                </p>
+              </div>
             </div>
-            )}
-            {!isTypePreSelected && connectionDegrees.total > 0 && (campaignType === 'messenger' || campaignType === 'connector') && (
-              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
-                <p className="text-blue-300 text-sm">
-                  <strong>{userSelectedCampaignType ? 'Selected:' : 'Auto-selected:'}</strong> {campaignType === 'messenger' ? 'Messenger' : 'Connector'} campaign
-                  {hasOnly1stDegree && ` (all ${connectionDegrees.firstDegree} prospects are 1st degree connections)`}
-                  {connectionDegrees.secondThird > 0 && connectionDegrees.firstDegree === 0 && ` (all ${connectionDegrees.secondThird} prospects are 2nd/3rd degree connections)`}
-                  {!hasOnly1stDegree && connectionDegrees.firstDegree > 0 && connectionDegrees.secondThird > 0 &&
-                    ` (${Math.round((campaignType === 'messenger' ? connectionDegrees.firstDegree : connectionDegrees.secondThird) / connectionDegrees.total * 100)}% match)`}
-                </p>
-              </div>
-            )}
-            {!isTypePreSelected && campaignType === 'email' && (
-              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mt-3">
-                <p className="text-blue-300 text-sm">
-                  <strong>Selected:</strong> Email campaign - Direct email outreach without LinkedIn connection requests
-                </p>
-              </div>
-            )}
-            {!isTypePreSelected && campaignType === 'multichannel' && (
-              <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3 mt-3">
-                <p className="text-purple-300 text-sm">
-                  <strong>Selected:</strong> Multichannel campaign - Combine LinkedIn and email outreach
-                </p>
-              </div>
-            )}
-            {!isTypePreSelected && has1stDegree && !hasOnly1stDegree && campaignType === 'connector' && (
-              <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3 mt-3">
-                <p className="text-yellow-300 text-sm">
-                  ⚠️ <strong>Warning:</strong> {connectionDegrees.firstDegree} of your prospects are 1st degree connections and will be skipped in Connector campaigns. Consider using <strong>Builder</strong> instead.
-                </p>
-              </div>
-            )}
-          </div>
 
-        </div>
-      )}
-
-      {/* Step 2: Message Templates (Connector Campaign) */}
-      {currentStep === 2 && campaignType === 'connector' && (
-        <div className="space-y-6">
-          {/* Campaign Name - Editable in Step 2 */}
-          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-            <label className="block text-sm font-medium text-gray-400 mb-2">Campaign Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-              placeholder="Enter campaign name..."
-            />
-          </div>
-
-          {/* SAM Messaging Generation */}
-          <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
-            <div className="flex items-center mb-3">
-              <Zap className="text-purple-400 mr-2" size={20} />
-              <h4 className="text-white font-medium">SAM AI Messaging Generator</h4>
-            </div>
-            <p className="text-gray-300 text-sm mb-3">
-              Let SAM create personalized messaging sequences based on your campaign goals and target audience.
-            </p>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
-                onClick={() => {
-                  setManualConnection('');
-                  setManualAlternative('');
-                  setManualFollowUps(['']);
-                  setShowManualTemplateModal(true);
-                }}
-              >
-                <Edit size={16} className="mr-1" />
-                Create Manually
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const campaignTypeLabel = campaignType === 'connector' ? '**connector campaign** (for 2nd/3rd degree LinkedIn connections)' : '**messenger campaign** (for 1st degree connections - already connected)';
-                  const messageType = campaignType === 'connector' ? 'connection request + follow-up messages' : 'direct messages (no connection request needed)';
-
-                  setSamMessages([{
-                    role: 'assistant',
-                    content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn messaging sequences for your ${campaignTypeLabel} "${name}".\n\n**Campaign Type:** ${campaignType === 'connector' ? 'Connector - I will generate a connection request message and follow-ups' : 'Messenger - I will generate direct messages for your existing connections (no connection request)'}\n\nI can see you have ${csvData.length} prospects loaded. To create the best ${messageType}, tell me:\n\n1. What's your main goal with this campaign? (networking, lead generation, partnerships, etc.)\n2. What value can you offer these prospects?\n3. Any specific tone you'd like? (professional, casual, friendly, etc.)\n\nLet's create messages that get responses! 🎯`
-                  }]);
-                  setShowSamGenerationModal(true);
-                }}
-                className="flex items-center px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-              >
-                <Zap size={16} className="mr-1" />
-                Generate Messaging with SAM
-              </button>
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
-                onClick={openKBModal}
-              >
-                <Brain size={16} className="mr-1" />
-                Load from Knowledgebase
-              </button>
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30 rounded-lg transition-colors"
-                onClick={openPreviousMessagesModal}
-              >
-                <Clock size={16} className="mr-1" />
-                Load Previous Messages
-              </button>
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-pink-600/20 hover:bg-pink-600/30 text-pink-400 border border-pink-500/30 rounded-lg transition-colors"
-                onClick={() => setShowTemplateLibraryModal(true)}
-              >
-                <FileText size={16} className="mr-1" />
-                Load from Template
-              </button>
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 rounded-lg transition-colors"
-                onClick={() => setShowPasteModal(true)}
-              >
-                <Upload size={16} className="mr-1" />
-                Paste Template
-              </button>
-            </div>
-          </div>
-
-          {/* A/B Testing Toggle */}
-          <div className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <BarChart3 className="text-orange-400" size={20} />
-                <div>
-                  <h4 className="text-orange-400 font-medium">A/B Testing</h4>
-                  <p className="text-xs text-gray-400">Test different message variants (50/50 split)</p>
+            <div className="p-5 bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-700/30">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                  <Sparkles size={16} className="text-white" />
                 </div>
+                <h4 className="text-white font-semibold">Personalization Placeholders</h4>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={abTestingEnabled}
-                  onChange={(e) => setAbTestingEnabled(e.target.checked)}
-                />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-orange-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-              </label>
-            </div>
-            {abTestingEnabled && (
-              <p className="text-xs text-orange-300 mt-2">
-                Variant B inputs will appear below each message field. 50% of prospects will receive Variant A, 50% will receive Variant B.
+              <p className="text-gray-300 text-sm mb-4">
+                Click to insert dynamic fields that auto-fill with prospect data
               </p>
-            )}
-          </div>
-
-          {/* ONLY show Connection Request for Connector campaigns */}
-          {campaignType === 'connector' && (
-            <div className="space-y-2">
-              <label htmlFor="connection-message" className="block text-sm font-medium text-gray-400">
-                Connection Request Message {abTestingEnabled && <span className="text-orange-400">(Variant A - 50%)</span>}
-              </label>
-              <p className="text-xs text-gray-500">
-                This message will be sent with your connection request
-              </p>
-              <textarea
-                id="connection-message"
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
-                rows={4}
-                value={connectionMessage}
-                onChange={e => setConnectionMessage(e.target.value)}
-                onFocus={(e) => {
-                  setActiveField({type: 'connection'});
-                  setActiveTextarea(e.target as HTMLTextAreaElement);
-                }}
-                placeholder="Hi {first_name}, I saw your profile and would love to connect..."
-                maxLength={275}
-              />
-              <div className="flex justify-between items-center">
-                <span className={`text-xs font-medium ${
-                  connectionMessage.length > 250 ? 'text-orange-400' :
-                  connectionMessage.length > 270 ? 'text-red-400' :
-                  'text-gray-400'
-                }`}>
-                  {connectionMessage.length}/275 characters
-                  {connectionMessage.length > 250 && connectionMessage.length <= 275 && (
-                    <span className="ml-2 text-xs">({275 - connectionMessage.length} remaining)</span>
-                  )}
-                </span>
-                {connectionMessage.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {placeholders.map((placeholder) => (
                   <button
-                    type="button"
-                    className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
-                    onClick={async () => {
-                      // Call SAM API directly to improve the message
-                      try {
-                        toastInfo('SAM is improving your message...');
-
-                        console.log('Improve with SAM - Request:', {
-                          workspaceId,
-                          campaignName: name,
-                          messageLength: connectionMessage.length,
-                          prospectCount: csvData.length
-                        });
-
-                        const response = await fetch('/api/sam/generate-templates', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            workspace_id: workspaceId,
-                            campaign_name: name,
-                            campaign_type: 'connector',
-                            prospect_count: csvData.length,
-                            user_input: `Please improve this connection request message. Keep it under 275 characters and maintain personalization placeholders like {first_name}, {company_name}, etc.\n\nCurrent message (${connectionMessage.length} chars):\n"${connectionMessage}"\n\nMake it more engaging while staying professional and concise.`,
-                            conversation_history: [],
-                            prospect_sample: csvData.slice(0, 3)
-                          })
-                        });
-
-                        console.log('Improve with SAM - Response status:', response.status);
-
-                        if (response.ok) {
-                          const result = await response.json();
-                          console.log('Improve with SAM - Result:', result);
-
-                          if (result.templates?.connection_message) {
-                            const improved = result.templates.connection_message;
-                            if (improved.length <= 275) {
-                              setConnectionMessage(improved);
-                              toastSuccess(`Message improved! (${improved.length}/275 characters)`);
-                            } else {
-                              toastWarning(`Improved message is ${improved.length} characters. Truncating to 275.`);
-                              setConnectionMessage(improved.substring(0, 275));
-                            }
-                          } else {
-                            console.error('No connection_message in result:', result);
-                            toastError('Could not extract improved message. Check console for details.');
-                          }
-                        } else {
-                          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                          console.error('Improve with SAM - API error:', response.status, errorData);
-                          toastError(`Failed to improve message: ${errorData.error || errorData.details || 'Unknown error'}`);
-                        }
-                      } catch (error) {
-                        console.error('Improve message error:', error);
-                        toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                      }
-                    }}
+                    key={placeholder.key}
+                    onClick={() => insertPlaceholder(placeholder.key)}
+                    className="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 hover:border-purple-400 rounded-full text-purple-200 text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+                    title={placeholder.description}
                   >
-                    <Zap size={12} className="mr-1" />
-                    Improve with SAM
+                    {placeholder.key}
                   </button>
-                )}
+                ))}
               </div>
             </div>
-          )}
 
-          {/* Connection Request Message - Variant B (only when A/B testing is enabled) */}
-          {campaignType === 'connector' && abTestingEnabled && (
-            <div className="border-l-4 border-orange-500 pl-4 space-y-2">
-              <label htmlFor="connection-message-b" className="block text-sm font-medium text-gray-400">
-                Connection Request Message <span className="text-orange-400">(Variant B - 50%)</span>
-              </label>
-              <p className="text-xs text-gray-500">
-                Alternative version to test against Variant A
-              </p>
-              <textarea
-                id="connection-message-b"
-                className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
-                rows={4}
-                value={connectionMessageB}
-                onChange={e => setConnectionMessageB(e.target.value)}
-                placeholder="Hi {first_name}, I came across your profile and..."
-                maxLength={275}
+          </div>
+        )}
+
+        {/* Step 2: Message Templates (Messenger Campaign - 1st degree connections) */}
+        {currentStep === 2 && campaignType === 'messenger' && (
+          <div className="space-y-6">
+            {/* Campaign Name - Editable in Step 2 */}
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+              <label className="block text-sm font-medium text-gray-400 mb-2">Campaign Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                placeholder="Enter campaign name..."
               />
-              <div className="flex justify-between items-center">
-                <span className={`text-xs font-medium ${
-                  connectionMessageB.length > 250 ? 'text-orange-400' :
-                  connectionMessageB.length > 270 ? 'text-red-400' :
-                  'text-gray-400'
-                }`}>
-                  {connectionMessageB.length}/275 characters
-                </span>
-                <p className="text-xs text-gray-500">Test a different hook, value prop, or CTA</p>
+            </div>
+
+            {/* SAM Messaging Generation */}
+            <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
+              <div className="flex items-center mb-3">
+                <Zap className="text-purple-400 mr-2" size={20} />
+                <h4 className="text-white font-medium">SAM AI Messaging Generator</h4>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Let SAM create personalized messaging sequences for your 1st degree connections.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                  onClick={() => {
+                    setManualConnection('');
+                    setManualAlternative('');
+                    setManualFollowUps(['']);
+                    setShowManualTemplateModal(true);
+                  }}
+                >
+                  <Edit size={16} className="mr-1" />
+                  Create Manually
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSamMessages([{
+                      role: 'assistant',
+                      content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn direct messages for your **messenger campaign** "${name}" (for 1st degree connections - already connected).\n\n**Campaign Type:** Messenger - I will generate direct messages for your existing connections. No connection request needed since you're already connected!\n\nI can see you have ${(initialProspects?.length || 0) + csvData.length + selectedProspects.length} prospects who are already 1st degree connections. To create the best direct messaging, tell me:\n\n1. What's your main goal with this campaign? (nurturing relationships, offering services, partnerships, etc.)\n2. What value can you offer these connections?\n3. Any specific tone you'd like? (professional, friendly, consultative, etc.)\n\nLet's create messages that strengthen your relationships! 🎯`
+                    }]);
+                    setShowSamGenerationModal(true);
+                  }}
+                  className="flex items-center px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                >
+                  <Zap size={16} className="mr-1" />
+                  Generate Messaging with SAM
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
+                  onClick={openKBModal}
+                >
+                  <Brain size={16} className="mr-1" />
+                  Load from Knowledgebase
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30 rounded-lg transition-colors"
+                  onClick={openPreviousMessagesModal}
+                >
+                  <Clock size={16} className="mr-1" />
+                  Load Previous Messages
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 rounded-lg transition-colors"
+                  onClick={() => setShowPasteModal(true)}
+                >
+                  <Upload size={16} className="mr-1" />
+                  Paste Template
+                </button>
               </div>
             </div>
-          )}
 
-          {/* ONLY show Alternative Message for Connector campaigns */}
-          {campaignType === 'connector' && (
             <div className="space-y-2">
-              <label htmlFor="alternative-message" className="block text-sm font-medium text-gray-400">
-                Alternative Message (Optional) {abTestingEnabled && <span className="text-orange-400">(Variant A)</span>}
+              <label htmlFor="messenger-initial-message" className="block text-sm font-medium text-gray-400">
+                Initial Message
               </label>
               <p className="text-xs text-gray-500">
-                Shorter alternative message for connection requests
+                First message sent to your 1st degree connections (no connection request needed)
               </p>
               <textarea
-                id="alternative-message"
+                id="messenger-initial-message"
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
-                rows={2}
+                rows={4}
                 value={alternativeMessage}
                 onChange={e => setAlternativeMessage(e.target.value)}
                 onFocus={(e) => {
-                  setActiveField({type: 'alternative'});
+                  setActiveField({ type: 'alternative' });
                   setActiveTextarea(e.target as HTMLTextAreaElement);
                 }}
-                placeholder="Would love to connect with you on LinkedIn!"
-                maxLength={115}
+                placeholder="Hi {{first_name}}, I wanted to reach out about..."
               />
               <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-500">
-                  Characters remaining: {115 - alternativeMessage.length}/115
+                <span className="text-xs text-gray-400">
+                  Characters: {alternativeMessage.length}
                 </span>
                 {alternativeMessage.length > 0 && (
                   <button
@@ -4953,7 +5325,7 @@ Would you like me to adjust these or create more variations?`
                     onClick={async () => {
                       // Call SAM API directly to improve the message
                       try {
-                        toastInfo('SAM is improving your alternative message...');
+                        toastInfo('SAM is improving your initial message...');
 
                         const response = await fetch('/api/sam/generate-templates', {
                           method: 'POST',
@@ -4961,9 +5333,9 @@ Would you like me to adjust these or create more variations?`
                           body: JSON.stringify({
                             workspace_id: workspaceId,
                             campaign_name: name,
-                            campaign_type: 'connector',
+                            campaign_type: 'messenger',
                             prospect_count: csvData.length,
-                            user_input: `Please improve this alternative message. Keep it under 115 characters and maintain a friendly, concise tone.\n\nCurrent message (${alternativeMessage.length} chars):\n"${alternativeMessage}"\n\nMake it more engaging while staying brief.`,
+                            user_input: `Please improve this initial messenger message for 1st degree connections.\n\nCurrent message (${alternativeMessage.length} chars):\n"${alternativeMessage}"\n\nMake it more engaging, personalized, and effective while maintaining personalization placeholders.`,
                             conversation_history: [],
                             prospect_sample: csvData.slice(0, 3)
                           })
@@ -4972,15 +5344,10 @@ Would you like me to adjust these or create more variations?`
                         if (response.ok) {
                           const result = await response.json();
 
-                          if (result.templates?.alternative_message) {
-                            const improved = result.templates.alternative_message;
-                            if (improved.length <= 115) {
-                              setAlternativeMessage(improved);
-                              toastSuccess(`Alternative message improved! (${improved.length}/115 characters)`);
-                            } else {
-                              toastWarning(`Improved message is ${improved.length} characters. Truncating to 115.`);
-                              setAlternativeMessage(improved.substring(0, 115));
-                            }
+                          if (result.templates?.initial_message || result.templates?.alternative_message) {
+                            const improved = result.templates.initial_message || result.templates.alternative_message;
+                            setAlternativeMessage(improved);
+                            toastSuccess(`Initial message improved!`);
                           } else {
                             toastError('Could not extract improved message.');
                           }
@@ -4989,7 +5356,7 @@ Would you like me to adjust these or create more variations?`
                           toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
                         }
                       } catch (error) {
-                        console.error('Improve alternative message error:', error);
+                        console.error('Improve initial message error:', error);
                         toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
                       }
                     }}
@@ -5000,1060 +5367,693 @@ Would you like me to adjust these or create more variations?`
                 )}
               </div>
             </div>
-          )}
 
-          {/* Alternative Message - Variant B (only when A/B testing is enabled) */}
-          {campaignType === 'connector' && abTestingEnabled && (
-            <div className="border-l-4 border-orange-500 pl-4 space-y-2">
-              <label htmlFor="alternative-message-b" className="block text-sm font-medium text-gray-400">
-                Alternative Message <span className="text-orange-400">(Variant B)</span>
-              </label>
-              <textarea
-                id="alternative-message-b"
-                className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
-                rows={2}
-                value={alternativeMessageB}
-                onChange={e => setAlternativeMessageB(e.target.value)}
-                placeholder="Great to connect with professionals like you!"
-                maxLength={115}
-              />
-              <span className="text-xs text-gray-500">
-                Characters remaining: {115 - alternativeMessageB.length}/115
-              </span>
-            </div>
-          )}
-
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-gray-400">
-                6-Step Messaging Sequence (5 Follow-ups)
-              </label>
-            </div>
-            <p className="text-xs text-gray-500 mb-3">
-              Messages 2-6 sent after connection is accepted
-            </p>
-
-            {followUpMessages.map((message, index) => {
-              // Helper function to get message label
-              const getMessageLabel = () => {
-                if (index === 0) return 'Message 2 (First Follow-up)';
-                if (index === 4) return 'Message 6 (Goodbye message)';
-                return `Message ${index + 2}`;
-              };
-
-              const getMessagePlaceholder = () => {
-                if (index === 0) return 'Your first follow-up message...';
-                if (index === 4) return 'Polite goodbye message leaving door open for future connection...';
-                return `Follow-up message ${index + 2}...`;
-              };
-
-              return (
-                <div key={index} className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium text-gray-400">
-                        {getMessageLabel()}
-                      </label>
-                      <span className="text-xs text-gray-500">• Wait:</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        max="99"
-                        className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                        value={parseDelay((campaignSettings.message_delays || [])[index]).value}
-                        onChange={(e) => updateMessageDelay(index, 'value', parseInt(e.target.value) || 1)}
-                      />
-                      <select
-                        className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                        value={parseDelay((campaignSettings.message_delays || [])[index]).unit}
-                        onChange={(e) => updateMessageDelay(index, 'unit', e.target.value)}
-                      >
-                        <option value="hours">Hours</option>
-                        <option value="days">Days</option>
-                        <option value="weeks">Weeks</option>
-                        <option value="months">Months</option>
-                      </select>
-                    </div>
-                  </div>
-                  <textarea
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
-                    rows={3}
-                    value={message}
-                    onChange={e => updateFollowUpMessage(index, e.target.value)}
-                    onFocus={(e) => {
-                      setActiveField({type: 'followup', index});
-                      setActiveTextarea(e.target as HTMLTextAreaElement);
-                    }}
-                    placeholder={getMessagePlaceholder()}
-                    data-followup-index={index}
-                  />
-                  {message.length > 0 && (
-                    <div className="flex justify-between items-center mt-2">
-                      {/* Remove button */}
-                      {followUpMessages.length > 1 && (
-                        <button
-                          type="button"
-                          className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
-                          onClick={() => {
-                            showConfirmModal({
-                              title: 'Remove Message',
-                              message: `Remove Message ${index + 2}?`,
-                              confirmText: 'Remove',
-                              confirmVariant: 'danger',
-                              onConfirm: () => {
-                                removeFollowUpMessage(index);
-                                toastSuccess(`Message ${index + 2} removed`);
-                              }
-                            });
-                          }}
-                        >
-                          <X size={12} className="mr-1" />
-                          Remove
-                        </button>
-                      )}
-                      <div className="flex-grow"></div>
-                      <button
-                        type="button"
-                        className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
-                        onClick={async () => {
-                          // Call SAM API directly to improve the message
-                          try {
-                            toastInfo(`SAM is improving message ${index + 2}...`);
-
-                            const messageType = index === 0 ? 'Message 2 (first follow-up)' :
-                                              index === 4 ? 'Message 6 (goodbye message)' :
-                                              `Message ${index + 2}`;
-
-                            const response = await fetch('/api/sam/generate-templates', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                workspace_id: workspaceId,
-                                campaign_name: name,
-                                campaign_type: 'connector',
-                                prospect_count: csvData.length,
-                                user_input: `Please improve this follow-up message (${messageType}). ${index === 4 ? 'This is a goodbye message - keep it polite and leave the door open.' : 'Make it engaging and valuable.'}\n\nCurrent message:\n"${message}"\n\nMake it more effective while optionally using personalization placeholders like {first_name}, {company_name}, {title}.`,
-                                conversation_history: [],
-                                prospect_sample: csvData.slice(0, 3)
-                              })
-                            });
-
-                            if (response.ok) {
-                              const result = await response.json();
-
-                              if (result.templates?.follow_up_messages?.[index]) {
-                                const improved = result.templates.follow_up_messages[index];
-                                updateFollowUpMessage(index, improved);
-                                toastSuccess(`Message ${index + 2} improved!`);
-                              } else if (result.templates?.message) {
-                                // Fallback to generic message field
-                                updateFollowUpMessage(index, result.templates.message);
-                                toastSuccess(`Message ${index + 2} improved!`);
-                              } else {
-                                toastError('Could not extract improved message.');
-                              }
-                            } else {
-                              const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                              toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
-                            }
-                          } catch (error) {
-                            console.error(`Improve follow-up ${index} error:`, error);
-                            toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                          }
-                        }}
-                      >
-                        <Zap size={12} className="mr-1" />
-                        Improve with SAM
-                      </button>
-                    </div>
-                  )}
+            {/* A/B Testing Toggle for Messenger */}
+            <div className="bg-orange-600/10 border border-orange-500/30 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <FlaskConical className="text-orange-400 mr-2" size={20} />
+                  <h4 className="text-white font-medium">A/B Testing</h4>
                 </div>
-              );
-            })}
-
-            {/* Add Follow-Up Message Button */}
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={addFollowUpMessage}
-                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
-              >
-                <Plus size={16} className="mr-2" />
-                Add Follow-Up Message
-              </button>
-              <p className="text-xs text-gray-500 mt-2">
-                Add additional steps to your messaging sequence (currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''})
-              </p>
-            </div>
-          </div>
-
-          <div className="p-5 bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-700/30">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-                <Sparkles size={16} className="text-white" />
-              </div>
-              <h4 className="text-white font-semibold">Personalization Placeholders</h4>
-            </div>
-            <p className="text-gray-300 text-sm mb-4">
-              Click to insert dynamic fields that auto-fill with prospect data
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {placeholders.map((placeholder) => (
-                <button
-                  key={placeholder.key}
-                  onClick={() => insertPlaceholder(placeholder.key)}
-                  className="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 hover:border-purple-400 rounded-full text-purple-200 text-xs font-medium transition-all hover:scale-105 cursor-pointer"
-                  title={placeholder.description}
-                >
-                  {placeholder.key}
-                </button>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* Step 2: Message Templates (Messenger Campaign - 1st degree connections) */}
-      {currentStep === 2 && campaignType === 'messenger' && (
-        <div className="space-y-6">
-          {/* Campaign Name - Editable in Step 2 */}
-          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-            <label className="block text-sm font-medium text-gray-400 mb-2">Campaign Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-              placeholder="Enter campaign name..."
-            />
-          </div>
-
-          {/* SAM Messaging Generation */}
-          <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
-            <div className="flex items-center mb-3">
-              <Zap className="text-purple-400 mr-2" size={20} />
-              <h4 className="text-white font-medium">SAM AI Messaging Generator</h4>
-            </div>
-            <p className="text-gray-300 text-sm mb-3">
-              Let SAM create personalized messaging sequences for your 1st degree connections.
-            </p>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
-                onClick={() => {
-                  setManualConnection('');
-                  setManualAlternative('');
-                  setManualFollowUps(['']);
-                  setShowManualTemplateModal(true);
-                }}
-              >
-                <Edit size={16} className="mr-1" />
-                Create Manually
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSamMessages([{
-                    role: 'assistant',
-                    content: `Hi! I'm SAM, and I'll help you create compelling LinkedIn direct messages for your **messenger campaign** "${name}" (for 1st degree connections - already connected).\n\n**Campaign Type:** Messenger - I will generate direct messages for your existing connections. No connection request needed since you're already connected!\n\nI can see you have ${(initialProspects?.length || 0) + csvData.length + selectedProspects.length} prospects who are already 1st degree connections. To create the best direct messaging, tell me:\n\n1. What's your main goal with this campaign? (nurturing relationships, offering services, partnerships, etc.)\n2. What value can you offer these connections?\n3. Any specific tone you'd like? (professional, friendly, consultative, etc.)\n\nLet's create messages that strengthen your relationships! 🎯`
-                  }]);
-                  setShowSamGenerationModal(true);
-                }}
-                className="flex items-center px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-              >
-                <Zap size={16} className="mr-1" />
-                Generate Messaging with SAM
-              </button>
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
-                onClick={openKBModal}
-              >
-                <Brain size={16} className="mr-1" />
-                Load from Knowledgebase
-              </button>
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 border border-orange-500/30 rounded-lg transition-colors"
-                onClick={openPreviousMessagesModal}
-              >
-                <Clock size={16} className="mr-1" />
-                Load Previous Messages
-              </button>
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 rounded-lg transition-colors"
-                onClick={() => setShowPasteModal(true)}
-              >
-                <Upload size={16} className="mr-1" />
-                Paste Template
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="messenger-initial-message" className="block text-sm font-medium text-gray-400">
-              Initial Message
-            </label>
-            <p className="text-xs text-gray-500">
-              First message sent to your 1st degree connections (no connection request needed)
-            </p>
-            <textarea
-              id="messenger-initial-message"
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
-              rows={4}
-              value={alternativeMessage}
-              onChange={e => setAlternativeMessage(e.target.value)}
-              onFocus={(e) => {
-                setActiveField({type: 'alternative'});
-                setActiveTextarea(e.target as HTMLTextAreaElement);
-              }}
-              placeholder="Hi {{first_name}}, I wanted to reach out about..."
-            />
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">
-                Characters: {alternativeMessage.length}
-              </span>
-              {alternativeMessage.length > 0 && (
-                <button
-                  type="button"
-                  className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
-                  onClick={async () => {
-                    // Call SAM API directly to improve the message
-                    try {
-                      toastInfo('SAM is improving your initial message...');
-
-                      const response = await fetch('/api/sam/generate-templates', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          workspace_id: workspaceId,
-                          campaign_name: name,
-                          campaign_type: 'messenger',
-                          prospect_count: csvData.length,
-                          user_input: `Please improve this initial messenger message for 1st degree connections.\n\nCurrent message (${alternativeMessage.length} chars):\n"${alternativeMessage}"\n\nMake it more engaging, personalized, and effective while maintaining personalization placeholders.`,
-                          conversation_history: [],
-                          prospect_sample: csvData.slice(0, 3)
-                        })
-                      });
-
-                      if (response.ok) {
-                        const result = await response.json();
-
-                        if (result.templates?.initial_message || result.templates?.alternative_message) {
-                          const improved = result.templates.initial_message || result.templates.alternative_message;
-                          setAlternativeMessage(improved);
-                          toastSuccess(`Initial message improved!`);
-                        } else {
-                          toastError('Could not extract improved message.');
-                        }
-                      } else {
-                        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                        toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
-                      }
-                    } catch (error) {
-                      console.error('Improve initial message error:', error);
-                      toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                    }
-                  }}
-                >
-                  <Zap size={12} className="mr-1" />
-                  Improve with SAM
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* A/B Testing Toggle for Messenger */}
-          <div className="bg-orange-600/10 border border-orange-500/30 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center">
-                <FlaskConical className="text-orange-400 mr-2" size={20} />
-                <h4 className="text-white font-medium">A/B Testing</h4>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={abTestingEnabled}
-                  onChange={(e) => setAbTestingEnabled(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-              </label>
-            </div>
-            <p className="text-gray-400 text-sm">
-              Test two different initial messages with a 50/50 split to see which performs better.
-            </p>
-          </div>
-
-          {/* Variant B Initial Message (shown when A/B testing enabled) */}
-          {abTestingEnabled && (
-            <div className="space-y-2 border-l-4 border-orange-500 pl-4">
-              <label htmlFor="messenger-initial-message-b" className="block text-sm font-medium text-orange-400">
-                Variant B - Initial Message
-              </label>
-              <p className="text-xs text-gray-500">
-                Alternative initial message (50% of prospects will receive this)
-              </p>
-              <textarea
-                id="messenger-initial-message-b"
-                className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
-                rows={4}
-                value={alternativeMessageB}
-                onChange={e => setAlternativeMessageB(e.target.value)}
-                placeholder="Hi {{first_name}}, [different approach here]..."
-              />
-              <span className="text-xs text-gray-400">
-                Characters: {alternativeMessageB.length}
-              </span>
-            </div>
-          )}
-
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-gray-400">
-                6-Step Messaging Sequence (5 Follow-ups)
-              </label>
-            </div>
-            <p className="text-xs text-gray-500 mb-3">
-              Messages 2-6 sent to your 1st degree connections
-            </p>
-
-            {followUpMessages.map((message, index) => {
-              // Helper function to get message label
-              const getMessageLabel = () => {
-                if (index === 0) return 'Message 2 (First Follow-up)';
-                if (index === 4) return 'Message 6 (Goodbye message)';
-                return `Message ${index + 2}`;
-              };
-
-              const getMessagePlaceholder = () => {
-                if (index === 0) return 'Your first follow-up message...';
-                if (index === 4) return 'Polite goodbye message leaving door open for future connection...';
-                return `Follow-up message ${index + 2}...`;
-              };
-
-              return (
-                <div key={index} className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium text-gray-400">
-                        {getMessageLabel()}
-                      </label>
-                      <span className="text-xs text-gray-500">• Wait:</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        max="99"
-                        className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                        value={parseDelay((campaignSettings.message_delays || [])[index]).value}
-                        onChange={(e) => updateMessageDelay(index, 'value', parseInt(e.target.value) || 1)}
-                      />
-                      <select
-                        className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                        value={parseDelay((campaignSettings.message_delays || [])[index]).unit}
-                        onChange={(e) => updateMessageDelay(index, 'unit', e.target.value)}
-                      >
-                        <option value="hours">Hours</option>
-                        <option value="days">Days</option>
-                        <option value="weeks">Weeks</option>
-                        <option value="months">Months</option>
-                      </select>
-                    </div>
-                  </div>
-                  <textarea
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
-                    rows={4}
-                    value={message}
-                    onChange={e => updateFollowUpMessage(index, e.target.value)}
-                    onFocus={(e) => {
-                      setActiveField({type: 'followup', index});
-                      setActiveTextarea(e.target as HTMLTextAreaElement);
-                    }}
-                    placeholder={getMessagePlaceholder()}
-                    data-followup-index={index}
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={abTestingEnabled}
+                    onChange={(e) => setAbTestingEnabled(e.target.checked)}
+                    className="sr-only peer"
                   />
-                  {message.length > 0 && (
-                    <div className="flex justify-between items-center mt-2">
-                      {/* Remove button */}
-                      {followUpMessages.length > 1 && (
-                        <button
-                          type="button"
-                          className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
-                          onClick={() => {
-                            showConfirmModal({
-                              title: 'Remove Message',
-                              message: `Remove Message ${index + 2}?`,
-                              confirmText: 'Remove',
-                              confirmVariant: 'danger',
-                              onConfirm: () => {
-                                removeFollowUpMessage(index);
-                                toastSuccess(`Message ${index + 2} removed`);
-                              }
-                            });
-                          }}
-                        >
-                          <X size={12} className="mr-1" />
-                          Remove
-                        </button>
-                      )}
-                      <div className="flex-grow"></div>
-                      <button
-                        type="button"
-                        className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
-                        onClick={async () => {
-                          // Call SAM API directly to improve the message
-                          try {
-                            toastInfo(`SAM is improving message ${index + 2}...`);
-
-                            const messageType = index === 0 ? 'Message 2 (first follow-up)' :
-                                              index === 4 ? 'Message 6 (goodbye message)' :
-                                              `Message ${index + 2}`;
-
-                            const response = await fetch('/api/sam/generate-templates', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                workspace_id: workspaceId,
-                                campaign_name: name,
-                                campaign_type: 'messenger',
-                                prospect_count: csvData.length,
-                                user_input: `Please improve this follow-up message for messenger campaign (${messageType}). ${index === 4 ? 'This is a goodbye message - keep it polite and leave the door open.' : 'Make it engaging and valuable.'}\n\nCurrent message:\n"${message}"\n\nMake it more effective while optionally using personalization placeholders like {first_name}, {company_name}, {title}.`,
-                                conversation_history: [],
-                                prospect_sample: csvData.slice(0, 3)
-                              })
-                            });
-
-                            if (response.ok) {
-                              const result = await response.json();
-
-                              if (result.templates?.follow_up_messages?.[index]) {
-                                const improved = result.templates.follow_up_messages[index];
-                                updateFollowUpMessage(index, improved);
-                                toastSuccess(`Message ${index + 2} improved!`);
-                              } else if (result.templates?.message) {
-                                // Fallback to generic message field
-                                updateFollowUpMessage(index, result.templates.message);
-                                toastSuccess(`Message ${index + 2} improved!`);
-                              } else {
-                                toastError('Could not extract improved message.');
-                              }
-                            } else {
-                              const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                              toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
-                            }
-                          } catch (error) {
-                            console.error(`Improve messenger follow-up ${index} error:`, error);
-                            toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                          }
-                        }}
-                      >
-                        <Zap size={12} className="mr-1" />
-                        Improve with SAM
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Add Follow-Up Message Button */}
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={addFollowUpMessage}
-                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
-              >
-                <Plus size={16} className="mr-2" />
-                Add Follow-Up Message
-              </button>
-              <p className="text-xs text-gray-500 mt-2">
-                Add additional steps to your messaging sequence (currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''})
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                </label>
+              </div>
+              <p className="text-gray-400 text-sm">
+                Test two different initial messages with a 50/50 split to see which performs better.
               </p>
             </div>
-          </div>
 
-          <div className="p-5 bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-700/30">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-                <Sparkles size={16} className="text-white" />
-              </div>
-              <h4 className="text-white font-semibold">Personalization Placeholders</h4>
-            </div>
-            <p className="text-gray-300 text-sm mb-4">
-              Click to insert dynamic fields that auto-fill with prospect data
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {placeholders.map((placeholder) => (
-                <button
-                  key={placeholder.key}
-                  onClick={() => insertPlaceholder(placeholder.key)}
-                  className="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 hover:border-purple-400 rounded-full text-purple-200 text-xs font-medium transition-all hover:scale-105 cursor-pointer"
-                  title={placeholder.description}
-                >
-                  {placeholder.key}
-                </button>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* Step 2: Message Templates (Email Campaign) */}
-      {currentStep === 2 && campaignType === 'email' && (
-        <div className="space-y-6">
-          {/* Campaign Name - Editable in Step 2 */}
-          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-            <label className="block text-sm font-medium text-gray-400 mb-2">Campaign Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-              placeholder="Enter campaign name..."
-            />
-          </div>
-
-          {/* SAM Messaging Generation */}
-          <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
-            <div className="flex items-center mb-3">
-              <Zap className="text-purple-400 mr-2" size={20} />
-              <h4 className="text-white font-medium">SAM AI Email Sequence Generator</h4>
-            </div>
-            <p className="text-gray-300 text-sm mb-3">
-              Let SAM create personalized email sequences for your outreach campaign.
-            </p>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
-                onClick={() => {
-                  setManualConnection('');
-                  setManualAlternative('');
-                  setManualFollowUps(['']);
-                  setShowManualTemplateModal(true);
-                }}
-              >
-                <Edit size={16} className="mr-1" />
-                Create Manually
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSamMessages([{
-                    role: 'assistant',
-                    content: `Hi! I'm SAM, and I'll help you create compelling email sequences for your cold email campaign "${name}".\n\n**Campaign Type:** Email Outreach\n\nI can see you have ${csvData.length} prospects with business emails. To create the best email sequence, tell me:\n\n1. What's your main goal with this campaign? (lead generation, partnerships, sales, etc.)\n2. What value can you offer these prospects?\n3. Any specific tone you'd like? (professional, casual, friendly, etc.)\n\nLet's create emails that get responses! 📧`
-                  }]);
-                  setShowSamGenerationModal(true);
-                }}
-                className="flex items-center px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-              >
-                <Zap size={16} className="mr-1" />
-                Generate with SAM
-              </button>
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
-                onClick={openKBModal}
-              >
-                <Brain size={16} className="mr-1" />
-                Load from KB
-              </button>
-              <button
-                type="button"
-                className="flex items-center px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 rounded-lg transition-colors"
-                onClick={() => setShowPasteModal(true)}
-              >
-                <Upload size={16} className="mr-1" />
-                Paste Template
-              </button>
-            </div>
-          </div>
-
-          {/* Initial Email */}
-          <div className="space-y-3">
-            <label htmlFor="email-initial" className="block text-sm font-medium text-gray-400">
-              Initial Email
-            </label>
-            <p className="text-xs text-gray-500">
-              First email sent to your prospects
-            </p>
-
-            {/* Subject Line */}
-            <div className="space-y-1">
-              <label htmlFor="email-initial-subject" className="block text-xs text-gray-500">
-                Subject Line
-              </label>
-              <input
-                id="email-initial-subject"
-                type="text"
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
-                value={initialSubject}
-                onChange={e => setInitialSubject(e.target.value)}
-                placeholder="e.g., Quick question about {{company_name}}"
-              />
-            </div>
-
-            {/* Email Body */}
-            <div className="space-y-1">
-              <label htmlFor="email-initial-body" className="block text-xs text-gray-500">
-                Email Body
-              </label>
-              <textarea
-                id="email-initial-body"
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
-                rows={6}
-                value={alternativeMessage}
-                onChange={e => setAlternativeMessage(e.target.value)}
-                onFocus={(e) => {
-                  setActiveField({type: 'alternative'});
-                  setActiveTextarea(e.target as HTMLTextAreaElement);
-                }}
-                placeholder="Hi {{first_name}},&#10;&#10;I noticed you're at {{company_name}} and thought you might be interested in...&#10;&#10;Would love to connect!"
-              />
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">
-                Characters: {alternativeMessage.length}
-              </span>
-            </div>
-          </div>
-
-          {/* A/B Testing Toggle for Email */}
-          <div className="bg-orange-600/10 border border-orange-500/30 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center">
-                <FlaskConical className="text-orange-400 mr-2" size={20} />
-                <h4 className="text-white font-medium">A/B Testing</h4>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={abTestingEnabled}
-                  onChange={(e) => setAbTestingEnabled(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
-              </label>
-            </div>
-            <p className="text-gray-400 text-sm">
-              Test two different initial emails with a 50/50 split to see which performs better.
-            </p>
-          </div>
-
-          {/* Variant B Email (shown when A/B testing enabled) */}
-          {abTestingEnabled && (
-            <div className="space-y-3 border-l-4 border-orange-500 pl-4">
-              <label className="block text-sm font-medium text-orange-400">
-                Variant B - Initial Email
-              </label>
-              <p className="text-xs text-gray-500">
-                Alternative initial email (50% of prospects will receive this)
-              </p>
-
-              {/* Variant B Subject Line */}
-              <div className="space-y-1">
-                <label htmlFor="email-initial-subject-b" className="block text-xs text-gray-500">
-                  Subject Line (Variant B)
+            {/* Variant B Initial Message (shown when A/B testing enabled) */}
+            {abTestingEnabled && (
+              <div className="space-y-2 border-l-4 border-orange-500 pl-4">
+                <label htmlFor="messenger-initial-message-b" className="block text-sm font-medium text-orange-400">
+                  Variant B - Initial Message
                 </label>
-                <input
-                  id="email-initial-subject-b"
-                  type="text"
-                  className="w-full bg-gray-700 border border-orange-500/50 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none"
-                  value={initialSubjectB}
-                  onChange={e => setInitialSubjectB(e.target.value)}
-                  placeholder="e.g., Alternative subject for {{company_name}}"
-                />
-              </div>
-
-              {/* Variant B Email Body */}
-              <div className="space-y-1">
-                <label htmlFor="email-body-b" className="block text-xs text-gray-500">
-                  Email Body (Variant B)
-                </label>
-                <textarea
-                  id="email-body-b"
-                  className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
-                  rows={6}
-                  value={emailBodyB}
-                  onChange={e => setEmailBodyB(e.target.value)}
-                  placeholder="Hi {{first_name}},&#10;&#10;[Different approach here]...&#10;&#10;Would love to connect!"
-                />
-              </div>
-              <span className="text-xs text-gray-400">
-                Characters: {emailBodyB.length}
-              </span>
-            </div>
-          )}
-
-          {/* Threading Option */}
-          <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="use-threaded-replies"
-                checked={useThreadedReplies}
-                onChange={e => setUseThreadedReplies(e.target.checked)}
-                className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-              />
-              <div>
-                <label htmlFor="use-threaded-replies" className="text-white cursor-pointer">
-                  Use threaded replies (RE:)
-                </label>
-                <p className="text-xs text-gray-400 mt-1">
-                  {useThreadedReplies
-                    ? `Follow-up emails will use "RE: ${initialSubject || '[Initial Subject]'}" as the subject line`
-                    : 'Each follow-up email will have its own unique subject line'
-                  }
+                <p className="text-xs text-gray-500">
+                  Alternative initial message (50% of prospects will receive this)
                 </p>
+                <textarea
+                  id="messenger-initial-message-b"
+                  className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
+                  rows={4}
+                  value={alternativeMessageB}
+                  onChange={e => setAlternativeMessageB(e.target.value)}
+                  placeholder="Hi {{first_name}}, [different approach here]..."
+                />
+                <span className="text-xs text-gray-400">
+                  Characters: {alternativeMessageB.length}
+                </span>
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Email Follow-ups */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-gray-400">
-                Follow-up Emails ({followUpMessages.length})
-              </label>
-            </div>
-            <p className="text-xs text-gray-500 mb-3">
-              Automated follow-up sequence
-            </p>
-
-            {followUpMessages.map((message, index) => (
-              <div key={index} className="mb-4 bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Follow-up Email {index + 1}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-400">
+                  6-Step Messaging Sequence (5 Follow-ups)
                 </label>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">
+                Messages 2-6 sent to your 1st degree connections
+              </p>
 
-                {/* Subject Line for this follow-up (only if not using threaded replies) */}
-                {!useThreadedReplies && (
-                  <div className="mb-3">
-                    <label className="block text-xs text-gray-500 mb-1">
-                      Subject Line
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none text-sm"
-                      value={followUpSubjects[index] || ''}
-                      onChange={e => updateFollowUpSubject(index, e.target.value)}
-                      placeholder={`e.g., Following up on my previous email`}
-                    />
-                  </div>
-                )}
-                {useThreadedReplies && (
-                  <div className="mb-3 text-xs text-gray-500 italic">
-                    Subject: RE: {initialSubject || '[Initial Subject]'}
-                  </div>
-                )}
+              {followUpMessages.map((message, index) => {
+                // Helper function to get message label
+                const getMessageLabel = () => {
+                  if (index === 0) return 'Message 2 (First Follow-up)';
+                  if (index === 4) return 'Message 6 (Goodbye message)';
+                  return `Message ${index + 2}`;
+                };
 
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-500 mb-1">
-                      Email Body
-                    </label>
+                const getMessagePlaceholder = () => {
+                  if (index === 0) return 'Your first follow-up message...';
+                  if (index === 4) return 'Polite goodbye message leaving door open for future connection...';
+                  return `Follow-up message ${index + 2}...`;
+                };
+
+                return (
+                  <div key={index} className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-400">
+                          {getMessageLabel()}
+                        </label>
+                        <span className="text-xs text-gray-500">• Wait:</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="99"
+                          className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                          value={parseDelay((campaignSettings.message_delays || [])[index]).value}
+                          onChange={(e) => updateMessageDelay(index, 'value', parseInt(e.target.value) || 1)}
+                        />
+                        <select
+                          className="bg-gray-700 border-2 border-gray-600 rounded-lg px-3 py-2 text-white text-sm font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                          value={parseDelay((campaignSettings.message_delays || [])[index]).unit}
+                          onChange={(e) => updateMessageDelay(index, 'unit', e.target.value)}
+                        >
+                          <option value="hours">Hours</option>
+                          <option value="days">Days</option>
+                          <option value="weeks">Weeks</option>
+                          <option value="months">Months</option>
+                        </select>
+                      </div>
+                    </div>
                     <textarea
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
                       rows={4}
                       value={message}
                       onChange={e => updateFollowUpMessage(index, e.target.value)}
                       onFocus={(e) => {
-                        setActiveField({type: 'followup', index});
+                        setActiveField({ type: 'followup', index });
                         setActiveTextarea(e.target as HTMLTextAreaElement);
                       }}
-                      placeholder={`Follow-up email ${index + 1}...`}
+                      placeholder={getMessagePlaceholder()}
                       data-followup-index={index}
                     />
-                  </div>
-                  <div className="flex flex-col gap-2 justify-center">
-                    <span className="text-xs text-gray-400 text-center">Send after</span>
-                    <input
-                      type="number"
-                      min="1"
-                      className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
-                      value={parseDelay((campaignSettings.message_delays || [])[index]).value}
-                      onChange={(e) => updateMessageDelay(index, 'value', parseInt(e.target.value) || 1)}
-                    />
-                    <select
-                      className="bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-xs font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                      value={parseDelay((campaignSettings.message_delays || [])[index]).unit}
-                      onChange={(e) => updateMessageDelay(index, 'unit', e.target.value)}
-                    >
-                      <option value="hours">Hours</option>
-                      <option value="days">Days</option>
-                      <option value="weeks">Weeks</option>
-                      <option value="months">Months</option>
-                    </select>
-                  </div>
-                </div>
-                {message.length > 0 && followUpMessages.length > 1 && (
-                  <div className="flex justify-between items-center mt-2">
-                    <button
-                      type="button"
-                      className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
-                      onClick={() => {
-                        showConfirmModal({
-                          title: 'Remove Follow-up',
-                          message: `Remove Follow-up ${index + 1}?`,
-                          confirmText: 'Remove',
-                          confirmVariant: 'danger',
-                          onConfirm: () => {
-                            removeFollowUpMessage(index);
-                            toastSuccess(`Follow-up ${index + 1} removed`);
-                          }
-                        });
-                      }}
-                    >
-                      <X size={12} className="mr-1" />
-                      Remove
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+                    {message.length > 0 && (
+                      <div className="flex justify-between items-center mt-2">
+                        {/* Remove button */}
+                        {followUpMessages.length > 1 && (
+                          <button
+                            type="button"
+                            className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
+                            onClick={() => {
+                              showConfirmModal({
+                                title: 'Remove Message',
+                                message: `Remove Message ${index + 2}?`,
+                                confirmText: 'Remove',
+                                confirmVariant: 'danger',
+                                onConfirm: () => {
+                                  removeFollowUpMessage(index);
+                                  toastSuccess(`Message ${index + 2} removed`);
+                                }
+                              });
+                            }}
+                          >
+                            <X size={12} className="mr-1" />
+                            Remove
+                          </button>
+                        )}
+                        <div className="flex-grow"></div>
+                        <button
+                          type="button"
+                          className="flex items-center px-2 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 rounded-lg transition-colors"
+                          onClick={async () => {
+                            // Call SAM API directly to improve the message
+                            try {
+                              toastInfo(`SAM is improving message ${index + 2}...`);
 
-            {/* Add Follow-Up Button */}
-            <div className="mt-4">
-              <button
-                type="button"
-                onClick={addFollowUpMessage}
-                className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
-              >
-                <Plus size={16} className="mr-2" />
-                Add Follow-Up Email
-              </button>
+                              const messageType = index === 0 ? 'Message 2 (first follow-up)' :
+                                index === 4 ? 'Message 6 (goodbye message)' :
+                                  `Message ${index + 2}`;
+
+                              const response = await fetch('/api/sam/generate-templates', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  workspace_id: workspaceId,
+                                  campaign_name: name,
+                                  campaign_type: 'messenger',
+                                  prospect_count: csvData.length,
+                                  user_input: `Please improve this follow-up message for messenger campaign (${messageType}). ${index === 4 ? 'This is a goodbye message - keep it polite and leave the door open.' : 'Make it engaging and valuable.'}\n\nCurrent message:\n"${message}"\n\nMake it more effective while optionally using personalization placeholders like {first_name}, {company_name}, {title}.`,
+                                  conversation_history: [],
+                                  prospect_sample: csvData.slice(0, 3)
+                                })
+                              });
+
+                              if (response.ok) {
+                                const result = await response.json();
+
+                                if (result.templates?.follow_up_messages?.[index]) {
+                                  const improved = result.templates.follow_up_messages[index];
+                                  updateFollowUpMessage(index, improved);
+                                  toastSuccess(`Message ${index + 2} improved!`);
+                                } else if (result.templates?.message) {
+                                  // Fallback to generic message field
+                                  updateFollowUpMessage(index, result.templates.message);
+                                  toastSuccess(`Message ${index + 2} improved!`);
+                                } else {
+                                  toastError('Could not extract improved message.');
+                                }
+                              } else {
+                                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                                toastError(`Failed to improve message: ${errorData.error || 'Unknown error'}`);
+                              }
+                            } catch (error) {
+                              console.error(`Improve messenger follow-up ${index} error:`, error);
+                              toastError(`Error improving message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                            }
+                          }}
+                        >
+                          <Zap size={12} className="mr-1" />
+                          Improve with SAM
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Add Follow-Up Message Button */}
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={addFollowUpMessage}
+                  className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
+                >
+                  <Plus size={16} className="mr-2" />
+                  Add Follow-Up Message
+                </button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Add additional steps to your messaging sequence (currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''})
+                </p>
+              </div>
+            </div>
+
+            <div className="p-5 bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-700/30">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                  <Sparkles size={16} className="text-white" />
+                </div>
+                <h4 className="text-white font-semibold">Personalization Placeholders</h4>
+              </div>
+              <p className="text-gray-300 text-sm mb-4">
+                Click to insert dynamic fields that auto-fill with prospect data
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {placeholders.map((placeholder) => (
+                  <button
+                    key={placeholder.key}
+                    onClick={() => insertPlaceholder(placeholder.key)}
+                    className="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 hover:border-purple-400 rounded-full text-purple-200 text-xs font-medium transition-all hover:scale-105 cursor-pointer"
+                    title={placeholder.description}
+                  >
+                    {placeholder.key}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* Step 2: Message Templates (Email Campaign) */}
+        {currentStep === 2 && campaignType === 'email' && (
+          <div className="space-y-6">
+            {/* Campaign Name - Editable in Step 2 */}
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+              <label className="block text-sm font-medium text-gray-400 mb-2">Campaign Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                placeholder="Enter campaign name..."
+              />
+            </div>
+
+            {/* SAM Messaging Generation */}
+            <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
+              <div className="flex items-center mb-3">
+                <Zap className="text-purple-400 mr-2" size={20} />
+                <h4 className="text-white font-medium">SAM AI Email Sequence Generator</h4>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Let SAM create personalized email sequences for your outreach campaign.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                  onClick={() => {
+                    setManualConnection('');
+                    setManualAlternative('');
+                    setManualFollowUps(['']);
+                    setShowManualTemplateModal(true);
+                  }}
+                >
+                  <Edit size={16} className="mr-1" />
+                  Create Manually
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSamMessages([{
+                      role: 'assistant',
+                      content: `Hi! I'm SAM, and I'll help you create compelling email sequences for your cold email campaign "${name}".\n\n**Campaign Type:** Email Outreach\n\nI can see you have ${csvData.length} prospects with business emails. To create the best email sequence, tell me:\n\n1. What's your main goal with this campaign? (lead generation, partnerships, sales, etc.)\n2. What value can you offer these prospects?\n3. Any specific tone you'd like? (professional, casual, friendly, etc.)\n\nLet's create emails that get responses! 📧`
+                    }]);
+                    setShowSamGenerationModal(true);
+                  }}
+                  className="flex items-center px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                >
+                  <Zap size={16} className="mr-1" />
+                  Generate with SAM
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
+                  onClick={openKBModal}
+                >
+                  <Brain size={16} className="mr-1" />
+                  Load from KB
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center px-3 py-1.5 text-sm bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 rounded-lg transition-colors"
+                  onClick={() => setShowPasteModal(true)}
+                >
+                  <Upload size={16} className="mr-1" />
+                  Paste Template
+                </button>
+              </div>
+            </div>
+
+            {/* Initial Email */}
+            <div className="space-y-3">
+              <label htmlFor="email-initial" className="block text-sm font-medium text-gray-400">
+                Initial Email
+              </label>
+              <p className="text-xs text-gray-500">
+                First email sent to your prospects
+              </p>
+
+              {/* Subject Line */}
+              <div className="space-y-1">
+                <label htmlFor="email-initial-subject" className="block text-xs text-gray-500">
+                  Subject Line
+                </label>
+                <input
+                  id="email-initial-subject"
+                  type="text"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none"
+                  value={initialSubject}
+                  onChange={e => setInitialSubject(e.target.value)}
+                  placeholder="e.g., Quick question about {{company_name}}"
+                />
+              </div>
+
+              {/* Email Body */}
+              <div className="space-y-1">
+                <label htmlFor="email-initial-body" className="block text-xs text-gray-500">
+                  Email Body
+                </label>
+                <textarea
+                  id="email-initial-body"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
+                  rows={6}
+                  value={alternativeMessage}
+                  onChange={e => setAlternativeMessage(e.target.value)}
+                  onFocus={(e) => {
+                    setActiveField({ type: 'alternative' });
+                    setActiveTextarea(e.target as HTMLTextAreaElement);
+                  }}
+                  placeholder="Hi {{first_name}},&#10;&#10;I noticed you're at {{company_name}} and thought you might be interested in...&#10;&#10;Would love to connect!"
+                />
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400">
+                  Characters: {alternativeMessage.length}
+                </span>
+              </div>
+            </div>
+
+            {/* A/B Testing Toggle for Email */}
+            <div className="bg-orange-600/10 border border-orange-500/30 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <FlaskConical className="text-orange-400 mr-2" size={20} />
+                  <h4 className="text-white font-medium">A/B Testing</h4>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={abTestingEnabled}
+                    onChange={(e) => setAbTestingEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                </label>
+              </div>
+              <p className="text-gray-400 text-sm">
+                Test two different initial emails with a 50/50 split to see which performs better.
+              </p>
+            </div>
+
+            {/* Variant B Email (shown when A/B testing enabled) */}
+            {abTestingEnabled && (
+              <div className="space-y-3 border-l-4 border-orange-500 pl-4">
+                <label className="block text-sm font-medium text-orange-400">
+                  Variant B - Initial Email
+                </label>
+                <p className="text-xs text-gray-500">
+                  Alternative initial email (50% of prospects will receive this)
+                </p>
+
+                {/* Variant B Subject Line */}
+                <div className="space-y-1">
+                  <label htmlFor="email-initial-subject-b" className="block text-xs text-gray-500">
+                    Subject Line (Variant B)
+                  </label>
+                  <input
+                    id="email-initial-subject-b"
+                    type="text"
+                    className="w-full bg-gray-700 border border-orange-500/50 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none"
+                    value={initialSubjectB}
+                    onChange={e => setInitialSubjectB(e.target.value)}
+                    placeholder="e.g., Alternative subject for {{company_name}}"
+                  />
+                </div>
+
+                {/* Variant B Email Body */}
+                <div className="space-y-1">
+                  <label htmlFor="email-body-b" className="block text-xs text-gray-500">
+                    Email Body (Variant B)
+                  </label>
+                  <textarea
+                    id="email-body-b"
+                    className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none"
+                    rows={6}
+                    value={emailBodyB}
+                    onChange={e => setEmailBodyB(e.target.value)}
+                    placeholder="Hi {{first_name}},&#10;&#10;[Different approach here]...&#10;&#10;Would love to connect!"
+                  />
+                </div>
+                <span className="text-xs text-gray-400">
+                  Characters: {emailBodyB.length}
+                </span>
+              </div>
+            )}
+
+            {/* Threading Option */}
+            <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="use-threaded-replies"
+                  checked={useThreadedReplies}
+                  onChange={e => setUseThreadedReplies(e.target.checked)}
+                  className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                />
+                <div>
+                  <label htmlFor="use-threaded-replies" className="text-white cursor-pointer">
+                    Use threaded replies (RE:)
+                  </label>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {useThreadedReplies
+                      ? `Follow-up emails will use "RE: ${initialSubject || '[Initial Subject]'}" as the subject line`
+                      : 'Each follow-up email will have its own unique subject line'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Email Follow-ups */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-400">
+                  Follow-up Emails ({followUpMessages.length})
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">
+                Automated follow-up sequence
+              </p>
+
+              {followUpMessages.map((message, index) => (
+                <div key={index} className="mb-4 bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                  <label className="block text-sm font-medium text-gray-400 mb-2">
+                    Follow-up Email {index + 1}
+                  </label>
+
+                  {/* Subject Line for this follow-up (only if not using threaded replies) */}
+                  {!useThreadedReplies && (
+                    <div className="mb-3">
+                      <label className="block text-xs text-gray-500 mb-1">
+                        Subject Line
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none text-sm"
+                        value={followUpSubjects[index] || ''}
+                        onChange={e => updateFollowUpSubject(index, e.target.value)}
+                        placeholder={`e.g., Following up on my previous email`}
+                      />
+                    </div>
+                  )}
+                  {useThreadedReplies && (
+                    <div className="mb-3 text-xs text-gray-500 italic">
+                      Subject: RE: {initialSubject || '[Initial Subject]'}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-500 mb-1">
+                        Email Body
+                      </label>
+                      <textarea
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none"
+                        rows={4}
+                        value={message}
+                        onChange={e => updateFollowUpMessage(index, e.target.value)}
+                        onFocus={(e) => {
+                          setActiveField({ type: 'followup', index });
+                          setActiveTextarea(e.target as HTMLTextAreaElement);
+                        }}
+                        placeholder={`Follow-up email ${index + 1}...`}
+                        data-followup-index={index}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 justify-center">
+                      <span className="text-xs text-gray-400 text-center">Send after</span>
+                      <input
+                        type="number"
+                        min="1"
+                        className="w-16 bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-center font-semibold focus:border-purple-500 focus:outline-none"
+                        value={parseDelay((campaignSettings.message_delays || [])[index]).value}
+                        onChange={(e) => updateMessageDelay(index, 'value', parseInt(e.target.value) || 1)}
+                      />
+                      <select
+                        className="bg-gray-700 border-2 border-gray-600 rounded-lg px-2 py-2 text-white text-xs font-medium cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                        value={parseDelay((campaignSettings.message_delays || [])[index]).unit}
+                        onChange={(e) => updateMessageDelay(index, 'unit', e.target.value)}
+                      >
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                        <option value="weeks">Weeks</option>
+                        <option value="months">Months</option>
+                      </select>
+                    </div>
+                  </div>
+                  {message.length > 0 && followUpMessages.length > 1 && (
+                    <div className="flex justify-between items-center mt-2">
+                      <button
+                        type="button"
+                        className="flex items-center px-2 py-1 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-lg transition-colors"
+                        onClick={() => {
+                          showConfirmModal({
+                            title: 'Remove Follow-up',
+                            message: `Remove Follow-up ${index + 1}?`,
+                            confirmText: 'Remove',
+                            confirmVariant: 'danger',
+                            onConfirm: () => {
+                              removeFollowUpMessage(index);
+                              toastSuccess(`Follow-up ${index + 1} removed`);
+                            }
+                          });
+                        }}
+                      >
+                        <X size={12} className="mr-1" />
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Add Follow-Up Button */}
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={addFollowUpMessage}
+                  className="flex items-center px-3 py-1.5 text-sm bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-lg transition-colors"
+                >
+                  <Plus size={16} className="mr-2" />
+                  Add Follow-Up Email
+                </button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+
+            {/* Personalization Placeholders */}
+            <div className="bg-gray-700 rounded-lg p-4">
+              <h4 className="text-white font-medium mb-3">Personalization Placeholders</h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {placeholders.map((placeholder) => (
+                  <button
+                    key={placeholder.key}
+                    type="button"
+                    onClick={() => insertPlaceholder(placeholder.key)}
+                    className="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    title={placeholder.description}
+                  >
+                    {placeholder.key}
+                  </button>
+                ))}
+              </div>
               <p className="text-xs text-gray-500 mt-2">
-                Currently {followUpMessages.length} follow-up{followUpMessages.length !== 1 ? 's' : ''}
+                Click any placeholder to insert it into your email
               </p>
             </div>
           </div>
+        )}
 
-          {/* Personalization Placeholders */}
-          <div className="bg-gray-700 rounded-lg p-4">
-            <h4 className="text-white font-medium mb-3">Personalization Placeholders</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {placeholders.map((placeholder) => (
-                <button
-                  key={placeholder.key}
-                  type="button"
-                  onClick={() => insertPlaceholder(placeholder.key)}
-                  className="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-                  title={placeholder.description}
-                >
-                  {placeholder.key}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Click any placeholder to insert it into your email
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Navigation Buttons */}
-      <div className="flex justify-between mt-8">
-        <button
-          type="button"
-          onClick={() => {
-            // Go back to Step 1
-            setCurrentStep(1);
-          }}
-          disabled={currentStep === 1}
-          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed text-gray-300 rounded-lg transition-colors"
-        >
-          Previous
-        </button>
-
-        <div className="flex gap-3">
-          {currentStep < 2 ? (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  console.log('🔘 Continue button clicked', {
-                    currentStep,
-                    campaignType,
-                    hasConnectionDegreeData,
-                    csvDataLength: csvData.length,
-                    initialProspectsLength: initialProspects?.length || 0
-                  });
-
-                  // Validate connection degree for LinkedIn campaigns before proceeding
-                  if (currentStep === 1 && (campaignType === 'connector' || campaignType === 'messenger')) {
-                    // Check if we have connection degree data
-                    if (!hasConnectionDegreeData && csvData.length > 0) {
-                      console.log('❌ Blocked by connection degree validation');
-                      toastError('LinkedIn campaigns require connection degree data. Please add a "Connection Degree" column to your CSV with values like "1st", "2nd", or "3rd", then re-upload.');
-                      return;
-                    }
-                  }
-
-                  console.log('✅ Moving to Step 2');
-                  // Go to Step 2 (Message Templates)
-                  setCurrentStep(2);
-                }}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-              >
-                {initialProspects && initialProspects.length > 0
-                  ? 'Continue to Messages'
-                  : 'Next Step'}
-              </button>
-              {/* Save Draft button - available on Step 1 so user can save without prospects */}
-              <button
-                type="button"
-                onClick={() => saveDraft(true)}
-                disabled={isSavingDraft || !name.trim() || !workspaceId}
-                className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-              >
-                {isSavingDraft ? 'Saving...' : 'Save Draft'}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={submit}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 font-medium text-white rounded-lg transition-colors"
-              >
-                Create Campaign
-              </button>
-              <button
-                type="button"
-                onClick={() => saveDraft(true)}
-                disabled={isSavingDraft || !name.trim() || !workspaceId}
-                className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-              >
-                {isSavingDraft ? 'Saving...' : 'Save Draft'}
-              </button>
-            </>
-          )}
+        {/* Navigation Buttons */}
+        <div className="flex justify-between mt-8">
           <button
             type="button"
             onClick={() => {
-              if (currentStep > 1) {
-                // Go back one step
-                setCurrentStep(currentStep - 1);
-              } else {
-                // On step 1, close the modal
-                onClose();
-              }
+              // Go back to Step 1
+              setCurrentStep(1);
             }}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+            disabled={currentStep === 1}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed text-gray-300 rounded-lg transition-colors"
           >
-            {currentStep > 1 ? 'Back' : 'Cancel'}
+            Previous
           </button>
+
+          <div className="flex gap-3">
+            {currentStep < 2 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('🔘 Continue button clicked', {
+                      currentStep,
+                      campaignType,
+                      hasConnectionDegreeData,
+                      csvDataLength: csvData.length,
+                      initialProspectsLength: initialProspects?.length || 0
+                    });
+
+                    // Validate connection degree for LinkedIn campaigns before proceeding
+                    if (currentStep === 1 && (campaignType === 'connector' || campaignType === 'messenger')) {
+                      // Check if we have connection degree data
+                      if (!hasConnectionDegreeData && csvData.length > 0) {
+                        console.log('❌ Blocked by connection degree validation');
+                        toastError('LinkedIn campaigns require connection degree data. Please add a "Connection Degree" column to your CSV with values like "1st", "2nd", or "3rd", then re-upload.');
+                        return;
+                      }
+                    }
+
+                    console.log('✅ Moving to Step 2');
+                    // Go to Step 2 (Message Templates)
+                    setCurrentStep(2);
+                  }}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                >
+                  {initialProspects && initialProspects.length > 0
+                    ? 'Continue to Messages'
+                    : 'Next Step'}
+                </button>
+                {/* Save Draft button - available on Step 1 so user can save without prospects */}
+                <button
+                  type="button"
+                  onClick={() => saveDraft(true)}
+                  disabled={isSavingDraft || !name.trim() || !workspaceId}
+                  className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  {isSavingDraft ? 'Saving...' : 'Save Draft'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={submit}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 font-medium text-white rounded-lg transition-colors"
+                >
+                  Create Campaign
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveDraft(true)}
+                  disabled={isSavingDraft || !name.trim() || !workspaceId}
+                  className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  {isSavingDraft ? 'Saving...' : 'Save Draft'}
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (currentStep > 1) {
+                  // Go back one step
+                  setCurrentStep(currentStep - 1);
+                } else {
+                  // On step 1, close the modal
+                  onClose();
+                }
+              }}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+            >
+              {currentStep > 1 ? 'Back' : 'Cancel'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
       {/* Template Library Modal */}
       {showTemplateLibraryModal && (
@@ -6404,11 +6404,10 @@ Hi [First Name], quick follow-up on my previous message..."
                   {kbTemplates.map((template) => (
                     <div
                       key={template.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                        selectedKBTemplate?.id === template.id
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedKBTemplate?.id === template.id
                           ? 'border-blue-500 bg-blue-500/10'
                           : 'border-gray-600 hover:border-gray-500 bg-gray-700/50'
-                      }`}
+                        }`}
                       onClick={() => setSelectedKBTemplate(template)}
                     >
                       <div className="flex items-start justify-between">
@@ -6538,11 +6537,10 @@ Hi [First Name], quick follow-up on my previous message..."
                   {previousCampaigns.map((campaign) => (
                     <div
                       key={campaign.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                        selectedPreviousCampaign?.id === campaign.id
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedPreviousCampaign?.id === campaign.id
                           ? 'border-orange-500 bg-orange-500/10'
                           : 'border-gray-600 hover:border-gray-500 bg-gray-700/50'
-                      }`}
+                        }`}
                       onClick={() => setSelectedPreviousCampaign(campaign)}
                     >
                       <div className="flex items-start justify-between">
@@ -6865,7 +6863,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {}
+    onConfirm: () => { }
   });
 
   // Helper to show confirm modal (Dec 9: use this setConfirmModal which is connected to the modal component)
@@ -7626,7 +7624,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
       const prospectDegrees = mappedProspectsFiltered.map((p: any) => {
         const degree = p.connection_degree || p.degree || 'unknown';
         return degree.toLowerCase().includes('1st') ? '1st' :
-               (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
+          (degree.toLowerCase().includes('2nd') || degree.toLowerCase().includes('3rd')) ? '2nd/3rd' : 'unknown';
       });
       const firstDegreeCount = prospectDegrees.filter((d: string) => d === '1st').length;
       const secondThirdCount = prospectDegrees.filter((d: string) => d === '2nd/3rd').length;
@@ -8324,13 +8322,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
   const handleCheckboxArrayChange = (key: string, value: string, checked: boolean) => {
     const currentValues = campaignSettings[key] || [];
     let newValues;
-    
+
     if (checked) {
       newValues = [...currentValues, value];
     } else {
       newValues = currentValues.filter((v: string) => v !== value);
     }
-    
+
     updateSetting(key, newValues);
   };
 
@@ -8808,2615 +8806,2604 @@ const CampaignHub: React.FC<CampaignHubProps> = ({ workspaceId, initialProspects
     <div className="h-full">
       {/* Main Campaign Hub Content - Full Width */}
       <div className="h-full overflow-y-auto">
-      {/* Header - Different for auto-create mode */}
-      {isAutoCreateMode ? (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <motion.div
-                animate={{
-                  rotate: [0, 360],
-                  scale: [1, 1.1, 1]
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/50"
+        {/* Header - Different for auto-create mode */}
+        {isAutoCreateMode ? (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-8"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <motion.div
+                  animate={{
+                    rotate: [0, 360],
+                    scale: [1, 1.1, 1]
+                  }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg shadow-purple-500/50"
+                >
+                  <Target className="text-white" size={20} />
+                </motion.div>
+                <div>
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
+                    Creating Campaign: {campaignName}
+                  </h1>
+                  <p className="text-gray-300 text-sm mt-1">{initialProspects.length} approved prospects ready to launch</p>
+                </div>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowFullFeatures(!showFullFeatures)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white rounded-lg transition-colors text-sm shadow-lg"
               >
-                <Target className="text-white" size={20} />
+                {showFullFeatures ? (
+                  <>
+                    <Eye className="w-4 h-4" />
+                    Hide Full Hub
+                  </>
+                ) : (
+                  <>
+                    <Grid3x3 className="w-4 h-4" />
+                    Show Full Hub
+                  </>
+                )}
+              </motion.button>
+            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+              className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-500/40 rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm shadow-lg shadow-purple-500/10"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <CheckCircle className="text-green-400" size={20} />
               </motion.div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
-                  Creating Campaign: {campaignName}
-                </h1>
-                <p className="text-gray-300 text-sm mt-1">{initialProspects.length} approved prospects ready to launch</p>
+              <div className="flex-1">
+                <p className="text-white text-sm font-semibold">Prospects Loaded from Prospect Database</p>
+                <p className="text-gray-300 text-xs mt-1">Add your message templates below to complete the campaign setup</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+
+        <div className="w-full space-y-8">
+
+          {/* Campaign Approval Screen */}
+          {showApprovalScreen && campaignDataForApproval && (
+            <CampaignApprovalScreen
+              campaignData={campaignDataForApproval}
+              workspaceId={actualWorkspaceId}
+              userTimezone={userTimezone}
+              onApprove={async (finalCampaignData) => {
+                // Execute campaign creation and N8N trigger
+                await handleApproveCampaign(finalCampaignData);
+              }}
+              onReject={() => {
+                // Go back to campaign builder
+                setShowApprovalScreen(false);
+                setCampaignDataForApproval(null);
+              }}
+              onRequestSAMHelp={(context) => {
+                // TODO: Trigger main SAM chat with context
+                console.log('SAM help requested:', context);
+                toastError(`SAM help requested. Context: ${context}\n\nThis will open the main chat window with SAM ready to help you draft your message.`);
+              }}
+            />
+          )}
+
+          {/* Campaign Builder Modal */}
+          {showBuilder && !showApprovalScreen && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-6xl max-h-[95vh] overflow-y-auto">
+                <CampaignBuilder
+                  onClose={() => {
+                    setShowBuilder(false);
+                    setSelectedCampaignProspects(null); // Clear selected campaign prospects
+                    setSelectedDraft(null); // Clear selected draft
+                    setSelectedCampaignType(null); // CRITICAL FIX (Dec 4): Clear selected campaign type
+                    setCampaignFilter('paused'); // Switch to Paused tab to show approved campaign
+                    onCampaignCreated?.();
+                  }}
+                  initialProspects={selectedCampaignProspects || initialProspects}
+                  initialCampaignType={selectedCampaignType || initialCampaignType}
+                  initialDraftId={initialDraftId}
+                  draftToLoad={selectedDraft}
+                  onPrepareForApproval={(campaignData) => {
+                    setCampaignDataForApproval(campaignData);
+                    setShowApprovalScreen(true);
+                  }}
+                  workspaceId={actualWorkspaceId}
+                  clientCode={workspaceData?.client_code || null}
+                  connectedAccounts={connectedAccounts}
+                  setConnectedAccounts={setConnectedAccounts}
+                  setShowUnipileWizard={setShowUnipileWizard}
+                  setUnipileProvider={setUnipileProvider}
+                />
               </div>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowFullFeatures(!showFullFeatures)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white rounded-lg transition-colors text-sm shadow-lg"
-            >
-              {showFullFeatures ? (
-                <>
-                  <Eye className="w-4 h-4" />
-                  Hide Full Hub
-                </>
-              ) : (
-                <>
-                  <Grid3x3 className="w-4 h-4" />
-                  Show Full Hub
-                </>
-              )}
-            </motion.button>
-          </div>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-500/40 rounded-xl p-4 flex items-center gap-3 backdrop-blur-sm shadow-lg shadow-purple-500/10"
-          >
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <CheckCircle className="text-green-400" size={20} />
-            </motion.div>
-            <div className="flex-1">
-              <p className="text-white text-sm font-semibold">Prospects Loaded from Prospect Database</p>
-              <p className="text-gray-300 text-xs mt-1">Add your message templates below to complete the campaign setup</p>
-            </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
+          )}
 
-      <div className="w-full space-y-8">
-
-        {/* Campaign Approval Screen */}
-        {showApprovalScreen && campaignDataForApproval && (
-          <CampaignApprovalScreen
-            campaignData={campaignDataForApproval}
-            workspaceId={actualWorkspaceId}
-            userTimezone={userTimezone}
-            onApprove={async (finalCampaignData) => {
-              // Execute campaign creation and N8N trigger
-              await handleApproveCampaign(finalCampaignData);
-            }}
-            onReject={() => {
-              // Go back to campaign builder
-              setShowApprovalScreen(false);
-              setCampaignDataForApproval(null);
-            }}
-            onRequestSAMHelp={(context) => {
-              // TODO: Trigger main SAM chat with context
-              console.log('SAM help requested:', context);
-              toastError(`SAM help requested. Context: ${context}\n\nThis will open the main chat window with SAM ready to help you draft your message.`);
-            }}
-          />
-        )}
-
-        {/* Campaign Builder Modal */}
-        {showBuilder && !showApprovalScreen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-6xl max-h-[95vh] overflow-y-auto">
-              <CampaignBuilder
-                onClose={() => {
-                  setShowBuilder(false);
-                  setSelectedCampaignProspects(null); // Clear selected campaign prospects
-                  setSelectedDraft(null); // Clear selected draft
-                  setSelectedCampaignType(null); // CRITICAL FIX (Dec 4): Clear selected campaign type
-                  setCampaignFilter('paused'); // Switch to Paused tab to show approved campaign
-                  onCampaignCreated?.();
-                }}
-                initialProspects={selectedCampaignProspects || initialProspects}
-                initialCampaignType={selectedCampaignType || initialCampaignType}
-                initialDraftId={initialDraftId}
-                draftToLoad={selectedDraft}
-                onPrepareForApproval={(campaignData) => {
-                  setCampaignDataForApproval(campaignData);
-                  setShowApprovalScreen(true);
-                }}
-                workspaceId={actualWorkspaceId}
-                clientCode={workspaceData?.client_code || null}
-                connectedAccounts={connectedAccounts}
-                setConnectedAccounts={setConnectedAccounts}
-                setShowUnipileWizard={setShowUnipileWizard}
-                setUnipileProvider={setUnipileProvider}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Campaign List with Tabs */}
-        {!showBuilder && !showApprovalScreen && (!isAutoCreateMode || showFullFeatures) && (
-          <div>
-            {/* Status Tabs - In Progress FIRST (users land here from prospect approval) */}
-            <div className="flex border-b border-gray-700">
-              {/* Drafts Tab - FIRST - Shows approved prospects waiting for campaign creation */}
-              <button
-                onClick={() => setCampaignFilter('pending')}
-                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
-                  campaignFilter === 'pending'
-                    ? 'text-white border-b-2 border-yellow-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <FileText size={16} />
-                Drafts
-                {/* Count CAMPAIGNS not prospects (Dec 5 fix: match actual table rows shown) */}
-                {(() => {
-                  // Count campaigns from initialProspects (grouped by campaignName)
-                  let tempCampaignCount = 0;
-                  if (initialProspects && initialProspects.length > 0 && !campaignCreatedFromInitial) {
-                    const approvedProspects = initialProspects.filter(p => p.approvalStatus === 'approved');
-                    const campaignNames = new Set(approvedProspects.map(p => p.campaignName || p.campaignTag || 'Unnamed Campaign'));
-                    tempCampaignCount = campaignNames.size;
-                  }
-                  // Add DB campaigns (each is already a campaign)
-                  const pendingCount = tempCampaignCount + pendingCampaignsFromDB.length;
-                  return pendingCount > 0 ? (
-                    <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
-                      {pendingCount}
+          {/* Campaign List with Tabs */}
+          {!showBuilder && !showApprovalScreen && (!isAutoCreateMode || showFullFeatures) && (
+            <div>
+              {/* Status Tabs - In Progress FIRST (users land here from prospect approval) */}
+              <div className="flex border-b border-gray-700">
+                {/* Drafts Tab - FIRST - Shows approved prospects waiting for campaign creation */}
+                <button
+                  onClick={() => setCampaignFilter('pending')}
+                  className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${campaignFilter === 'pending'
+                      ? 'text-white border-b-2 border-yellow-500'
+                      : 'text-gray-400 hover:text-white'
+                    }`}
+                >
+                  <FileText size={16} />
+                  Drafts
+                  {/* Count CAMPAIGNS not prospects (Dec 5 fix: match actual table rows shown) */}
+                  {(() => {
+                    // Count campaigns from initialProspects (grouped by campaignName)
+                    let tempCampaignCount = 0;
+                    if (initialProspects && initialProspects.length > 0 && !campaignCreatedFromInitial) {
+                      const approvedProspects = initialProspects.filter(p => p.approvalStatus === 'approved');
+                      const campaignNames = new Set(approvedProspects.map(p => p.campaignName || p.campaignTag || 'Unnamed Campaign'));
+                      tempCampaignCount = campaignNames.size;
+                    }
+                    // Add DB campaigns (each is already a campaign)
+                    const pendingCount = tempCampaignCount + pendingCampaignsFromDB.length;
+                    return pendingCount > 0 ? (
+                      <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">
+                        {pendingCount}
+                      </span>
+                    ) : null;
+                  })()}
+                </button>
+                <button
+                  onClick={() => setCampaignFilter('active')}
+                  className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${campaignFilter === 'active'
+                      ? 'text-white border-b-2 border-purple-500'
+                      : 'text-gray-400 hover:text-white'
+                    }`}
+                >
+                  Active
+                  {activeCampaignsCount > 0 && (
+                    <span className="px-2 py-0.5 bg-green-600 text-white text-xs rounded-full">
+                      {activeCampaignsCount}
                     </span>
-                  ) : null;
-                })()}
-              </button>
-              <button
-                onClick={() => setCampaignFilter('active')}
-                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
-                  campaignFilter === 'active'
-                    ? 'text-white border-b-2 border-purple-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Active
-                {activeCampaignsCount > 0 && (
-                  <span className="px-2 py-0.5 bg-green-600 text-white text-xs rounded-full">
-                    {activeCampaignsCount}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setCampaignFilter('paused')}
-                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
-                  campaignFilter === 'paused'
-                    ? 'text-white border-b-2 border-purple-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Paused
-                {pausedCampaignsCount > 0 && (
-                  <span className="px-2 py-0.5 bg-gray-600 text-white text-xs rounded-full">
-                    {pausedCampaignsCount}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setCampaignFilter('completed')}
-                className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${
-                  campaignFilter === 'completed'
-                    ? 'text-white border-b-2 border-purple-500'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Completed
-                {completedCampaignsCount > 0 && (
-                  <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
-                    {completedCampaignsCount}
-                  </span>
-                )}
-              </button>
+                  )}
+                </button>
+                <button
+                  onClick={() => setCampaignFilter('paused')}
+                  className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${campaignFilter === 'paused'
+                      ? 'text-white border-b-2 border-purple-500'
+                      : 'text-gray-400 hover:text-white'
+                    }`}
+                >
+                  Paused
+                  {pausedCampaignsCount > 0 && (
+                    <span className="px-2 py-0.5 bg-gray-600 text-white text-xs rounded-full">
+                      {pausedCampaignsCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setCampaignFilter('completed')}
+                  className={`px-6 py-3 text-sm font-medium transition-colors flex items-center gap-2 ${campaignFilter === 'completed'
+                      ? 'text-white border-b-2 border-purple-500'
+                      : 'text-gray-400 hover:text-white'
+                    }`}
+                >
+                  Completed
+                  {completedCampaignsCount > 0 && (
+                    <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full">
+                      {completedCampaignsCount}
+                    </span>
+                  )}
+                </button>
 
-              {/* Spacer */}
-              <div className="flex-1" />
-            </div>
+                {/* Spacer */}
+                <div className="flex-1" />
+              </div>
 
-            {/* Conditional Content: Campaign Table OR In Progress Table (merged drafts + pending) */}
-            {campaignFilter === 'pending' ? (
-              /* In Progress Table - MERGED: Shows both draft campaigns and approved prospects */
-              <div className="overflow-x-auto">
-                {(() => {
-                  // CRITICAL FIX (Dec 7): Define handleBulkDelete INSIDE IIFE to prevent production minification scoping issues
-                  // Previous attempts to reference outer-scope function failed catastrophically in production
-                  const handleBulkDelete = async () => {
-                    if (selectedCampaigns.size === 0) return;
+              {/* Conditional Content: Campaign Table OR In Progress Table (merged drafts + pending) */}
+              {campaignFilter === 'pending' ? (
+                /* In Progress Table - MERGED: Shows both draft campaigns and approved prospects */
+                <div className="overflow-x-auto">
+                  {(() => {
+                    // CRITICAL FIX (Dec 7): Define handleBulkDelete INSIDE IIFE to prevent production minification scoping issues
+                    // Previous attempts to reference outer-scope function failed catastrophically in production
+                    const handleBulkDelete = async () => {
+                      if (selectedCampaigns.size === 0) return;
 
-                    const count = selectedCampaigns.size;
-                    showConfirmModal({
-                      title: 'Delete Draft Campaigns',
-                      message: `Delete ${count} draft campaign${count > 1 ? 's' : ''}? This cannot be undone.`,
-                      confirmText: 'Delete',
-                      confirmVariant: 'danger',
-                      onConfirm: async () => {
-                        try {
-                          // Delete drafts using draft endpoint
-                          await Promise.all(
-                            Array.from(selectedCampaigns).map(draftId =>
-                              fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${actualWorkspaceId}`, {
-                                method: 'DELETE'
-                              })
-                            )
-                          );
-                          toastSuccess(`Deleted ${count} draft${count > 1 ? 's' : ''}`);
-                          clearSelection();
-                          refetch();
-                          // Also refresh drafts list
-                          queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
-                        } catch (error) {
-                          toastError('Failed to delete some drafts');
+                      const count = selectedCampaigns.size;
+                      showConfirmModal({
+                        title: 'Delete Draft Campaigns',
+                        message: `Delete ${count} draft campaign${count > 1 ? 's' : ''}? This cannot be undone.`,
+                        confirmText: 'Delete',
+                        confirmVariant: 'danger',
+                        onConfirm: async () => {
+                          try {
+                            // Delete drafts using draft endpoint
+                            await Promise.all(
+                              Array.from(selectedCampaigns).map(draftId =>
+                                fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${actualWorkspaceId}`, {
+                                  method: 'DELETE'
+                                })
+                              )
+                            );
+                            toastSuccess(`Deleted ${count} draft${count > 1 ? 's' : ''}`);
+                            clearSelection();
+                            refetch();
+                            // Also refresh drafts list
+                            queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                          } catch (error) {
+                            toastError('Failed to delete some drafts');
+                          }
                         }
+                      });
+                    };
+
+                    // Merge temp initialProspects and persistent DB campaigns
+                    const pendingCampaigns: any[] = [];
+
+                    // Add temp campaigns from initialProspects - ONLY APPROVED ONES
+                    // CRITICAL FIX (Nov 26): Skip if campaign was already created from these prospects
+                    if (initialProspects && initialProspects.length > 0 && !campaignCreatedFromInitial) {
+                      const approvedProspects = initialProspects.filter(p => p.approvalStatus === 'approved');
+                      const campaignGroups = approvedProspects.reduce((acc: any, prospect: any) => {
+                        const campaignName = prospect.campaignName || prospect.campaignTag || 'Unnamed Campaign';
+                        if (!acc[campaignName]) {
+                          acc[campaignName] = { campaignName, prospects: [], source: 'temp', createdAt: new Date() };
+                        }
+                        acc[campaignName].prospects.push(prospect);
+                        return acc;
+                      }, {});
+                      pendingCampaigns.push(...Object.values(campaignGroups));
+                    }
+
+                    // Add persistent campaigns from DB (avoid duplicates)
+                    pendingCampaignsFromDB.forEach(dbCampaign => {
+                      if (!pendingCampaigns.find(c => c.campaignName === dbCampaign.campaignName)) {
+                        pendingCampaigns.push({ ...dbCampaign, source: 'database' });
                       }
                     });
-                  };
 
-                  // Merge temp initialProspects and persistent DB campaigns
-                  const pendingCampaigns: any[] = [];
+                    // Dec 5: Include BOTH pending campaigns AND draft campaigns from builder
+                    const hasPending = pendingCampaigns.length > 0;
+                    const hasDrafts = draftCampaigns.length > 0;
+                    const isLoading = loadingPendingFromDB || loadingDrafts;
 
-                  // Add temp campaigns from initialProspects - ONLY APPROVED ONES
-                  // CRITICAL FIX (Nov 26): Skip if campaign was already created from these prospects
-                  if (initialProspects && initialProspects.length > 0 && !campaignCreatedFromInitial) {
-                    const approvedProspects = initialProspects.filter(p => p.approvalStatus === 'approved');
-                    const campaignGroups = approvedProspects.reduce((acc: any, prospect: any) => {
-                      const campaignName = prospect.campaignName || prospect.campaignTag || 'Unnamed Campaign';
-                      if (!acc[campaignName]) {
-                        acc[campaignName] = { campaignName, prospects: [], source: 'temp', createdAt: new Date() };
-                      }
-                      acc[campaignName].prospects.push(prospect);
-                      return acc;
-                    }, {});
-                    pendingCampaigns.push(...Object.values(campaignGroups));
-                  }
-
-                  // Add persistent campaigns from DB (avoid duplicates)
-                  pendingCampaignsFromDB.forEach(dbCampaign => {
-                    if (!pendingCampaigns.find(c => c.campaignName === dbCampaign.campaignName)) {
-                      pendingCampaigns.push({ ...dbCampaign, source: 'database' });
+                    if (isLoading && !hasPending && !hasDrafts) {
+                      return (
+                        <div className="text-center py-12">
+                          <div className="text-gray-400">Loading...</div>
+                        </div>
+                      );
                     }
-                  });
 
-                  // Dec 5: Include BOTH pending campaigns AND draft campaigns from builder
-                  const hasPending = pendingCampaigns.length > 0;
-                  const hasDrafts = draftCampaigns.length > 0;
-                  const isLoading = loadingPendingFromDB || loadingDrafts;
-
-                  if (isLoading && !hasPending && !hasDrafts) {
-                    return (
-                      <div className="text-center py-12">
-                        <div className="text-gray-400">Loading...</div>
-                      </div>
-                    );
-                  }
-
-                  if (!hasPending && !hasDrafts) {
-                    return (
-                      <div className="bg-gradient-to-r from-gray-800 to-gray-750 border border-gray-700 rounded-lg p-8 text-center">
-                        <div className="max-w-md mx-auto">
-                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-500/10 flex items-center justify-center">
-                            <FileText className="w-8 h-8 text-purple-400" />
+                    if (!hasPending && !hasDrafts) {
+                      return (
+                        <div className="bg-gradient-to-r from-gray-800 to-gray-750 border border-gray-700 rounded-lg p-8 text-center">
+                          <div className="max-w-md mx-auto">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-500/10 flex items-center justify-center">
+                              <FileText className="w-8 h-8 text-purple-400" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-white mb-2">No Drafts</h3>
+                            <p className="text-gray-400">You don't have any campaign drafts. Go to Data Collection to find and approve prospects, then create a campaign.</p>
                           </div>
-                          <h3 className="text-xl font-semibold text-white mb-2">No Drafts</h3>
-                          <p className="text-gray-400">You don't have any campaign drafts. Go to Data Collection to find and approve prospects, then create a campaign.</p>
                         </div>
-                      </div>
-                    );
-                  }
+                      );
+                    }
 
-                  // Dec 5: Combine pending campaigns AND draft campaigns
-                  const allItems: any[] = [
-                    // Pending campaigns from prospect_approval_sessions
-                    ...pendingCampaigns.map((pending: any) => ({
-                      type: 'pending',
-                      name: pending.campaignName,
-                      campaignType: pending.campaignType || 'connector',
-                      prospectCount: pending.prospects?.length || 0,
-                      date: pending.createdAt,
-                      draft: null,
-                      prospects: pending.prospects,
-                      status: 'ready'
-                    })),
-                    // Draft campaigns from builder (status='draft' in campaigns table)
-                    ...draftCampaigns.map((draft: any) => ({
-                      type: 'draft',
-                      name: draft.campaign_name || draft.name || 'Untitled Draft',
-                      campaignType: draft.campaign_type || draft.type || 'connector',
-                      prospectCount: draft.prospect_count || 0,
-                      date: draft.created_at,
-                      draft: draft,  // Keep full draft object for actions
-                      prospects: null,
-                      status: 'draft'
-                    }))
-                  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    // Dec 5: Combine pending campaigns AND draft campaigns
+                    const allItems: any[] = [
+                      // Pending campaigns from prospect_approval_sessions
+                      ...pendingCampaigns.map((pending: any) => ({
+                        type: 'pending',
+                        name: pending.campaignName,
+                        campaignType: pending.campaignType || 'connector',
+                        prospectCount: pending.prospects?.length || 0,
+                        date: pending.createdAt,
+                        draft: null,
+                        prospects: pending.prospects,
+                        status: 'ready'
+                      })),
+                      // Draft campaigns from builder (status='draft' in campaigns table)
+                      ...draftCampaigns.map((draft: any) => ({
+                        type: 'draft',
+                        name: draft.campaign_name || draft.name || 'Untitled Draft',
+                        campaignType: draft.campaign_type || draft.type || 'connector',
+                        prospectCount: draft.prospect_count || 0,
+                        date: draft.created_at,
+                        draft: draft,  // Keep full draft object for actions
+                        prospects: null,
+                        status: 'draft'
+                      }))
+                    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-                  // Get only draft items for bulk operations
-                  const draftItems = allItems.filter(item => item.type === 'draft' && item.draft?.id);
-                  const draftIds = draftItems.map(item => item.draft.id).filter(Boolean);
-                  const allDraftsSelected = draftIds.length > 0 && draftIds.every(id => selectedCampaigns.has(id));
+                    // Get only draft items for bulk operations
+                    const draftItems = allItems.filter(item => item.type === 'draft' && item.draft?.id);
+                    const draftIds = draftItems.map(item => item.draft.id).filter(Boolean);
+                    const allDraftsSelected = draftIds.length > 0 && draftIds.every(id => selectedCampaigns.has(id));
 
-                  return (
-                    <>
-                      {/* Bulk Actions Bar */}
-                      {selectedCampaigns.size > 0 && (
-                        <div className="mb-4 p-4 bg-purple-900/20 border border-purple-500/40 rounded-lg flex items-center justify-between">
-                          <span className="text-white font-medium">
-                            {selectedCampaigns.size} draft{selectedCampaigns.size > 1 ? 's' : ''} selected
-                          </span>
-                          <button
-                            onClick={() => {
-                              // CRITICAL FIX (Dec 7, 5th attempt): Inline all logic directly in onClick
-                              // Avoids function reference issues with IIFE + production minification
-                              const count = selectedCampaigns.size;
-                              if (count === 0) return;
+                    return (
+                      <>
+                        {/* Bulk Actions Bar */}
+                        {selectedCampaigns.size > 0 && (
+                          <div className="mb-4 p-4 bg-purple-900/20 border border-purple-500/40 rounded-lg flex items-center justify-between">
+                            <span className="text-white font-medium">
+                              {selectedCampaigns.size} draft{selectedCampaigns.size > 1 ? 's' : ''} selected
+                            </span>
+                            <button
+                              onClick={() => {
+                                // CRITICAL FIX (Dec 7, 5th attempt): Inline all logic directly in onClick
+                                // Avoids function reference issues with IIFE + production minification
+                                const count = selectedCampaigns.size;
+                                if (count === 0) return;
 
-                              setConfirmModal({
-                                isOpen: true,
-                                title: 'Delete Draft Campaigns',
-                                message: `Delete ${count} draft campaign${count > 1 ? 's' : ''}? This cannot be undone.`,
-                                confirmText: 'Delete',
-                                confirmVariant: 'danger',
-                                onConfirm: async () => {
-                                  try {
-                                    const results = await Promise.allSettled(
-                                      Array.from(selectedCampaigns).map(draftId =>
-                                        fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${actualWorkspaceId}`, {
-                                          method: 'DELETE'
-                                        }).then(res => {
-                                          if (!res.ok) throw new Error(`Failed to delete draft ${draftId}`);
-                                          return res.json();
-                                        })
-                                      )
-                                    );
-
-                                    const succeeded = results.filter(r => r.status === 'fulfilled').length;
-                                    const failed = results.filter(r => r.status === 'rejected').length;
-
-                                    if (failed > 0) {
-                                      toastError(`Deleted ${succeeded} draft${succeeded > 1 ? 's' : ''}, ${failed} failed`);
-                                    } else {
-                                      toastSuccess(`Deleted ${succeeded} draft${succeeded > 1 ? 's' : ''}`);
-                                    }
-
-                                    clearSelection();
-                                    refetch();
-                                    queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
-                                  } catch (error) {
-                                    console.error('Bulk delete error:', error);
-                                    toastError('Failed to delete drafts');
-                                  }
-                                }
-                              });
-                            }}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
-                          >
-                            <Trash2 size={16} />
-                            Delete Selected
-                          </button>
-                        </div>
-                      )}
-
-                      <table className="w-full">
-                        <thead className="bg-gray-750">
-                          <tr className="text-left text-gray-400 text-xs uppercase">
-                            <th className="px-6 py-3 font-medium w-12">
-                              {draftItems.length > 0 && (
-                                <label className="relative flex items-center cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={allDraftsSelected}
-                                    onChange={() => {
-                                      if (allDraftsSelected) {
-                                        // Deselect all drafts
-                                        setSelectedCampaigns(new Set());
-                                      } else {
-                                        // Select all drafts
-                                        setSelectedCampaigns(new Set(draftIds));
-                                      }
-                                    }}
-                                    className="w-4 h-4 rounded border-2 border-gray-500 bg-gray-700 checked:bg-purple-500 checked:border-purple-500 focus:ring-2 focus:ring-purple-400 focus:ring-offset-0 cursor-pointer appearance-none transition-colors"
-                                  />
-                                  <svg
-                                    className={`absolute w-4 h-4 pointer-events-none text-white transition-opacity ${allDraftsSelected ? 'opacity-100' : 'opacity-0'}`}
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                  >
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                </label>
-                              )}
-                            </th>
-                            <th className="px-6 py-3 font-medium">Campaign</th>
-                            <th className="px-6 py-3 font-medium">Type</th>
-                            <th className="px-6 py-3 font-medium">Status</th>
-                            <th className="px-6 py-3 font-medium">Prospects</th>
-                            <th className="px-6 py-3 font-medium">Date</th>
-                            <th className="px-6 py-3 font-medium"></th>
-                          </tr>
-                        </thead>
-                      <tbody>
-                        {allItems.map((item, idx) => (
-                          <tr
-                            key={`pending-${item.name}-${idx}`}
-                            onClick={() => {
-                              if (item.type === 'draft' && item.draft) {
-                                // Dec 5: For draft campaigns, open edit modal
-                                setCampaignToEdit(item.draft);
-                                setShowEditModal(true);
-                              } else {
-                                // For pending campaigns, open builder
-                                setSelectedCampaignProspects(item.prospects);
-                                const itemType = item.campaignType === 'linkedin' ? 'connector' : item.campaignType;
-                                setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType as 'connector' | 'messenger' | 'email' : 'connector');
-                                setShowBuilder(true);
-                              }
-                            }}
-                            className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
-                          >
-                            {/* Checkbox column - only for drafts */}
-                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                              {item.type === 'draft' && item.draft?.id && (
-                                <label className="relative flex items-center cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedCampaigns.has(item.draft.id)}
-                                    onChange={(e) => {
-                                      e.stopPropagation();
-                                      if (!item.draft?.id) return;
-                                      const newSelected = new Set(selectedCampaigns);
-                                      if (e.target.checked) {
-                                        newSelected.add(item.draft.id);
-                                      } else {
-                                        newSelected.delete(item.draft.id);
-                                      }
-                                      setSelectedCampaigns(newSelected);
-                                    }}
-                                    className="w-4 h-4 rounded border-2 border-gray-500 bg-gray-700 checked:bg-purple-500 checked:border-purple-500 focus:ring-2 focus:ring-purple-400 focus:ring-offset-0 cursor-pointer appearance-none transition-colors"
-                                  />
-                                  <svg
-                                    className={`absolute w-4 h-4 pointer-events-none text-white transition-opacity ${selectedCampaigns.has(item.draft.id) ? 'opacity-100' : 'opacity-0'}`}
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                  >
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                </label>
-                              )}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-2 h-2 rounded-full ${item.status === 'draft' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
-                                <span className="text-white font-medium">{item.name}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-gray-300">{getCampaignTypeLabel(item.campaignType)}</span>
-                            </td>
-                            <td className="px-6 py-4">
-                              {item.status === 'draft' ? (
-                                <span className="px-2 py-1 bg-yellow-600/20 text-yellow-400 text-xs rounded-full border border-yellow-500/40">
-                                  Draft
-                                </span>
-                              ) : (
-                                <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs rounded-full border border-green-500/40">
-                                  Ready
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-white">{item.prospectCount}</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-gray-400 text-sm">
-                                {item.date ? new Date(item.date).toLocaleDateString() : 'Today'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              {item.type === 'draft' ? (
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    // Check for prospects first
-                                    if (item.prospectCount === 0) {
-                                      alert('Cannot activate campaign with 0 prospects. Add prospects first.');
-                                      return;
-                                    }
-                                    // Activate draft campaign using /api/campaigns/activate
-                                    if (item.draft?.id && actualWorkspaceId) {
-                                      try {
-                                        const response = await fetch('/api/campaigns/activate', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({
-                                            campaignId: item.draft.id,
-                                            workspaceId: actualWorkspaceId
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Delete Draft Campaigns',
+                                  message: `Delete ${count} draft campaign${count > 1 ? 's' : ''}? This cannot be undone.`,
+                                  confirmText: 'Delete',
+                                  confirmVariant: 'danger',
+                                  onConfirm: async () => {
+                                    try {
+                                      const results = await Promise.allSettled(
+                                        Array.from(selectedCampaigns).map(draftId =>
+                                          fetch(`/api/campaigns/draft?draftId=${draftId}&workspaceId=${actualWorkspaceId}`, {
+                                            method: 'DELETE'
+                                          }).then(res => {
+                                            if (!res.ok) throw new Error(`Failed to delete draft ${draftId}`);
+                                            return res.json();
                                           })
-                                        });
-                                        if (response.ok) {
-                                          queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-                                          queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
-                                          setCampaignFilter('active');
-                                        } else {
-                                          const errorData = await response.json();
-                                          console.error('Failed to activate campaign:', errorData);
-                                          // API returns {success, error, error_type, ...}
-                                          alert(errorData.error || errorData.message || 'Failed to activate campaign');
-                                        }
-                                      } catch (error) {
-                                        console.error('Failed to activate campaign:', error);
+                                        )
+                                      );
+
+                                      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+                                      const failed = results.filter(r => r.status === 'rejected').length;
+
+                                      if (failed > 0) {
+                                        toastError(`Deleted ${succeeded} draft${succeeded > 1 ? 's' : ''}, ${failed} failed`);
+                                      } else {
+                                        toastSuccess(`Deleted ${succeeded} draft${succeeded > 1 ? 's' : ''}`);
                                       }
+
+                                      clearSelection();
+                                      refetch();
+                                      queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                                    } catch (error) {
+                                      console.error('Bulk delete error:', error);
+                                      toastError('Failed to delete drafts');
                                     }
-                                  }}
-                                  disabled={item.prospectCount === 0}
-                                  className={`flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors ${
-                                    item.prospectCount === 0
-                                      ? 'bg-gray-400 cursor-not-allowed'
-                                      : 'bg-green-600 hover:bg-green-700'
-                                  }`}
-                                  title={item.prospectCount === 0 ? 'Add prospects to activate' : 'Activate campaign'}
-                                >
-                                  Activate
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
+                                  }
+                                });
+                              }}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                            >
+                              <Trash2 size={16} />
+                              Delete Selected
+                            </button>
+                          </div>
+                        )}
+
+                        <table className="w-full">
+                          <thead className="bg-gray-750">
+                            <tr className="text-left text-gray-400 text-xs uppercase">
+                              <th className="px-6 py-3 font-medium w-12">
+                                {draftItems.length > 0 && (
+                                  <label className="relative flex items-center cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={allDraftsSelected}
+                                      onChange={() => {
+                                        if (allDraftsSelected) {
+                                          // Deselect all drafts
+                                          setSelectedCampaigns(new Set());
+                                        } else {
+                                          // Select all drafts
+                                          setSelectedCampaigns(new Set(draftIds));
+                                        }
+                                      }}
+                                      className="w-4 h-4 rounded border-2 border-gray-500 bg-gray-700 checked:bg-purple-500 checked:border-purple-500 focus:ring-2 focus:ring-purple-400 focus:ring-offset-0 cursor-pointer appearance-none transition-colors"
+                                    />
+                                    <svg
+                                      className={`absolute w-4 h-4 pointer-events-none text-white transition-opacity ${allDraftsSelected ? 'opacity-100' : 'opacity-0'}`}
+                                      viewBox="0 0 20 20"
+                                      fill="currentColor"
+                                    >
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  </label>
+                                )}
+                              </th>
+                              <th className="px-6 py-3 font-medium">Campaign</th>
+                              <th className="px-6 py-3 font-medium">Type</th>
+                              <th className="px-6 py-3 font-medium">Status</th>
+                              <th className="px-6 py-3 font-medium">Prospects</th>
+                              <th className="px-6 py-3 font-medium">Date</th>
+                              <th className="px-6 py-3 font-medium"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allItems.map((item, idx) => (
+                              <tr
+                                key={`pending-${item.name}-${idx}`}
+                                onClick={() => {
+                                  if (item.type === 'draft' && item.draft) {
+                                    // Dec 5: For draft campaigns, open edit modal
+                                    setCampaignToEdit(item.draft);
+                                    setShowEditModal(true);
+                                  } else {
+                                    // For pending campaigns, open builder
                                     setSelectedCampaignProspects(item.prospects);
-                                    // Map 'linkedin' → 'connector'
                                     const itemType = item.campaignType === 'linkedin' ? 'connector' : item.campaignType;
                                     setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType as 'connector' | 'messenger' | 'email' : 'connector');
                                     setShowBuilder(true);
-                                  }}
-                                  className="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors bg-purple-600 hover:bg-purple-700"
-                                >
-                                  Create Campaign
-                                </button>
+                                  }
+                                }}
+                                className="border-b border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer"
+                              >
+                                {/* Checkbox column - only for drafts */}
+                                <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                  {item.type === 'draft' && item.draft?.id && (
+                                    <label className="relative flex items-center cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedCampaigns.has(item.draft.id)}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          if (!item.draft?.id) return;
+                                          const newSelected = new Set(selectedCampaigns);
+                                          if (e.target.checked) {
+                                            newSelected.add(item.draft.id);
+                                          } else {
+                                            newSelected.delete(item.draft.id);
+                                          }
+                                          setSelectedCampaigns(newSelected);
+                                        }}
+                                        className="w-4 h-4 rounded border-2 border-gray-500 bg-gray-700 checked:bg-purple-500 checked:border-purple-500 focus:ring-2 focus:ring-purple-400 focus:ring-offset-0 cursor-pointer appearance-none transition-colors"
+                                      />
+                                      <svg
+                                        className={`absolute w-4 h-4 pointer-events-none text-white transition-opacity ${selectedCampaigns.has(item.draft.id) ? 'opacity-100' : 'opacity-0'}`}
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                      >
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    </label>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-2 h-2 rounded-full ${item.status === 'draft' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
+                                    <span className="text-white font-medium">{item.name}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="text-gray-300">{getCampaignTypeLabel(item.campaignType)}</span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  {item.status === 'draft' ? (
+                                    <span className="px-2 py-1 bg-yellow-600/20 text-yellow-400 text-xs rounded-full border border-yellow-500/40">
+                                      Draft
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-1 bg-green-600/20 text-green-400 text-xs rounded-full border border-green-500/40">
+                                      Ready
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="text-white">{item.prospectCount}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="text-gray-400 text-sm">
+                                    {item.date ? new Date(item.date).toLocaleDateString() : 'Today'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  {item.type === 'draft' ? (
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        // Check for prospects first
+                                        if (item.prospectCount === 0) {
+                                          alert('Cannot activate campaign with 0 prospects. Add prospects first.');
+                                          return;
+                                        }
+                                        // Activate draft campaign using /api/campaigns/activate
+                                        if (item.draft?.id && actualWorkspaceId) {
+                                          try {
+                                            const response = await fetch('/api/campaigns/activate', {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({
+                                                campaignId: item.draft.id,
+                                                workspaceId: actualWorkspaceId
+                                              })
+                                            });
+                                            if (response.ok) {
+                                              queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+                                              queryClient.invalidateQueries({ queryKey: ['draftCampaigns'] });
+                                              setCampaignFilter('active');
+                                            } else {
+                                              const errorData = await response.json();
+                                              console.error('Failed to activate campaign:', errorData);
+                                              // API returns {success, error, error_type, ...}
+                                              alert(errorData.error || errorData.message || 'Failed to activate campaign');
+                                            }
+                                          } catch (error) {
+                                            console.error('Failed to activate campaign:', error);
+                                          }
+                                        }
+                                      }}
+                                      disabled={item.prospectCount === 0}
+                                      className={`flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors ${item.prospectCount === 0
+                                          ? 'bg-gray-400 cursor-not-allowed'
+                                          : 'bg-green-600 hover:bg-green-700'
+                                        }`}
+                                      title={item.prospectCount === 0 ? 'Add prospects to activate' : 'Activate campaign'}
+                                    >
+                                      Activate
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedCampaignProspects(item.prospects);
+                                        // Map 'linkedin' → 'connector'
+                                        const itemType = item.campaignType === 'linkedin' ? 'connector' : item.campaignType;
+                                        setSelectedCampaignType(['connector', 'messenger', 'email'].includes(itemType) ? itemType as 'connector' | 'messenger' | 'email' : 'connector');
+                                        setShowBuilder(true);
+                                      }}
+                                      className="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm font-medium transition-colors bg-purple-600 hover:bg-purple-700"
+                                    >
+                                      Create Campaign
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </>
+                    );
+                  })()}
+                </div>
+              ) : (
+                /* Campaign Table - Active/Paused/Completed campaigns */
+                <div className="overflow-x-auto">
+                  {/* Bulk Action Bar */}
+                  {selectedCampaigns.size > 0 && (
+                    <div className="bg-purple-900/20 border-b border-purple-500/30 px-6 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <span className="text-white font-medium">{selectedCampaigns.size} campaign(s) selected</span>
+                        <button
+                          onClick={clearSelection}
+                          className="text-gray-400 hover:text-white text-sm"
+                        >
+                          Clear selection
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleBulkPause}
+                          className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm flex items-center gap-1"
+                        >
+                          <Pause size={14} />
+                          Pause
+                        </button>
+                        <button
+                          onClick={handleBulkResume}
+                          className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-sm flex items-center gap-1"
+                        >
+                          <Play size={14} />
+                          Resume
+                        </button>
+                        <button
+                          onClick={handleBulkDeleteWithConfirm}
+                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm flex items-center gap-1"
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Empty state banners for each tab */}
+                  {filteredCampaigns.length === 0 ? (
+                    <div className="bg-gradient-to-r from-gray-800 to-gray-750 border border-gray-700 rounded-lg p-8 text-center">
+                      <div className="max-w-md mx-auto">
+                        {campaignFilter === 'active' && (
+                          <>
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/10 flex items-center justify-center">
+                              <Play className="w-8 h-8 text-green-400" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-white mb-2">No Active Campaigns</h3>
+                            <p className="text-gray-400">You don't have any campaigns currently running. Go to Data Collection to find and approve prospects, then create a campaign.</p>
+                          </>
+                        )}
+                        {campaignFilter === 'paused' && (
+                          <>
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                              <Pause className="w-8 h-8 text-yellow-400" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-white mb-2">No Paused Campaigns</h3>
+                            <p className="text-gray-400">You don't have any paused campaigns. Active campaigns can be paused at any time if you need to temporarily stop outreach.</p>
+                          </>
+                        )}
+                        {campaignFilter === 'completed' && (
+                          <>
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/10 flex items-center justify-center">
+                              <CheckCircle className="w-8 h-8 text-blue-400" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-white mb-2">No Completed Campaigns</h3>
+                            <p className="text-gray-400">You don't have any completed campaigns yet. Campaigns are marked as completed when all prospects have been contacted.</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      <thead className="bg-gray-750">
+                        <tr className="text-left text-gray-400 text-xs uppercase">
+                          <th className="px-6 py-3 font-medium w-12">
+                            <input
+                              type="checkbox"
+                              checked={filteredCampaigns.length > 0 && selectedCampaigns.size === filteredCampaigns.length}
+                              onChange={() => toggleSelectAll(filteredCampaigns)}
+                              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500"
+                            />
+                          </th>
+                          <th className="px-6 py-3 font-medium">Campaign</th>
+                          <th className="px-6 py-3 font-medium">Type</th>
+                          <th className="px-6 py-3 font-medium">Contacted</th>
+                          <th className="px-6 py-3 font-medium">Connected</th>
+                          <th className="px-6 py-3 font-medium">Replied</th>
+                          <th className="px-6 py-3 font-medium">Failed</th>
+                          <th className="px-6 py-3 font-medium"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredCampaigns.map((campaign: any) => (
+                          <tr
+                            key={campaign.id}
+                            className={`border-t border-gray-700 hover:bg-gray-750 transition-colors ${selectedCampaigns.has(campaign.id) ? 'bg-purple-900/10' : ''}`}
+                          >
+                            <td className="px-6 py-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedCampaigns.has(campaign.id)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  toggleCampaignSelection(campaign.id);
+                                }}
+                                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500"
+                              />
+                            </td>
+                            <td
+                              className="px-6 py-4 cursor-pointer"
+                              onClick={() => handleCampaignAction(campaign.id)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-white font-medium">{campaign.name}</span>
+                                  </div>
+                                  <div className="text-gray-400 text-sm">Created {new Date(campaign.created_at).toLocaleDateString()}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-gray-300">{getCampaignTypeLabel(campaign.campaign_type || campaign.type)}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-white">{campaign.sent || 0}</div>
+                              <div className="text-gray-400 text-sm">of {campaign.prospects || 0}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-white">{campaign.connections || 0}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-white">{campaign.replies || 0}</div>
+                              <div className="text-gray-400 text-sm">{(Number(campaign.response_rate) || 0).toFixed(1)}%</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              {campaign.failed > 0 ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-red-400">{campaign.failed}</span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(`/api/campaigns/${campaign.id}/failed-prospects-csv`, '_blank');
+                                    }}
+                                    className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-400/10 transition-colors"
+                                    title="Download failed prospects CSV"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                      <polyline points="7 10 12 15 17 10" />
+                                      <line x1="12" y1="15" x2="12" y2="3" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (confirm(`Reset ${campaign.failed} failed prospects to pending? They will be re-queued for sending.`)) {
+                                        window.open(`/api/campaigns/${campaign.id}/reset-failed`, '_blank');
+                                      }
+                                    }}
+                                    className="text-amber-400 hover:text-amber-300 p-1 rounded hover:bg-amber-400/10 transition-colors"
+                                    title="Reset failed prospects to pending"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                                      <path d="M21 3v5h-5" />
+                                      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                                      <path d="M3 21v-5h5" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="text-white">0</div>
                               )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    editCampaign(campaign);
+                                  }}
+                                  className={`transition-colors ${campaign.status === 'active'
+                                      ? 'text-gray-600 cursor-not-allowed'
+                                      : 'text-cyan-400 hover:text-cyan-300'
+                                    }`}
+                                  title={campaign.status === 'active' ? "Pause to view/edit" : "View/Edit campaign"}
+                                  disabled={campaign.status === 'active'}
+                                >
+                                  <Edit size={18} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    viewProspects(campaign.id);
+                                  }}
+                                  className="text-orange-400 hover:text-orange-300 transition-colors"
+                                  title="View prospects"
+                                >
+                                  <Users size={18} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleCampaignStatus(campaign.id, campaign.status);
+                                  }}
+                                  className={`transition-colors ${campaign.status === 'active'
+                                      ? 'text-yellow-400 hover:text-yellow-300'
+                                      : 'text-green-400 hover:text-green-300'
+                                    }`}
+                                  title={campaign.status === 'active' ? 'Pause campaign' : 'Resume campaign'}
+                                >
+                                  {campaign.status === 'active' ? <Pause size={18} /> : <Play size={18} />}
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    archiveCampaign(campaign.id, campaign.name);
+                                  }}
+                                  className="text-red-400 hover:text-red-300 transition-colors"
+                                  title="Archive campaign"
+                                >
+                                  <Archive size={18} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCampaignAction(campaign.id);
+                                  }}
+                                  className="text-gray-400 hover:text-white transition-colors"
+                                  title="Campaign settings"
+                                >
+                                  <Settings size={18} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                    </>
-                  );
-                })()}
-              </div>
-            ) : (
-              /* Campaign Table - Active/Paused/Completed campaigns */
-              <div className="overflow-x-auto">
-                {/* Bulk Action Bar */}
-                {selectedCampaigns.size > 0 && (
-                  <div className="bg-purple-900/20 border-b border-purple-500/30 px-6 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <span className="text-white font-medium">{selectedCampaigns.size} campaign(s) selected</span>
-                      <button
-                        onClick={clearSelection}
-                        className="text-gray-400 hover:text-white text-sm"
-                      >
-                        Clear selection
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={handleBulkPause}
-                        className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm flex items-center gap-1"
-                      >
-                        <Pause size={14} />
-                        Pause
-                      </button>
-                      <button
-                        onClick={handleBulkResume}
-                        className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-sm flex items-center gap-1"
-                      >
-                        <Play size={14} />
-                        Resume
-                      </button>
-                      <button
-                        onClick={handleBulkDeleteWithConfirm}
-                        className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm flex items-center gap-1"
-                      >
-                        <Trash2 size={14} />
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Empty state banners for each tab */}
-                {filteredCampaigns.length === 0 ? (
-                  <div className="bg-gradient-to-r from-gray-800 to-gray-750 border border-gray-700 rounded-lg p-8 text-center">
-                    <div className="max-w-md mx-auto">
-                      {campaignFilter === 'active' && (
-                        <>
-                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/10 flex items-center justify-center">
-                            <Play className="w-8 h-8 text-green-400" />
-                          </div>
-                          <h3 className="text-xl font-semibold text-white mb-2">No Active Campaigns</h3>
-                          <p className="text-gray-400">You don't have any campaigns currently running. Go to Data Collection to find and approve prospects, then create a campaign.</p>
-                        </>
-                      )}
-                      {campaignFilter === 'paused' && (
-                        <>
-                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                            <Pause className="w-8 h-8 text-yellow-400" />
-                          </div>
-                          <h3 className="text-xl font-semibold text-white mb-2">No Paused Campaigns</h3>
-                          <p className="text-gray-400">You don't have any paused campaigns. Active campaigns can be paused at any time if you need to temporarily stop outreach.</p>
-                        </>
-                      )}
-                      {campaignFilter === 'completed' && (
-                        <>
-                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/10 flex items-center justify-center">
-                            <CheckCircle className="w-8 h-8 text-blue-400" />
-                          </div>
-                          <h3 className="text-xl font-semibold text-white mb-2">No Completed Campaigns</h3>
-                          <p className="text-gray-400">You don't have any completed campaigns yet. Campaigns are marked as completed when all prospects have been contacted.</p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                <table className="w-full">
-                <thead className="bg-gray-750">
-                  <tr className="text-left text-gray-400 text-xs uppercase">
-                    <th className="px-6 py-3 font-medium w-12">
-                      <input
-                        type="checkbox"
-                        checked={filteredCampaigns.length > 0 && selectedCampaigns.size === filteredCampaigns.length}
-                        onChange={() => toggleSelectAll(filteredCampaigns)}
-                        className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500"
-                      />
-                    </th>
-                    <th className="px-6 py-3 font-medium">Campaign</th>
-                    <th className="px-6 py-3 font-medium">Type</th>
-                    <th className="px-6 py-3 font-medium">Contacted</th>
-                    <th className="px-6 py-3 font-medium">Connected</th>
-                    <th className="px-6 py-3 font-medium">Replied</th>
-                    <th className="px-6 py-3 font-medium">Failed</th>
-                    <th className="px-6 py-3 font-medium"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCampaigns.map((campaign: any) => (
-                    <tr
-                      key={campaign.id}
-                      className={`border-t border-gray-700 hover:bg-gray-750 transition-colors ${selectedCampaigns.has(campaign.id) ? 'bg-purple-900/10' : ''}`}
-                    >
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedCampaigns.has(campaign.id)}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            toggleCampaignSelection(campaign.id);
-                          }}
-                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500"
-                        />
-                      </td>
-                      <td
-                        className="px-6 py-4 cursor-pointer"
-                        onClick={() => handleCampaignAction(campaign.id)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-white font-medium">{campaign.name}</span>
-                            </div>
-                            <div className="text-gray-400 text-sm">Created {new Date(campaign.created_at).toLocaleDateString()}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-gray-300">{getCampaignTypeLabel(campaign.campaign_type || campaign.type)}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-white">{campaign.sent || 0}</div>
-                        <div className="text-gray-400 text-sm">of {campaign.prospects || 0}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-white">{campaign.connections || 0}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-white">{campaign.replies || 0}</div>
-                        <div className="text-gray-400 text-sm">{(Number(campaign.response_rate) || 0).toFixed(1)}%</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {campaign.failed > 0 ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-red-400">{campaign.failed}</span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(`/api/campaigns/${campaign.id}/failed-prospects-csv`, '_blank');
-                              }}
-                              className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-400/10 transition-colors"
-                              title="Download failed prospects CSV"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                              </svg>
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (confirm(`Reset ${campaign.failed} failed prospects to pending? They will be re-queued for sending.`)) {
-                                  window.open(`/api/campaigns/${campaign.id}/reset-failed`, '_blank');
-                                }
-                              }}
-                              className="text-amber-400 hover:text-amber-300 p-1 rounded hover:bg-amber-400/10 transition-colors"
-                              title="Reset failed prospects to pending"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                                <path d="M21 3v5h-5"/>
-                                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-                                <path d="M3 21v-5h5"/>
-                              </svg>
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="text-white">0</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              editCampaign(campaign);
-                            }}
-                            className={`transition-colors ${
-                              campaign.status === 'active'
-                                ? 'text-gray-600 cursor-not-allowed'
-                                : 'text-cyan-400 hover:text-cyan-300'
-                            }`}
-                            title={campaign.status === 'active' ? "Pause to view/edit" : "View/Edit campaign"}
-                            disabled={campaign.status === 'active'}
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              viewProspects(campaign.id);
-                            }}
-                            className="text-orange-400 hover:text-orange-300 transition-colors"
-                            title="View prospects"
-                          >
-                            <Users size={18} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleCampaignStatus(campaign.id, campaign.status);
-                            }}
-                            className={`transition-colors ${
-                              campaign.status === 'active'
-                                ? 'text-yellow-400 hover:text-yellow-300'
-                                : 'text-green-400 hover:text-green-300'
-                            }`}
-                            title={campaign.status === 'active' ? 'Pause campaign' : 'Resume campaign'}
-                          >
-                            {campaign.status === 'active' ? <Pause size={18} /> : <Play size={18} />}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              archiveCampaign(campaign.id, campaign.name);
-                            }}
-                            className="text-red-400 hover:text-red-300 transition-colors"
-                            title="Archive campaign"
-                          >
-                            <Archive size={18} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCampaignAction(campaign.id);
-                            }}
-                            className="text-gray-400 hover:text-white transition-colors"
-                            title="Campaign settings"
-                          >
-                            <Settings size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Performance Metrics - Hidden for now */}
-        <div className="hidden grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-            <div className="flex items-center justify-between mb-4">
-              <Mail className="text-blue-400 group-hover:scale-110 transition-transform" size={24} />
-              <CheckCircle className="text-green-400" size={16} />
-            </div>
-            <div className="text-3xl font-bold text-white mb-2">179</div>
-            <div className="text-gray-400 group-hover:text-purple-100 text-sm mb-1">Total Messages Sent</div>
-            <div className="text-xs text-green-300">↑ 12% from last week</div>
-          </div>
-          
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-            <div className="flex items-center justify-between mb-4">
-              <Eye className="text-blue-400 group-hover:scale-110 transition-transform" size={24} />
-              <TrendingUp className="text-orange-400" size={16} />
-            </div>
-            <div className="text-3xl font-bold text-white mb-2">84</div>
-            <div className="text-gray-400 group-hover:text-purple-100 text-sm mb-1">Messages Opened</div>
-            <div className="text-xs text-orange-300">47% open rate</div>
-          </div>
-          
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
-            <div className="flex items-center justify-between mb-4">
-              <MessageSquare className="text-blue-400 group-hover:scale-110 transition-transform" size={24} />
-              <Users className="text-purple-400" size={16} />
-            </div>
-            <div className="text-3xl font-bold text-white mb-2">17</div>
-            <div className="text-gray-400 group-hover:text-purple-100 text-sm mb-1">Positive Replies</div>
-            <div className="text-xs text-purple-300">9.5% reply rate</div>
-          </div>
-        </div>
-
-      {/* Template Library Modal */}
-      {showTemplateLibrary && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">Template Library</h3>
-              <button
-                onClick={() => setShowTemplateLibrary(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            {loadingTemplates ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-gray-400">Loading templates...</div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {templates.map((template) => (
-                  <div key={template.id} className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-white font-medium">{template.name}</h4>
-                      <span className="text-xs px-2 py-1 bg-blue-600 text-white rounded">
-                        {template.type ? template.type.replace('_', ' ').toUpperCase() : 'UNKNOWN'}
-                      </span>
-                    </div>
-                    <p className="text-gray-300 text-sm mb-3">{template.description}</p>
-                    <div className="space-y-2">
-                      {template.steps?.map((step: any, index: number) => (
-                        <div key={index} className="bg-gray-600 p-3 rounded cursor-pointer hover:bg-gray-500 transition-colors">
-                          <div className="text-sm font-medium text-white mb-1">
-                            Step {index + 1}: {step.step_type}
-                          </div>
-                          <div className="text-xs text-gray-300">
-                            {step.message_template ? step.message_template.substring(0, 100) : 'No message'}...
-                          </div>
-                          {step.delay_days > 0 && (
-                            <div className="text-xs text-blue-300 mt-1">
-                              Delay: {step.delay_days} days
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-600">
-                      <span className="text-xs text-gray-400">
-                        Expected Response: {template.expected_response_rate}%
-                      </span>
-                      <button className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors">
-                        Use Template
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {templates.length === 0 && !loadingTemplates && (
-                  <div className="text-center py-12 text-gray-400">
-                    No templates found. Check your API connection.
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => setShowTemplateLibrary(false)}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Campaign Cloning Modal */}
-      {showCampaignCloning && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">Clone Campaign</h3>
-              <button
-                onClick={() => setShowCampaignCloning(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Select Campaign to Clone</label>
-                <select 
-                  value={selectedCampaignId}
-                  onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
-                >
-                  <option value="">Select a campaign...</option>
-                  {campaigns.map((campaign) => (
-                    <option key={campaign.id} value={campaign.id}>
-                      {campaign.name} - {campaign.status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">New Campaign Name</label>
-                <input
-                  type="text"
-                  value={newCampaignName}
-                  onChange={(e) => setNewCampaignName(e.target.value)}
-                  placeholder="Enter new campaign name..."
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
-                <textarea
-                  value={newCampaignDescription}
-                  onChange={(e) => setNewCampaignDescription(e.target.value)}
-                  placeholder="Enter description for cloned campaign..."
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400"
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Clone Settings</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input 
-                        type="checkbox" 
-                        checked={cloneTemplates}
-                        onChange={(e) => setCloneTemplates(e.target.checked)}
-                        className="mr-2" 
-                      />
-                      <span className="text-gray-300 text-sm">Message templates</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input 
-                        type="checkbox" 
-                        checked={cloneSettings}
-                        onChange={(e) => setCloneSettings(e.target.checked)}
-                        className="mr-2" 
-                      />
-                      <span className="text-gray-300 text-sm">Campaign settings</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input 
-                        type="checkbox" 
-                        checked={cloneProspects}
-                        onChange={(e) => setCloneProspects(e.target.checked)}
-                        className="mr-2" 
-                      />
-                      <span className="text-gray-300 text-sm">Prospect list</span>
-                    </label>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Modifications</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      <span className="text-gray-300 text-sm">Update industry targeting</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      <span className="text-gray-300 text-sm">Adjust message tone</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      <span className="text-gray-300 text-sm">Change timing settings</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setShowCampaignCloning(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleCloneCampaign}
-                disabled={isCloning || !selectedCampaignId || !newCampaignName.trim()}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-              >
-                {isCloning ? 'Cloning...' : 'Clone Campaign'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Campaign Settings Modal */}
-      {showCampaignSettings && selectedCampaign && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-3xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <Settings size={24} className="text-white" />
-                <h3 className="text-xl font-semibold text-white">Settings</h3>
-                <span className="text-xs px-2 py-1 bg-blue-600 text-white rounded ml-2">
-                  {selectedCampaign.type === 'linkedin' ? 'LinkedIn' :
-                   selectedCampaign.type === 'email' ? 'Email' : 'Multi-Channel'}
-                </span>
-              </div>
-              <button
-                onClick={() => setShowCampaignSettings(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Campaign Name */}
-              <div className="border-b border-gray-700 pb-6">
-                <h4 className="text-white font-medium mb-2">Campaign name</h4>
-                <p className="text-gray-400 text-sm mb-3">Rename your campaign here for easier campaign management.</p>
-                <input
-                  type="text"
-                  value={editedCampaignSettings.name}
-                  onChange={(e) => handleCampaignSettingChange('name', e.target.value)}
-                  maxLength={100}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
-                />
-                <div className="text-right text-gray-400 text-xs mt-1">Characters: {editedCampaignSettings.name.length}/100</div>
-              </div>
-
-              {/* Campaign Limits */}
-              <div className="border-b border-gray-700 pb-6">
-                <h4 className="text-white font-medium mb-2">Campaign limits</h4>
-                <p className="text-gray-400 text-sm mb-4">
-                  Specify the daily limit for this campaign. These limits will be applied to reach out to your leads.
-                </p>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-gray-300 text-sm mb-2 block">
-                      {selectedCampaign.type === 'linkedin'
-                        ? 'Set the number of new connection requests to send daily:'
-                        : selectedCampaign.type === 'email'
-                        ? 'Set the number of new emails to send daily:'
-                        : 'Set the number of new contacts to reach daily:'}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={editedCampaignSettings.daily_connection_limit}
-                      onChange={(e) => handleCampaignSettingChange('daily_connection_limit', parseInt(e.target.value))}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-gray-400 text-xs mt-1">
-                      <span>0</span>
-                      <span className="text-white font-medium">{editedCampaignSettings.daily_connection_limit}</span>
-                      <span>100</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-gray-300 text-sm mb-2 block">
-                      {selectedCampaign.type === 'linkedin'
-                        ? 'Set the number of LinkedIn follow-up messages to send daily:'
-                        : selectedCampaign.type === 'email'
-                        ? 'Set the number of follow-up emails to send daily:'
-                        : 'Set the number of follow-up messages to send daily:'}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={editedCampaignSettings.daily_follow_up_limit}
-                      onChange={(e) => handleCampaignSettingChange('daily_follow_up_limit', parseInt(e.target.value))}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-gray-400 text-xs mt-1">
-                      <span>0</span>
-                      <span className="text-white font-medium">{editedCampaignSettings.daily_follow_up_limit}</span>
-                      <span>100</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Campaign Priority */}
-              <div className="border-b border-gray-700 pb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-white font-medium">Campaign Priority</h4>
-                  <label className="flex items-center gap-2">
-                    <span className="text-gray-300 text-sm">Use priority</span>
-                    <input
-                      type="checkbox"
-                      checked={editedCampaignSettings.use_priority}
-                      onChange={(e) => handleCampaignSettingChange('use_priority', e.target.checked)}
-                      className="w-4 h-4 rounded"
-                    />
-                  </label>
-                </div>
-                <p className="text-gray-400 text-sm mb-3">If enabled, each campaign will have a default priority value "Medium". If a campaign priority is changed to "High" more actions will be scheduled to be sent from it in comparison to campaigns with lower priority.</p>
-                <select
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
-                  value={editedCampaignSettings.priority}
-                  onChange={(e) => handleCampaignSettingChange('priority', e.target.value)}
-                  disabled={!editedCampaignSettings.use_priority}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-
-              {/* Schedule Campaign */}
-              <div className="border-b border-gray-700 pb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-white font-medium">Schedule campaign</h4>
-                  <label className="flex items-center gap-2">
-                    <span className="text-gray-300 text-sm">Start immediately</span>
-                    <input
-                      type="checkbox"
-                      checked={editedCampaignSettings.start_immediately}
-                      onChange={(e) => handleCampaignSettingChange('start_immediately', e.target.checked)}
-                      className="w-4 h-4 rounded"
-                    />
-                  </label>
-                </div>
-                <p className="text-gray-400 text-sm mb-3">
-                  {selectedCampaign.type === 'linkedin' || selectedCampaign.type === 'multi_channel'
-                    ? 'You can schedule when campaign will be active. Once set to active, LinkedIn messages will start being sent during your account\'s active hours.'
-                    : 'You can schedule when campaign will be active. Once set to active, emails will start being sent immediately.'}
-                </p>
-                <input
-                  type="datetime-local"
-                  value={editedCampaignSettings.scheduled_start || ''}
-                  onChange={(e) => handleCampaignSettingChange('scheduled_start', e.target.value)}
-                  disabled={editedCampaignSettings.start_immediately}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-
-                {/* Timezone Selector */}
-                <div className="mt-4">
-                  <label className="text-gray-300 text-sm mb-2 block">
-                    <Globe size={14} className="inline mr-1" />
-                    Timezone
-                  </label>
-                  <select
-                    value={editedCampaignSettings.timezone || 'America/New_York'}
-                    onChange={(e) => handleCampaignSettingChange('timezone', e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
-                  >
-                    <option value="America/New_York">Eastern Time (ET)</option>
-                    <option value="America/Chicago">Central Time (CT)</option>
-                    <option value="America/Denver">Mountain Time (MT)</option>
-                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                    <option value="America/Anchorage">Alaska Time (AKT)</option>
-                    <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
-                    <option value="Europe/London">London (GMT/BST)</option>
-                    <option value="Europe/Paris">Paris (CET/CEST)</option>
-                    <option value="Europe/Berlin">Berlin (CET/CEST)</option>
-                    <option value="Asia/Tokyo">Tokyo (JST)</option>
-                    <option value="Asia/Shanghai">Shanghai (CST)</option>
-                    <option value="Asia/Singapore">Singapore (SGT)</option>
-                    <option value="Australia/Sydney">Sydney (AEDT)</option>
-                    <option value="UTC">UTC</option>
-                  </select>
-                  <p className="text-gray-400 text-xs mt-1">Campaign messages will be sent according to this timezone</p>
-                </div>
-
-                {/* Working Hours */}
-                <div className="mt-4">
-                  <label className="text-gray-300 text-sm mb-2 block">
-                    <Clock size={14} className="inline mr-1" />
-                    Working Hours
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-gray-400 text-xs mb-1 block">Start Time</label>
-                      <select
-                        value={editedCampaignSettings.working_hours_start || 7}
-                        onChange={(e) => handleCampaignSettingChange('working_hours_start', parseInt(e.target.value))}
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
-                      >
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-gray-400 text-xs mb-1 block">End Time</label>
-                      <select
-                        value={editedCampaignSettings.working_hours_end || 18}
-                        onChange={(e) => handleCampaignSettingChange('working_hours_end', parseInt(e.target.value))}
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
-                      >
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <p className="text-gray-400 text-xs mt-1">Messages will only be sent between {editedCampaignSettings.working_hours_start || 7}:00 and {editedCampaignSettings.working_hours_end || 18}:00</p>
-                </div>
-
-                {/* Skip Weekends */}
-                <div className="mt-4">
-                  <label className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={editedCampaignSettings.skip_weekends !== false}
-                      onChange={(e) => handleCampaignSettingChange('skip_weekends', e.target.checked)}
-                      className="w-4 h-4 rounded"
-                    />
-                    <div className="flex-1">
-                      <span className="text-white text-sm">Skip Weekends</span>
-                      <p className="text-gray-400 text-xs">Don't send messages on Saturday and Sunday</p>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Skip Holidays */}
-                <div className="mt-4">
-                  <label className="flex items-center gap-3 mb-2">
-                    <input
-                      type="checkbox"
-                      checked={editedCampaignSettings.skip_holidays !== false}
-                      onChange={(e) => handleCampaignSettingChange('skip_holidays', e.target.checked)}
-                      className="w-4 h-4 rounded"
-                    />
-                    <div className="flex-1">
-                      <span className="text-white text-sm">Skip Public Holidays</span>
-                      <p className="text-gray-400 text-xs">Don't send messages on public holidays</p>
-                    </div>
-                  </label>
-                  {editedCampaignSettings.skip_holidays !== false && (
-                    <div className="ml-7">
-                      <label className="text-gray-400 text-xs mb-1 block">Holiday Calendar</label>
-                      <select
-                        value={editedCampaignSettings.country_code || 'US'}
-                        onChange={(e) => handleCampaignSettingChange('country_code', e.target.value)}
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
-                      >
-                        <option value="US">United States</option>
-                        <option value="GB">United Kingdom</option>
-                        <option value="CA">Canada</option>
-                        <option value="DE">Germany</option>
-                        <option value="FR">France</option>
-                        <option value="AU">Australia</option>
-                        <option value="JP">Japan</option>
-                        <option value="SG">Singapore</option>
-                      </select>
-                    </div>
                   )}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Performance Metrics - Hidden for now */}
+          <div className="hidden grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+              <div className="flex items-center justify-between mb-4">
+                <Mail className="text-blue-400 group-hover:scale-110 transition-transform" size={24} />
+                <CheckCircle className="text-green-400" size={16} />
               </div>
-
-              {/* Prospects */}
-              <div className="border-b border-gray-700 pb-6">
-                <h4 className="text-white font-medium mb-2">Prospects</h4>
-                {selectedCampaign.type === 'linkedin' || selectedCampaign.type === 'multi_channel' ? (
-                  <>
-                    <p className="text-gray-400 text-sm mb-3">Override and allow outreaching to LinkedIn profiles from the same company</p>
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={editedCampaignSettings.allow_same_company}
-                        onChange={(e) => handleCampaignSettingChange('allow_same_company', e.target.checked)}
-                        className="w-4 h-4 rounded"
-                      />
-                      <span className="text-white text-sm">Override LinkedIn profiles</span>
-                    </label>
-                    <p className="text-gray-400 text-xs mt-2">Enable duplicating leads between company campaigns</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-gray-400 text-sm mb-3">Email campaign prospect settings</p>
-                    <label className="flex items-center gap-3 mb-2">
-                      <input
-                        type="checkbox"
-                        checked={editedCampaignSettings.allow_duplicate_emails}
-                        onChange={(e) => handleCampaignSettingChange('allow_duplicate_emails', e.target.checked)}
-                        className="w-4 h-4 rounded"
-                      />
-                      <span className="text-white text-sm">Allow duplicate email addresses</span>
-                    </label>
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={editedCampaignSettings.skip_bounced_emails}
-                        onChange={(e) => handleCampaignSettingChange('skip_bounced_emails', e.target.checked)}
-                        className="w-4 h-4 rounded"
-                      />
-                      <span className="text-white text-sm">Skip bounced emails</span>
-                    </label>
-                    <p className="text-gray-400 text-xs mt-2">Automatically skip previously bounced email addresses</p>
-                  </>
-                )}
-              </div>
-
-              {/* Campaign Status */}
-              <div className="border-b border-gray-700 pb-6">
-                <h4 className="text-white font-medium mb-2">Campaign status</h4>
-                <p className="text-gray-400 text-sm mb-3">
-                  {selectedCampaign.type === 'linkedin'
-                    ? 'You can turn this campaign on and off. An active campaign will send LinkedIn connection requests and messages according to your settings.'
-                    : selectedCampaign.type === 'email'
-                    ? 'You can turn this campaign on and off. An active campaign will send emails according to your settings.'
-                    : 'You can turn this campaign on and off. An active campaign will send messages across all channels according to your settings.'}
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 p-2 bg-gray-700 rounded">
-                    <div className={`w-3 h-3 rounded-full ${
-                      selectedCampaign.status === 'active' ? 'bg-green-500' :
-                      selectedCampaign.status === 'paused' ? 'bg-yellow-500' :
-                      selectedCampaign.status === 'completed' ? 'bg-blue-500' :
-                      selectedCampaign.status === 'inactive' ? 'bg-gray-400' :
-                      'bg-gray-500'
-                    }`}></div>
-                    <span className="text-white capitalize">{selectedCampaign.status}</span>
-                  </div>
-                  <select
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
-                    value={selectedCampaign.status}
-                    onChange={async (e) => {
-                      const newStatus = e.target.value;
-
-                      try {
-                        const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ status: newStatus })
-                        });
-
-                        if (response.ok) {
-                          // Update local state
-                          setSelectedCampaign({ ...selectedCampaign, status: newStatus });
-
-                          // Refresh campaigns list
-                          queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
-                          queryClient.invalidateQueries({ queryKey: ['pendingCampaigns', actualWorkspaceId] });
-
-                          toastSuccess(`Campaign status updated to ${newStatus}`);
-
-                          // If activating, also execute the campaign
-                          if (newStatus === 'active') {
-                            try {
-                              // Queue-based Unipile integration for LinkedIn campaigns (30 min spacing)
-                              let executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast';
-
-                              if (selectedCampaign.campaign_type === 'email') {
-                                // Use queue-based email sending (cron processes every 13 min)
-                                executeEndpoint = '/api/campaigns/email/send-emails-queued';
-                              }
-
-                              console.log(`Executing ${selectedCampaign.campaign_type || 'messenger'} campaign via ${executeEndpoint}`);
-
-                              const execResponse = await fetch(executeEndpoint, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                credentials: 'include', // Include cookies for Supabase auth
-                                body: JSON.stringify({
-                                  campaignId: selectedCampaign.id
-                                })
-                              });
-
-                              if (execResponse.ok) {
-                                const execData = await execResponse.json().catch(() => ({ message: 'Execution started' }));
-                                const progressMsg = execData.has_more_prospects
-                                  ? ` (${execData.remaining_prospects} more queued for background processing)`
-                                  : '';
-                                toastSuccess(`Campaign started! ${execData.message || 'Messages are being sent'}${progressMsg}`);
-                              } else {
-                                const execError = await execResponse.json().catch(() => ({
-                                  error: 'Execution failed',
-                                  details: { message: `Status ${execResponse.status}: ${execResponse.statusText}` }
-                                }));
-                                console.error('Campaign execution failed:', execError);
-                                toastError(`Campaign activated but execution failed: ${execError.details?.message || execError.error || 'Unknown error'}`);
-                              }
-                            } catch (execError) {
-                              console.error('Campaign execution error:', execError);
-                              const errorMessage = execError instanceof Error ? execError.message : String(execError);
-                              toastError(`Campaign activation failed: ${errorMessage}`);
-                            }
-                          }
-                        } else {
-                          const error = await response.json();
-                          toastError(`Failed to update status: ${error.error || 'Unknown error'}`);
-                        }
-                      } catch (error) {
-                        console.error('Status update error:', error);
-                        toastError('Failed to update campaign status');
-                      }
-                    }}
-                  >
-                    <option value="active">Active - Campaign is running</option>
-                    <option value="paused">Paused - Campaign is temporarily stopped</option>
-                    <option value="inactive">Inactive - Campaign ready to activate</option>
-                    <option value="completed">Completed - Campaign finished</option>
-                    <option value="archived">Archived - Campaign archived</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Delete Campaign */}
-              <div>
-                <h4 className="text-white font-medium mb-2">Delete campaign</h4>
-                <p className="text-gray-400 text-sm mb-3">Deleting a campaign will stop all the campaign's activity. Contacts from the campaign will remain in 'My Network' and in your 'Inbox', however, they will no longer receive messages from the deleted campaign. You will be able to continue manual communication with these contacts.</p>
-                <button
-                  onClick={() => {
-                    if (!selectedCampaign) return;
-
-                    showConfirmModal({
-                      title: 'Delete Campaign',
-                      message: `Are you sure you want to delete "${selectedCampaign.name}"?\n\nThis action cannot be undone. The campaign will be archived if it has sent messages, or permanently deleted if it hasn't.`,
-                      confirmText: 'Delete',
-                      confirmVariant: 'danger',
-                      onConfirm: async () => {
-                        try {
-                          const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
-                            method: 'DELETE'
-                          });
-
-                          if (response.ok) {
-                            const result = await response.json();
-                            toastSuccess(result.message || 'Campaign deleted successfully');
-
-                            // Close settings modal
-                            setShowCampaignSettings(false);
-                            setSelectedCampaign(null);
-
-                            // Refresh campaigns list
-                            queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
-                            queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
-                          } else {
-                            const error = await response.json();
-                            toastError(error.error || 'Failed to delete campaign');
-                          }
-                        } catch (error) {
-                          console.error('Delete campaign error:', error);
-                          toastError('Failed to delete campaign. Please try again.');
-                        }
-                      }
-                    });
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-                >
-                  <X size={16} />
-                  Delete campaign
-                </button>
-              </div>
+              <div className="text-3xl font-bold text-white mb-2">179</div>
+              <div className="text-gray-400 group-hover:text-purple-100 text-sm mb-1">Total Messages Sent</div>
+              <div className="text-xs text-green-300">↑ 12% from last week</div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-700">
-              <button
-                onClick={handleSaveCampaignSettings}
-                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!campaignSettingsChanged}
-              >
-                Save
-              </button>
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+              <div className="flex items-center justify-between mb-4">
+                <Eye className="text-blue-400 group-hover:scale-110 transition-transform" size={24} />
+                <TrendingUp className="text-orange-400" size={16} />
+              </div>
+              <div className="text-3xl font-bold text-white mb-2">84</div>
+              <div className="text-gray-400 group-hover:text-purple-100 text-sm mb-1">Messages Opened</div>
+              <div className="text-xs text-orange-300">47% open rate</div>
+            </div>
+
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-left transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-purple-600 hover:border-purple-500 hover:shadow-purple-500/20 group cursor-pointer">
+              <div className="flex items-center justify-between mb-4">
+                <MessageSquare className="text-blue-400 group-hover:scale-110 transition-transform" size={24} />
+                <Users className="text-purple-400" size={16} />
+              </div>
+              <div className="text-3xl font-bold text-white mb-2">17</div>
+              <div className="text-gray-400 group-hover:text-purple-100 text-sm mb-1">Positive Replies</div>
+              <div className="text-xs text-purple-300">9.5% reply rate</div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Message Approval Modal - REPLACED BY APPROVAL TAB */}
-      {false && showMessageApproval && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">Message Approval Queue</h3>
-              <button
-                onClick={() => setShowMessageApproval(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {/* Pending Messages */}
-              <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-yellow-400 font-medium">
-                    Pending Approval ({approvalCounts.pending})
-                  </h4>
-                  {approvalCounts.pending > 0 && (
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleBulkApproval('approve')}
-                        className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded"
-                      >
-                        Approve All
-                      </button>
-                      <button 
-                        onClick={() => handleBulkApproval('reject')}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded"
-                      >
-                        Reject All
-                      </button>
-                    </div>
-                  )}
-                </div>
-                
-                {loadingApproval ? (
-                  <div className="text-center py-4">
-                    <div className="text-gray-400">Loading messages...</div>
-                  </div>
-                ) : approvalMessages.pending.length === 0 ? (
-                  <div className="text-center py-4">
-                    <div className="text-gray-400">No pending messages</div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {approvalMessages.pending.map((message: any) => (
-                      <div key={message.id} className="bg-gray-700 rounded p-3">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <span className="text-white font-medium">
-                              {message.campaign_prospects?.workspace_prospects?.first_name} {message.campaign_prospects?.workspace_prospects?.last_name}
-                              {message.campaign_prospects?.workspace_prospects?.company_name && ` - ${message.campaign_prospects?.workspace_prospects?.company_name}`}
-                            </span>
-                            <span className="text-gray-400 text-sm ml-2">
-                              {message.message_type || 'Message'}
-                            </span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => handleApproveMessage(message.id)}
-                              className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded"
-                            >
-                              Approve
-                            </button>
-                            <button 
-                              onClick={() => handleRejectMessage(message.id)}
-                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded"
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        </div>
-                        <div className="text-gray-300 text-sm bg-gray-600 p-2 rounded">
-                          {message.message_content || message.message_text || 'No message content'}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Approved Messages */}
-              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                <h4 className="text-green-400 font-medium mb-3">
-                  Recently Approved ({approvalCounts.approved})
-                </h4>
-                {approvalMessages.approved.length === 0 ? (
-                  <div className="text-center py-2">
-                    <div className="text-gray-400 text-sm">No recently approved messages</div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {approvalMessages.approved.slice(0, 5).map((message: any) => (
-                      <div key={message.id} className="bg-gray-700 rounded p-3 text-sm">
-                        <span className="text-white">
-                          {message.campaign_prospects?.workspace_prospects?.first_name} {message.campaign_prospects?.workspace_prospects?.last_name}
-                          {message.campaign_prospects?.workspace_prospects?.company_name && ` - ${message.campaign_prospects?.workspace_prospects?.company_name}`}
-                        </span>
-                        <span className="text-gray-400 ml-2">
-                          • Approved {message.approved_at ? new Date(message.approved_at).toLocaleString() : 'recently'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Rejected Messages */}
-              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
-                <h4 className="text-red-400 font-medium mb-3">
-                  Recently Rejected ({approvalCounts.rejected})
-                </h4>
-                {approvalMessages.rejected.length === 0 ? (
-                  <div className="text-center py-2">
-                    <div className="text-gray-400 text-sm">No recently rejected messages</div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {approvalMessages.rejected.slice(0, 5).map((message: any) => (
-                      <div key={message.id} className="bg-gray-700 rounded p-3 text-sm">
-                        <span className="text-white">
-                          {message.campaign_prospects?.workspace_prospects?.first_name} {message.campaign_prospects?.workspace_prospects?.last_name}
-                          {message.campaign_prospects?.workspace_prospects?.company_name && ` - ${message.campaign_prospects?.workspace_prospects?.company_name}`}
-                        </span>
-                        <span className="text-gray-400 ml-2">
-                          • Rejected {message.approved_at ? new Date(message.approved_at).toLocaleString() : 'recently'}
-                        </span>
-                        {message.rejection_reason && (
-                          <span className="text-red-400 ml-2">• Reason: {message.rejection_reason}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => setShowMessageApproval(false)}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Scheduled Campaigns Modal */}
-      {showScheduledCampaigns && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-3xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">Scheduled Campaigns</h3>
-              <button
-                onClick={() => setShowScheduledCampaigns(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {/* Create Schedule */}
-              <div className="bg-gray-700 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3">Schedule New Campaign</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Campaign</label>
-                    <select className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
-                      <option>Select campaign...</option>
-                      <option>Q4 SaaS Outreach</option>
-                      <option>Holiday Networking</option>
-                      <option>New Year Prospecting</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">Start Date</label>
-                    <input type="datetime-local" className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-300 mb-1">End Date</label>
-                    <input type="datetime-local" className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" />
-                  </div>
-                </div>
-                <button className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">
-                  Schedule Campaign
-                </button>
-              </div>
-
-              {/* Upcoming Schedules */}
-              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
-                <h4 className="text-blue-400 font-medium mb-3">Upcoming Schedules</h4>
-                <div className="space-y-3">
-                  <div className="bg-gray-700 rounded p-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="text-white font-medium">Holiday Networking Campaign</div>
-                        <div className="text-gray-400 text-sm">Starts: Dec 15, 2024 at 9:00 AM</div>
-                        <div className="text-gray-400 text-sm">Expected Duration: 2 weeks</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded">Edit</button>
-                        <button className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">Cancel</button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gray-700 rounded p-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="text-white font-medium">Q1 2025 Prospecting Blitz</div>
-                        <div className="text-gray-400 text-sm">Starts: Jan 2, 2025 at 8:00 AM</div>
-                        <div className="text-gray-400 text-sm">Expected Duration: 1 month</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded">Edit</button>
-                        <button className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">Cancel</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Active Schedules */}
-              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                <h4 className="text-green-400 font-medium mb-3">Currently Active</h4>
-                <div className="bg-gray-700 rounded p-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-white font-medium">November B2B Outreach</div>
-                      <div className="text-gray-400 text-sm">Started: Nov 1, 2024 • Progress: 65%</div>
-                      <div className="text-gray-400 text-sm">Messages sent: 156/240</div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded">Pause</button>
-                      <button className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">Stop</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => setShowScheduledCampaigns(false)}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* A/B Testing Hub Modal - REMOVED Dec 18, 2025 */}
-
-      {/* Campaign Steps Editor */}
-      {showStepsEditor && selectedCampaign && (
-        <CampaignStepsEditor
-          campaignId={selectedCampaign.id}
-          campaignName={selectedCampaign.name}
-          campaignType={selectedCampaign.type}
-          onClose={() => setShowStepsEditor(false)}
-          onSave={(steps) => {
-            console.log('Saved campaign steps:', steps);
-            // TODO: Save steps to database
-            setShowStepsEditor(false);
-          }}
-          workspaceId={actualWorkspaceId || undefined}
-        />
-      )}
-
-      {/* Message Review Detail Modal */}
-      {selectedMessageForReview && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="bg-gray-750 px-6 py-4 border-b border-gray-700 flex items-center justify-between sticky top-0">
-              <div>
-                <h3 className="text-xl font-semibold text-white">{selectedMessageForReview.campaign_name}</h3>
-                <div className="flex items-center gap-3 mt-1">
-                  <p className="text-sm text-gray-400">
-                    Step {selectedMessageForReview.step_number} • {new Date(selectedMessageForReview.created_at).toLocaleString()}
-                  </p>
-                  <span className="text-gray-600">•</span>
+          {/* Template Library Modal */}
+          {showTemplateLibrary && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-white">Template Library</h3>
                   <button
-                    onClick={() => loadCampaignProspects(selectedMessageForReview.campaign_id)}
-                    disabled={loadingProspects}
-                    className="text-sm text-purple-400 hover:text-purple-300 underline transition-colors flex items-center gap-1 disabled:opacity-50"
+                    onClick={() => setShowTemplateLibrary(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
                   >
-                    <Users size={14} />
-                    {loadingProspects ? 'Loading...' : 'View Approved Prospects'}
+                    <X size={24} />
+                  </button>
+                </div>
+
+                {loadingTemplates ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-gray-400">Loading templates...</div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {templates.map((template) => (
+                      <div key={template.id} className="bg-gray-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-white font-medium">{template.name}</h4>
+                          <span className="text-xs px-2 py-1 bg-blue-600 text-white rounded">
+                            {template.type ? template.type.replace('_', ' ').toUpperCase() : 'UNKNOWN'}
+                          </span>
+                        </div>
+                        <p className="text-gray-300 text-sm mb-3">{template.description}</p>
+                        <div className="space-y-2">
+                          {template.steps?.map((step: any, index: number) => (
+                            <div key={index} className="bg-gray-600 p-3 rounded cursor-pointer hover:bg-gray-500 transition-colors">
+                              <div className="text-sm font-medium text-white mb-1">
+                                Step {index + 1}: {step.step_type}
+                              </div>
+                              <div className="text-xs text-gray-300">
+                                {step.message_template ? step.message_template.substring(0, 100) : 'No message'}...
+                              </div>
+                              {step.delay_days > 0 && (
+                                <div className="text-xs text-blue-300 mt-1">
+                                  Delay: {step.delay_days} days
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-600">
+                          <span className="text-xs text-gray-400">
+                            Expected Response: {template.expected_response_rate}%
+                          </span>
+                          <button className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-colors">
+                            Use Template
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {templates.length === 0 && !loadingTemplates && (
+                      <div className="text-center py-12 text-gray-400">
+                        No templates found. Check your API connection.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-end mt-6">
+                  <button
+                    onClick={() => setShowTemplateLibrary(false)}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                  >
+                    Close
                   </button>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedMessageForReview(null)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
             </div>
+          )}
 
-            {/* Message Content */}
-            <div className="p-6 space-y-6">
-              {/* Message Body */}
-              <div>
-                <label className="text-sm font-medium text-gray-400 mb-2 block">Message Content</label>
-                <div className="bg-gray-900 rounded-lg p-6 border border-gray-700">
-                  <div className="text-gray-100 text-base leading-relaxed whitespace-pre-wrap">
-                    {selectedMessageForReview.message_content}
-                  </div>
-                </div>
-              </div>
-
-              {/* Message Stats */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-gray-750 rounded-lg p-4 border border-gray-700">
-                  <div className="text-gray-400 text-xs uppercase mb-1">Characters</div>
-                  <div className={`text-2xl font-semibold ${selectedMessageForReview.message_content?.length > 275 && selectedMessageForReview.step_number === 1 ? 'text-yellow-400' : 'text-white'}`}>
-                    {selectedMessageForReview.message_content?.length || 0}
-                  </div>
-                  {selectedMessageForReview.message_content?.length > 275 && selectedMessageForReview.step_number === 1 && (
-                    <div className="text-yellow-400 text-xs mt-1 flex items-center gap-1">
-                      <AlertTriangle size={12} />
-                      Exceeds LinkedIn limit
-                    </div>
-                  )}
-                </div>
-                <div className="bg-gray-750 rounded-lg p-4 border border-gray-700">
-                  <div className="text-gray-400 text-xs uppercase mb-1">Personalization Tags</div>
-                  <div className="text-2xl font-semibold text-white">
-                    {(selectedMessageForReview.message_content?.match(/\{\{.*?\}\}/g) || []).length}
-                  </div>
-                  <div className="text-gray-400 text-xs mt-1">Dynamic fields</div>
-                </div>
-                <div className="bg-gray-750 rounded-lg p-4 border border-gray-700">
-                  <div className="text-gray-400 text-xs uppercase mb-1">Status</div>
-                  <div className="text-2xl font-semibold text-yellow-400">Pending</div>
-                  <div className="text-gray-400 text-xs mt-1">Awaiting review</div>
-                </div>
-              </div>
-
-              {/* Personalization Tags Used */}
-              {(selectedMessageForReview.message_content?.match(/\{\{.*?\}\}/g) || []).length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-gray-400 mb-2 block">Personalization Tags</label>
-                  <div className="flex flex-wrap gap-2">
-                    {Array.from(new Set(selectedMessageForReview.message_content?.match(/\{\{.*?\}\}/g) || [])).map((tag: string, idx: number) => (
-                      <span key={idx} className="px-3 py-1 bg-purple-600/20 text-purple-300 text-sm rounded-full border border-purple-500/40">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-700">
-                <div className="flex gap-3">
+          {/* Campaign Cloning Modal */}
+          {showCampaignCloning && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-white">Clone Campaign</h3>
                   <button
-                    onClick={() => setSelectedMessageForReview(null)}
-                    className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    onClick={() => setShowCampaignCloning(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Select Campaign to Clone</label>
+                    <select
+                      value={selectedCampaignId}
+                      onChange={(e) => setSelectedCampaignId(e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                    >
+                      <option value="">Select a campaign...</option>
+                      {campaigns.map((campaign) => (
+                        <option key={campaign.id} value={campaign.id}>
+                          {campaign.name} - {campaign.status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">New Campaign Name</label>
+                    <input
+                      type="text"
+                      value={newCampaignName}
+                      onChange={(e) => setNewCampaignName(e.target.value)}
+                      placeholder="Enter new campaign name..."
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
+                    <textarea
+                      value={newCampaignDescription}
+                      onChange={(e) => setNewCampaignDescription(e.target.value)}
+                      placeholder="Enter description for cloned campaign..."
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Clone Settings</label>
+                      <div className="space-y-2">
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={cloneTemplates}
+                            onChange={(e) => setCloneTemplates(e.target.checked)}
+                            className="mr-2"
+                          />
+                          <span className="text-gray-300 text-sm">Message templates</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={cloneSettings}
+                            onChange={(e) => setCloneSettings(e.target.checked)}
+                            className="mr-2"
+                          />
+                          <span className="text-gray-300 text-sm">Campaign settings</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={cloneProspects}
+                            onChange={(e) => setCloneProspects(e.target.checked)}
+                            className="mr-2"
+                          />
+                          <span className="text-gray-300 text-sm">Prospect list</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Modifications</label>
+                      <div className="space-y-2">
+                        <label className="flex items-center">
+                          <input type="checkbox" className="mr-2" />
+                          <span className="text-gray-300 text-sm">Update industry targeting</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input type="checkbox" className="mr-2" />
+                          <span className="text-gray-300 text-sm">Adjust message tone</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input type="checkbox" className="mr-2" />
+                          <span className="text-gray-300 text-sm">Change timing settings</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={() => setShowCampaignCloning(false)}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
                   >
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
-                      // TODO: Open SAM chat with context about this message
-                      console.log('Ask SAM for help with message:', selectedMessageForReview);
-                      toastError('SAM chat integration coming soon! This will open a chat with SAM to help improve this message.');
-                    }}
-                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                    onClick={handleCloneCampaign}
+                    disabled={isCloning || !selectedCampaignId || !newCampaignName.trim()}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                   >
-                    <Brain size={18} />
-                    Ask SAM to Improve
-                  </button>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      handleRejectMessage(selectedMessageForReview.id);
-                      setSelectedMessageForReview(null);
-                    }}
-                    className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <XCircle size={18} />
-                    Reject Message
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleApproveMessage(selectedMessageForReview.id);
-                      setSelectedMessageForReview(null);
-                    }}
-                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <CheckCircle size={18} />
-                    Approve Message
+                    {isCloning ? 'Cloning...' : 'Clone Campaign'}
                   </button>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Campaign Prospects Modal */}
-      {showCampaignProspects && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="bg-gray-750 px-6 py-4 border-b border-gray-700 flex items-center justify-between sticky top-0">
-              <div>
-                <h3 className="text-xl font-semibold text-white">Campaign Prospects</h3>
-                <p className="text-sm text-gray-400 mt-1">
-                  {campaignProspects.length} prospect{campaignProspects.length !== 1 ? 's' : ''} in this campaign
-                </p>
-              </div>
-              <button
-                onClick={() => setShowCampaignProspects(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Prospect List */}
-            <div className="p-6">
-              {campaignProspects.length === 0 ? (
-                <div className="text-center py-12">
-                  <Users className="mx-auto text-gray-600 mb-4" size={48} />
-                  <div className="text-white font-medium mb-2">No prospects found</div>
-                  <div className="text-gray-400">This campaign doesn't have any prospects yet.</div>
+          {/* Campaign Settings Modal */}
+          {showCampaignSettings && selectedCampaign && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 max-w-3xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Settings size={24} className="text-white" />
+                    <h3 className="text-xl font-semibold text-white">Settings</h3>
+                    <span className="text-xs px-2 py-1 bg-blue-600 text-white rounded ml-2">
+                      {selectedCampaign.type === 'linkedin' ? 'LinkedIn' :
+                        selectedCampaign.type === 'email' ? 'Email' : 'Multi-Channel'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowCampaignSettings(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {campaignProspects.map((prospect: any) => (
-                    <div
-                      key={prospect.id}
-                      className="bg-gray-750 border border-gray-600 rounded-lg p-4 hover:border-purple-500/50 transition-colors"
+
+                <div className="space-y-6">
+                  {/* Campaign Name */}
+                  <div className="border-b border-gray-700 pb-6">
+                    <h4 className="text-white font-medium mb-2">Campaign name</h4>
+                    <p className="text-gray-400 text-sm mb-3">Rename your campaign here for easier campaign management.</p>
+                    <input
+                      type="text"
+                      value={editedCampaignSettings.name}
+                      onChange={(e) => handleCampaignSettingChange('name', e.target.value)}
+                      maxLength={100}
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none"
+                    />
+                    <div className="text-right text-gray-400 text-xs mt-1">Characters: {editedCampaignSettings.name.length}/100</div>
+                  </div>
+
+                  {/* Campaign Limits */}
+                  <div className="border-b border-gray-700 pb-6">
+                    <h4 className="text-white font-medium mb-2">Campaign limits</h4>
+                    <p className="text-gray-400 text-sm mb-4">
+                      Specify the daily limit for this campaign. These limits will be applied to reach out to your leads.
+                    </p>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-gray-300 text-sm mb-2 block">
+                          {selectedCampaign.type === 'linkedin'
+                            ? 'Set the number of new connection requests to send daily:'
+                            : selectedCampaign.type === 'email'
+                              ? 'Set the number of new emails to send daily:'
+                              : 'Set the number of new contacts to reach daily:'}
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={editedCampaignSettings.daily_connection_limit}
+                          onChange={(e) => handleCampaignSettingChange('daily_connection_limit', parseInt(e.target.value))}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-gray-400 text-xs mt-1">
+                          <span>0</span>
+                          <span className="text-white font-medium">{editedCampaignSettings.daily_connection_limit}</span>
+                          <span>100</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-gray-300 text-sm mb-2 block">
+                          {selectedCampaign.type === 'linkedin'
+                            ? 'Set the number of LinkedIn follow-up messages to send daily:'
+                            : selectedCampaign.type === 'email'
+                              ? 'Set the number of follow-up emails to send daily:'
+                              : 'Set the number of follow-up messages to send daily:'}
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={editedCampaignSettings.daily_follow_up_limit}
+                          onChange={(e) => handleCampaignSettingChange('daily_follow_up_limit', parseInt(e.target.value))}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-gray-400 text-xs mt-1">
+                          <span>0</span>
+                          <span className="text-white font-medium">{editedCampaignSettings.daily_follow_up_limit}</span>
+                          <span>100</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Campaign Priority */}
+                  <div className="border-b border-gray-700 pb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-white font-medium">Campaign Priority</h4>
+                      <label className="flex items-center gap-2">
+                        <span className="text-gray-300 text-sm">Use priority</span>
+                        <input
+                          type="checkbox"
+                          checked={editedCampaignSettings.use_priority}
+                          onChange={(e) => handleCampaignSettingChange('use_priority', e.target.checked)}
+                          className="w-4 h-4 rounded"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-gray-400 text-sm mb-3">If enabled, each campaign will have a default priority value "Medium". If a campaign priority is changed to "High" more actions will be scheduled to be sent from it in comparison to campaigns with lower priority.</p>
+                    <select
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                      value={editedCampaignSettings.priority}
+                      onChange={(e) => handleCampaignSettingChange('priority', e.target.value)}
+                      disabled={!editedCampaignSettings.use_priority}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h4 className="text-white font-semibold">
-                              {prospect.first_name && prospect.last_name
-                                ? `${prospect.first_name} ${prospect.last_name}`
-                                : prospect.workspace_prospects?.full_name || prospect.name || 'Unknown'}
-                            </h4>
-                            {prospect.status && (
-                              <span className={`px-2 py-0.5 text-xs rounded-full border ${
-                                prospect.status === 'pending' ? 'bg-yellow-600/20 text-yellow-400 border-yellow-500/40' :
-                                prospect.status === 'approved' ? 'bg-green-600/20 text-green-400 border-green-500/40' :
-                                prospect.status === 'contacted' || prospect.status === 'connected' ? 'bg-blue-600/20 text-blue-400 border-blue-500/40' :
-                                'bg-gray-600/20 text-gray-400 border-gray-500/40'
-                              }`}>
-                                {prospect.status}
-                              </span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                            {(prospect.title || prospect.workspace_prospects?.job_title) && (
-                              <div>
-                                <span className="text-gray-400">Title:</span>
-                                <span className="text-gray-300 ml-2">{prospect.title || prospect.workspace_prospects?.job_title}</span>
-                              </div>
-                            )}
-                            {(prospect.company_name || prospect.company || prospect.workspace_prospects?.company_name) && (
-                              <div>
-                                <span className="text-gray-400">Company:</span>
-                                <span className="text-gray-300 ml-2">{prospect.company_name || prospect.company || prospect.workspace_prospects?.company_name}</span>
-                              </div>
-                            )}
-                            {(prospect.email || prospect.workspace_prospects?.email) && (
-                              <div>
-                                <span className="text-gray-400">Email:</span>
-                                <span className="text-gray-300 ml-2">{prospect.email || prospect.workspace_prospects?.email}</span>
-                              </div>
-                            )}
-                            {(prospect.linkedin_url || prospect.workspace_prospects?.linkedin_url) && (
-                              <div>
-                                <span className="text-gray-400">LinkedIn:</span>
-                                <a
-                                  href={prospect.linkedin_url || prospect.workspace_prospects?.linkedin_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-purple-400 hover:text-purple-300 ml-2 underline"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  View Profile
-                                </a>
-                              </div>
-                            )}
-                          </div>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
 
-                          {/* Campaign Stats */}
-                          <div className="mt-3 pt-3 border-t border-gray-700">
-                            <div className="grid grid-cols-5 gap-4 text-xs">
-                              <div className="text-center">
-                                <div className="text-gray-400 mb-1">CR Sent</div>
-                                <div className={prospect.contacted_at ? "text-green-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
-                                  {prospect.contacted_at ? "1" : "0"}
-                                </div>
+                  {/* Schedule Campaign */}
+                  <div className="border-b border-gray-700 pb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-white font-medium">Schedule campaign</h4>
+                      <label className="flex items-center gap-2">
+                        <span className="text-gray-300 text-sm">Start immediately</span>
+                        <input
+                          type="checkbox"
+                          checked={editedCampaignSettings.start_immediately}
+                          onChange={(e) => handleCampaignSettingChange('start_immediately', e.target.checked)}
+                          className="w-4 h-4 rounded"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-gray-400 text-sm mb-3">
+                      {selectedCampaign.type === 'linkedin' || selectedCampaign.type === 'multi_channel'
+                        ? 'You can schedule when campaign will be active. Once set to active, LinkedIn messages will start being sent during your account\'s active hours.'
+                        : 'You can schedule when campaign will be active. Once set to active, emails will start being sent immediately.'}
+                    </p>
+                    <input
+                      type="datetime-local"
+                      value={editedCampaignSettings.scheduled_start || ''}
+                      onChange={(e) => handleCampaignSettingChange('scheduled_start', e.target.value)}
+                      disabled={editedCampaignSettings.start_immediately}
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+
+                    {/* Timezone Selector */}
+                    <div className="mt-4">
+                      <label className="text-gray-300 text-sm mb-2 block">
+                        <Globe size={14} className="inline mr-1" />
+                        Timezone
+                      </label>
+                      <select
+                        value={editedCampaignSettings.timezone || 'America/New_York'}
+                        onChange={(e) => handleCampaignSettingChange('timezone', e.target.value)}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                      >
+                        <option value="America/New_York">Eastern Time (ET)</option>
+                        <option value="America/Chicago">Central Time (CT)</option>
+                        <option value="America/Denver">Mountain Time (MT)</option>
+                        <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                        <option value="America/Anchorage">Alaska Time (AKT)</option>
+                        <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
+                        <option value="Europe/London">London (GMT/BST)</option>
+                        <option value="Europe/Paris">Paris (CET/CEST)</option>
+                        <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                        <option value="Asia/Tokyo">Tokyo (JST)</option>
+                        <option value="Asia/Shanghai">Shanghai (CST)</option>
+                        <option value="Asia/Singapore">Singapore (SGT)</option>
+                        <option value="Australia/Sydney">Sydney (AEDT)</option>
+                        <option value="UTC">UTC</option>
+                      </select>
+                      <p className="text-gray-400 text-xs mt-1">Campaign messages will be sent according to this timezone</p>
+                    </div>
+
+                    {/* Working Hours */}
+                    <div className="mt-4">
+                      <label className="text-gray-300 text-sm mb-2 block">
+                        <Clock size={14} className="inline mr-1" />
+                        Working Hours
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-gray-400 text-xs mb-1 block">Start Time</label>
+                          <select
+                            value={editedCampaignSettings.working_hours_start || 7}
+                            onChange={(e) => handleCampaignSettingChange('working_hours_start', parseInt(e.target.value))}
+                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                          >
+                            {Array.from({ length: 24 }, (_, i) => (
+                              <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-gray-400 text-xs mb-1 block">End Time</label>
+                          <select
+                            value={editedCampaignSettings.working_hours_end || 18}
+                            onChange={(e) => handleCampaignSettingChange('working_hours_end', parseInt(e.target.value))}
+                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                          >
+                            {Array.from({ length: 24 }, (_, i) => (
+                              <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <p className="text-gray-400 text-xs mt-1">Messages will only be sent between {editedCampaignSettings.working_hours_start || 7}:00 and {editedCampaignSettings.working_hours_end || 18}:00</p>
+                    </div>
+
+                    {/* Skip Weekends */}
+                    <div className="mt-4">
+                      <label className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={editedCampaignSettings.skip_weekends !== false}
+                          onChange={(e) => handleCampaignSettingChange('skip_weekends', e.target.checked)}
+                          className="w-4 h-4 rounded"
+                        />
+                        <div className="flex-1">
+                          <span className="text-white text-sm">Skip Weekends</span>
+                          <p className="text-gray-400 text-xs">Don't send messages on Saturday and Sunday</p>
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* Skip Holidays */}
+                    <div className="mt-4">
+                      <label className="flex items-center gap-3 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={editedCampaignSettings.skip_holidays !== false}
+                          onChange={(e) => handleCampaignSettingChange('skip_holidays', e.target.checked)}
+                          className="w-4 h-4 rounded"
+                        />
+                        <div className="flex-1">
+                          <span className="text-white text-sm">Skip Public Holidays</span>
+                          <p className="text-gray-400 text-xs">Don't send messages on public holidays</p>
+                        </div>
+                      </label>
+                      {editedCampaignSettings.skip_holidays !== false && (
+                        <div className="ml-7">
+                          <label className="text-gray-400 text-xs mb-1 block">Holiday Calendar</label>
+                          <select
+                            value={editedCampaignSettings.country_code || 'US'}
+                            onChange={(e) => handleCampaignSettingChange('country_code', e.target.value)}
+                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+                          >
+                            <option value="US">United States</option>
+                            <option value="GB">United Kingdom</option>
+                            <option value="CA">Canada</option>
+                            <option value="DE">Germany</option>
+                            <option value="FR">France</option>
+                            <option value="AU">Australia</option>
+                            <option value="JP">Japan</option>
+                            <option value="SG">Singapore</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Prospects */}
+                  <div className="border-b border-gray-700 pb-6">
+                    <h4 className="text-white font-medium mb-2">Prospects</h4>
+                    {selectedCampaign.type === 'linkedin' || selectedCampaign.type === 'multi_channel' ? (
+                      <>
+                        <p className="text-gray-400 text-sm mb-3">Override and allow outreaching to LinkedIn profiles from the same company</p>
+                        <label className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={editedCampaignSettings.allow_same_company}
+                            onChange={(e) => handleCampaignSettingChange('allow_same_company', e.target.checked)}
+                            className="w-4 h-4 rounded"
+                          />
+                          <span className="text-white text-sm">Override LinkedIn profiles</span>
+                        </label>
+                        <p className="text-gray-400 text-xs mt-2">Enable duplicating leads between company campaigns</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-gray-400 text-sm mb-3">Email campaign prospect settings</p>
+                        <label className="flex items-center gap-3 mb-2">
+                          <input
+                            type="checkbox"
+                            checked={editedCampaignSettings.allow_duplicate_emails}
+                            onChange={(e) => handleCampaignSettingChange('allow_duplicate_emails', e.target.checked)}
+                            className="w-4 h-4 rounded"
+                          />
+                          <span className="text-white text-sm">Allow duplicate email addresses</span>
+                        </label>
+                        <label className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={editedCampaignSettings.skip_bounced_emails}
+                            onChange={(e) => handleCampaignSettingChange('skip_bounced_emails', e.target.checked)}
+                            className="w-4 h-4 rounded"
+                          />
+                          <span className="text-white text-sm">Skip bounced emails</span>
+                        </label>
+                        <p className="text-gray-400 text-xs mt-2">Automatically skip previously bounced email addresses</p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Campaign Status */}
+                  <div className="border-b border-gray-700 pb-6">
+                    <h4 className="text-white font-medium mb-2">Campaign status</h4>
+                    <p className="text-gray-400 text-sm mb-3">
+                      {selectedCampaign.type === 'linkedin'
+                        ? 'You can turn this campaign on and off. An active campaign will send LinkedIn connection requests and messages according to your settings.'
+                        : selectedCampaign.type === 'email'
+                          ? 'You can turn this campaign on and off. An active campaign will send emails according to your settings.'
+                          : 'You can turn this campaign on and off. An active campaign will send messages across all channels according to your settings.'}
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 p-2 bg-gray-700 rounded">
+                        <div className={`w-3 h-3 rounded-full ${selectedCampaign.status === 'active' ? 'bg-green-500' :
+                            selectedCampaign.status === 'paused' ? 'bg-yellow-500' :
+                              selectedCampaign.status === 'completed' ? 'bg-blue-500' :
+                                selectedCampaign.status === 'inactive' ? 'bg-gray-400' :
+                                  'bg-gray-500'
+                          }`}></div>
+                        <span className="text-white capitalize">{selectedCampaign.status}</span>
+                      </div>
+                      <select
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm cursor-pointer hover:border-purple-500 focus:border-purple-500 focus:outline-none"
+                        value={selectedCampaign.status}
+                        onChange={async (e) => {
+                          const newStatus = e.target.value;
+
+                          try {
+                            const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ status: newStatus })
+                            });
+
+                            if (response.ok) {
+                              // Update local state
+                              setSelectedCampaign({ ...selectedCampaign, status: newStatus });
+
+                              // Refresh campaigns list
+                              queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+                              queryClient.invalidateQueries({ queryKey: ['pendingCampaigns', actualWorkspaceId] });
+
+                              toastSuccess(`Campaign status updated to ${newStatus}`);
+
+                              // If activating, also execute the campaign
+                              if (newStatus === 'active') {
+                                try {
+                                  // Queue-based Unipile integration for LinkedIn campaigns (30 min spacing)
+                                  let executeEndpoint = '/api/campaigns/direct/send-connection-requests-fast';
+
+                                  if (selectedCampaign.campaign_type === 'email') {
+                                    // Use queue-based email sending (cron processes every 13 min)
+                                    executeEndpoint = '/api/campaigns/email/send-emails-queued';
+                                  }
+
+                                  console.log(`Executing ${selectedCampaign.campaign_type || 'messenger'} campaign via ${executeEndpoint}`);
+
+                                  const execResponse = await fetch(executeEndpoint, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    credentials: 'include', // Include cookies for Supabase auth
+                                    body: JSON.stringify({
+                                      campaignId: selectedCampaign.id
+                                    })
+                                  });
+
+                                  if (execResponse.ok) {
+                                    const execData = await execResponse.json().catch(() => ({ message: 'Execution started' }));
+                                    const progressMsg = execData.has_more_prospects
+                                      ? ` (${execData.remaining_prospects} more queued for background processing)`
+                                      : '';
+                                    toastSuccess(`Campaign started! ${execData.message || 'Messages are being sent'}${progressMsg}`);
+                                  } else {
+                                    const execError = await execResponse.json().catch(() => ({
+                                      error: 'Execution failed',
+                                      details: { message: `Status ${execResponse.status}: ${execResponse.statusText}` }
+                                    }));
+                                    console.error('Campaign execution failed:', execError);
+                                    toastError(`Campaign activated but execution failed: ${execError.details?.message || execError.error || 'Unknown error'}`);
+                                  }
+                                } catch (execError) {
+                                  console.error('Campaign execution error:', execError);
+                                  const errorMessage = execError instanceof Error ? execError.message : String(execError);
+                                  toastError(`Campaign activation failed: ${errorMessage}`);
+                                }
+                              }
+                            } else {
+                              const error = await response.json();
+                              toastError(`Failed to update status: ${error.error || 'Unknown error'}`);
+                            }
+                          } catch (error) {
+                            console.error('Status update error:', error);
+                            toastError('Failed to update campaign status');
+                          }
+                        }}
+                      >
+                        <option value="active">Active - Campaign is running</option>
+                        <option value="paused">Paused - Campaign is temporarily stopped</option>
+                        <option value="inactive">Inactive - Campaign ready to activate</option>
+                        <option value="completed">Completed - Campaign finished</option>
+                        <option value="archived">Archived - Campaign archived</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Delete Campaign */}
+                  <div>
+                    <h4 className="text-white font-medium mb-2">Delete campaign</h4>
+                    <p className="text-gray-400 text-sm mb-3">Deleting a campaign will stop all the campaign's activity. Contacts from the campaign will remain in 'My Network' and in your 'Inbox', however, they will no longer receive messages from the deleted campaign. You will be able to continue manual communication with these contacts.</p>
+                    <button
+                      onClick={() => {
+                        if (!selectedCampaign) return;
+
+                        showConfirmModal({
+                          title: 'Delete Campaign',
+                          message: `Are you sure you want to delete "${selectedCampaign.name}"?\n\nThis action cannot be undone. The campaign will be archived if it has sent messages, or permanently deleted if it hasn't.`,
+                          confirmText: 'Delete',
+                          confirmVariant: 'danger',
+                          onConfirm: async () => {
+                            try {
+                              const response = await fetch(`/api/campaigns/${selectedCampaign.id}`, {
+                                method: 'DELETE'
+                              });
+
+                              if (response.ok) {
+                                const result = await response.json();
+                                toastSuccess(result.message || 'Campaign deleted successfully');
+
+                                // Close settings modal
+                                setShowCampaignSettings(false);
+                                setSelectedCampaign(null);
+
+                                // Refresh campaigns list
+                                queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+                                queryClient.invalidateQueries({ queryKey: ['pendingCampaigns'] });
+                              } else {
+                                const error = await response.json();
+                                toastError(error.error || 'Failed to delete campaign');
+                              }
+                            } catch (error) {
+                              console.error('Delete campaign error:', error);
+                              toastError('Failed to delete campaign. Please try again.');
+                            }
+                          }
+                        });
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                    >
+                      <X size={16} />
+                      Delete campaign
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-700">
+                  <button
+                    onClick={handleSaveCampaignSettings}
+                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!campaignSettingsChanged}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Message Approval Modal - REPLACED BY APPROVAL TAB */}
+          {false && showMessageApproval && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-white">Message Approval Queue</h3>
+                  <button
+                    onClick={() => setShowMessageApproval(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Pending Messages */}
+                  <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-yellow-400 font-medium">
+                        Pending Approval ({approvalCounts.pending})
+                      </h4>
+                      {approvalCounts.pending > 0 && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleBulkApproval('approve')}
+                            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded"
+                          >
+                            Approve All
+                          </button>
+                          <button
+                            onClick={() => handleBulkApproval('reject')}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded"
+                          >
+                            Reject All
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {loadingApproval ? (
+                      <div className="text-center py-4">
+                        <div className="text-gray-400">Loading messages...</div>
+                      </div>
+                    ) : approvalMessages.pending.length === 0 ? (
+                      <div className="text-center py-4">
+                        <div className="text-gray-400">No pending messages</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {approvalMessages.pending.map((message: any) => (
+                          <div key={message.id} className="bg-gray-700 rounded p-3">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <span className="text-white font-medium">
+                                  {message.campaign_prospects?.workspace_prospects?.first_name} {message.campaign_prospects?.workspace_prospects?.last_name}
+                                  {message.campaign_prospects?.workspace_prospects?.company_name && ` - ${message.campaign_prospects?.workspace_prospects?.company_name}`}
+                                </span>
+                                <span className="text-gray-400 text-sm ml-2">
+                                  {message.message_type || 'Message'}
+                                </span>
                               </div>
-                              <div className="text-center">
-                                <div className="text-gray-400 mb-1">Connected</div>
-                                <div className={prospect.connection_accepted_at ? "text-green-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
-                                  {prospect.connection_accepted_at ? "1" : "0"}
-                                </div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-gray-400 mb-1">FU Sent</div>
-                                <div className={prospect.follow_up_sequence_index > 0 ? "text-purple-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
-                                  {prospect.follow_up_sequence_index || 0}
-                                </div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-gray-400 mb-1">Replied</div>
-                                <div className={prospect.responded_at ? "text-blue-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
-                                  {prospect.responded_at ? "1" : "0"}
-                                </div>
-                              </div>
-                              <div className="text-center">
-                                <div className="text-gray-400 mb-1">Opted Out</div>
-                                <div className={prospect.status === 'opted_out' ? "text-red-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
-                                  {prospect.status === 'opted_out' ? "1" : "0"}
-                                </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleApproveMessage(message.id)}
+                                  className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleRejectMessage(message.id)}
+                                  className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded"
+                                >
+                                  Reject
+                                </button>
                               </div>
                             </div>
+                            <div className="text-gray-300 text-sm bg-gray-600 p-2 rounded">
+                              {message.message_content || message.message_text || 'No message content'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Approved Messages */}
+                  <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                    <h4 className="text-green-400 font-medium mb-3">
+                      Recently Approved ({approvalCounts.approved})
+                    </h4>
+                    {approvalMessages.approved.length === 0 ? (
+                      <div className="text-center py-2">
+                        <div className="text-gray-400 text-sm">No recently approved messages</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {approvalMessages.approved.slice(0, 5).map((message: any) => (
+                          <div key={message.id} className="bg-gray-700 rounded p-3 text-sm">
+                            <span className="text-white">
+                              {message.campaign_prospects?.workspace_prospects?.first_name} {message.campaign_prospects?.workspace_prospects?.last_name}
+                              {message.campaign_prospects?.workspace_prospects?.company_name && ` - ${message.campaign_prospects?.workspace_prospects?.company_name}`}
+                            </span>
+                            <span className="text-gray-400 ml-2">
+                              • Approved {message.approved_at ? new Date(message.approved_at).toLocaleString() : 'recently'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Rejected Messages */}
+                  <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                    <h4 className="text-red-400 font-medium mb-3">
+                      Recently Rejected ({approvalCounts.rejected})
+                    </h4>
+                    {approvalMessages.rejected.length === 0 ? (
+                      <div className="text-center py-2">
+                        <div className="text-gray-400 text-sm">No recently rejected messages</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {approvalMessages.rejected.slice(0, 5).map((message: any) => (
+                          <div key={message.id} className="bg-gray-700 rounded p-3 text-sm">
+                            <span className="text-white">
+                              {message.campaign_prospects?.workspace_prospects?.first_name} {message.campaign_prospects?.workspace_prospects?.last_name}
+                              {message.campaign_prospects?.workspace_prospects?.company_name && ` - ${message.campaign_prospects?.workspace_prospects?.company_name}`}
+                            </span>
+                            <span className="text-gray-400 ml-2">
+                              • Rejected {message.approved_at ? new Date(message.approved_at).toLocaleString() : 'recently'}
+                            </span>
+                            {message.rejection_reason && (
+                              <span className="text-red-400 ml-2">• Reason: {message.rejection_reason}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-6">
+                  <button
+                    onClick={() => setShowMessageApproval(false)}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Scheduled Campaigns Modal */}
+          {showScheduledCampaigns && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 max-w-3xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-white">Scheduled Campaigns</h3>
+                  <button
+                    onClick={() => setShowScheduledCampaigns(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Create Schedule */}
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-3">Schedule New Campaign</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-1">Campaign</label>
+                        <select className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm">
+                          <option>Select campaign...</option>
+                          <option>Q4 SaaS Outreach</option>
+                          <option>Holiday Networking</option>
+                          <option>New Year Prospecting</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-1">Start Date</label>
+                        <input type="datetime-local" className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-1">End Date</label>
+                        <input type="datetime-local" className="w-full bg-gray-600 border border-gray-500 rounded px-3 py-2 text-white text-sm" />
+                      </div>
+                    </div>
+                    <button className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">
+                      Schedule Campaign
+                    </button>
+                  </div>
+
+                  {/* Upcoming Schedules */}
+                  <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                    <h4 className="text-blue-400 font-medium mb-3">Upcoming Schedules</h4>
+                    <div className="space-y-3">
+                      <div className="bg-gray-700 rounded p-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="text-white font-medium">Holiday Networking Campaign</div>
+                            <div className="text-gray-400 text-sm">Starts: Dec 15, 2024 at 9:00 AM</div>
+                            <div className="text-gray-400 text-sm">Expected Duration: 2 weeks</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded">Edit</button>
+                            <button className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-700 rounded p-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="text-white font-medium">Q1 2025 Prospecting Blitz</div>
+                            <div className="text-gray-400 text-sm">Starts: Jan 2, 2025 at 8:00 AM</div>
+                            <div className="text-gray-400 text-sm">Expected Duration: 1 month</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded">Edit</button>
+                            <button className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">Cancel</button>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
 
-            {/* Footer */}
-            <div className="bg-gray-750 px-6 py-4 border-t border-gray-700 flex justify-end sticky bottom-0">
-              <button
-                onClick={() => setShowCampaignProspects(false)}
-                className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Message Preview Modal */}
-      {showMessagePreview && selectedCampaignForMessages && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowMessagePreview(false)}>
-          <div className="bg-gray-900 border border-purple-500 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-6 z-10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl text-white flex items-center gap-2">
-                    <Eye className="text-purple-400" size={24} />
-                    Message Preview: {selectedCampaignForMessages.name}
-                  </h2>
-                  <p className="text-gray-400 text-sm mt-1">Review all messages that will be sent in this campaign</p>
+                  {/* Active Schedules */}
+                  <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                    <h4 className="text-green-400 font-medium mb-3">Currently Active</h4>
+                    <div className="bg-gray-700 rounded p-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="text-white font-medium">November B2B Outreach</div>
+                          <div className="text-gray-400 text-sm">Started: Nov 1, 2024 • Progress: 65%</div>
+                          <div className="text-gray-400 text-sm">Messages sent: 156/240</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded">Pause</button>
+                          <button className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded">Stop</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  onClick={() => setShowMessagePreview(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <X size={24} />
-                </button>
+
+                <div className="flex justify-end mt-6">
+                  <button
+                    onClick={() => setShowScheduledCampaigns(false)}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="p-6 space-y-6">
-              {(() => {
-                const isMessengerCampaign = selectedCampaignForMessages.campaign_type === 'messenger';
-                const isEmailCampaign = selectedCampaignForMessages.campaign_type === 'email';
+          {/* A/B Testing Hub Modal - REMOVED Dec 18, 2025 */}
 
-                // Get messages from single source of truth (prefer direct fields, fallback to templates)
-                const connectionMsg = selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request || '';
-                const alternativeMsg = selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message || '';
-                const followUps = selectedCampaignForMessages.follow_up_messages?.length > 0
-                  ? selectedCampaignForMessages.follow_up_messages
-                  : selectedCampaignForMessages.message_templates?.follow_up_messages || [];
+          {/* Campaign Steps Editor */}
+          {showStepsEditor && selectedCampaign && (
+            <CampaignStepsEditor
+              campaignId={selectedCampaign.id}
+              campaignName={selectedCampaign.name}
+              campaignType={selectedCampaign.type}
+              onClose={() => setShowStepsEditor(false)}
+              onSave={(steps) => {
+                console.log('Saved campaign steps:', steps);
+                // TODO: Save steps to database
+                setShowStepsEditor(false);
+              }}
+              workspaceId={actualWorkspaceId || undefined}
+            />
+          )}
 
-                // Message count limits based on campaign type
-                const maxMessages = isMessengerCampaign ? 5 : isEmailCampaign ? 5 : 6; // Messenger: 5, Email: 5, Connector: 6
-                const maxFollowUps = 15; // Allow up to 15 follow-ups for all campaign types // Messenger: 4, Email: 4, Connector: 5
+          {/* Message Review Detail Modal */}
+          {selectedMessageForReview && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+              <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="bg-gray-750 px-6 py-4 border-b border-gray-700 flex items-center justify-between sticky top-0">
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">{selectedMessageForReview.campaign_name}</h3>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-sm text-gray-400">
+                        Step {selectedMessageForReview.step_number} • {new Date(selectedMessageForReview.created_at).toLocaleString()}
+                      </p>
+                      <span className="text-gray-600">•</span>
+                      <button
+                        onClick={() => loadCampaignProspects(selectedMessageForReview.campaign_id)}
+                        disabled={loadingProspects}
+                        className="text-sm text-purple-400 hover:text-purple-300 underline transition-colors flex items-center gap-1 disabled:opacity-50"
+                      >
+                        <Users size={14} />
+                        {loadingProspects ? 'Loading...' : 'View Approved Prospects'}
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedMessageForReview(null)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
 
-                return (
-                  <>
-                    {/* Connection Request Message - ONLY for connector campaigns (not messenger, not email) */}
-                    {!isMessengerCampaign && !isEmailCampaign && connectionMsg && (
-                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                        <h3 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
-                          <MessageCircle size={18} />
-                          Connection Request Message (Step 1)
-                          <span className="text-xs text-gray-400 ml-2">275 char limit</span>
-                        </h3>
-                        <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                          <p className="text-gray-200 whitespace-pre-wrap">{connectionMsg}</p>
-                          <p className="text-xs text-gray-500 mt-2">{connectionMsg.length} / 275 characters</p>
-                        </div>
+                {/* Message Content */}
+                <div className="p-6 space-y-6">
+                  {/* Message Body */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-400 mb-2 block">Message Content</label>
+                    <div className="bg-gray-900 rounded-lg p-6 border border-gray-700">
+                      <div className="text-gray-100 text-base leading-relaxed whitespace-pre-wrap">
+                        {selectedMessageForReview.message_content}
                       </div>
-                    )}
+                    </div>
+                  </div>
 
-                    {/* Initial Message - For messenger/email campaigns */}
-                    {(isMessengerCampaign || isEmailCampaign) && alternativeMsg && (
-                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                        <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
-                          <MessageSquare size={18} />
-                          {isEmailCampaign ? 'Email Body (Step 1)' : 'Direct Message (Step 1)'}
-                          {!isEmailCampaign && <span className="text-xs text-gray-400 ml-2">8000 char limit</span>}
-                        </h3>
-                        <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                          <p className="text-gray-200 whitespace-pre-wrap">{alternativeMsg}</p>
-                          {!isEmailCampaign && <p className="text-xs text-gray-500 mt-2">{alternativeMsg.length} / 8000 characters</p>}
-                        </div>
+                  {/* Message Stats */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-gray-750 rounded-lg p-4 border border-gray-700">
+                      <div className="text-gray-400 text-xs uppercase mb-1">Characters</div>
+                      <div className={`text-2xl font-semibold ${selectedMessageForReview.message_content?.length > 275 && selectedMessageForReview.step_number === 1 ? 'text-yellow-400' : 'text-white'}`}>
+                        {selectedMessageForReview.message_content?.length || 0}
                       </div>
-                    )}
-
-                    {/* Alternative Message - ONLY for connector campaigns as fallback */}
-                    {!isMessengerCampaign && !isEmailCampaign && alternativeMsg && (
-                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                        <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
-                          <MessageSquare size={18} />
-                          Alternative Message (if already connected)
-                          <span className="text-xs text-gray-400 ml-2">8000 char limit</span>
-                        </h3>
-                        <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                          <p className="text-gray-200 whitespace-pre-wrap">{alternativeMsg}</p>
-                          <p className="text-xs text-gray-500 mt-2">{alternativeMsg.length} / 8000 characters</p>
+                      {selectedMessageForReview.message_content?.length > 275 && selectedMessageForReview.step_number === 1 && (
+                        <div className="text-yellow-400 text-xs mt-1 flex items-center gap-1">
+                          <AlertTriangle size={12} />
+                          Exceeds LinkedIn limit
                         </div>
+                      )}
+                    </div>
+                    <div className="bg-gray-750 rounded-lg p-4 border border-gray-700">
+                      <div className="text-gray-400 text-xs uppercase mb-1">Personalization Tags</div>
+                      <div className="text-2xl font-semibold text-white">
+                        {(selectedMessageForReview.message_content?.match(/\{\{.*?\}\}/g) || []).length}
                       </div>
-                    )}
+                      <div className="text-gray-400 text-xs mt-1">Dynamic fields</div>
+                    </div>
+                    <div className="bg-gray-750 rounded-lg p-4 border border-gray-700">
+                      <div className="text-gray-400 text-xs uppercase mb-1">Status</div>
+                      <div className="text-2xl font-semibold text-yellow-400">Pending</div>
+                      <div className="text-gray-400 text-xs mt-1">Awaiting review</div>
+                    </div>
+                  </div>
 
-                    {/* Follow-up Messages */}
-                    {followUps && followUps.length > 0 && (
-                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                        <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
-                          <Send size={18} />
-                          Follow-up Messages ({followUps.length}/{maxFollowUps})
-                          {followUps.length > maxFollowUps && (
-                            <span className="text-xs text-red-400 ml-2">⚠ Exceeds limit!</span>
-                          )}
-                        </h3>
-                        <div className="space-y-4">
-                          {followUps.slice(0, maxFollowUps).map((msg: any, index: number) => (
-                            <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium text-gray-400">
-                                  Follow-up #{index + 1} (Step {isMessengerCampaign || isEmailCampaign ? index + 2 : index + 2})
-                                </span>
-                                {msg.delay_days && (
-                                  <span className="bg-blue-900/20 text-blue-400 border border-blue-500 px-2 py-1 rounded text-xs">
-                                    Delay: {msg.delay_days} days
+                  {/* Personalization Tags Used */}
+                  {(selectedMessageForReview.message_content?.match(/\{\{.*?\}\}/g) || []).length > 0 && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-400 mb-2 block">Personalization Tags</label>
+                      <div className="flex flex-wrap gap-2">
+                        {Array.from(new Set(selectedMessageForReview.message_content?.match(/\{\{.*?\}\}/g) || [])).map((tag: string, idx: number) => (
+                          <span key={idx} className="px-3 py-1 bg-purple-600/20 text-purple-300 text-sm rounded-full border border-purple-500/40">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-700">
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setSelectedMessageForReview(null)}
+                        className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          // TODO: Open SAM chat with context about this message
+                          console.log('Ask SAM for help with message:', selectedMessageForReview);
+                          toastError('SAM chat integration coming soon! This will open a chat with SAM to help improve this message.');
+                        }}
+                        className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        <Brain size={18} />
+                        Ask SAM to Improve
+                      </button>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          handleRejectMessage(selectedMessageForReview.id);
+                          setSelectedMessageForReview(null);
+                        }}
+                        className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        <XCircle size={18} />
+                        Reject Message
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleApproveMessage(selectedMessageForReview.id);
+                          setSelectedMessageForReview(null);
+                        }}
+                        className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        <CheckCircle size={18} />
+                        Approve Message
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Campaign Prospects Modal */}
+          {showCampaignProspects && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+              <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="bg-gray-750 px-6 py-4 border-b border-gray-700 flex items-center justify-between sticky top-0">
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">Campaign Prospects</h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {campaignProspects.length} prospect{campaignProspects.length !== 1 ? 's' : ''} in this campaign
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowCampaignProspects(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                {/* Prospect List */}
+                <div className="p-6">
+                  {campaignProspects.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Users className="mx-auto text-gray-600 mb-4" size={48} />
+                      <div className="text-white font-medium mb-2">No prospects found</div>
+                      <div className="text-gray-400">This campaign doesn't have any prospects yet.</div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {campaignProspects.map((prospect: any) => (
+                        <div
+                          key={prospect.id}
+                          className="bg-gray-750 border border-gray-600 rounded-lg p-4 hover:border-purple-500/50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h4 className="text-white font-semibold">
+                                  {prospect.first_name && prospect.last_name
+                                    ? `${prospect.first_name} ${prospect.last_name}`
+                                    : prospect.workspace_prospects?.full_name || prospect.name || 'Unknown'}
+                                </h4>
+                                {prospect.status && (
+                                  <span className={`px-2 py-0.5 text-xs rounded-full border ${prospect.status === 'pending' ? 'bg-yellow-600/20 text-yellow-400 border-yellow-500/40' :
+                                      prospect.status === 'approved' ? 'bg-green-600/20 text-green-400 border-green-500/40' :
+                                        prospect.status === 'contacted' || prospect.status === 'connected' ? 'bg-blue-600/20 text-blue-400 border-blue-500/40' :
+                                          'bg-gray-600/20 text-gray-400 border-gray-500/40'
+                                    }`}>
+                                    {prospect.status}
                                   </span>
                                 )}
                               </div>
-                              <p className="text-gray-200 whitespace-pre-wrap">{typeof msg === 'string' ? msg : (msg.message || msg.content || msg)}</p>
+                              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                                {(prospect.title || prospect.workspace_prospects?.job_title) && (
+                                  <div>
+                                    <span className="text-gray-400">Title:</span>
+                                    <span className="text-gray-300 ml-2">{prospect.title || prospect.workspace_prospects?.job_title}</span>
+                                  </div>
+                                )}
+                                {(prospect.company_name || prospect.company || prospect.workspace_prospects?.company_name) && (
+                                  <div>
+                                    <span className="text-gray-400">Company:</span>
+                                    <span className="text-gray-300 ml-2">{prospect.company_name || prospect.company || prospect.workspace_prospects?.company_name}</span>
+                                  </div>
+                                )}
+                                {(prospect.email || prospect.workspace_prospects?.email) && (
+                                  <div>
+                                    <span className="text-gray-400">Email:</span>
+                                    <span className="text-gray-300 ml-2">{prospect.email || prospect.workspace_prospects?.email}</span>
+                                  </div>
+                                )}
+                                {(prospect.linkedin_url || prospect.workspace_prospects?.linkedin_url) && (
+                                  <div>
+                                    <span className="text-gray-400">LinkedIn:</span>
+                                    <a
+                                      href={prospect.linkedin_url || prospect.workspace_prospects?.linkedin_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-purple-400 hover:text-purple-300 ml-2 underline"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      View Profile
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Campaign Stats */}
+                              <div className="mt-3 pt-3 border-t border-gray-700">
+                                <div className="grid grid-cols-5 gap-4 text-xs">
+                                  <div className="text-center">
+                                    <div className="text-gray-400 mb-1">CR Sent</div>
+                                    <div className={prospect.contacted_at ? "text-green-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
+                                      {prospect.contacted_at ? "1" : "0"}
+                                    </div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-gray-400 mb-1">Connected</div>
+                                    <div className={prospect.connection_accepted_at ? "text-green-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
+                                      {prospect.connection_accepted_at ? "1" : "0"}
+                                    </div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-gray-400 mb-1">FU Sent</div>
+                                    <div className={prospect.follow_up_sequence_index > 0 ? "text-purple-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
+                                      {prospect.follow_up_sequence_index || 0}
+                                    </div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-gray-400 mb-1">Replied</div>
+                                    <div className={prospect.responded_at ? "text-blue-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
+                                      {prospect.responded_at ? "1" : "0"}
+                                    </div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-gray-400 mb-1">Opted Out</div>
+                                    <div className={prospect.status === 'opted_out' ? "text-red-400 font-semibold text-sm" : "text-gray-500 text-sm"}>
+                                      {prospect.status === 'opted_out' ? "1" : "0"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          ))}
-                          {followUps.length > maxFollowUps && (
-                            <div className="bg-red-900/20 border border-red-500 rounded p-3 text-red-400 text-sm">
-                              ⚠ {followUps.length - maxFollowUps} message(s) exceed the {maxFollowUps} follow-up limit and will be ignored.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Summary */}
-                    <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
-                      <p className="text-blue-300 text-sm">
-                        <strong>Total Messages:</strong> {
-                          ((connectionMsg || alternativeMsg) ? 1 : 0) + Math.min(followUps.length, maxFollowUps)
-                        } / {maxMessages}
-                        <span className="ml-2 text-gray-400">
-                          ({isMessengerCampaign ? 'Messenger' : isEmailCampaign ? 'Email' : 'Connector'} campaign)
-                        </span>
-                      </p>
-                    </div>
-                  </>
-                );
-              })()}
-
-              {/* No Messages */}
-              {(() => {
-                const hasDirectMessages = selectedCampaignForMessages.connection_message ||
-                                         selectedCampaignForMessages.alternative_message ||
-                                         (selectedCampaignForMessages.follow_up_messages?.length > 0);
-
-                const hasTemplateMessages = selectedCampaignForMessages.message_templates?.connection_request ||
-                                           selectedCampaignForMessages.message_templates?.alternative_message ||
-                                           (selectedCampaignForMessages.message_templates?.follow_up_messages?.length > 0);
-
-                return !hasDirectMessages && !hasTemplateMessages && (
-                  <div className="text-center py-8 text-gray-400">
-                    <AlertCircle size={48} className="mx-auto mb-4 text-gray-600" />
-                    <p>No messages configured for this campaign</p>
-                  </div>
-                );
-              })()}
-            </div>
-
-            <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-6">
-              <Button
-                onClick={() => setShowMessagePreview(false)}
-                className="bg-purple-600 hover:bg-purple-700 w-full"
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Campaign Modal */}
-      {showEditModal && campaignToEdit && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowEditModal(false)}>
-          <div className="bg-gray-900 border border-purple-500 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-6 z-10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl text-white flex items-center gap-2">
-                    <Edit className="text-purple-400" size={24} />
-                    Edit Campaign: {campaignToEdit.name}
-                  </h2>
-                  <p className="text-gray-400 text-sm mt-1">Update campaign messages and settings</p>
-                </div>
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Campaign Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Campaign Name</label>
-                <input
-                  type="text"
-                  value={editFormData.name || ''}
-                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Campaign name"
-                />
-              </div>
-
-              {/* Connection Request Message - ONLY for connector campaigns (not messenger, not email) */}
-              {campaignToEdit?.campaign_type !== 'messenger' && campaignToEdit?.campaign_type !== 'email' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Connection Request Message (Step 1)
-                    <span className="text-xs text-gray-400 ml-2">275 character limit</span>
-                  </label>
-                  <textarea
-                    value={editFormData.connection_message || ''}
-                    onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
-                    maxLength={275}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
-                    placeholder="Hi {{firstName}}, I noticed..."
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    {(editFormData.connection_message || '').length} / 275 characters
-                    <span className="ml-2">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</span>
-                  </p>
-                </div>
-              )}
-
-              {/* Alternative/Direct Message Field */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {campaignToEdit?.campaign_type === 'email'
-                    ? 'Initial Email Body (Step 1)'
-                    : campaignToEdit?.campaign_type === 'messenger'
-                      ? 'Direct Message (Step 1)'
-                      : 'Alternative Message (if already connected)'}
-                  {campaignToEdit?.campaign_type !== 'email' && (
-                    <span className="text-xs text-gray-400 ml-2">8000 character limit</span>
-                  )}
-                </label>
-                <textarea
-                  value={campaignToEdit?.campaign_type === 'email' ? (editFormData.email_body || '') : (editFormData.alternative_message || '')}
-                  onChange={(e) => setEditFormData({
-                    ...editFormData,
-                    // For email campaigns, update email_body. For LinkedIn, update alternative_message
-                    ...(campaignToEdit?.campaign_type === 'email'
-                      ? { email_body: e.target.value }
-                      : { alternative_message: e.target.value })
-                  })}
-                  maxLength={campaignToEdit?.campaign_type === 'email' ? undefined : 8000}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
-                  placeholder={
-                    campaignToEdit?.campaign_type === 'email'
-                      ? "Initial email body..."
-                      : campaignToEdit?.campaign_type === 'messenger'
-                        ? "Hi {{firstName}}, I saw your post about..."
-                        : "Alternative message if already connected..."
-                  }
-                />
-                {campaignToEdit?.campaign_type !== 'email' && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {(editFormData.alternative_message || '').length} / 8000 characters
-                    <span className="ml-2">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</span>
-                  </p>
-                )}
-              </div>
-
-              {/* Email Subject Lines - Only show for email campaigns */}
-              {campaignToEdit?.campaign_type === 'email' && (
-                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 space-y-4">
-                  <h4 className="text-blue-400 font-medium flex items-center gap-2">
-                    <Mail size={18} />
-                    Email Subject Lines
-                  </h4>
-
-                  {/* Initial Subject - Variant A */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">
-                      Initial Email Subject {editFormData.ab_testing_enabled && <span className="text-orange-400">(Variant A)</span>}
-                    </label>
-                    <input
-                      type="text"
-                      value={editFormData.initial_subject || ''}
-                      onChange={(e) => setEditFormData({ ...editFormData, initial_subject: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="e.g., Quick question about {{company}}"
-                    />
-                  </div>
-
-                  {/* Initial Subject - Variant B (only when A/B testing enabled) */}
-                  {editFormData.ab_testing_enabled && (
-                    <div className="border-l-4 border-orange-500 pl-4">
-                      <label className="block text-sm text-gray-400 mb-1">
-                        Initial Email Subject <span className="text-orange-400">(Variant B)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={editFormData.initial_subject_b || ''}
-                        onChange={(e) => setEditFormData({ ...editFormData, initial_subject_b: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        placeholder="e.g., {{firstName}}, quick question"
-                      />
-                    </div>
-                  )}
-
-                  {/* Threading Option */}
-                  <div className="flex items-center gap-3 bg-gray-700/50 rounded-lg p-3">
-                    <input
-                      type="checkbox"
-                      id="edit-use-threaded-replies"
-                      checked={editFormData.use_threaded_replies || false}
-                      onChange={(e) => setEditFormData({ ...editFormData, use_threaded_replies: e.target.checked })}
-                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                    />
-                    <div>
-                      <label htmlFor="edit-use-threaded-replies" className="text-white cursor-pointer font-medium text-sm">
-                        Use threaded replies (RE:)
-                      </label>
-                      <p className="text-xs text-gray-400">
-                        {editFormData.use_threaded_replies
-                          ? `Follow-ups will use "RE: ${editFormData.initial_subject || '[Initial Subject]'}"`
-                          : 'Each follow-up will have its own subject line'
-                        }
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Follow-up Subjects (only if not using threaded replies) */}
-                  {!editFormData.use_threaded_replies && editFormData.follow_up_messages?.length > 0 && (
-                    <div className="space-y-2">
-                      <label className="block text-sm text-gray-400">Follow-up Subject Lines</label>
-                      {editFormData.follow_up_messages.map((_: any, index: number) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-12">FU{index + 1}:</span>
-                          <input
-                            type="text"
-                            value={editFormData.follow_up_subjects?.[index] || ''}
-                            onChange={(e) => {
-                              const updated = [...(editFormData.follow_up_subjects || [])];
-                              updated[index] = e.target.value;
-                              setEditFormData({ ...editFormData, follow_up_subjects: updated });
-                            }}
-                            className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder={`Subject for follow-up ${index + 1}`}
-                          />
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Follow-up Messages */}
-              <div>
-                {(() => {
-                  const isMessengerCampaign = campaignToEdit?.campaign_type === 'messenger';
-                  const isEmailCampaign = campaignToEdit?.campaign_type === 'email';
-                  const maxFollowUps = 15; // Allow up to 15 follow-ups for all campaign types
-                  const currentFollowUps = editFormData.follow_up_messages || [];
+                {/* Footer */}
+                <div className="bg-gray-750 px-6 py-4 border-t border-gray-700 flex justify-end sticky bottom-0">
+                  <button
+                    onClick={() => setShowCampaignProspects(false)}
+                    className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
-                  return (
-                    <>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Follow-up Messages ({currentFollowUps.length}/{maxFollowUps})
-                        {currentFollowUps.length > maxFollowUps && (
-                          <span className="text-red-400 text-xs ml-2">⚠ Exceeds limit!</span>
+          {/* Message Preview Modal */}
+          {showMessagePreview && selectedCampaignForMessages && (
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowMessagePreview(false)}>
+              <div className="bg-gray-900 border border-purple-500 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-6 z-10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl text-white flex items-center gap-2">
+                        <Eye className="text-purple-400" size={24} />
+                        Message Preview: {selectedCampaignForMessages.name}
+                      </h2>
+                      <p className="text-gray-400 text-sm mt-1">Review all messages that will be sent in this campaign</p>
+                    </div>
+                    <button
+                      onClick={() => setShowMessagePreview(false)}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  {(() => {
+                    const isMessengerCampaign = selectedCampaignForMessages.campaign_type === 'messenger';
+                    const isEmailCampaign = selectedCampaignForMessages.campaign_type === 'email';
+
+                    // Get messages from single source of truth (prefer direct fields, fallback to templates)
+                    const connectionMsg = selectedCampaignForMessages.connection_message || selectedCampaignForMessages.message_templates?.connection_request || '';
+                    const alternativeMsg = selectedCampaignForMessages.alternative_message || selectedCampaignForMessages.message_templates?.alternative_message || '';
+                    const followUps = selectedCampaignForMessages.follow_up_messages?.length > 0
+                      ? selectedCampaignForMessages.follow_up_messages
+                      : selectedCampaignForMessages.message_templates?.follow_up_messages || [];
+
+                    // Message count limits based on campaign type
+                    const maxMessages = isMessengerCampaign ? 5 : isEmailCampaign ? 5 : 6; // Messenger: 5, Email: 5, Connector: 6
+                    const maxFollowUps = 15; // Allow up to 15 follow-ups for all campaign types // Messenger: 4, Email: 4, Connector: 5
+
+                    return (
+                      <>
+                        {/* Connection Request Message - ONLY for connector campaigns (not messenger, not email) */}
+                        {!isMessengerCampaign && !isEmailCampaign && connectionMsg && (
+                          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-purple-400 mb-3 flex items-center gap-2">
+                              <MessageCircle size={18} />
+                              Connection Request Message (Step 1)
+                              <span className="text-xs text-gray-400 ml-2">275 char limit</span>
+                            </h3>
+                            <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                              <p className="text-gray-200 whitespace-pre-wrap">{connectionMsg}</p>
+                              <p className="text-xs text-gray-500 mt-2">{connectionMsg.length} / 275 characters</p>
+                            </div>
+                          </div>
                         )}
-                      </label>
 
-                      {currentFollowUps.length > maxFollowUps && (
-                        <div className="bg-red-900/20 border border-red-500 rounded-lg p-3 mb-3 text-red-400 text-sm">
-                          <AlertTriangle size={16} className="inline mr-2" />
-                          Warning: {currentFollowUps.length - maxFollowUps} extra message(s) will be ignored.
-                          {isMessengerCampaign && ' Messenger campaigns allow max 4 follow-ups.'}
-                          {isEmailCampaign && ' Email campaigns allow max 4 follow-ups.'}
-                          {!isMessengerCampaign && !isEmailCampaign && ' Connector campaigns allow max 5 follow-ups.'}
+                        {/* Initial Message - For messenger/email campaigns */}
+                        {(isMessengerCampaign || isEmailCampaign) && alternativeMsg && (
+                          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
+                              <MessageSquare size={18} />
+                              {isEmailCampaign ? 'Email Body (Step 1)' : 'Direct Message (Step 1)'}
+                              {!isEmailCampaign && <span className="text-xs text-gray-400 ml-2">8000 char limit</span>}
+                            </h3>
+                            <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                              <p className="text-gray-200 whitespace-pre-wrap">{alternativeMsg}</p>
+                              {!isEmailCampaign && <p className="text-xs text-gray-500 mt-2">{alternativeMsg.length} / 8000 characters</p>}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Alternative Message - ONLY for connector campaigns as fallback */}
+                        {!isMessengerCampaign && !isEmailCampaign && alternativeMsg && (
+                          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-cyan-400 mb-3 flex items-center gap-2">
+                              <MessageSquare size={18} />
+                              Alternative Message (if already connected)
+                              <span className="text-xs text-gray-400 ml-2">8000 char limit</span>
+                            </h3>
+                            <div className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                              <p className="text-gray-200 whitespace-pre-wrap">{alternativeMsg}</p>
+                              <p className="text-xs text-gray-500 mt-2">{alternativeMsg.length} / 8000 characters</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Follow-up Messages */}
+                        {followUps && followUps.length > 0 && (
+                          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
+                              <Send size={18} />
+                              Follow-up Messages ({followUps.length}/{maxFollowUps})
+                              {followUps.length > maxFollowUps && (
+                                <span className="text-xs text-red-400 ml-2">⚠ Exceeds limit!</span>
+                              )}
+                            </h3>
+                            <div className="space-y-4">
+                              {followUps.slice(0, maxFollowUps).map((msg: any, index: number) => (
+                                <div key={index} className="bg-gray-900/50 border border-gray-700 rounded p-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-gray-400">
+                                      Follow-up #{index + 1} (Step {isMessengerCampaign || isEmailCampaign ? index + 2 : index + 2})
+                                    </span>
+                                    {msg.delay_days && (
+                                      <span className="bg-blue-900/20 text-blue-400 border border-blue-500 px-2 py-1 rounded text-xs">
+                                        Delay: {msg.delay_days} days
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-gray-200 whitespace-pre-wrap">{typeof msg === 'string' ? msg : (msg.message || msg.content || msg)}</p>
+                                </div>
+                              ))}
+                              {followUps.length > maxFollowUps && (
+                                <div className="bg-red-900/20 border border-red-500 rounded p-3 text-red-400 text-sm">
+                                  ⚠ {followUps.length - maxFollowUps} message(s) exceed the {maxFollowUps} follow-up limit and will be ignored.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Summary */}
+                        <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                          <p className="text-blue-300 text-sm">
+                            <strong>Total Messages:</strong> {
+                              ((connectionMsg || alternativeMsg) ? 1 : 0) + Math.min(followUps.length, maxFollowUps)
+                            } / {maxMessages}
+                            <span className="ml-2 text-gray-400">
+                              ({isMessengerCampaign ? 'Messenger' : isEmailCampaign ? 'Email' : 'Connector'} campaign)
+                            </span>
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
+
+                  {/* No Messages */}
+                  {(() => {
+                    const hasDirectMessages = selectedCampaignForMessages.connection_message ||
+                      selectedCampaignForMessages.alternative_message ||
+                      (selectedCampaignForMessages.follow_up_messages?.length > 0);
+
+                    const hasTemplateMessages = selectedCampaignForMessages.message_templates?.connection_request ||
+                      selectedCampaignForMessages.message_templates?.alternative_message ||
+                      (selectedCampaignForMessages.message_templates?.follow_up_messages?.length > 0);
+
+                    return !hasDirectMessages && !hasTemplateMessages && (
+                      <div className="text-center py-8 text-gray-400">
+                        <AlertCircle size={48} className="mx-auto mb-4 text-gray-600" />
+                        <p>No messages configured for this campaign</p>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-6">
+                  <Button
+                    onClick={() => setShowMessagePreview(false)}
+                    className="bg-purple-600 hover:bg-purple-700 w-full"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Campaign Modal */}
+          {showEditModal && campaignToEdit && (
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setShowEditModal(false)}>
+              <div className="bg-gray-900 border border-purple-500 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-6 z-10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl text-white flex items-center gap-2">
+                        <Edit className="text-purple-400" size={24} />
+                        Edit Campaign: {campaignToEdit.name}
+                      </h2>
+                      <p className="text-gray-400 text-sm mt-1">Update campaign messages and settings</p>
+                    </div>
+                    <button
+                      onClick={() => setShowEditModal(false)}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  {/* Campaign Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Campaign Name</label>
+                    <input
+                      type="text"
+                      value={editFormData.name || ''}
+                      onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Campaign name"
+                    />
+                  </div>
+
+                  {/* Connection Request Message - ONLY for connector campaigns (not messenger, not email) */}
+                  {campaignToEdit?.campaign_type !== 'messenger' && campaignToEdit?.campaign_type !== 'email' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Connection Request Message (Step 1)
+                        <span className="text-xs text-gray-400 ml-2">275 character limit</span>
+                      </label>
+                      <textarea
+                        value={editFormData.connection_message || ''}
+                        onChange={(e) => setEditFormData({ ...editFormData, connection_message: e.target.value })}
+                        maxLength={275}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
+                        placeholder="Hi {{firstName}}, I noticed..."
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {(editFormData.connection_message || '').length} / 275 characters
+                        <span className="ml-2">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</span>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Alternative/Direct Message Field */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      {campaignToEdit?.campaign_type === 'email'
+                        ? 'Initial Email Body (Step 1)'
+                        : campaignToEdit?.campaign_type === 'messenger'
+                          ? 'Direct Message (Step 1)'
+                          : 'Alternative Message (if already connected)'}
+                      {campaignToEdit?.campaign_type !== 'email' && (
+                        <span className="text-xs text-gray-400 ml-2">8000 character limit</span>
+                      )}
+                    </label>
+                    <textarea
+                      value={campaignToEdit?.campaign_type === 'email' ? (editFormData.email_body || '') : (editFormData.alternative_message || '')}
+                      onChange={(e) => setEditFormData({
+                        ...editFormData,
+                        // For email campaigns, update email_body. For LinkedIn, update alternative_message
+                        ...(campaignToEdit?.campaign_type === 'email'
+                          ? { email_body: e.target.value }
+                          : { alternative_message: e.target.value })
+                      })}
+                      maxLength={campaignToEdit?.campaign_type === 'email' ? undefined : 8000}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-none"
+                      placeholder={
+                        campaignToEdit?.campaign_type === 'email'
+                          ? "Initial email body..."
+                          : campaignToEdit?.campaign_type === 'messenger'
+                            ? "Hi {{firstName}}, I saw your post about..."
+                            : "Alternative message if already connected..."
+                      }
+                    />
+                    {campaignToEdit?.campaign_type !== 'email' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {(editFormData.alternative_message || '').length} / 8000 characters
+                        <span className="ml-2">Available variables: {'{{firstName}}'}, {'{{lastName}}'}, {'{{company}}'}, {'{{title}}'}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Email Subject Lines - Only show for email campaigns */}
+                  {campaignToEdit?.campaign_type === 'email' && (
+                    <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 space-y-4">
+                      <h4 className="text-blue-400 font-medium flex items-center gap-2">
+                        <Mail size={18} />
+                        Email Subject Lines
+                      </h4>
+
+                      {/* Initial Subject - Variant A */}
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">
+                          Initial Email Subject {editFormData.ab_testing_enabled && <span className="text-orange-400">(Variant A)</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={editFormData.initial_subject || ''}
+                          onChange={(e) => setEditFormData({ ...editFormData, initial_subject: e.target.value })}
+                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="e.g., Quick question about {{company}}"
+                        />
+                      </div>
+
+                      {/* Initial Subject - Variant B (only when A/B testing enabled) */}
+                      {editFormData.ab_testing_enabled && (
+                        <div className="border-l-4 border-orange-500 pl-4">
+                          <label className="block text-sm text-gray-400 mb-1">
+                            Initial Email Subject <span className="text-orange-400">(Variant B)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={editFormData.initial_subject_b || ''}
+                            onChange={(e) => setEditFormData({ ...editFormData, initial_subject_b: e.target.value })}
+                            className="w-full px-4 py-2 bg-gray-700 border border-orange-500/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            placeholder="e.g., {{firstName}}, quick question"
+                          />
                         </div>
                       )}
 
-                      <div className="space-y-3">
-                        {currentFollowUps.map((msg: any, index: number) => (
-                          <div
-                            key={index}
-                            className={`bg-gray-800/50 border rounded p-3 ${
-                              index >= maxFollowUps ? 'border-red-500 opacity-50' : 'border-gray-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm text-gray-400">
-                                Follow-up #{index + 1} (Step {(isMessengerCampaign || isEmailCampaign) ? index + 2 : index + 2})
-                                {index >= maxFollowUps && (
-                                  <span className="text-red-400 text-xs ml-2">⚠ Will be ignored</span>
-                                )}
-                              </span>
-                              <button
-                                onClick={() => {
-                                  const updated = [...editFormData.follow_up_messages];
-                                  updated.splice(index, 1);
-                                  setEditFormData({ ...editFormData, follow_up_messages: updated });
+                      {/* Threading Option */}
+                      <div className="flex items-center gap-3 bg-gray-700/50 rounded-lg p-3">
+                        <input
+                          type="checkbox"
+                          id="edit-use-threaded-replies"
+                          checked={editFormData.use_threaded_replies || false}
+                          onChange={(e) => setEditFormData({ ...editFormData, use_threaded_replies: e.target.checked })}
+                          className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                        />
+                        <div>
+                          <label htmlFor="edit-use-threaded-replies" className="text-white cursor-pointer font-medium text-sm">
+                            Use threaded replies (RE:)
+                          </label>
+                          <p className="text-xs text-gray-400">
+                            {editFormData.use_threaded_replies
+                              ? `Follow-ups will use "RE: ${editFormData.initial_subject || '[Initial Subject]'}"`
+                              : 'Each follow-up will have its own subject line'
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Follow-up Subjects (only if not using threaded replies) */}
+                      {!editFormData.use_threaded_replies && editFormData.follow_up_messages?.length > 0 && (
+                        <div className="space-y-2">
+                          <label className="block text-sm text-gray-400">Follow-up Subject Lines</label>
+                          {editFormData.follow_up_messages.map((_: any, index: number) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500 w-12">FU{index + 1}:</span>
+                              <input
+                                type="text"
+                                value={editFormData.follow_up_subjects?.[index] || ''}
+                                onChange={(e) => {
+                                  const updated = [...(editFormData.follow_up_subjects || [])];
+                                  updated[index] = e.target.value;
+                                  setEditFormData({ ...editFormData, follow_up_subjects: updated });
                                 }}
-                                className="text-red-400 hover:text-red-300 text-sm"
-                              >
-                                Remove
-                              </button>
+                                className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder={`Subject for follow-up ${index + 1}`}
+                              />
                             </div>
-                            <textarea
-                              value={typeof msg === 'string' ? msg : (msg.message || msg.content || '')}
-                              onChange={(e) => {
-                                const updated = [...editFormData.follow_up_messages];
-                                updated[index] = typeof msg === 'string' ? e.target.value : { ...msg, message: e.target.value };
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Follow-up Messages */}
+                  <div>
+                    {(() => {
+                      const isMessengerCampaign = campaignToEdit?.campaign_type === 'messenger';
+                      const isEmailCampaign = campaignToEdit?.campaign_type === 'email';
+                      const maxFollowUps = 15; // Allow up to 15 follow-ups for all campaign types
+                      const currentFollowUps = editFormData.follow_up_messages || [];
+
+                      return (
+                        <>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Follow-up Messages ({currentFollowUps.length}/{maxFollowUps})
+                            {currentFollowUps.length > maxFollowUps && (
+                              <span className="text-red-400 text-xs ml-2">⚠ Exceeds limit!</span>
+                            )}
+                          </label>
+
+                          {currentFollowUps.length > maxFollowUps && (
+                            <div className="bg-red-900/20 border border-red-500 rounded-lg p-3 mb-3 text-red-400 text-sm">
+                              <AlertTriangle size={16} className="inline mr-2" />
+                              Warning: {currentFollowUps.length - maxFollowUps} extra message(s) will be ignored.
+                              {isMessengerCampaign && ' Messenger campaigns allow max 4 follow-ups.'}
+                              {isEmailCampaign && ' Email campaigns allow max 4 follow-ups.'}
+                              {!isMessengerCampaign && !isEmailCampaign && ' Connector campaigns allow max 5 follow-ups.'}
+                            </div>
+                          )}
+
+                          <div className="space-y-3">
+                            {currentFollowUps.map((msg: any, index: number) => (
+                              <div
+                                key={index}
+                                className={`bg-gray-800/50 border rounded p-3 ${index >= maxFollowUps ? 'border-red-500 opacity-50' : 'border-gray-700'
+                                  }`}
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm text-gray-400">
+                                    Follow-up #{index + 1} (Step {(isMessengerCampaign || isEmailCampaign) ? index + 2 : index + 2})
+                                    {index >= maxFollowUps && (
+                                      <span className="text-red-400 text-xs ml-2">⚠ Will be ignored</span>
+                                    )}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      const updated = [...editFormData.follow_up_messages];
+                                      updated.splice(index, 1);
+                                      setEditFormData({ ...editFormData, follow_up_messages: updated });
+                                    }}
+                                    className="text-red-400 hover:text-red-300 text-sm"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                                <textarea
+                                  value={typeof msg === 'string' ? msg : (msg.message || msg.content || '')}
+                                  onChange={(e) => {
+                                    const updated = [...editFormData.follow_up_messages];
+                                    updated[index] = typeof msg === 'string' ? e.target.value : { ...msg, message: e.target.value };
+                                    setEditFormData({ ...editFormData, follow_up_messages: updated });
+                                  }}
+                                  maxLength={8000}
+                                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none min-h-[80px]"
+                                />
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (currentFollowUps.length >= maxFollowUps) {
+                                  toastWarning(`Maximum ${maxFollowUps} follow-up messages allowed for ${isMessengerCampaign ? 'messenger' : isEmailCampaign ? 'email' : 'connector'} campaigns`);
+                                  return;
+                                }
+                                const updated = [...(editFormData.follow_up_messages || []), ''];
                                 setEditFormData({ ...editFormData, follow_up_messages: updated });
                               }}
-                              maxLength={8000}
-                              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 resize-none min-h-[80px]"
-                            />
+                              disabled={currentFollowUps.length >= maxFollowUps}
+                              className={`w-full flex items-center justify-center px-3 py-1.5 text-sm border rounded-lg transition-colors ${currentFollowUps.length >= maxFollowUps
+                                  ? 'border-gray-800 text-gray-600 cursor-not-allowed'
+                                  : 'border-gray-700 text-gray-300 hover:bg-gray-800'
+                                }`}
+                            >
+                              <Plus size={16} className="mr-2" />
+                              Add Follow-up Message {currentFollowUps.length >= maxFollowUps && '(Max reached)'}
+                            </button>
                           </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (currentFollowUps.length >= maxFollowUps) {
-                              toastWarning(`Maximum ${maxFollowUps} follow-up messages allowed for ${isMessengerCampaign ? 'messenger' : isEmailCampaign ? 'email' : 'connector'} campaigns`);
-                              return;
-                            }
-                            const updated = [...(editFormData.follow_up_messages || []), ''];
-                            setEditFormData({ ...editFormData, follow_up_messages: updated });
-                          }}
-                          disabled={currentFollowUps.length >= maxFollowUps}
-                          className={`w-full flex items-center justify-center px-3 py-1.5 text-sm border rounded-lg transition-colors ${
-                            currentFollowUps.length >= maxFollowUps
-                              ? 'border-gray-800 text-gray-600 cursor-not-allowed'
-                              : 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                          }`}
-                        >
-                          <Plus size={16} className="mr-2" />
-                          Add Follow-up Message {currentFollowUps.length >= maxFollowUps && '(Max reached)'}
-                        </button>
-                      </div>
 
-                      {/* Message Summary */}
-                      <div className="mt-4 bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-300">
-                        <strong>Total Messages:</strong> {
-                          ((editFormData.connection_message || editFormData.alternative_message || editFormData.email_body) ? 1 : 0) +
-                          Math.min(currentFollowUps.length, maxFollowUps)
-                        } / {maxFollowUps + 1}
-                        <span className="ml-2 text-gray-400">
-                          ({isMessengerCampaign ? 'Messenger' : isEmailCampaign ? 'Email' : 'Connector'} campaign)
-                        </span>
-                      </div>
-                    </>
-                  );
-                })()}
+                          {/* Message Summary */}
+                          <div className="mt-4 bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-300">
+                            <strong>Total Messages:</strong> {
+                              ((editFormData.connection_message || editFormData.alternative_message || editFormData.email_body) ? 1 : 0) +
+                              Math.min(currentFollowUps.length, maxFollowUps)
+                            } / {maxFollowUps + 1}
+                            <span className="ml-2 text-gray-400">
+                              ({isMessengerCampaign ? 'Messenger' : isEmailCampaign ? 'Email' : 'Connector'} campaign)
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-6 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveCampaignEdit}
+                    className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                  >
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="sticky bottom-0 bg-gray-900 border-t border-gray-700 p-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowEditModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveCampaignEdit}
-                className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
+          {/* Unified Unipile Wizard (LinkedIn & Email) */}
+          <UnipileModal
+            isOpen={showUnipileWizard}
+            provider={unipileProvider}
+            workspaceId={actualWorkspaceId || undefined}
+            onClose={() => {
+              setShowUnipileWizard(false);
+              // Recheck accounts after closing
+              if (workspaceId) {
+                fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`)
+                  .then(res => res.json())
+                  .then(data => {
+                    if (data.success) {
+                      setConnectedAccounts({
+                        linkedin: data.linkedin_connected || false,
+                        email: data.email_connected || false
+                      });
+                      if (unipileProvider === 'LINKEDIN' && data.linkedin_connected) {
+                        toastSuccess('LinkedIn account connected! You can now create LinkedIn campaigns.');
+                      } else if ((unipileProvider === 'GOOGLE' || unipileProvider === 'OUTLOOK') && data.email_connected) {
+                        toastSuccess('Email account connected! You can now create email campaigns.');
+                      }
+                    }
+                  })
+                  .catch(err => console.error('Failed to recheck accounts:', err));
+              }
+            }}
+          />
+
+          {/* Custom Confirm Modal - replaces native browser confirm() */}
+          <ConfirmModal
+            isOpen={confirmModal.isOpen}
+            onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            onConfirm={() => {
+              confirmModal.onConfirm();
+              setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            }}
+            title={confirmModal.title}
+            message={confirmModal.message}
+            confirmText={confirmModal.confirmText}
+            confirmVariant={confirmModal.confirmVariant}
+          />
+
         </div>
-      )}
-
-      {/* Unified Unipile Wizard (LinkedIn & Email) */}
-      <UnipileModal
-        isOpen={showUnipileWizard}
-        provider={unipileProvider}
-        workspaceId={actualWorkspaceId || undefined}
-        onClose={() => {
-          setShowUnipileWizard(false);
-          // Recheck accounts after closing
-          if (workspaceId) {
-            fetch(`/api/workspace-accounts/check?workspace_id=${workspaceId}`)
-              .then(res => res.json())
-              .then(data => {
-                if (data.success) {
-                  setConnectedAccounts({
-                    linkedin: data.linkedin_connected || false,
-                    email: data.email_connected || false
-                  });
-                  if (unipileProvider === 'LINKEDIN' && data.linkedin_connected) {
-                    toastSuccess('LinkedIn account connected! You can now create LinkedIn campaigns.');
-                  } else if ((unipileProvider === 'GOOGLE' || unipileProvider === 'OUTLOOK') && data.email_connected) {
-                    toastSuccess('Email account connected! You can now create email campaigns.');
-                  }
-                }
-              })
-              .catch(err => console.error('Failed to recheck accounts:', err));
-          }
-        }}
-      />
-
-      {/* Custom Confirm Modal - replaces native browser confirm() */}
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-        onConfirm={() => {
-          confirmModal.onConfirm();
-          setConfirmModal(prev => ({ ...prev, isOpen: false }));
-        }}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        confirmText={confirmModal.confirmText}
-        confirmVariant={confirmModal.confirmVariant}
-      />
-
       </div>
-    </div>
     </div>
   );
 };
