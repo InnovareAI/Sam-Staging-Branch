@@ -154,7 +154,7 @@ function EditReplyContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 md:p-8 p-0 flex flex-col items-center justify-center font-sans">
+    <div className="min-h-screen bg-[#130d25] md:p-8 p-0 flex flex-col items-center justify-center font-sans">
 
       {/* Main Container Card */}
       <div className="bg-white md:rounded-2xl shadow-2xl overflow-hidden w-full max-w-6xl md:flex h-screen md:h-[85vh] flex-col md:flex-row">
