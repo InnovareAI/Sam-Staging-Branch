@@ -599,8 +599,67 @@ Respond with just the intent category (e.g., "INTERESTED").`;
       }
     }
 
-    // Sender name (the person using SAM - workspace owner)
-    const senderName = config.sender_name || 'Pete'; // Default fallback
+    // Sender name - get from LinkedIn account or workspace owner
+    let senderName = '';
+
+    // Try to get from the LinkedIn account used for this campaign
+    if (prospect.campaign_id) {
+      const { data: campaignAccount } = await supabase
+        .from('campaigns')
+        .select('linkedin_account_id')
+        .eq('id', prospect.campaign_id)
+        .single();
+
+      if (campaignAccount?.linkedin_account_id) {
+        // linkedin_account_id is the UUID (id column), not unipile_account_id
+        const { data: account } = await supabase
+          .from('user_unipile_accounts')
+          .select('account_name')
+          .eq('id', campaignAccount.linkedin_account_id)
+          .single();
+
+        if (account?.account_name) {
+          const name = account.account_name;
+          if (name.includes('@')) {
+            // Email account - map known prefixes to names
+            const prefix = name.split('@')[0].toLowerCase();
+            const emailToName: Record<string, string> = {
+              'jf': 'Jennifer', 'jennifer': 'Jennifer',
+              'thorsten': 'Thorsten', 'tvonlinz': 'Thorsten',
+              'michelle': 'Michelle', 'irish': 'Irish',
+            };
+            senderName = emailToName[prefix] || '';
+          } else {
+            // LinkedIn account - "Jennifer Fleming" -> "Jennifer"
+            senderName = name.split(' ')[0];
+          }
+        }
+      }
+    }
+
+    // Fallback to workspace owner name
+    if (!senderName) {
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('owner_id')
+        .eq('id', config.workspace_id)
+        .single();
+
+      if (workspace?.owner_id) {
+        const { data: owner } = await supabase
+          .from('users')
+          .select('first_name')
+          .eq('id', workspace.owner_id)
+          .single();
+
+        senderName = owner?.first_name || '';
+      }
+    }
+
+    // Final fallback - don't sign with a name
+    if (!senderName) {
+      console.log('   ⚠️ Could not determine sender name');
+    }
 
     // Get contextual greeting (holidays, day of week, etc.)
     const contextualGreeting = getContextualGreeting();
