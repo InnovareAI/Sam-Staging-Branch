@@ -158,8 +158,4 @@ $$ LANGUAGE plpgsql;
 -- ============================================
 
 -- Add new conversation stages for link engagement
-COMMENT ON COLUMN campaign_prospects.conversation_stage IS
-  'Stages: initial_outreach, awaiting_response, awaiting_booking, prospect_shared_calendar, ' ||
-  'availability_ready, meeting_scheduled, meeting_completed, meeting_cancelled, no_show_follow_up, ' ||
-  'follow_up_needed, calendar_clicked_pending_booking, engaged_watching_demo, engaged_researching, ' ||
-  'trial_started, closed';
+COMMENT ON COLUMN campaign_prospects.conversation_stage IS 'Stages: initial_outreach, awaiting_response, awaiting_booking, prospect_shared_calendar, availability_ready, meeting_scheduled, meeting_completed, meeting_cancelled, no_show_follow_up, follow_up_needed, calendar_clicked_pending_booking, engaged_watching_demo, engaged_researching, trial_started, closed';
