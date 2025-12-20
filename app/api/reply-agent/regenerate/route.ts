@@ -47,14 +47,17 @@ export async function POST(request: NextRequest) {
     // Fetch workspace settings for resources
     const { data: settings } = await supabase
       .from('reply_agent_settings')
-      .select('calendar_link')
+      .select('calendar_link, demo_video_link, pdf_overview_link, case_studies_link, landing_page_link, signup_link')
       .eq('workspace_id', draft.workspace_id)
       .single();
 
+    // Resource links from workspace settings (with fallbacks for InnovareAI)
     const calendarLink = settings?.calendar_link || null;
-    // Demo video link - separate from calendar link
-    // TODO: Add demo_video_link column to reply_agent_settings for per-workspace config
-    const demoVideoLink = 'https://links.innovareai.com/SamAIDemoVideo';
+    const demoVideoLink = settings?.demo_video_link || 'https://links.innovareai.com/SamAIDemoVideo';
+    const pdfOverviewLink = settings?.pdf_overview_link || null;
+    const caseStudiesLink = settings?.case_studies_link || null;
+    const landingPageLink = settings?.landing_page_link || 'https://innovareai.com/sam';
+    const signupLink = settings?.signup_link || 'https://app.meet-sam.com/signup/innovareai';
 
     // Generate new reply with instructions
     const claude = getClaudeClient();
@@ -81,8 +84,12 @@ The user has provided additional instructions for how to improve the reply.
 Follow their instructions while keeping the message professional and conversational.
 
 ## IMPORTANT RESOURCES
-- **Demo video link:** ${demoVideoLink}
-${calendarLink ? `- **Calendar booking link:** ${calendarLink}` : ''}
+- **Demo video:** ${demoVideoLink}
+${calendarLink ? `- **Calendar/booking:** ${calendarLink}` : ''}
+${pdfOverviewLink ? `- **PDF overview:** ${pdfOverviewLink}` : ''}
+${caseStudiesLink ? `- **Case studies:** ${caseStudiesLink}` : ''}
+- **Landing page:** ${landingPageLink}
+- **Signup link:** ${signupLink}
 ${contextualGreeting ? `- **Holiday greeting:** ${contextualGreeting}` : ''}
 
 ## UNIVERSAL TONE RULES
@@ -91,8 +98,14 @@ ${contextualGreeting ? `- **Holiday greeting:** ${contextualGreeting}` : ''}
 - NO fake enthusiasm ("Thanks so much!", "Love what you're doing!")
 - Keep it conversational and natural
 - Match the appropriate level of formality for their industry
-- If the user mentions "demo link", "video", or "SAM demo", use: ${demoVideoLink}
-${calendarLink ? `- If the user mentions "calendar", "meeting", or "book a call", use: ${calendarLink}` : ''}`;
+
+## LINK USAGE
+- "demo", "video", "watch" → ${demoVideoLink}
+${calendarLink ? `- "calendar", "meeting", "book a call", "schedule" → ${calendarLink}` : ''}
+${pdfOverviewLink ? `- "pdf", "overview", "one-pager", "document" → ${pdfOverviewLink}` : ''}
+${caseStudiesLink ? `- "case study", "results", "success stories" → ${caseStudiesLink}` : ''}
+- "website", "learn more", "landing page" → ${landingPageLink}
+- "signup", "sign up", "try", "get started", "trial" → ${signupLink}`;
 
     const userPrompt = `PROSPECT:
 - Name: ${draft.prospect_name}
