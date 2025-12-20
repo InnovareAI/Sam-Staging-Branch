@@ -85,41 +85,59 @@ export async function POST(request: NextRequest) {
         console.log(`\n🔍 Checking account: ${account.account_name} (${account.unipile_account_id})`);
         results.accounts_processed.push(account.account_name);
 
-        // Get prospects for this workspace that might have replies
-        // FIXED (Dec 17): Check ALL email campaigns in the workspace, not just by email_account_id
-        // This catches replies for campaigns where email_account_id may not be set
-        const { data: prospects, error: prospectsError } = await supabase
-          .from('campaign_prospects')
+        // FIX (Dec 20): Find prospects that have been sent emails via email_send_queue
+        // Instead of checking campaign_prospects.status, check email_send_queue.status='sent'
+        // This properly handles email-only campaigns where prospect status may vary
+
+        // Get prospects who were sent emails from this account
+        const { data: sentEmails, error: sentError } = await supabase
+          .from('email_send_queue')
           .select(`
             id,
-            first_name,
-            last_name,
-            email,
-            company_name,
-            title,
-            status,
-            responded_at,
-            campaign_id,
-            campaigns!inner (
+            prospect_id,
+            recipient_email,
+            sent_at,
+            campaign_prospects!inner (
               id,
-              workspace_id,
-              campaign_type
+              first_name,
+              last_name,
+              email,
+              company_name,
+              title,
+              status,
+              responded_at,
+              campaign_id
             )
           `)
-          .eq('campaigns.workspace_id', account.workspace_id)
-          .in('campaigns.campaign_type', ['email', 'email_only', 'multi_channel'])
-          .in('status', ['email_sent', 'follow_up_sent', 'contacted', 'pending'])
-          .is('responded_at', null)
-          .not('email', 'is', null)
-          .order('updated_at', { ascending: false })
+          .eq('email_account_id', account.unipile_account_id)
+          .eq('status', 'sent')
+          .is('campaign_prospects.responded_at', null)
+          .order('sent_at', { ascending: false })
           .limit(50);
 
-        if (prospectsError || !prospects || prospects.length === 0) {
+        // Transform to prospect format
+        const prospects = sentEmails?.map(e => ({
+          id: e.campaign_prospects.id,
+          first_name: e.campaign_prospects.first_name,
+          last_name: e.campaign_prospects.last_name,
+          email: e.recipient_email || e.campaign_prospects.email,
+          company_name: e.campaign_prospects.company_name,
+          title: e.campaign_prospects.title,
+          status: e.campaign_prospects.status,
+          responded_at: e.campaign_prospects.responded_at,
+          campaign_id: e.campaign_prospects.campaign_id
+        })) || [];
+
+        // Deduplicate by prospect ID (may have multiple emails sent)
+        const uniqueProspects = [...new Map(prospects.map(p => [p.id, p])).values()];
+
+        if (sentError || uniqueProspects.length === 0) {
           console.log(`   ℹ️ No prospects to check for ${account.account_name}`);
+          if (sentError) console.log(`   Error: ${sentError.message}`);
           continue;
         }
 
-        console.log(`   📋 Checking ${prospects.length} prospects for replies...`);
+        console.log(`   📋 Checking ${uniqueProspects.length} prospects for replies...`);
 
         // Fetch recent emails for this account (inbox - received emails)
         const emailsResponse = await fetch(
@@ -145,7 +163,7 @@ export async function POST(request: NextRequest) {
         console.log(`   📨 Found ${emails.length} emails in inbox`);
 
         // Check each prospect for replies
-        for (const prospect of prospects) {
+        for (const prospect of uniqueProspects) {
           results.checked++;
 
           if (!prospect.email) continue;
@@ -196,7 +214,7 @@ export async function POST(request: NextRequest) {
               .eq('status', 'pending');
 
             // TRIGGER SAM REPLY AGENT - Create draft for approval
-            const wsId = (prospect.campaigns as any)?.workspace_id || account.workspace_id;
+            const wsId = account.workspace_id;
             console.log(`   🤖 Triggering SAM Reply Agent for ${prospect.first_name}...`);
 
             await triggerReplyAgent(
