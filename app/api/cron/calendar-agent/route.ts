@@ -296,6 +296,128 @@ export async function POST(request: NextRequest) {
 
     console.log(`Phase 4 complete: ${noShowsDetected} no-shows detected`);
 
+    // ============================================
+    // PHASE 5: Poll Google Calendar for Cancellations
+    // (Since Unipile doesn't have calendar webhooks yet)
+    // ============================================
+    console.log('Phase 5: Checking Google Calendar for cancellations...');
+
+    let cancellationsDetected = 0;
+
+    // Find meetings that are scheduled and have a Google Calendar event ID
+    const { data: scheduledMeetings } = await supabase
+      .from('meetings')
+      .select(`
+        id,
+        prospect_id,
+        workspace_id,
+        their_calendar_event_id,
+        our_calendar_event_id,
+        scheduled_at
+      `)
+      .in('status', ['scheduled', 'confirmed'])
+      .not('our_calendar_event_id', 'is', null)
+      .limit(20);
+
+    if (scheduledMeetings?.length) {
+      const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6.unipile.com:13670';
+      const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
+
+      for (const meeting of scheduledMeetings) {
+        try {
+          // Get workspace's Google Calendar account
+          const { data: calendarAccount } = await supabase
+            .from('workspace_accounts')
+            .select('unipile_account_id')
+            .eq('workspace_id', meeting.workspace_id)
+            .eq('account_type', 'google_calendar')
+            .eq('connection_status', 'connected')
+            .single();
+
+          if (!calendarAccount?.unipile_account_id) continue;
+
+          // Check event status via Unipile
+          const eventResponse = await fetch(
+            `https://${UNIPILE_DSN}/api/v1/calendar/events/${meeting.our_calendar_event_id}?account_id=${calendarAccount.unipile_account_id}`,
+            {
+              headers: {
+                'X-API-KEY': UNIPILE_API_KEY!,
+                'Accept': 'application/json',
+              },
+            }
+          );
+
+          if (eventResponse.status === 404) {
+            // Event was deleted/cancelled
+            console.log(`Meeting ${meeting.id} was cancelled in Google Calendar`);
+
+            await supabase
+              .from('meetings')
+              .update({
+                status: 'cancelled',
+                cancelled_at: new Date().toISOString(),
+                cancelled_by: 'calendar_sync',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', meeting.id);
+
+            await supabase
+              .from('campaign_prospects')
+              .update({
+                meeting_status: 'cancelled',
+                follow_up_trigger: 'meeting_cancelled',
+                calendar_follow_up_due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                conversation_stage: 'meeting_cancelled',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', meeting.prospect_id);
+
+            // Cancel pending reminders
+            await supabase
+              .from('meeting_reminders')
+              .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+              .eq('meeting_id', meeting.id)
+              .eq('status', 'pending');
+
+            cancellationsDetected++;
+          } else if (eventResponse.ok) {
+            const eventData = await eventResponse.json();
+            // Check if event status is cancelled
+            if (eventData.status === 'cancelled') {
+              console.log(`Meeting ${meeting.id} has cancelled status`);
+
+              await supabase
+                .from('meetings')
+                .update({
+                  status: 'cancelled',
+                  cancelled_at: new Date().toISOString(),
+                  cancelled_by: 'calendar_sync',
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', meeting.id);
+
+              await supabase
+                .from('campaign_prospects')
+                .update({
+                  meeting_status: 'cancelled',
+                  follow_up_trigger: 'meeting_cancelled',
+                  calendar_follow_up_due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                  conversation_stage: 'meeting_cancelled',
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', meeting.prospect_id);
+
+              cancellationsDetected++;
+            }
+          }
+        } catch (err) {
+          results.errors.push(`Failed to check calendar status for meeting ${meeting.id}: ${err}`);
+        }
+      }
+    }
+
+    console.log(`Phase 5 complete: ${cancellationsDetected} cancellations detected`);
+
     const duration = Date.now() - startTime;
 
     return NextResponse.json({
@@ -304,6 +426,7 @@ export async function POST(request: NextRequest) {
       results: {
         ...results,
         noShowsDetected,
+        cancellationsDetected,
       },
       execution_time_ms: duration,
     });
@@ -323,9 +446,11 @@ export async function GET() {
   return NextResponse.json({
     status: 'Calendar Agent endpoint active',
     responsibilities: [
-      'Check follow-up triggers (no booking, cancelled, no-show, no response)',
-      'Process prospect calendar links (check our availability)',
-      'Detect no-shows for meetings past their scheduled time',
+      'Phase 1: Check follow-up triggers (no booking, cancelled, no-show, no response)',
+      'Phase 2: Process prospect calendar links (check our availability)',
+      'Phase 3: Calendar link clicks without booking (24h follow-up)',
+      'Phase 4: Detect no-shows for meetings past their scheduled time',
+      'Phase 5: Poll Google Calendar for cancellations (via Unipile)',
     ],
   });
 }
