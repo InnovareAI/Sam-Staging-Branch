@@ -181,11 +181,12 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
         emailAccountName = wsEmailAccount.account_name;
       } else {
         // FIX (Dec 20): Fallback to user_unipile_accounts
+        // NOTE: column is 'platform' not 'provider'
         const { data: userEmailAccount } = await supabase
           .from('user_unipile_accounts')
           .select('unipile_account_id, account_name')
           .eq('workspace_id', draft.workspace_id)
-          .in('provider', ['MAIL', 'GOOGLE', 'OUTLOOK', 'MICROSOFT'])
+          .in('platform', ['MAIL', 'GOOGLE', 'OUTLOOK', 'MICROSOFT'])
           .in('connection_status', ['connected', 'active'])
           .limit(1)
           .single();
