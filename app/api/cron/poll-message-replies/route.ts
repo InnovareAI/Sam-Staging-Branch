@@ -72,7 +72,8 @@ export async function POST(request: NextRequest) {
           linkedin_account_id
         )
       `)
-      .in('status', ['connected', 'connection_request_sent'])
+      // FIX (Dec 20): Include 'messaging' and 'follow_up_sent' - these are prospects we've messaged but haven't replied yet
+      .in('status', ['connected', 'connection_request_sent', 'messaging', 'follow_up_sent'])
       .is('responded_at', null)
       .not('linkedin_user_id', 'is', null)
       .order('updated_at', { ascending: false })
