@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch workspace settings for calendar link
+    // Fetch workspace settings for resources
     const { data: settings } = await supabase
       .from('reply_agent_settings')
       .select('calendar_link')
@@ -52,6 +52,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     const calendarLink = settings?.calendar_link || null;
+    // Demo video link - separate from calendar link
+    // TODO: Add demo_video_link column to reply_agent_settings for per-workspace config
+    const demoVideoLink = 'https://links.innovareai.com/SamAIDemoVideo';
 
     // Generate new reply with instructions
     const claude = getClaudeClient();
@@ -78,7 +81,7 @@ The user has provided additional instructions for how to improve the reply.
 Follow their instructions while keeping the message professional and conversational.
 
 ## IMPORTANT RESOURCES
-- **Demo video link:** https://links.innovareai.com/SAM_Demo
+- **Demo video link:** ${demoVideoLink}
 ${calendarLink ? `- **Calendar booking link:** ${calendarLink}` : ''}
 ${contextualGreeting ? `- **Holiday greeting:** ${contextualGreeting}` : ''}
 
@@ -88,7 +91,7 @@ ${contextualGreeting ? `- **Holiday greeting:** ${contextualGreeting}` : ''}
 - NO fake enthusiasm ("Thanks so much!", "Love what you're doing!")
 - Keep it conversational and natural
 - Match the appropriate level of formality for their industry
-- If the user mentions "demo link", "video", or "SAM demo", use: https://links.innovareai.com/SAM_Demo
+- If the user mentions "demo link", "video", or "SAM demo", use: ${demoVideoLink}
 ${calendarLink ? `- If the user mentions "calendar", "meeting", or "book a call", use: ${calendarLink}` : ''}`;
 
     const userPrompt = `PROSPECT:

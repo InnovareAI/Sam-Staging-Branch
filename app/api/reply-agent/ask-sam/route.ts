@@ -44,6 +44,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     const calendarLink = settings?.calendar_link || null;
+    // Demo video link - separate from calendar link
+    // TODO: Add demo_video_link column to reply_agent_settings for per-workspace config
+    const demoVideoLink = 'https://links.innovareai.com/SamAIDemoVideo';
 
     // Build context for SAM
     const claude = getClaudeClient();
@@ -72,7 +75,7 @@ Your role is to give brief, actionable advice. Be direct and specific - the user
 - **Current draft reply**: "${currentDraft || draft.draft_text}"
 
 ## Important Resources to Reference
-- **Demo video link:** https://links.innovareai.com/SAM_Demo
+- **Demo video link:** ${demoVideoLink}
 ${calendarLink ? `- **Calendar booking link:** ${calendarLink}` : ''}
 ${contextualGreeting ? `- **Holiday greeting to use:** ${contextualGreeting}` : ''}
 
@@ -85,6 +88,7 @@ ${draft.research_company_profile ? `Company: ${JSON.stringify(draft.research_com
 - Be specific to THIS prospect and message
 - If they ask for a rewrite, provide the text directly
 - No corporate buzzwords or fake enthusiasm
+- If they ask about demo/video links, provide: ${demoVideoLink}
 ${calendarLink ? `- If they ask about calendar/booking links, provide: ${calendarLink}` : ''}`;
 
     const userPrompt = question;
