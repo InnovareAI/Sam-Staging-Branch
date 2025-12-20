@@ -44,6 +44,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch workspace settings for calendar link
+    const { data: settings } = await supabase
+      .from('reply_agent_settings')
+      .select('calendar_link')
+      .eq('workspace_id', draft.workspace_id)
+      .single();
+
+    const calendarLink = settings?.calendar_link || null;
+
     // Generate new reply with instructions
     const claude = getClaudeClient();
 
@@ -70,7 +79,7 @@ Follow their instructions while keeping the message professional and conversatio
 
 ## IMPORTANT RESOURCES
 - **Demo video link:** https://links.innovareai.com/SAM_Demo
-- **Calendar booking link:** https://cal.com/pete-innovareai/innovation-ai-sam-demo
+${calendarLink ? `- **Calendar booking link:** ${calendarLink}` : ''}
 ${contextualGreeting ? `- **Holiday greeting:** ${contextualGreeting}` : ''}
 
 ## UNIVERSAL TONE RULES
@@ -80,7 +89,7 @@ ${contextualGreeting ? `- **Holiday greeting:** ${contextualGreeting}` : ''}
 - Keep it conversational and natural
 - Match the appropriate level of formality for their industry
 - If the user mentions "demo link", "video", or "SAM demo", use: https://links.innovareai.com/SAM_Demo
-- If the user mentions "calendar", "meeting", or "book a call", use: https://cal.com/pete-innovareai/innovation-ai-sam-demo`;
+${calendarLink ? `- If the user mentions "calendar", "meeting", or "book a call", use: ${calendarLink}` : ''}`;
 
     const userPrompt = `PROSPECT:
 - Name: ${draft.prospect_name}

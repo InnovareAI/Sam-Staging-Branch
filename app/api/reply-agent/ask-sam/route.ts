@@ -36,6 +36,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch workspace settings for calendar link
+    const { data: settings } = await supabase
+      .from('reply_agent_settings')
+      .select('calendar_link')
+      .eq('workspace_id', draft.workspace_id)
+      .single();
+
+    const calendarLink = settings?.calendar_link || null;
+
     // Build context for SAM
     const claude = getClaudeClient();
 
@@ -64,7 +73,7 @@ Your role is to give brief, actionable advice. Be direct and specific - the user
 
 ## Important Resources to Reference
 - **Demo video link:** https://links.innovareai.com/SAM_Demo
-- **Calendar booking link:** https://cal.com/pete-innovareai/innovation-ai-sam-demo
+${calendarLink ? `- **Calendar booking link:** ${calendarLink}` : ''}
 ${contextualGreeting ? `- **Holiday greeting to use:** ${contextualGreeting}` : ''}
 
 ## Research on this prospect
@@ -76,7 +85,7 @@ ${draft.research_company_profile ? `Company: ${JSON.stringify(draft.research_com
 - Be specific to THIS prospect and message
 - If they ask for a rewrite, provide the text directly
 - No corporate buzzwords or fake enthusiasm
-- If they ask about links, provide the actual URLs above`;
+${calendarLink ? `- If they ask about calendar/booking links, provide: ${calendarLink}` : ''}`;
 
     const userPrompt = question;
 
