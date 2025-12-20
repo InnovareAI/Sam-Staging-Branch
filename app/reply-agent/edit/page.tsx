@@ -164,9 +164,25 @@ function EditReplyContent() {
 
           {/* Header */}
           <div className="bg-white border-b border-gray-100 p-6 pb-4">
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-xl font-bold text-gray-900">Reply to {draft?.prospect_name}</h1>
-              <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">Draft</span>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold text-gray-900">Reply to {draft?.prospect_name}</h1>
+                <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">Draft</span>
+              </div>
+              {/* LinkedIn Link */}
+              {draft?.prospect_linkedin_url && (
+                <a
+                  href={draft.prospect_linkedin_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                  </svg>
+                  View Profile
+                </a>
+              )}
             </div>
             <p className="text-gray-500 text-sm truncate">
               {draft?.prospect_title || 'Unknown Title'} • {draft?.prospect_company}
