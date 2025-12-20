@@ -267,9 +267,13 @@ export async function POST(request: NextRequest) {
           if (!prospectProviderId) continue;
 
           // Find chat with this prospect by matching attendee_provider_id
-          const prospectChat = chats.find((chat: any) =>
-            chat.attendee_provider_id === prospectProviderId
-          );
+          // FIX (Dec 20): Use prefix matching - Unipile sometimes returns truncated IDs
+          const prospectChat = chats.find((chat: any) => {
+            const attendeeId = chat.attendee_provider_id || '';
+            // Match if either ID starts with the other (handles truncation either way)
+            return attendeeId.startsWith(prospectProviderId.slice(0, 20)) ||
+                   prospectProviderId.startsWith(attendeeId.slice(0, 20));
+          });
 
           if (!prospectChat) {
             console.log(`   ❌ No chat found for ${prospect.first_name} (${prospectProviderId?.slice(0, 15)}...)`);
@@ -303,8 +307,13 @@ export async function POST(request: NextRequest) {
           console.log(`   📨 Checking ${messages.length} messages for reply from ${prospect.first_name}...`);
 
           // Get all inbound messages from this prospect
+          // FIX (Dec 20): Use prefix matching for sender_id - Unipile truncates IDs
           const inboundMessages = messages.filter((msg: any) => {
-            return msg.is_sender === 0 && msg.sender_id === prospectProviderId;
+            if (msg.is_sender !== 0) return false;
+            const senderId = msg.sender_id || '';
+            // Match if either ID starts with the other (handles truncation)
+            return senderId.startsWith(prospectProviderId.slice(0, 20)) ||
+                   prospectProviderId.startsWith(senderId.slice(0, 20));
           });
 
           if (inboundMessages.length === 0) {
@@ -461,6 +470,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ============================================
+    // INBOUND-FIRST PASS (Dec 20, 2025)
+    // Catch replies that weren't matched in the prospect-first pass
+    // This handles cases where linkedin_user_id doesn't match Unipile's sender_id
+    // ============================================
+    console.log('\n🔍 Starting INBOUND-FIRST pass to catch missed replies...');
+
+    const inboundResults = await processInboundMessagesFirst(supabase, accountCache);
+    results.replies_found += inboundResults.replies_found;
+    if (inboundResults.unmatched_count > 0) {
+      console.log(`⚠️ ${inboundResults.unmatched_count} inbound messages could not be matched to any prospect`);
+    }
+
     const duration = Date.now() - startTime;
     console.log(`\n⏱️  Poll completed in ${duration}ms`);
     console.log(`📊 Results: ${results.checked} checked, ${results.replies_found} replies found`);
@@ -491,6 +513,300 @@ function extractVanity(linkedinId: string): string | null {
 
   // If it's already a vanity or provider_id, return as-is
   return linkedinId;
+}
+
+/**
+ * INBOUND-FIRST PASS (Dec 20, 2025)
+ *
+ * Instead of starting from prospects and finding their messages,
+ * this approach starts from inbound messages and tries to match them to prospects.
+ *
+ * This catches replies from:
+ * - Prospects whose linkedin_user_id doesn't match Unipile's sender_id
+ * - Prospects whose ID was truncated differently
+ * - Prospects who weren't in our initial query (status edge cases)
+ */
+async function processInboundMessagesFirst(
+  supabase: any,
+  accountCache: Record<string, string | null>
+): Promise<{ replies_found: number; unmatched_count: number }> {
+  const results = { replies_found: 0, unmatched_count: 0 };
+
+  try {
+    // Get all Unipile accounts we're monitoring
+    const { data: accounts } = await supabase
+      .from('user_unipile_accounts')
+      .select('id, unipile_account_id, account_name, user_id')
+      .eq('platform', 'LINKEDIN')
+      .eq('connection_status', 'connected');
+
+    if (!accounts || accounts.length === 0) {
+      console.log('   ℹ️ No connected LinkedIn accounts to check');
+      return results;
+    }
+
+    console.log(`   📊 Checking ${accounts.length} LinkedIn accounts for inbound messages...`);
+
+    for (const account of accounts) {
+      const unipileAccountId = account.unipile_account_id;
+      if (!unipileAccountId) continue;
+
+      try {
+        // Fetch recent messages for this account
+        const messagesResponse = await fetch(
+          `${UNIPILE_BASE_URL}/api/v1/messages?account_id=${unipileAccountId}&limit=50`,
+          {
+            method: 'GET',
+            headers: {
+              'X-API-KEY': UNIPILE_API_KEY,
+              'Accept': 'application/json'
+            }
+          }
+        );
+
+        if (!messagesResponse.ok) {
+          console.log(`   ⚠️ Failed to fetch messages for ${account.account_name}`);
+          continue;
+        }
+
+        const messagesData = await messagesResponse.json();
+        const allMessages = messagesData.items || [];
+
+        // Filter to INBOUND only (is_sender === 0 or is_sender === false)
+        const inboundMessages = allMessages.filter((msg: any) =>
+          msg.is_sender === 0 || msg.is_sender === false
+        );
+
+        if (inboundMessages.length === 0) continue;
+
+        console.log(`\n   👤 ${account.account_name}: ${inboundMessages.length} inbound messages`);
+
+        // Get campaigns for this account to know which prospects to check
+        const { data: campaigns } = await supabase
+          .from('campaigns')
+          .select('id, name, workspace_id')
+          .eq('linkedin_account_id', account.id);
+
+        if (!campaigns || campaigns.length === 0) continue;
+
+        const campaignIds = campaigns.map((c: any) => c.id);
+
+        // Process each inbound message
+        for (const msg of inboundMessages.slice(0, 20)) { // Limit to 20 most recent
+          const senderId = msg.sender_id || '';
+          const senderName = msg.sender_name || '';
+          const messageText = msg.text || msg.body || '';
+          const messageId = msg.id;
+
+          // Skip if we already have a draft for this message
+          const { data: existingDraft } = await supabase
+            .from('reply_agent_drafts')
+            .select('id')
+            .eq('inbound_message_id', messageId)
+            .maybeSingle();
+
+          if (existingDraft) continue;
+
+          // Try to match this sender to a prospect using multiple strategies
+          let matchedProspect = null;
+
+          // Strategy 1: Exact match on linkedin_user_id
+          const { data: exactMatch } = await supabase
+            .from('campaign_prospects')
+            .select(`
+              id, first_name, last_name, linkedin_user_id, linkedin_url,
+              company_name, title, status, responded_at, campaign_id,
+              last_processed_message_id,
+              campaigns (workspace_id)
+            `)
+            .eq('linkedin_user_id', senderId)
+            .in('campaign_id', campaignIds)
+            .maybeSingle();
+
+          if (exactMatch) {
+            matchedProspect = exactMatch;
+            console.log(`      ✓ Exact match: ${senderName} → ${exactMatch.first_name} ${exactMatch.last_name}`);
+          }
+
+          // Strategy 2: Prefix match (handles truncation)
+          if (!matchedProspect && senderId.length >= 15) {
+            const senderPrefix = senderId.slice(0, 20);
+            const { data: prefixMatches } = await supabase
+              .from('campaign_prospects')
+              .select(`
+                id, first_name, last_name, linkedin_user_id, linkedin_url,
+                company_name, title, status, responded_at, campaign_id,
+                last_processed_message_id,
+                campaigns (workspace_id)
+              `)
+              .like('linkedin_user_id', `${senderPrefix}%`)
+              .in('campaign_id', campaignIds)
+              .limit(1);
+
+            if (prefixMatches && prefixMatches.length > 0) {
+              matchedProspect = prefixMatches[0];
+              console.log(`      ✓ Prefix match: ${senderName} → ${matchedProspect.first_name} ${matchedProspect.last_name}`);
+            }
+          }
+
+          // Strategy 3: Name match (fallback for completely different IDs)
+          if (!matchedProspect && senderName) {
+            const nameParts = senderName.toLowerCase().split(' ');
+            if (nameParts.length >= 2) {
+              const firstName = nameParts[0];
+              const lastName = nameParts[nameParts.length - 1];
+
+              const { data: nameMatches } = await supabase
+                .from('campaign_prospects')
+                .select(`
+                  id, first_name, last_name, linkedin_user_id, linkedin_url,
+                  company_name, title, status, responded_at, campaign_id,
+                  last_processed_message_id,
+                  campaigns (workspace_id)
+                `)
+                .ilike('first_name', firstName)
+                .ilike('last_name', `%${lastName}%`)
+                .in('campaign_id', campaignIds)
+                .in('status', ['connected', 'connection_request_sent', 'messaging', 'follow_up_sent'])
+                .limit(1);
+
+              if (nameMatches && nameMatches.length > 0) {
+                matchedProspect = nameMatches[0];
+                console.log(`      ✓ Name match: ${senderName} → ${matchedProspect.first_name} ${matchedProspect.last_name}`);
+
+                // Update the prospect's linkedin_user_id to prevent future mismatches
+                await supabase
+                  .from('campaign_prospects')
+                  .update({
+                    linkedin_user_id: senderId,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', matchedProspect.id);
+
+                console.log(`      📝 Updated linkedin_user_id for ${matchedProspect.first_name}`);
+              }
+            }
+          }
+
+          if (!matchedProspect) {
+            // Log unmatched message for debugging
+            results.unmatched_count++;
+            console.log(`      ❌ Unmatched: "${senderName}" - "${messageText.slice(0, 50)}..."`);
+            continue;
+          }
+
+          // Check if we already processed this message for this prospect
+          if (matchedProspect.last_processed_message_id === messageId) {
+            continue;
+          }
+
+          // Check if prospect already has status 'replied' and this isn't a new message
+          const messageDate = new Date(msg.created_at || msg.timestamp);
+          const respondedDate = matchedProspect.responded_at ? new Date(matchedProspect.responded_at) : null;
+
+          if (matchedProspect.status === 'replied' && respondedDate && messageDate <= respondedDate) {
+            continue; // This message was already processed
+          }
+
+          // NEW REPLY FOUND!
+          const isFirstReply = !matchedProspect.responded_at;
+          console.log(`   ✅ Found ${isFirstReply ? 'FIRST' : 'FOLLOW-UP'} reply: ${matchedProspect.first_name} ${matchedProspect.last_name}`);
+          results.replies_found++;
+
+          // Sync to Airtable
+          try {
+            const intent = await classifyIntent(messageText, {
+              prospectName: `${matchedProspect.first_name} ${matchedProspect.last_name}`.trim(),
+              prospectCompany: matchedProspect.company_name
+            });
+
+            await airtableService.syncLinkedInLead({
+              profileUrl: matchedProspect.linkedin_url,
+              name: `${matchedProspect.first_name || ''} ${matchedProspect.last_name || ''}`.trim(),
+              jobTitle: matchedProspect.title,
+              companyName: matchedProspect.company_name,
+              intent: intent.intent,
+              replyText: messageText,
+            });
+          } catch (airtableError) {
+            console.error('      ❌ Airtable sync error:', airtableError);
+          }
+
+          // Update prospect
+          if (isFirstReply) {
+            await supabase
+              .from('campaign_prospects')
+              .update({
+                status: 'replied',
+                responded_at: msg.created_at || new Date().toISOString(),
+                last_processed_message_id: messageId,
+                follow_up_due_at: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', matchedProspect.id);
+
+            // Cancel pending queue items
+            await supabase
+              .from('send_queue')
+              .update({
+                status: 'cancelled',
+                error_message: 'Prospect replied - sequence stopped (inbound-first)',
+                updated_at: new Date().toISOString()
+              })
+              .eq('prospect_id', matchedProspect.id)
+              .eq('status', 'pending');
+
+            await supabase
+              .from('email_send_queue')
+              .update({
+                status: 'cancelled',
+                error_message: 'Prospect replied - sequence stopped (inbound-first)',
+                updated_at: new Date().toISOString()
+              })
+              .eq('prospect_id', matchedProspect.id)
+              .eq('status', 'pending');
+
+            // Cancel Follow-Up Agent drafts
+            await supabase
+              .from('follow_up_drafts')
+              .update({
+                status: 'archived',
+                rejected_reason: 'Prospect replied - follow-up sequence stopped (inbound-first)',
+                updated_at: new Date().toISOString()
+              })
+              .eq('prospect_id', matchedProspect.id)
+              .in('status', ['pending_generation', 'pending_approval', 'approved']);
+
+          } else {
+            await supabase
+              .from('campaign_prospects')
+              .update({
+                last_processed_message_id: messageId,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', matchedProspect.id);
+          }
+
+          // Trigger Reply Agent
+          const wsId = (matchedProspect.campaigns as any)?.workspace_id;
+          if (wsId) {
+            await triggerReplyAgent(supabase, matchedProspect, msg, wsId);
+          }
+        }
+
+        // Rate limit between accounts
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+      } catch (accountError) {
+        console.error(`   ❌ Error processing account ${account.account_name}:`, accountError);
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Inbound-first pass error:', error);
+  }
+
+  return results;
 }
 
 /**
