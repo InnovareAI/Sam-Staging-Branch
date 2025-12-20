@@ -196,7 +196,7 @@ function EditReplyContent() {
               <textarea
                 value={editedText}
                 onChange={(e) => setEditedText(e.target.value)}
-                className="w-full h-48 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none font-mono text-sm"
+                className="w-full h-48 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none font-mono text-sm text-gray-900"
                 placeholder="Edit your reply..."
               />
               <p className="text-gray-400 text-sm mt-1">
@@ -211,7 +211,7 @@ function EditReplyContent() {
                 <textarea
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  className="w-full h-20 p-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm"
+                  className="w-full h-20 p-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm text-gray-900"
                   placeholder="e.g., Add the demo link, make it shorter, include a holiday greeting, mention case studies..."
                 />
                 <div className="mt-2 flex gap-2">
