@@ -540,12 +540,12 @@ Respond with just the intent category (e.g., "INTERESTED").`;
           // Extract SEO metadata
           const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
           const descMatch = html.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/i) ||
-                           html.match(/<meta[^>]*content="([^"]+)"[^>]*name="description"/i);
+            html.match(/<meta[^>]*content="([^"]+)"[^>]*name="description"/i);
           const ogDescMatch = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i);
 
           // Extract SEO keywords
           const keywordsMatch = html.match(/<meta[^>]*name="keywords"[^>]*content="([^"]+)"/i) ||
-                               html.match(/<meta[^>]*content="([^"]+)"[^>]*name="keywords"/i);
+            html.match(/<meta[^>]*content="([^"]+)"[^>]*name="keywords"/i);
 
           // Extract h1/h2 taglines
           const h1Match = html.match(/<h1[^>]*>([^<]{10,150})<\/h1>/i);
@@ -1205,15 +1205,151 @@ async function autoSendReply(
   accountId: string,
   supabase: any
 ): Promise<void> {
-  // TODO: Implement auto-send via Unipile
-  // For now, just mark as approved
-  await supabase
-    .from('reply_agent_drafts')
-    .update({
-      status: 'approved',
-      approved_at: new Date().toISOString()
-    })
-    .eq('id', draft.id);
+  const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6.unipile.com:13670';
+  const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
+
+  if (!UNIPILE_API_KEY) {
+    console.error('❌ UNIPILE_API_KEY not configured for autoSendReply');
+    return;
+  }
+
+  try {
+    const channel = draft.channel || 'linkedin';
+    const messageText = draft.edited_text || draft.draft_text;
+
+    if (channel === 'email') {
+      // Get prospect email
+      const { data: prospect } = await supabase
+        .from('campaign_prospects')
+        .select('email, first_name, last_name')
+        .eq('id', draft.prospect_id)
+        .single();
+
+      if (!prospect?.email) {
+        console.error(`❌ Prospect ${draft.prospect_id} has no email for auto-send`);
+        return;
+      }
+
+      const recipientName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim();
+      const response = await fetch(`https://${UNIPILE_DSN}/api/v1/emails`, {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          account_id: accountId,
+          to: [{
+            identifier: prospect.email,
+            ...(recipientName && { display_name: recipientName })
+          }],
+          subject: draft.email_subject || draft.subject || `Re: ${draft.inbound_subject || 'Following up'}`,
+          body: messageText,
+          ...(draft.inbound_thread_id && { thread_id: draft.inbound_thread_id })
+        })
+      });
+
+      if (!response.ok) {
+        console.error('❌ Email auto-send error:', await response.text());
+        return;
+      }
+
+      const result = await response.json();
+      const messageId = result.message_id || result.id;
+
+      await supabase
+        .from('reply_agent_drafts')
+        .update({
+          status: 'sent',
+          approved_at: new Date().toISOString(),
+          sent_at: new Date().toISOString(),
+          outbound_message_id: messageId
+        })
+        .eq('id', draft.id);
+
+    } else {
+      // LINKEDIN
+      if (!draft.inbound_message_id) {
+        console.error(`❌ Draft ${draft.id} has no inbound_message_id for auto-send`);
+        return;
+      }
+
+      // Find chat_id
+      const messageResponse = await fetch(`https://${UNIPILE_DSN}/api/v1/messages/${draft.inbound_message_id}`, {
+        headers: { 'X-API-KEY': UNIPILE_API_KEY, 'Accept': 'application/json' }
+      });
+
+      if (!messageResponse.ok) {
+        console.error('❌ Failed to fetch inbound message for auto-send:', await messageResponse.text());
+        return;
+      }
+
+      const messageData = await messageResponse.json();
+      const chatId = messageData.chat_id;
+
+      if (!chatId) {
+        console.error('❌ Inbound message has no chat_id for auto-send');
+        return;
+      }
+
+      // Send reply
+      const response = await fetch(`https://${UNIPILE_DSN}/api/v1/chats/${chatId}/messages`, {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': UNIPILE_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ text: messageText })
+      });
+
+      if (!response.ok) {
+        console.error('❌ LinkedIn auto-send error:', await response.text());
+        return;
+      }
+
+      const result = await response.json();
+      const messageId = result.message_id || result.id;
+
+      await supabase
+        .from('reply_agent_drafts')
+        .update({
+          status: 'sent',
+          approved_at: new Date().toISOString(),
+          sent_at: new Date().toISOString(),
+          outbound_message_id: messageId
+        })
+        .eq('id', draft.id);
+    }
+
+    // Coordination: Schedule next follow-up and cancel pending ones
+    // mirrors logic in /api/reply-agent/approve
+    const nextFollowUpDate = new Date();
+    nextFollowUpDate.setDate(nextFollowUpDate.getDate() + 3);
+
+    await supabase
+      .from('campaign_prospects')
+      .update({
+        follow_up_due_at: nextFollowUpDate.toISOString(),
+        last_follow_up_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', draft.prospect_id);
+
+    await supabase
+      .from('follow_up_drafts')
+      .update({
+        status: 'archived',
+        rejected_reason: 'Reply Agent auto-sent new message',
+        updated_at: new Date().toISOString()
+      })
+      .eq('prospect_id', draft.prospect_id)
+      .in('status', ['pending_generation', 'pending_approval', 'approved']);
+
+  } catch (error) {
+    console.error('❌ autoSendReply error:', error);
+  }
 }
 
 /**
@@ -1370,11 +1506,13 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
               { type: 'section', text: { type: 'mrkdwn', text: `*${prospect.title || ''} at ${updatedDraft.prospect_company || 'Unknown'}*` } },
               { type: 'section', text: { type: 'mrkdwn', text: `*Their Message:*\n${draft.inbound_message_text?.slice(0, 300) || ''}${(draft.inbound_message_text?.length || 0) > 300 ? '...' : ''}` } },
               { type: 'section', text: { type: 'mrkdwn', text: `*Your Reply:*\n\`${updatedDraft.draft_text}\`` } },
-              { type: 'actions', elements: [
-                { type: 'button', text: { type: 'plain_text', text: '✓ Approve & Send', emoji: true }, url: approveUrl, style: 'primary' },
-                { type: 'button', text: { type: 'plain_text', text: '✏️ Edit', emoji: true }, url: editUrl },
-                { type: 'button', text: { type: 'plain_text', text: '✗ Reject', emoji: true }, url: rejectUrl, style: 'danger' }
-              ]}
+              {
+                type: 'actions', elements: [
+                  { type: 'button', text: { type: 'plain_text', text: '✓ Approve & Send', emoji: true }, url: approveUrl, style: 'primary' },
+                  { type: 'button', text: { type: 'plain_text', text: '✏️ Edit', emoji: true }, url: editUrl },
+                  { type: 'button', text: { type: 'plain_text', text: '✗ Reject', emoji: true }, url: rejectUrl, style: 'danger' }
+                ]
+              }
             ]
           });
           if (slackResult.success) {
@@ -1394,8 +1532,8 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
             .single();
 
           if (linkedinAccount?.unipile_account_id) {
-            await autoSendReply(updatedDraft, unipileAccountId, supabase);
-            console.log(`✅ Draft ${draft.id} auto-approved`);
+            await autoSendReply(updatedDraft, linkedinAccount.unipile_account_id, supabase);
+            console.log(`✅ Draft ${draft.id} auto-approved and sending triggered`);
           }
         }
 

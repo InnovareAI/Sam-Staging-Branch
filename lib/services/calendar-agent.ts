@@ -37,35 +37,35 @@ const CALENDAR_LINK_PATTERNS: Array<{
   platform: DetectedCalendarLink['platform'];
   pattern: RegExp;
 }> = [
-  {
-    platform: 'calendly',
-    pattern: /https?:\/\/(?:www\.)?calendly\.com\/([^\s"<>\)]+)/gi,
-  },
-  {
-    platform: 'cal.com',
-    pattern: /https?:\/\/(?:www\.)?cal\.com\/([^\s"<>\)]+)/gi,
-  },
-  {
-    platform: 'hubspot',
-    pattern: /https?:\/\/(?:meetings\.)?hubspot\.com\/meetings\/([^\s"<>\)]+)/gi,
-  },
-  {
-    platform: 'acuity',
-    pattern: /https?:\/\/(?:www\.)?acuityscheduling\.com\/([^\s"<>\)]+)/gi,
-  },
-  {
-    platform: 'google',
-    pattern: /https?:\/\/calendar\.google\.com\/calendar\/appointments\/([^\s"<>\)]+)/gi,
-  },
-  {
-    platform: 'microsoft',
-    pattern: /https?:\/\/outlook\.office365\.com\/owa\/calendar\/([^\s"<>\)]+)/gi,
-  },
-  {
-    platform: 'microsoft',
-    pattern: /https?:\/\/outlook\.office\.com\/bookwithme\/([^\s"<>\)]+)/gi,
-  },
-];
+    {
+      platform: 'calendly',
+      pattern: /https?:\/\/(?:www\.)?calendly\.com\/([^\s"<>\)]+)/gi,
+    },
+    {
+      platform: 'cal.com',
+      pattern: /https?:\/\/(?:www\.)?cal\.com\/([^\s"<>\)]+)/gi,
+    },
+    {
+      platform: 'hubspot',
+      pattern: /https?:\/\/(?:meetings\.)?hubspot\.com\/meetings\/([^\s"<>\)]+)/gi,
+    },
+    {
+      platform: 'acuity',
+      pattern: /https?:\/\/(?:www\.)?acuityscheduling\.com\/([^\s"<>\)]+)/gi,
+    },
+    {
+      platform: 'google',
+      pattern: /https?:\/\/calendar\.google\.com\/calendar\/appointments\/([^\s"<>\)]+)/gi,
+    },
+    {
+      platform: 'microsoft',
+      pattern: /https?:\/\/outlook\.office365\.com\/owa\/calendar\/([^\s"<>\)]+)/gi,
+    },
+    {
+      platform: 'microsoft',
+      pattern: /https?:\/\/outlook\.office\.com\/bookwithme\/([^\s"<>\)]+)/gi,
+    },
+  ];
 
 // ============================================
 // CALENDAR LINK DETECTION
@@ -187,6 +187,15 @@ export async function checkGoogleCalendarAvailability(params: {
     return { hasSlots: false, suggestedSlots: [] };
   }
 
+  // Get workspace-specific agent config for defaults
+  const { data: agentConfig } = await supabase
+    .from('workspace_meeting_agent_config')
+    .select('default_meeting_duration')
+    .eq('workspace_id', workspaceId)
+    .single();
+
+  const effectiveDuration = params.meetingDurationMinutes || agentConfig?.default_meeting_duration || meetingDurationMinutes;
+
   // Fetch busy times from Unipile
   const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6.unipile.com:13670';
   const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
@@ -220,7 +229,7 @@ export async function checkGoogleCalendarAvailability(params: {
       busyPeriods,
       startDate,
       endDate,
-      meetingDurationMinutes,
+      meetingDurationMinutes: effectiveDuration,
       preferredTimes: params.preferredTimes || [
         { start: 9, end: 12 },  // Morning: 9 AM - 12 PM
         { start: 14, end: 17 }, // Afternoon: 2 PM - 5 PM
@@ -374,9 +383,9 @@ export async function triggerFollowUp(
       follow_up_trigger: trigger,
       follow_up_due_at: new Date().toISOString(), // Follow-up Agent will pick this up
       conversation_stage: trigger === 'no_meeting_booked' ? 'follow_up_needed' :
-                          trigger === 'meeting_cancelled' ? 'reschedule_needed' :
-                          trigger === 'meeting_no_show' ? 'no_show_follow_up' :
-                          'follow_up_needed',
+        trigger === 'meeting_cancelled' ? 'reschedule_needed' :
+          trigger === 'meeting_no_show' ? 'no_show_follow_up' :
+            'follow_up_needed',
       updated_at: new Date().toISOString(),
     })
     .eq('id', prospectId);

@@ -242,14 +242,13 @@ export async function POST(request: NextRequest) {
     console.log('Phase 4: Checking for no-shows...');
 
     // Find meetings that should have happened but weren't marked as completed/no-show
-    const gracePeriodMinutes = 15;
-    const cutoffTime = new Date(Date.now() - gracePeriodMinutes * 60 * 1000);
+    const DEFAULT_GRACE_PERIOD = 15;
 
     const { data: potentialNoShows } = await supabase
       .from('meetings')
-      .select('id, prospect_id')
+      .select('id, prospect_id, workspace_id, scheduled_at')
       .in('status', ['scheduled', 'confirmed'])
-      .lt('scheduled_at', cutoffTime.toISOString())
+      .lt('scheduled_at', new Date(Date.now() - DEFAULT_GRACE_PERIOD * 60 * 1000).toISOString())
       .is('no_show_detected_at', null)
       .limit(20);
 
@@ -257,6 +256,20 @@ export async function POST(request: NextRequest) {
     if (potentialNoShows?.length) {
       for (const meeting of potentialNoShows) {
         try {
+          // Check for workspace-specific grace period
+          const { data: config } = await supabase
+            .from('workspace_meeting_agent_config')
+            .select('no_show_grace_period_minutes')
+            .eq('workspace_id', meeting.workspace_id)
+            .single();
+
+          const effectiveGracePeriod = config?.no_show_grace_period_minutes || DEFAULT_GRACE_PERIOD;
+          const cutoffTime = new Date(Date.now() - effectiveGracePeriod * 60 * 1000);
+
+          if (new Date(meeting.scheduled_at) > cutoffTime) {
+            continue; // Grace period hasn't passed for this specific meeting's workspace
+          }
+
           // Mark as no-show
           await supabase
             .from('meetings')
@@ -305,6 +318,9 @@ export async function POST(request: NextRequest) {
     let cancellationsDetected = 0;
 
     // Find meetings that are scheduled and have a Google Calendar event ID
+    // Dec 20 FIX: Only check unsynced meetings or those not checked in the last 2 hours
+    const syncCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+
     const { data: scheduledMeetings } = await supabase
       .from('meetings')
       .select(`
@@ -313,10 +329,13 @@ export async function POST(request: NextRequest) {
         workspace_id,
         their_calendar_event_id,
         our_calendar_event_id,
-        scheduled_at
+        scheduled_at,
+        calendar_synced_at
       `)
       .in('status', ['scheduled', 'confirmed'])
       .not('our_calendar_event_id', 'is', null)
+      .or(`calendar_synced_at.is.null,calendar_synced_at.lt.${syncCutoff}`)
+      .order('calendar_synced_at', { ascending: true, nullsFirst: true })
       .limit(20);
 
     if (scheduledMeetings?.length) {
@@ -392,6 +411,7 @@ export async function POST(request: NextRequest) {
                   status: 'cancelled',
                   cancelled_at: new Date().toISOString(),
                   cancelled_by: 'calendar_sync',
+                  calendar_synced_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                 })
                 .eq('id', meeting.id);
@@ -408,6 +428,15 @@ export async function POST(request: NextRequest) {
                 .eq('id', meeting.prospect_id);
 
               cancellationsDetected++;
+            } else {
+              // Dec 20 FIX: Update calendar_synced_at even if NOT cancelled to avoid re-checking
+              await supabase
+                .from('meetings')
+                .update({
+                  calendar_synced_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', meeting.id);
             }
           }
         } catch (err) {
