@@ -1,6 +1,6 @@
 # SAM AI Infrastructure Documentation
 
-**Last Updated:** November 27, 2025
+**Last Updated:** December 20, 2025
 **Status:** Production
 **URL:** https://app.meet-sam.com
 
@@ -402,3 +402,168 @@ curl https://app.meet-sam.com/api/version
 # Check if campaigns API responds
 curl "https://app.meet-sam.com/api/campaigns?workspace_id=babdcab8-..."
 ```
+
+---
+
+## Three-Agent Integration System
+
+**Added:** December 20, 2025
+
+The three-agent system creates a seamless handoff for managing prospect conversations from initial reply through meeting booking and follow-up.
+
+### Overview
+
+```
+Prospect Message → Reply Agent → Calendar Agent → Follow-up Agent
+                        ↓               ↓               ↓
+                   Generates      Monitors         Sends follow-up
+                    Reply         Bookings         if needed
+```
+
+### Agent Responsibilities
+
+#### 1. Reply Agent (SAM)
+**Purpose:** Respond to prospect messages with AI-generated replies
+
+**Triggers:**
+- Sets `sam_reply_sent_at` timestamp when reply sent
+- Sets `sam_reply_included_calendar = true` if reply contains calendar link
+- Sets `calendar_follow_up_due_at = now + 3 days` if calendar link sent
+- Updates `conversation_stage` to track progress
+
+**Key Files:**
+- `app/api/reply-agent/[replyId]/action/route.ts` - HITL action handler
+- `app/api/cron/reply-agent-process/route.ts` - Draft generation
+- `lib/services/reply-draft-generator.ts` - AI draft generation
+
+#### 2. Calendar Agent
+**Purpose:** Monitor meeting bookings, cancellations, no-shows; check our availability
+
+**Monitors:**
+- Google Calendar events via Unipile API polling (every 2 hours)
+- Prospect calendar links in messages
+- Meeting status (scheduled → completed/no-show)
+
+**Triggers Follow-up when:**
+- No meeting booked 3 days after calendar link sent
+- Meeting cancelled by prospect
+- No-show detected (15 min grace period)
+- No response 5 days after SAM's reply
+- Calendar link clicked but no booking (24 hours)
+
+**Key Files:**
+- `app/api/cron/calendar-agent/route.ts` - Main cron job (5 phases)
+- `lib/services/calendar-agent.ts` - Calendar link detection, availability
+
+**Calendar Agent Phases:**
+| Phase | Purpose |
+|-------|---------|
+| Phase 1 | Check follow-up triggers (no booking, cancelled, no-show, no response) |
+| Phase 2 | Process prospect calendar links (check our availability) |
+| Phase 3 | Calendar link clicks without booking (24h follow-up) |
+| Phase 4 | Detect no-shows for meetings past scheduled time |
+| Phase 5 | Poll Google Calendar for cancellations via Unipile |
+
+#### 3. Follow-up Agent
+**Purpose:** Send follow-up messages when triggered by Calendar Agent
+
+**Triggered by:**
+- `follow_up_trigger = 'no_meeting_booked'`
+- `follow_up_trigger = 'meeting_cancelled'`
+- `follow_up_trigger = 'meeting_no_show'`
+- `follow_up_trigger = 'no_response'`
+- `follow_up_trigger = 'calendar_clicked_no_booking'`
+
+**Key Files:**
+- `app/api/cron/generate-follow-up-drafts/route.ts` - Draft generation
+
+### Database Fields (Migration 058)
+
+**campaign_prospects (New Columns):**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `sam_reply_sent_at` | TIMESTAMPTZ | When Reply Agent sent response |
+| `sam_reply_included_calendar` | BOOLEAN | Did SAM's reply include calendar link? |
+| `prospect_calendar_link` | TEXT | Calendar link sent BY the prospect |
+| `follow_up_trigger` | TEXT | What triggered follow-up |
+| `calendar_follow_up_due_at` | TIMESTAMPTZ | When to check if follow-up needed |
+| `conversation_stage` | TEXT | Current stage in conversation |
+
+### Conversation Stages
+
+| Stage | Description | Next Agent |
+|-------|-------------|------------|
+| `initial_outreach` | First message sent | Reply Agent (on response) |
+| `awaiting_response` | SAM replied, waiting | Calendar Agent (5 days) |
+| `awaiting_booking` | Calendar link sent | Calendar Agent (3 days) |
+| `prospect_shared_calendar` | Prospect sent their link | Calendar Agent |
+| `availability_ready` | Our times found | Reply Agent |
+| `calendar_clicked_pending_booking` | Clicked but not booked | Calendar Agent (24h) |
+| `meeting_scheduled` | Meeting booked | Calendar Agent (monitor) |
+| `meeting_cancelled` | Prospect cancelled | Follow-up Agent |
+| `no_show_follow_up` | They didn't show | Follow-up Agent |
+| `follow_up_needed` | Generic trigger | Follow-up Agent |
+| `meeting_completed` | Meeting happened | - |
+| `closed` | Conversation ended | - |
+
+### Link Tracking System (Migration 060)
+
+**Purpose:** Track when prospects click links in messages to trigger intelligent follow-up
+
+**How It Works:**
+1. Reply Agent wraps links with unique tracked URLs
+2. Each prospect gets unique short URLs (`/t/abc123`)
+3. Click recording triggers conversation stage updates
+4. Agents react to engagement signals
+
+**Link Types:**
+
+| Type | Examples | Agent Action on Click |
+|------|----------|----------------------|
+| `calendar` | Calendly, Cal.com | Set `calendar_clicked_pending_booking`, follow-up 24h |
+| `demo_video` | Loom, YouTube | Set `engaged_watching_demo` |
+| `one_pager` | PDFs, DocSend | Set `engaged_researching` |
+| `trial` | Sign-up pages | Set `trial_started` |
+
+**Database Tables:**
+- `tracked_links` - Unique links per recipient
+- `link_clicks` - Click events with metadata
+
+**Key Files:**
+- `lib/services/link-tracking.ts` - Core tracking service
+- `app/t/[code]/route.ts` - Redirect endpoint
+
+### Cron Schedules
+
+| Cron Job | Schedule | Purpose |
+|----------|----------|---------|
+| `reply-agent-process` | Every 5 min | Generate AI replies |
+| `calendar-agent` | Every 2 hours | Check triggers, no-shows, calendars |
+| `generate-follow-up-drafts` | Every 15 min | Generate follow-up drafts |
+
+### Google Calendar Integration
+
+**Note:** Unipile does not have calendar webhooks yet. The Calendar Agent uses polling:
+
+```typescript
+// Phase 5: Poll for cancellations
+const eventResponse = await fetch(
+  `https://${UNIPILE_DSN}/api/v1/calendar/events/${eventId}?account_id=${accountId}`,
+  {
+    headers: {
+      'X-API-KEY': UNIPILE_API_KEY,
+      'Accept': 'application/json',
+    },
+  }
+);
+
+// 404 = deleted/cancelled
+if (eventResponse.status === 404) {
+  // Trigger follow-up
+}
+```
+
+### Full Documentation
+
+See `docs/THREE_AGENT_INTEGRATION.md` for complete flow diagrams and implementation details.
