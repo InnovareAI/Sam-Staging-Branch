@@ -214,6 +214,8 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
       }
 
       // Send email via Unipile - POST /api/v1/emails with account_id in body
+      // FIX (Dec 20): 'to' must be an array of { identifier: email, display_name?: name }
+      const recipientName = `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim();
       const response = await fetch(`https://${UNIPILE_DSN}/api/v1/emails`, {
         method: 'POST',
         headers: {
@@ -223,8 +225,11 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
         },
         body: JSON.stringify({
           account_id: emailAccountId,
-          to: prospect.email,
-          subject: draft.subject || `Re: ${draft.inbound_subject || 'Following up'}`,
+          to: [{
+            identifier: prospect.email,
+            ...(recipientName && { display_name: recipientName })
+          }],
+          subject: draft.email_subject || draft.subject || `Re: ${draft.inbound_subject || 'Following up'}`,
           body: messageText,
           // Thread with original message if available
           ...(draft.inbound_thread_id && { thread_id: draft.inbound_thread_id })
