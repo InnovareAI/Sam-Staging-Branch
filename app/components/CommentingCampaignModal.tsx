@@ -151,231 +151,76 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
 
   const handleCreate = async () => {
     setSaving(true);
-
     try {
-      // Get all targets
+      // Get all targets from all tabs
       const allProfileTargets = profileTargets.filter(t => t.trim());
       const allCompanyTargets = companyTargets.filter(t => t.trim());
       const allHashtagTargets = hashtagTargets.filter(t => t.trim());
-      const validTargets = [...allProfileTargets, ...allCompanyTargets];
 
-      // For hashtag targeting mode, create ONE monitor with ALL hashtags
-      if (targetingMode === 'hashtag') {
-        const monitor: any = {
-          name: campaignName || `Hashtag Monitor - ${new Date().toLocaleDateString()}`,
-          hashtags: validTargets.map(t => t.replace(/^#/, '')), // Remove # prefix
-          keywords: [],
-          status: 'active',
-        };
+      const hashtags: string[] = [];
 
-        console.log('📤 Creating hashtag monitor:', monitor);
-
-        const response = await fetch('/api/linkedin-commenting/monitors', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(monitor),
-        });
-
-        if (!response.ok) {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const error = await response.json();
-            console.error('❌ API Error Details:', error);
-            const errorMsg = error.error || error.message || 'Failed to create monitor';
-            const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
-            const errorHint = error.hint ? `\n\nHint: ${error.hint}` : '';
-            throw new Error(errorMsg + errorDetails + errorHint);
-          } else {
-            const text = await response.text();
-            console.error('Non-JSON error response:', text);
-            throw new Error(`Server error: ${response.status} ${response.statusText}\n\n${text}`);
-          }
+      // Add profiles
+      for (const target of allProfileTargets) {
+        let vanityName = target.trim();
+        if (vanityName.includes('linkedin.com/in/')) {
+          const match = vanityName.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+          if (match) vanityName = match[1];
         }
-
-        const data = await response.json();
-        console.log('✅ Monitor created successfully:', data);
-      } else if (targetingMode === 'keyword') {
-        // For keyword targeting mode, create ONE monitor with ALL keywords
-        const monitor: any = {
-          name: campaignName || `Keyword Monitor - ${new Date().toLocaleDateString()}`,
-          hashtags: [],
-          keywords: validTargets,
-          status: 'active',
-        };
-
-        console.log('📤 Creating keyword monitor:', monitor);
-
-        const response = await fetch('/api/linkedin-commenting/monitors', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(monitor),
-        });
-
-        if (!response.ok) {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            const error = await response.json();
-            console.error('❌ API Error Details:', error);
-            const errorMsg = error.error || error.message || 'Failed to create monitor';
-            const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
-            const errorHint = error.hint ? `\n\nHint: ${error.hint}` : '';
-            throw new Error(errorMsg + errorDetails + errorHint);
-          } else {
-            const text = await response.text();
-            console.error('Non-JSON error response:', text);
-            throw new Error(`Server error: ${response.status} ${response.statusText}\n\n${text}`);
-          }
-        }
-
-        const data = await response.json();
-        console.log('✅ Monitor created successfully:', data);
-      } else if (targetingMode === 'profile') {
-        // For profile targeting mode, create ONE monitor per profile/company
-        // Using hashtags array format to store profile/company names (compatible with existing schema)
-
-        // Create monitors for profiles
-        for (const target of allProfileTargets) {
-          // Extract vanity name from LinkedIn URL or use as-is
-          let vanityName = target.trim();
-          if (vanityName.includes('linkedin.com/in/')) {
-            const match = vanityName.match(/linkedin\.com\/in\/([^\/\?#]+)/);
-            if (match) vanityName = match[1];
-          }
-
-          const monitor: any = {
-            name: campaignName || `Profile Monitor - ${vanityName}`,
-            // Store profile as special hashtag format: "PROFILE:vanity_name"
-            hashtags: [`PROFILE:${vanityName}`],
-            keywords: [],
-            status: 'active'
-          };
-
-          console.log('📤 Creating profile monitor:', monitor);
-
-          const response = await fetch('/api/linkedin-commenting/monitors', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(monitor),
-          });
-
-          if (!response.ok) {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-              const error = await response.json();
-              console.error('❌ API Error Details:', error);
-              const errorMsg = error.error || error.message || 'Failed to create monitor';
-              const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
-              const errorHint = error.hint ? `\n\nHint: ${error.hint}` : '';
-              throw new Error(errorMsg + errorDetails + errorHint);
-            } else {
-              const text = await response.text();
-              console.error('Non-JSON error response:', text);
-              throw new Error(`Server error: ${response.status} ${response.statusText}\n\n${text}`);
-            }
-          }
-
-          const data = await response.json();
-          console.log('✅ Profile monitor created successfully:', data);
-        }
-
-        // Create monitors for company pages
-        for (const target of allCompanyTargets) {
-          // Extract company slug from LinkedIn URL or use as-is
-          let companySlug = target.trim();
-          if (companySlug.includes('linkedin.com/company/')) {
-            const match = companySlug.match(/linkedin\.com\/company\/([^\/\?#]+)/);
-            if (match) companySlug = match[1];
-          }
-
-          const monitor: any = {
-            name: campaignName || `Company Monitor - ${companySlug}`,
-            // Store company as special hashtag format: "COMPANY:company_slug"
-            hashtags: [`COMPANY:${companySlug}`],
-            keywords: [],
-            status: 'active'
-          };
-
-          console.log('📤 Creating company monitor:', monitor);
-
-          const response = await fetch('/api/linkedin-commenting/monitors', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(monitor),
-          });
-
-          if (!response.ok) {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-              const error = await response.json();
-              console.error('❌ API Error Details:', error);
-              const errorMsg = error.error || error.message || 'Failed to create monitor';
-              const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
-              const errorHint = error.hint ? `\n\nHint: ${error.hint}` : '';
-              throw new Error(errorMsg + errorDetails + errorHint);
-            } else {
-              const text = await response.text();
-              console.error('Non-JSON error response:', text);
-              throw new Error(`Server error: ${response.status} ${response.statusText}\n\n${text}`);
-            }
-          }
-
-          const data = await response.json();
-          console.log('✅ Company monitor created successfully:', data);
-        }
-
-        // Create monitors for hashtags
-        for (const target of allHashtagTargets) {
-          // Clean up hashtag - remove # prefix if present
-          let keyword = target.trim().replace(/^#/, '');
-          if (!keyword) continue;
-
-          const monitor: any = {
-            name: campaignName || `Hashtag Monitor - #${keyword}`,
-            // Store hashtag with special format: "HASHTAG:keyword"
-            hashtags: [`HASHTAG:${keyword}`],
-            keywords: [],
-            status: 'active'
-          };
-
-          console.log('📤 Creating hashtag monitor:', monitor);
-
-          const response = await fetch('/api/linkedin-commenting/monitors', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(monitor),
-          });
-
-          if (!response.ok) {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-              const error = await response.json();
-              console.error('❌ API Error Details:', error);
-              const errorMsg = error.error || error.message || 'Failed to create monitor';
-              const errorDetails = error.details ? `\n\nDetails: ${error.details}` : '';
-              const errorHint = error.hint ? `\n\nHint: ${error.hint}` : '';
-              throw new Error(errorMsg + errorDetails + errorHint);
-            } else {
-              const text = await response.text();
-              console.error('Non-JSON error response:', text);
-              throw new Error(`Server error: ${response.status} ${response.statusText}\n\n${text}`);
-            }
-          }
-
-          const data = await response.json();
-          console.log('✅ Hashtag monitor created successfully:', data);
-        }
-      } else {
-        throw new Error('Unknown targeting mode: ' + targetingMode);
+        hashtags.push(`PROFILE:${vanityName}`);
       }
 
-      console.log('✅ Campaign created successfully');
-      onClose();
+      // Add companies
+      for (const target of allCompanyTargets) {
+        let companySlug = target.trim();
+        if (companySlug.includes('linkedin.com/company/')) {
+          const match = companySlug.match(/linkedin\.com\/company\/([^\/\?#]+)/);
+          if (match) companySlug = match[1];
+        }
+        hashtags.push(`COMPANY:${companySlug}`);
+      }
 
-      // Refresh the page to show new campaigns
+      // Add hashtags
+      for (const target of allHashtagTargets) {
+        let keyword = target.trim().replace(/^#/, '');
+        if (keyword) {
+          hashtags.push(`HASHTAG:${keyword}`);
+        }
+      }
+
+      if (hashtags.length === 0) {
+        throw new Error('No targets selected. Please add at least one profile, company, or hashtag.');
+      }
+
+      const monitor: any = {
+        name: campaignName || `Comment Campaign - ${new Date().toLocaleDateString()}`,
+        hashtags: hashtags,
+        keywords: [],
+        status: 'active'
+      };
+
+      console.log('📤 Creating grouped monitor:', monitor);
+
+      const url = editMode && existingMonitor
+        ? `/api/linkedin-commenting/monitors/${existingMonitor.id}`
+        : '/api/linkedin-commenting/monitors';
+
+      const response = await fetch(url, {
+        method: editMode ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(monitor),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || `Server error: ${response.status}`);
+      }
+
+      console.log(`✅ Campaign ${editMode ? 'updated' : 'created'} successfully`);
+      onClose();
       window.location.reload();
     } catch (error) {
       console.error('Failed to create campaign:', error);
-      alert('Failed to create campaign: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      alert(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setSaving(false);
     }

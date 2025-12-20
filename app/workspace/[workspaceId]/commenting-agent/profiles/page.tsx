@@ -55,7 +55,7 @@ export default function ProfilesListPage() {
     title: string;
     message: string;
     onConfirm: () => void;
-  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
 
   useEffect(() => {
     loadProfiles();
@@ -68,6 +68,11 @@ export default function ProfilesListPage() {
       if (response.ok) {
         const data = await response.json();
         setProfiles(data.monitors || []);
+        // Filter for PROFILE monitors
+        const profileMonitors = (data.monitors || []).filter((m: Monitor) =>
+          m.hashtags && m.hashtags.some(h => h.startsWith('PROFILE:'))
+        );
+        setProfiles(profileMonitors);
       }
     } catch (error) {
       console.error('Failed to load profiles:', error);
@@ -163,7 +168,7 @@ export default function ProfilesListPage() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-white">Monitored Profiles</h1>
-            <p className="text-gray-400 text-sm">{profiles.length} profiles total</p>
+            <p className="text-gray-400 text-sm">{profiles.length} profile campaigns</p>
           </div>
         </div>
         <button
@@ -234,20 +239,18 @@ export default function ProfilesListPage() {
               <div className="flex items-center justify-between">
                 {/* Profile Info */}
                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    profile.status === 'active' ? 'bg-green-600/20' : 'bg-gray-700'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${profile.status === 'active' ? 'bg-green-600/20' : 'bg-gray-700'
+                    }`}>
                     <Target size={24} className={profile.status === 'active' ? 'text-green-400' : 'text-gray-500'} />
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-white font-semibold truncate group-hover:text-pink-400 transition-colors">{profile.name || 'Unnamed Profile'}</h3>
-                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                        profile.status === 'active'
-                          ? 'bg-green-600/20 text-green-400'
-                          : 'bg-gray-600/20 text-gray-400'
-                      }`}>
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${profile.status === 'active'
+                        ? 'bg-green-600/20 text-green-400'
+                        : 'bg-gray-600/20 text-gray-400'
+                        }`}>
                         {profile.status}
                       </span>
                     </div>
@@ -285,11 +288,10 @@ export default function ProfilesListPage() {
                   <button
                     onClick={() => toggleProfileStatus(profile)}
                     disabled={actionLoading === profile.id}
-                    className={`p-2 rounded-lg transition-colors ${
-                      profile.status === 'active'
-                        ? 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400'
-                        : 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
-                    } disabled:opacity-50`}
+                    className={`p-2 rounded-lg transition-colors ${profile.status === 'active'
+                      ? 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400'
+                      : 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
+                      } disabled:opacity-50`}
                     title={profile.status === 'active' ? 'Pause monitoring' : 'Resume monitoring'}
                   >
                     {actionLoading === profile.id ? (

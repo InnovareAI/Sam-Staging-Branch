@@ -91,8 +91,17 @@ export default function MonitorDetailPage() {
     setRefreshing(false);
   };
 
-  const getMonitorType = (): 'hashtag' | 'profile' | 'company' => {
-    const tag = monitor?.hashtags?.[0] || '';
+  const getMonitorType = (): 'hashtag' | 'profile' | 'company' | 'mixed' => {
+    const tags = monitor?.hashtags || [];
+    if (tags.length > 1) {
+      const types = new Set(tags.map(t => t.split(':')[0]));
+      if (types.size > 1) return 'mixed';
+      const type = Array.from(types)[0];
+      if (type === 'HASHTAG') return 'hashtag';
+      if (type === 'PROFILE') return 'profile';
+      if (type === 'COMPANY') return 'company';
+    }
+    const tag = tags[0] || '';
     if (tag.startsWith('HASHTAG:')) return 'hashtag';
     if (tag.startsWith('PROFILE:')) return 'profile';
     if (tag.startsWith('COMPANY:')) return 'company';
@@ -100,11 +109,15 @@ export default function MonitorDetailPage() {
   };
 
   const getMonitorTarget = (): string => {
-    const tag = monitor?.hashtags?.[0] || '';
-    if (tag.startsWith('HASHTAG:')) return `#${tag.replace('HASHTAG:', '')}`;
-    if (tag.startsWith('PROFILE:')) return tag.replace('PROFILE:', '');
-    if (tag.startsWith('COMPANY:')) return tag.replace('COMPANY:', '');
-    return tag;
+    const tags = monitor?.hashtags || [];
+    if (tags.length === 0) return 'No targets';
+
+    return tags.map(tag => {
+      if (tag.startsWith('HASHTAG:')) return `#${tag.replace('HASHTAG:', '')}`;
+      if (tag.startsWith('PROFILE:')) return tag.replace('PROFILE:', '');
+      if (tag.startsWith('COMPANY:')) return tag.replace('COMPANY:', '');
+      return tag;
+    }).join(', ');
   };
 
   const getStatusColor = (status: string) => {
@@ -172,9 +185,8 @@ export default function MonitorDetailPage() {
           >
             <RefreshCw size={20} className={`text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
-          <span className={`px-3 py-1 text-sm font-medium rounded-full ${
-            monitor?.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'
-          }`}>
+          <span className={`px-3 py-1 text-sm font-medium rounded-full ${monitor?.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'
+            }`}>
             {monitor?.status}
           </span>
         </div>
@@ -201,11 +213,10 @@ export default function MonitorDetailPage() {
           <button
             key={filter}
             onClick={() => setStatusFilter(filter)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              statusFilter === filter
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === filter
                 ? 'bg-pink-600 text-white'
                 : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-            }`}
+              }`}
           >
             {filter.charAt(0).toUpperCase() + filter.slice(1)}
             {filter !== 'all' && (
@@ -296,9 +307,9 @@ export default function MonitorDetailPage() {
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-medium text-gray-300">
                           {post.comment.status === 'posted' ? 'Posted Comment' :
-                           post.comment.status === 'scheduled' ? 'Scheduled Comment' :
-                           post.comment.status === 'pending_approval' ? 'Pending Approval' :
-                           'Generated Comment'}
+                            post.comment.status === 'scheduled' ? 'Scheduled Comment' :
+                              post.comment.status === 'pending_approval' ? 'Pending Approval' :
+                                'Generated Comment'}
                         </span>
                         {post.comment.scheduled_post_time && post.comment.status === 'scheduled' && (
                           <span className="text-xs text-amber-400">
