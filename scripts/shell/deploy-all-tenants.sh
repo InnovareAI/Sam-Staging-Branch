@@ -43,7 +43,7 @@ fi
 
 # Deploy to main production site (serves all tenants via multi-tenancy)
 echo -e "${BLUE}🌐 Deploying to main production (app.meet-sam.com)...${NC}"
-netlify deploy --prod --dir=.next --site=devin-next-gen-prod
+netlify deploy --prod --dir=.next --site=46e6eb7e-c4f9-44bd-8a2f-b0cbca602119
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Main production deployment successful${NC}"
