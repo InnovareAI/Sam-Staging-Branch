@@ -162,7 +162,12 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
     if (channel === 'email') {
       // ========== EMAIL CHANNEL ==========
       // Get workspace email account
-      const { data: emailAccount, error: emailAccountError } = await supabase
+      // FIX (Dec 20): Check both workspace_accounts and user_unipile_accounts
+      let emailAccountId: string | null = null;
+      let emailAccountName: string | null = null;
+
+      // Try workspace_accounts first
+      const { data: wsEmailAccount } = await supabase
         .from('workspace_accounts')
         .select('unipile_account_id, account_name')
         .eq('workspace_id', draft.workspace_id)
@@ -171,7 +176,28 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
         .limit(1)
         .single();
 
-      if (emailAccountError || !emailAccount?.unipile_account_id) {
+      if (wsEmailAccount?.unipile_account_id) {
+        emailAccountId = wsEmailAccount.unipile_account_id;
+        emailAccountName = wsEmailAccount.account_name;
+      } else {
+        // FIX (Dec 20): Fallback to user_unipile_accounts
+        const { data: userEmailAccount } = await supabase
+          .from('user_unipile_accounts')
+          .select('unipile_account_id, account_name')
+          .eq('workspace_id', draft.workspace_id)
+          .in('provider', ['MAIL', 'GOOGLE', 'OUTLOOK', 'MICROSOFT'])
+          .in('connection_status', ['connected', 'active'])
+          .limit(1)
+          .single();
+
+        if (userEmailAccount?.unipile_account_id) {
+          emailAccountId = userEmailAccount.unipile_account_id;
+          emailAccountName = userEmailAccount.account_name;
+          console.log(`   ✅ Found email account in user_unipile_accounts: ${emailAccountName}`);
+        }
+      }
+
+      if (!emailAccountId) {
         return { success: false, error: 'No email account connected. Connect Gmail or Outlook in Settings.' };
       }
 
@@ -195,7 +221,7 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          account_id: emailAccount.unipile_account_id,
+          account_id: emailAccountId,
           to: prospect.email,
           subject: draft.subject || `Re: ${draft.inbound_subject || 'Following up'}`,
           body: messageText,
@@ -210,7 +236,7 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
       }
 
       const result = await response.json();
-      console.log(`✅ Email reply sent to ${prospect.email} via ${emailAccount.account_name}`);
+      console.log(`✅ Email reply sent to ${prospect.email} via ${emailAccountName}`);
       return { success: true, messageId: result.message_id || result.id };
 
     } else {
