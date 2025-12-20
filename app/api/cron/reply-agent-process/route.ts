@@ -320,7 +320,11 @@ Respond with just the intent category (e.g., "INTERESTED").`;
     // COMPREHENSIVE RESEARCH: LinkedIn personal + company + website
     let research: { linkedin?: any; company?: any; website?: any } | null = null;
 
-    // Get Unipile account ID for this workspace (needed for all LinkedIn lookups)
+    // Get Unipile account ID for LinkedIn research
+    // Priority: 1) Workspace's own LinkedIn account, 2) Any active LinkedIn account (for read-only research)
+    let unipileAccountId: string | null = null;
+
+    // First try workspace's own account
     const { data: workspaceAccounts } = await supabase
       .from('workspace_accounts')
       .select('unipile_account_id')
@@ -328,7 +332,21 @@ Respond with just the intent category (e.g., "INTERESTED").`;
       .eq('account_type', 'linkedin')
       .in('connection_status', VALID_CONNECTION_STATUSES)
       .limit(1);
-    const unipileAccountId = workspaceAccounts?.[0]?.unipile_account_id;
+    unipileAccountId = workspaceAccounts?.[0]?.unipile_account_id || null;
+
+    // Fallback: use any active LinkedIn account for research (read-only, safe)
+    if (!unipileAccountId) {
+      const { data: anyLinkedInAccount } = await supabase
+        .from('user_unipile_accounts')
+        .select('unipile_account_id')
+        .eq('platform', 'LINKEDIN')
+        .eq('connection_status', 'active')
+        .limit(1);
+      unipileAccountId = anyLinkedInAccount?.[0]?.unipile_account_id || null;
+      if (unipileAccountId) {
+        console.log(`   🔄 Using fallback LinkedIn account for research`);
+      }
+    }
 
     // 1. PERSONAL LINKEDIN PROFILE - ONLY for location, connection degree, and company URL
     // NOTE: Do NOT use headline or job title - they are marketing fluff, not facts
