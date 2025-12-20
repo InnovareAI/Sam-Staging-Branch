@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { airtableService } from '@/lib/airtable';
+import { classifyIntent } from '@/lib/services/intent-classifier';
 
 /**
  * Cron Job: Poll Message Replies (Backup for Webhook)
@@ -338,6 +340,39 @@ export async function POST(request: NextRequest) {
           const isFirstReply = !prospect.responded_at;
           console.log(`✅ Found ${isFirstReply ? 'FIRST' : 'FOLLOW-UP'} reply from ${prospect.first_name} ${prospect.last_name}`);
           results.replies_found++;
+
+          // ============================================
+          // AIRTABLE SYNC (Dec 20, 2025): Sync inbound reply to Airtable
+          // ============================================
+          try {
+            const messageText = latestInbound.text || latestInbound.body || '';
+            console.log(`   📊 Classifying intent for Airtable sync...`);
+
+            // Classify intent for Airtable status
+            const intent = await classifyIntent(messageText, {
+              prospectName: `${prospect.first_name} ${prospect.last_name}`.trim(),
+              prospectCompany: prospect.company_name
+            });
+
+            console.log(`   📊 Syncing inbound reply to Airtable: ${prospect.first_name} (${intent.intent})`);
+
+            const airtableResult = await airtableService.syncLinkedInLead({
+              profileUrl: prospect.linkedin_url,
+              name: `${prospect.first_name || ''} ${prospect.last_name || ''}`.trim(),
+              jobTitle: prospect.title,
+              companyName: prospect.company_name,
+              intent: intent.intent,
+              replyText: messageText,
+            });
+
+            if (airtableResult.success) {
+              console.log(`   ✅ Airtable sync successful - Record ID: ${airtableResult.recordId}`);
+            } else {
+              console.log(`   ⚠️ Airtable sync failed: ${airtableResult.error}`);
+            }
+          } catch (airtableError) {
+            console.error('   ❌ Airtable sync error:', airtableError);
+          }
 
           if (isFirstReply) {
             // First reply - update prospect status and stop follow-ups

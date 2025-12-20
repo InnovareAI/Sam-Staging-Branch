@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
+import { airtableService } from '@/lib/airtable';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,6 +119,31 @@ export async function GET(request: NextRequest) {
           .eq('id', draft.prospect_id);
 
         console.log(`⏰ Scheduled next Follow-Up Agent check for ${nextFollowUpDate.toISOString()}`);
+      }
+
+      // ============================================
+      // AIRTABLE SYNC (Dec 20, 2025): Sync outbound reply to Airtable
+      // Updates the prospect record with the latest outgoing message
+      // ============================================
+      try {
+        console.log(`📊 Syncing outbound reply to Airtable: ${draft.prospect_name}`);
+
+        const airtableResult = await airtableService.syncLinkedInLead({
+          profileUrl: draft.prospect_linkedin_url,
+          name: draft.prospect_name,
+          jobTitle: draft.prospect_title,
+          companyName: draft.prospect_company,
+          // For outbound messages, we note it as a conversation update
+          replyText: `[SAM Reply Sent] ${(draft.edited_text || draft.draft_text).substring(0, 200)}...`,
+        });
+
+        if (airtableResult.success) {
+          console.log(`✅ Airtable outbound sync successful - Record ID: ${airtableResult.recordId}`);
+        } else {
+          console.log(`⚠️ Airtable outbound sync failed: ${airtableResult.error}`);
+        }
+      } catch (airtableError) {
+        console.error('❌ Airtable outbound sync error:', airtableError);
       }
 
       return redirectWithMessage('success', `Reply sent to ${draft.prospect_name}!`);
@@ -429,6 +455,31 @@ export async function POST(request: NextRequest) {
             .eq('id', draft.prospect_id);
 
           console.log(`⏰ Scheduled next Follow-Up Agent check for ${nextFollowUpDate.toISOString()}`);
+        }
+
+        // ============================================
+        // AIRTABLE SYNC (Dec 20, 2025): Sync outbound reply to Airtable
+        // Updates the prospect record with the latest outgoing message
+        // ============================================
+        try {
+          console.log(`📊 Syncing outbound reply to Airtable: ${draft.prospect_name}`);
+
+          const airtableResult = await airtableService.syncLinkedInLead({
+            profileUrl: draft.prospect_linkedin_url,
+            name: draft.prospect_name,
+            jobTitle: draft.prospect_title,
+            companyName: draft.prospect_company,
+            // For outbound messages, we note it as a conversation update
+            replyText: `[SAM Reply Sent] ${(draft.edited_text || draft.draft_text).substring(0, 200)}...`,
+          });
+
+          if (airtableResult.success) {
+            console.log(`✅ Airtable outbound sync successful - Record ID: ${airtableResult.recordId}`);
+          } else {
+            console.log(`⚠️ Airtable outbound sync failed: ${airtableResult.error}`);
+          }
+        } catch (airtableError) {
+          console.error('❌ Airtable outbound sync error:', airtableError);
         }
 
         return NextResponse.json({ success: true, status: 'sent' });
