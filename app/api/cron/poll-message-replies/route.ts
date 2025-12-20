@@ -137,11 +137,41 @@ export async function POST(request: NextRequest) {
     console.log(`📧 Checking ${prospects.length} prospects for replies...`);
 
     // Group prospects by LinkedIn account
+    // FIX (Dec 20): Also check user_unipile_accounts as fallback when workspace_accounts join fails
     const byAccount: Record<string, typeof prospects> = {};
     const prospectLog: string[] = [];
+
+    // Cache for user_unipile_accounts lookups to avoid repeated queries
+    const userUnipileCache: Record<string, string | null> = {};
+
     for (const prospect of prospects) {
       const campaign = prospect.campaigns as any;
-      const accountId = campaign?.workspace_accounts?.unipile_account_id;
+      let accountId = campaign?.workspace_accounts?.unipile_account_id;
+
+      // FIX (Dec 20): Fallback to user_unipile_accounts if workspace_accounts join failed
+      if (!accountId && campaign?.linkedin_account_id) {
+        const linkedinAccountId = campaign.linkedin_account_id;
+
+        // Check cache first
+        if (linkedinAccountId in userUnipileCache) {
+          accountId = userUnipileCache[linkedinAccountId] || undefined;
+        } else {
+          // Look up in user_unipile_accounts
+          const { data: unipileAccount } = await supabase
+            .from('user_unipile_accounts')
+            .select('unipile_account_id')
+            .eq('id', linkedinAccountId)
+            .single();
+
+          userUnipileCache[linkedinAccountId] = unipileAccount?.unipile_account_id || null;
+          accountId = unipileAccount?.unipile_account_id;
+
+          if (accountId) {
+            console.log(`   ✅ Found account in user_unipile_accounts for ${prospect.first_name}: ${accountId}`);
+          }
+        }
+      }
+
       prospectLog.push(`${prospect.first_name}: ${accountId || 'NO_ACCOUNT'}`);
       if (accountId) {
         if (!byAccount[accountId]) byAccount[accountId] = [];

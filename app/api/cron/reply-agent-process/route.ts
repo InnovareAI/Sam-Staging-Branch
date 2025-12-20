@@ -132,6 +132,10 @@ export async function POST(request: NextRequest) {
       if (!prospects?.length) continue;
 
       // 4. Get LinkedIn account for this workspace
+      // FIX (Dec 20): Check multiple sources for LinkedIn account
+      let unipileAccountId: string | null = null;
+
+      // Try campaign_linkedin_accounts first
       const { data: linkedinAccount } = await supabase
         .from('campaign_linkedin_accounts')
         .select('unipile_account_id')
@@ -139,7 +143,50 @@ export async function POST(request: NextRequest) {
         .limit(1)
         .single();
 
-      if (!linkedinAccount?.unipile_account_id) continue;
+      unipileAccountId = linkedinAccount?.unipile_account_id || null;
+
+      // FIX (Dec 20): Fallback to campaigns.linkedin_account_id -> workspace_accounts/user_unipile_accounts
+      if (!unipileAccountId) {
+        // Get linkedin_account_id from campaigns table
+        const { data: campaignWithAccount } = await supabase
+          .from('campaigns')
+          .select('linkedin_account_id')
+          .in('id', campaignIds)
+          .not('linkedin_account_id', 'is', null)
+          .limit(1)
+          .single();
+
+        if (campaignWithAccount?.linkedin_account_id) {
+          // Try workspace_accounts first
+          const { data: wsAccount } = await supabase
+            .from('workspace_accounts')
+            .select('unipile_account_id')
+            .eq('id', campaignWithAccount.linkedin_account_id)
+            .single();
+
+          if (wsAccount?.unipile_account_id) {
+            unipileAccountId = wsAccount.unipile_account_id;
+            console.log(`   ✅ Found account in workspace_accounts: ${unipileAccountId}`);
+          } else {
+            // Fallback to user_unipile_accounts
+            const { data: userAccount } = await supabase
+              .from('user_unipile_accounts')
+              .select('unipile_account_id')
+              .eq('id', campaignWithAccount.linkedin_account_id)
+              .single();
+
+            if (userAccount?.unipile_account_id) {
+              unipileAccountId = userAccount.unipile_account_id;
+              console.log(`   ✅ Found account in user_unipile_accounts: ${unipileAccountId}`);
+            }
+          }
+        }
+      }
+
+      if (!unipileAccountId) {
+        console.log(`   ⚠️ No LinkedIn account found for workspace ${workspaceId}`);
+        continue;
+      }
 
       // 5. Check for new messages from Unipile
       for (const prospect of prospects) {
@@ -160,7 +207,7 @@ export async function POST(request: NextRequest) {
 
           // Fetch recent messages from Unipile
           const messagesResponse = await fetch(
-            `https://${UNIPILE_DSN}/api/v1/messages?account_id=${linkedinAccount.unipile_account_id}&attendee_id=${prospect.linkedin_user_id}&limit=5`,
+            `https://${UNIPILE_DSN}/api/v1/messages?account_id=${unipileAccountId}&attendee_id=${prospect.linkedin_user_id}&limit=5`,
             {
               headers: {
                 'X-API-KEY': UNIPILE_API_KEY!,
@@ -253,7 +300,7 @@ export async function POST(request: NextRequest) {
           // 9. Handle approval mode
           if (config.approval_mode === 'auto') {
             // Auto-approve mode - send immediately
-            await autoSendReply(savedDraft, linkedinAccount.unipile_account_id, supabase);
+            await autoSendReply(savedDraft, unipileAccountId, supabase);
           }
 
           results.push({
@@ -1347,7 +1394,7 @@ async function processPendingGenerationDrafts(supabase: any): Promise<any[]> {
             .single();
 
           if (linkedinAccount?.unipile_account_id) {
-            await autoSendReply(updatedDraft, linkedinAccount.unipile_account_id, supabase);
+            await autoSendReply(updatedDraft, unipileAccountId, supabase);
             console.log(`✅ Draft ${draft.id} auto-approved`);
           }
         }
