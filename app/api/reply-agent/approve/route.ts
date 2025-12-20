@@ -186,8 +186,8 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
         return { success: false, error: 'Prospect has no email address' };
       }
 
-      // Send email via Unipile - correct endpoint format
-      const response = await fetch(`https://${UNIPILE_DSN}/api/v1/accounts/${emailAccount.unipile_account_id}/email/send`, {
+      // Send email via Unipile - POST /api/v1/emails with account_id in body
+      const response = await fetch(`https://${UNIPILE_DSN}/api/v1/emails`, {
         method: 'POST',
         headers: {
           'X-API-KEY': UNIPILE_API_KEY,
@@ -195,10 +195,10 @@ async function sendMessage(draft: any, supabase: any): Promise<{ success: boolea
           'Accept': 'application/json'
         },
         body: JSON.stringify({
+          account_id: emailAccount.unipile_account_id,
           to: prospect.email,
           subject: draft.subject || `Re: ${draft.inbound_subject || 'Following up'}`,
           body: messageText,
-          format: 'text',
           // Thread with original message if available
           ...(draft.inbound_thread_id && { thread_id: draft.inbound_thread_id })
         })
