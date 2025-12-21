@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, MessageSquare, Clock, Sparkles } from 'lucide-react';
+import { Search, Plus, MessageSquare, Clock, Sparkles, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
