@@ -569,10 +569,10 @@ export function ChatInterface() {
                                     }}
                                     disabled={!currentThread}
                                     className={cn(
-                                        "w-11 h-11 rounded-full flex items-center justify-center transition-all",
+                                        "w-11 h-11 rounded-full flex items-center justify-center transition-all ring-2",
                                         !currentThread
-                                            ? "opacity-30 cursor-not-allowed bg-orange-500/5 text-orange-300"
-                                            : "bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 hover:text-orange-300"
+                                            ? "opacity-30 cursor-not-allowed bg-orange-500/5 text-orange-300 ring-orange-500/10"
+                                            : "bg-orange-500/15 text-orange-400 ring-orange-500/30 hover:bg-orange-500/25 hover:text-orange-300 hover:ring-orange-500/40"
                                     )}
                                     title={currentThread ? "Archive this chat" : "No active chat to archive"}
                                 >
