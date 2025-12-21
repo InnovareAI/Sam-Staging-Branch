@@ -649,11 +649,7 @@ export default function CommentingCampaignModal({
             </button>
             <button
               onClick={handleCreate}
-              disabled={saving || (
-                myContentMode
-                  ? (!myProfile && myContentChoice === 'profile-companies' && myCompanies.every(c => !c.trim()))
-                  : (profileTargets.filter(t => t.trim()).length === 0 && companyTargets.filter(t => t.trim()).length === 0 && hashtagTargets.filter(t => t.trim()).length === 0)
-              )}
+              disabled={saving}
               className="px-6 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {saving ? (
