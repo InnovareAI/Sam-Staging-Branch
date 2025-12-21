@@ -116,26 +116,12 @@ const AnimatedMessage = ({ content }: { content: string; animate?: boolean }) =>
 };
 
 export default function Page() {
-  // Check if we should render the legacy dashboard or the new Chat UI
-  const [shouldRenderChat, setShouldRenderChat] = useState(false);
-
-  // Chat UI Imports
-  const { AdaptiveLayout } = require('@/components/chat/AdaptiveLayout');
-  const { ChatSidebar } = require('@/components/chat/ChatSidebar');
-  const { ChatInterface } = require('@/components/chat/ChatInterface');
-  const { ContextPanel } = require('@/components/chat/ContextPanel');
-  const { SamContextProvider } = require('@/components/chat/SamContextProvider');
-
   // Initialize Supabase client
   const supabase = createClient();
   const router = useRouter();
 
   // Initialize confirm modal hook
   const { confirm, ConfirmDialog } = useConfirm();
-
-  // Chat UI state
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isContextOpen, setIsContextOpen] = useState(true);
 
   // Helper function to get auth token (cached from session state)
   const getAuthToken = async () => {
@@ -280,7 +266,6 @@ export default function Page() {
       // Mark user as verified so DataCollectionHub can start fetching
       // Workspace will be set by loadUserWorkspaces from database
       setUserVerified(true);
-      setShouldRenderChat(true); // Enable Chat UI when user is verified
     }
   }, [user?.id]);
 
@@ -3043,24 +3028,6 @@ export default function Page() {
   };
 
   // Authenticated user - show main app
-  // Render Chat UI for authenticated users
-  if (shouldRenderChat && user && selectedWorkspaceId) {
-    return (
-      <SamContextProvider>
-        <AdaptiveLayout
-          isSidebarOpen={isSidebarOpen}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          isContextOpen={isContextOpen}
-          onToggleContext={() => setIsContextOpen(!isContextOpen)}
-          sidebar={<ChatSidebar />}
-          contextPanel={<ContextPanel />}
-        >
-          <ChatInterface />
-        </AdaptiveLayout>
-      </SamContextProvider>
-    );
-  }
-
   return (
     <div className="flex h-screen bg-background text-foreground">
       {/* Left Sidebar */}
