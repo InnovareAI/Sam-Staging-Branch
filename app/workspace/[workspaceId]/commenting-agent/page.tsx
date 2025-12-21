@@ -57,6 +57,8 @@ export default function CommentingAgentDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [activeModalTab, setActiveModalTab] = useState<'profiles' | 'companies' | 'hashtags' | 'my-content'>('profiles');
+  const [myContentMode, setMyContentMode] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [agentEnabled, setAgentEnabled] = useState(false);
   const [monitors, setMonitors] = useState<Monitor[]>([]);
@@ -140,6 +142,11 @@ export default function CommentingAgentDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openModal = (tab: 'profiles' | 'companies' | 'hashtags' | 'my-content') => {
+    setActiveModalTab(tab);
+    setShowCampaignModal(true);
   };
 
   if (loading) {
@@ -263,77 +270,161 @@ export default function CommentingAgentDashboard() {
 
         {/* Card 1: Personal Profiles */}
         <div
-          onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/profiles`)}
-          className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-pink-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+          onClick={() => openModal('profiles')}
+          className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-pink-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group flex flex-col justify-between"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-pink-600/20 rounded-xl flex items-center justify-center group-hover:bg-pink-600/30 transition-colors">
-              <Target size={24} className="text-pink-500" />
+          <div>
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 bg-pink-600/20 rounded-xl flex items-center justify-center group-hover:bg-pink-600/30 transition-colors">
+                <Target size={24} className="text-pink-500" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-400">
+                  {monitorsByType.profiles.length} Active
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/workspace/${workspaceId}/commenting-agent/profiles`);
+                  }}
+                  className="p-1 hover:bg-gray-700 rounded transition-colors"
+                >
+                  <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-400">
-                {monitorsByType.profiles.length} Active
-              </span>
-              <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
-            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-pink-400 transition-colors">Personal Profiles</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Monitor and engage with specific LinkedIn user profiles. Build relationships with influencers and leads.
+            </p>
           </div>
-          <h3 className="text-xl font-bold text-white mb-2 group-hover:text-pink-400 transition-colors">Personal Profiles</h3>
-          <p className="text-gray-400 text-sm mb-4">
-            Monitor and engage with specific LinkedIn user profiles. Build relationships with influencers and leads.
-          </p>
-          <button className="text-pink-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-            View Campaigns <ArrowRight size={16} />
-          </button>
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/workspace/${workspaceId}/commenting-agent/profiles`);
+              }}
+              className="text-pink-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all p-0 bg-transparent border-0"
+            >
+              View Campaigns <ArrowRight size={16} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openModal('profiles');
+              }}
+              className="p-2 bg-pink-600/20 hover:bg-pink-600 text-pink-400 hover:text-white rounded-lg transition-colors"
+              title="Add Profile"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Card 2: Company Pages */}
         <div
-          onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/companies`)}
-          className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-blue-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+          onClick={() => openModal('companies')}
+          className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-blue-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group flex flex-col justify-between"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
-              <Building2 size={24} className="text-blue-500" />
+          <div>
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
+                <Building2 size={24} className="text-blue-500" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-400">
+                  {monitorsByType.companies.length} Active
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/workspace/${workspaceId}/commenting-agent/companies`);
+                  }}
+                  className="p-1 hover:bg-gray-700 rounded transition-colors"
+                >
+                  <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-400">
-                {monitorsByType.companies.length} Active
-              </span>
-              <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
-            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Company Pages</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Track competitors or partners. Engage with company updates to increase brand visibility.
+            </p>
           </div>
-          <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Company Pages</h3>
-          <p className="text-gray-400 text-sm mb-4">
-            Track competitors or partners. Engage with company updates to increase brand visibility.
-          </p>
-          <button className="text-blue-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-            View Companies <ArrowRight size={16} />
-          </button>
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/workspace/${workspaceId}/commenting-agent/companies`);
+              }}
+              className="text-blue-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all p-0 bg-transparent border-0"
+            >
+              View Companies <ArrowRight size={16} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openModal('companies');
+              }}
+              className="p-2 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg transition-colors"
+              title="Add Company"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Card 3: Hashtags */}
         <div
-          onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/hashtags`)}
-          className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+          onClick={() => openModal('hashtags')}
+          className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group flex flex-col justify-between"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center group-hover:bg-purple-600/30 transition-colors">
-              <Hash size={24} className="text-purple-500" />
+          <div>
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center group-hover:bg-purple-600/30 transition-colors">
+                <Hash size={24} className="text-purple-500" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-400">
+                  {monitorsByType.keywords.length} Active
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/workspace/${workspaceId}/commenting-agent/hashtags`);
+                  }}
+                  className="p-1 hover:bg-gray-700 rounded transition-colors"
+                >
+                  <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-400">
-                {monitorsByType.keywords.length} Active
-              </span>
-              <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
-            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Hashtags</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Discover posts by topic or keyword (e.g. #SaaS, #AI). Find trends and join relevant conversations.
+            </p>
           </div>
-          <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Hashtags</h3>
-          <p className="text-gray-400 text-sm mb-4">
-            Discover posts by topic or keyword (e.g. #SaaS, #AI). Find trends and join relevant conversations.
-          </p>
-          <button className="text-purple-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-            View Hashtags <ArrowRight size={16} />
-          </button>
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/workspace/${workspaceId}/commenting-agent/hashtags`);
+              }}
+              className="text-purple-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all p-0 bg-transparent border-0"
+            >
+              View Hashtags <ArrowRight size={16} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openModal('hashtags');
+              }}
+              className="p-2 bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white rounded-lg transition-colors"
+              title="Add Hashtag"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Card 4: My Profile */}
@@ -369,9 +460,12 @@ export default function CommentingAgentDashboard() {
           isOpen={showCampaignModal}
           onClose={() => {
             setShowCampaignModal(false);
+            setMyContentMode(false);
             loadDashboardData();
           }}
           workspaceId={workspaceId}
+          myContentMode={myContentMode}
+          defaultTab={myContentMode ? 'my-content' : activeModalTab}
         />
       )}
 

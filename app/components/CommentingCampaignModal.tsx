@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Target, Clock, Settings, User, Building2, Hash } from 'lucide-react';
+import { X, Target, Clock, Settings, User, Building2, Hash, Trash2 } from 'lucide-react';
 
 interface Monitor {
   id: string;
@@ -23,15 +23,27 @@ interface CommentingCampaignModalProps {
   editMode?: boolean;
   existingMonitor?: Monitor;
   myContentMode?: boolean;
+  defaultTab?: TargetTab;
 }
 
 type TargetingMode = 'hashtag' | 'keyword' | 'profile';
 type TargetTab = 'profiles' | 'companies' | 'hashtags' | 'my-content';
 
-export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, editMode = false, existingMonitor, myContentMode = false }: CommentingCampaignModalProps) {
+export default function CommentingCampaignModal({
+  isOpen,
+  onClose,
+  workspaceId,
+  editMode = false,
+  existingMonitor,
+  myContentMode = false,
+  defaultTab
+}: CommentingCampaignModalProps) {
   const [campaignName, setCampaignName] = useState('');
-  const [targetingMode] = useState<TargetingMode>('profile'); // Only profile targeting supported
-  const [activeTab, setActiveTab] = useState<TargetTab>(myContentMode ? 'my-content' : 'profiles');
+  const [targetingMode] = useState<TargetingMode>('profile');
+  const [activeTab, setActiveTab] = useState<TargetTab>(
+    myContentMode ? 'my-content' : (defaultTab || 'profiles')
+  );
+
   const [profileTargets, setProfileTargets] = useState<string[]>(['']);
   const [companyTargets, setCompanyTargets] = useState<string[]>(['']);
   const [hashtagTargets, setHashtagTargets] = useState<string[]>(['']);
@@ -52,18 +64,20 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
   const [loadingMonitors, setLoadingMonitors] = useState(false);
 
   // Load existing monitor data in edit mode
-  // Load existing monitor data
   useEffect(() => {
+    // Re-initialize tab based on props if not editing
+    if (!editMode && !myContentMode && defaultTab) {
+      setActiveTab(defaultTab);
+    }
+
     loadExistingMonitors();
     if (editMode && existingMonitor) {
-      // Load campaign name
-      if (existingMonitor.name) {
-        setCampaignName(existingMonitor.name);
-      }
+      // ... existing edit logic
+      if (existingMonitor.name) setCampaignName(existingMonitor.name);
 
       // Extract profile URLs from hashtags array (format: "PROFILE:vanity_name")
       const profiles = existingMonitor.hashtags
-        .filter(tag => tag.startsWith('PROFILE:'))
+        .filter(tag => tag && tag.startsWith('PROFILE:'))
         .map(tag => `https://linkedin.com/in/${tag.replace('PROFILE:', '')}`);
 
       if (profiles.length > 0) {
@@ -73,7 +87,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
 
       // Extract company URLs from hashtags array (format: "COMPANY:company_slug")
       const companies = existingMonitor.hashtags
-        .filter(tag => tag.startsWith('COMPANY:'))
+        .filter(tag => tag && tag.startsWith('COMPANY:'))
         .map(tag => `https://linkedin.com/company/${tag.replace('COMPANY:', '')}`);
 
       if (companies.length > 0) {
@@ -83,7 +97,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
 
       // Extract hashtags from hashtags array (format: "HASHTAG:keyword")
       const hashtags = existingMonitor.hashtags
-        .filter(tag => tag.startsWith('HASHTAG:'))
+        .filter(tag => tag && tag.startsWith('HASHTAG:'))
         .map(tag => tag.replace('HASHTAG:', ''));
 
       if (hashtags.length > 0) {
@@ -91,7 +105,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
         setActiveTab('hashtags');
       }
     }
-  }, [editMode, existingMonitor, workspaceId]);
+  }, [editMode, existingMonitor, workspaceId, defaultTab, myContentMode]);
 
   const loadExistingMonitors = async () => {
     setLoadingMonitors(true);
@@ -99,10 +113,14 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
       const res = await fetch(`/api/linkedin-commenting/monitors?workspace_id=${workspaceId}`);
       if (res.ok) {
         const data = await res.json();
-        setExistingMonitors(data.monitors || []);
+        // Ensure we strictly set an array
+        setExistingMonitors(Array.isArray(data?.monitors) ? data.monitors : []);
+      } else {
+        setExistingMonitors([]);
       }
     } catch (err) {
       console.error('Failed to load existing monitors:', err);
+      setExistingMonitors([]);
     } finally {
       setLoadingMonitors(false);
     }
@@ -545,23 +563,32 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
                       Loading followed {activeTab}...
                     </div>
                   ) : existingMonitors.filter(m => {
-                    if (activeTab === 'profiles') return m.hashtags.some(h => h.startsWith('PROFILE:'));
-                    if (activeTab === 'companies') return m.hashtags.some(h => h.startsWith('COMPANY:'));
-                    return m.hashtags.some(h => h.startsWith('HASHTAG:'));
+                    const tags = m.hashtags || [];
+                    // Ensure defensive check against null/undefined tags
+                    if (!tags) return false;
+
+                    if (activeTab === 'profiles') return tags.some(h => h && h.startsWith('PROFILE:'));
+                    if (activeTab === 'companies') return tags.some(h => h && h.startsWith('COMPANY:'));
+                    return tags.some(h => h && h.startsWith('HASHTAG:'));
                   }).length === 0 ? (
                     <p className="text-sm text-gray-500 italic">No {activeTab} followed yet</p>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {existingMonitors.filter(m => {
-                        if (activeTab === 'profiles') return m.hashtags.some(h => h.startsWith('PROFILE:'));
-                        if (activeTab === 'companies') return m.hashtags.some(h => h.startsWith('COMPANY:'));
-                        return m.hashtags.some(h => h.startsWith('HASHTAG:'));
+                        const tags = m.hashtags || [];
+                        if (!tags) return false;
+
+                        if (activeTab === 'profiles') return tags.some(h => h && h.startsWith('PROFILE:'));
+                        if (activeTab === 'companies') return tags.some(h => h && h.startsWith('COMPANY:'));
+                        return tags.some(h => h && h.startsWith('HASHTAG:'));
                       }).map(monitor => {
-                        const tag = monitor.hashtags[0] || '';
+                        const tags = monitor.hashtags || [];
+                        const tag = tags[0] || '';
                         let displayName = monitor.name || tag;
+
                         if (tag.startsWith('PROFILE:')) displayName = tag.replace('PROFILE:', '');
-                        if (tag.startsWith('COMPANY:')) displayName = tag.replace('COMPANY:', '');
-                        if (tag.startsWith('HASHTAG:')) displayName = '#' + tag.replace('HASHTAG:', '');
+                        else if (tag.startsWith('COMPANY:')) displayName = tag.replace('COMPANY:', '');
+                        else if (tag.startsWith('HASHTAG:')) displayName = '#' + tag.replace('HASHTAG:', '');
 
                         return (
                           <div key={monitor.id} className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg border border-gray-700">
@@ -574,7 +601,7 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
                                   activeTab === 'companies' ? <Building2 size={14} /> :
                                     <Hash size={14} />}
                               </div>
-                              <span className="text-sm text-white font-medium truncate">{displayName}</span>
+                              <span className="text-sm text-white font-medium truncate">{displayName || 'Untitled Monitor'}</span>
                             </div>
                             <button
                               onClick={() => handleRemoveExisting(monitor.id)}
