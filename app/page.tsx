@@ -34,6 +34,12 @@ import CommentApprovalWorkflow from '@/app/components/CommentApprovalWorkflow';
 import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
 import { IntegrationsToolsModal } from '@/app/components/IntegrationsToolsModal';
 import CalendarIntegrationModal from '@/app/components/CalendarIntegrationModal';
+// Chat UI Imports (New Root View)
+import { AdaptiveLayout } from '@/components/chat/AdaptiveLayout';
+import { ChatSidebar } from '@/components/chat/ChatSidebar';
+import { ChatInterface } from '@/components/chat/ChatInterface';
+import { ContextPanel } from '@/components/chat/ContextPanel';
+import { SamContextProvider } from '@/components/chat/SamContextProvider';
 // SuperAdminPage removed - no cross-workspace data access allowed
 import {
   Activity,
@@ -147,6 +153,12 @@ export default function Page() {
   const [user, setUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  // Chat UI Root View State
+  const [shouldRenderChat, setShouldRenderChat] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isContextOpen, setIsContextOpen] = useState(true);
+
   const [showStarterScreen, setShowStarterScreen] = useState(true);
   const [inputMessage, setInputMessage] = useState('');
   const [activeMenuItem, setActiveMenuItem] = useState(() => {
@@ -266,6 +278,7 @@ export default function Page() {
       // Mark user as verified so DataCollectionHub can start fetching
       // Workspace will be set by loadUserWorkspaces from database
       setUserVerified(true);
+      setShouldRenderChat(true); // Enable Chat UI when user is verified
     }
   }, [user?.id]);
 
@@ -3028,6 +3041,25 @@ export default function Page() {
   };
 
   // Authenticated user - show main app
+
+  // Render Chat UI for authenticated users (Root View Strategy)
+  if (shouldRenderChat && user && selectedWorkspaceId) {
+    return (
+      <SamContextProvider>
+        <AdaptiveLayout
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          isContextOpen={isContextOpen}
+          onToggleContext={() => setIsContextOpen(!isContextOpen)}
+          sidebar={<ChatSidebar />}
+          contextPanel={<ContextPanel />}
+        >
+          <ChatInterface />
+        </AdaptiveLayout>
+      </SamContextProvider>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-background text-foreground">
       {/* Left Sidebar */}
