@@ -32,7 +32,7 @@ export default function HomePage() {
                 // Get user's first workspace
                 const { data: memberships, error } = await supabase
                     .from('workspace_members')
-                    .select('workspace_id, workspace:workspaces(id, name)')
+                    .select('workspace_id')
                     .eq('user_id', user.id)
                     .order('created_at', { ascending: true })
                     .limit(1)
