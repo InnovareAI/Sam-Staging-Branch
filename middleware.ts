@@ -56,6 +56,36 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // ROOT URL REWRITE: Make chat the default view (Dec 21, 2025)
+  // Rewrite "/" to "/workspace/[id]/chat" for authenticated users
+  // This keeps the URL as app.meet-sam.com while serving the chat interface
+  if (request.nextUrl.pathname === '/') {
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (!authError && user) {
+        // Get user's personal workspace
+        const { data: workspace } = await supabase
+          .from('workspaces')
+          .select('id')
+          .eq('owner_id', user.id)
+          .eq('workspace_type', 'personal')
+          .single();
+
+        if (workspace) {
+          // Rewrite to workspace chat (URL stays as "/")
+          const chatUrl = new URL(`/workspace/${workspace.id}/chat`, request.url);
+          console.log(`[Middleware] Rewriting / to ${chatUrl.pathname} for user ${user.email}`);
+          return NextResponse.rewrite(chatUrl);
+        }
+      }
+      // If not authenticated or no workspace, fall through to show dashboard/login
+    } catch (error) {
+      console.error('[Middleware] Error in root URL rewrite:', error);
+      // Fall through to default behavior
+    }
+  }
+
   // Check if this is an admin route
   if (request.nextUrl.pathname.startsWith('/admin')) {
     // All admin routes require authentication + InnovareAI workspace membership
