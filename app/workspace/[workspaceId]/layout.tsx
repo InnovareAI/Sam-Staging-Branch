@@ -1,30 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { AppSidebar } from '@/components/app-sidebar';
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/app/lib/supabase';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageSquare, LogOut } from 'lucide-react';
 
 interface User {
   id: string;
   email: string;
   user_metadata?: {
     full_name?: string;
+    first_name?: string;
+    last_name?: string;
     avatar_url?: string;
   };
 }
@@ -35,6 +22,17 @@ interface Workspace {
   commenting_agent_enabled?: boolean;
 }
 
+const menuItems = [
+  {
+    id: 'commenting-agent',
+    label: 'Commenting Agent',
+    description: 'Automated LinkedIn engagement and commenting',
+    icon: MessageSquare,
+    path: '/commenting-agent'
+  },
+  // Add more menu items here as they're migrated to workspace architecture
+];
+
 export default function WorkspaceLayout({
   children,
 }: {
@@ -42,12 +40,12 @@ export default function WorkspaceLayout({
 }) {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const workspaceId = params.workspaceId as string;
 
   const [user, setUser] = useState<User | null>(null);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     const loadUserAndWorkspace = async () => {
@@ -81,9 +79,6 @@ export default function WorkspaceLayout({
         return;
       }
 
-      // Check if super admin
-      setIsSuperAdmin(member.role === 'super_admin' || member.role === 'owner');
-
       // Get workspace details
       const { data: workspaceData } = await supabase
         .from('workspaces')
@@ -101,6 +96,12 @@ export default function WorkspaceLayout({
     loadUserAndWorkspace();
   }, [workspaceId, router]);
 
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -109,50 +110,128 @@ export default function WorkspaceLayout({
     );
   }
 
-  const sidebarUser = user ? {
-    name: user.user_metadata?.full_name || user.email.split('@')[0],
-    email: user.email,
-    avatar: user.user_metadata?.avatar_url,
-  } : undefined;
+  // Determine active menu item based on current path
+  const activeMenuItem = menuItems.find(item =>
+    pathname?.includes(item.path)
+  )?.id || menuItems[0]?.id;
 
-  const enabledFeatures = {
-    commenting_agent_enabled: workspace?.commenting_agent_enabled || false,
-  };
+  const activeSection = menuItems.find(item => item.id === activeMenuItem) || menuItems[0];
 
   return (
-    <SidebarProvider>
-      <AppSidebar
-        user={sidebarUser}
-        workspaceId={workspaceId}
-        isSuperAdmin={isSuperAdmin}
-        enabledFeatures={enabledFeatures}
-      />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1 text-gray-400 hover:text-white" />
-            <Separator orientation="vertical" className="mr-2 h-4 bg-gray-700" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/" className="text-gray-400 hover:text-white">
-                    Home
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block text-gray-600" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage className="text-gray-200">
-                    {workspace?.name || 'Workspace'}
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+    <div className="flex h-screen bg-background text-foreground">
+      {/* Left Sidebar - Custom Design */}
+      <div className="hidden w-72 flex-col border-r border-border/60 bg-surface-muted/70 backdrop-blur lg:flex overflow-y-auto">
+        {/* Sidebar Header */}
+        <div className="border-b border-border/60 px-6 py-6">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent">
+              <img
+                src="/SAM.jpg"
+                alt="Sam AI"
+                className="h-11 w-11 rounded-2xl object-cover"
+                style={{ objectPosition: 'center 30%' }}
+              />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Sam AI</p>
+              <h2 className="text-xl font-semibold text-white">Your AI Sales Agent</h2>
+            </div>
           </div>
-        </header>
-        <main className="flex-1 bg-gray-900 min-h-[calc(100vh-4rem)]">
+        </div>
+
+        {/* Navigation Menu */}
+        <div className="flex-1 overflow-y-auto py-4">
+          <nav className="space-y-2 px-4">
+            {menuItems.map((item) => {
+              const IconComponent = item.icon;
+              const isActive = item.id === activeMenuItem;
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => router.push(`/workspace/${workspaceId}${item.path}`)}
+                  className={`group w-full rounded-xl border border-transparent px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isActive
+                      ? 'bg-primary/15 text-white shadow-glow ring-1 ring-primary/35'
+                      : 'text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground'
+                    }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${isActive
+                          ? 'bg-primary/25 text-white'
+                          : 'bg-surface-highlight text-muted-foreground group-hover:text-foreground'
+                        }`}
+                    >
+                      <IconComponent size={18} />
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold leading-tight text-foreground group-hover:text-white">
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-xs leading-snug text-muted-foreground group-hover:text-muted-foreground/90">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Sidebar Bottom */}
+        <div className="space-y-0 border-t border-border/60">
+          <div className="space-y-4 px-5 py-5">
+            <div className="rounded-xl border border-border/60 bg-surface-highlight/40 px-4 py-4">
+              {user ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/25 text-sm font-semibold text-white">
+                      {(user.user_metadata?.full_name || user.user_metadata?.first_name || user.email || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <p className="truncate text-sm font-medium text-white">
+                        {user.user_metadata?.full_name ||
+                          (user.user_metadata?.first_name && user.user_metadata?.last_name
+                            ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                            : user.email) || 'Authenticated User'}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                      <p className="text-xs text-green-500">Active session</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-surface px-4 py-2 text-sm font-medium text-muted-foreground transition hover:bg-surface-highlight hover:text-white"
+                  >
+                    <LogOut size={16} />
+                    Sign Out
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col bg-surface">
+        <div className="border-b border-border/60 px-6 py-5 backdrop-blur">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Workspace</p>
+              <h1 className="mt-2 text-2xl font-semibold text-white">{activeSection?.label || 'Workspace'}</h1>
+              <p className="text-sm text-muted-foreground/90 lg:max-w-xl">{activeSection?.description || workspace?.name}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
           {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+        </div>
+      </div>
+    </div>
   );
 }
