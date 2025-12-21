@@ -16,7 +16,8 @@ import {
   UserCircle2,
   Target,
   CheckCircle2,
-  BarChart3
+  BarChart3,
+  ArrowRight
 } from 'lucide-react';
 import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import CommentingAgentSettings from '@/app/components/CommentingAgentSettings';
