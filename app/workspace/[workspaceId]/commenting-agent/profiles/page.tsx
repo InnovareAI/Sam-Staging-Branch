@@ -305,6 +305,17 @@ export default function ProfilesListPage() {
 
                   <div className="relative">
                     <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteProfile(profile.id);
+                      }}
+                      className="p-2 hover:bg-gray-700/50 hover:text-red-400 text-gray-400 rounded-lg transition-colors mr-1"
+                      title="Delete Profile"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+
+                    <button
                       onClick={() => setOpenMenuId(openMenuId === profile.id ? null : profile.id)}
                       className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
                     >

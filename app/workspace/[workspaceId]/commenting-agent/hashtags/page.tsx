@@ -262,8 +262,8 @@ export default function HashtagsListPage() {
                                         <div className="flex items-center gap-2 mb-1">
                                             <h3 className="text-white font-semibold truncate group-hover:text-purple-400 transition-colors">{monitor.name || 'Unnamed Campaign'}</h3>
                                             <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${monitor.status === 'active'
-                                                    ? 'bg-green-600/20 text-green-400'
-                                                    : 'bg-gray-600/20 text-gray-400'
+                                                ? 'bg-green-600/20 text-green-400'
+                                                : 'bg-gray-600/20 text-gray-400'
                                                 }`}>
                                                 {monitor.status}
                                             </span>
@@ -303,8 +303,8 @@ export default function HashtagsListPage() {
                                         onClick={() => toggleStatus(monitor)}
                                         disabled={actionLoading === monitor.id}
                                         className={`p-2 rounded-lg transition-colors ${monitor.status === 'active'
-                                                ? 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400'
-                                                : 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
+                                            ? 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400'
+                                            : 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
                                             } disabled:opacity-50`}
                                         title={monitor.status === 'active' ? 'Pause monitoring' : 'Resume monitoring'}
                                     >
@@ -317,57 +317,35 @@ export default function HashtagsListPage() {
                                         )}
                                     </button>
 
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setOpenMenuId(openMenuId === monitor.id ? null : monitor.id)}
-                                            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-                                        >
-                                            <MoreVertical size={18} className="text-gray-400" />
-                                        </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingMonitor(monitor);
+                                            setShowCreateModal(true);
+                                        }}
+                                        className="p-2 hover:bg-gray-700/50 hover:text-blue-400 text-gray-400 rounded-lg transition-colors mr-1"
+                                        title="Edit Campaign"
+                                    >
+                                        <Edit size={18} />
+                                    </button>
 
-                                        {openMenuId === monitor.id && (
-                                            <>
-                                                <div
-                                                    className="fixed inset-0 z-10"
-                                                    onClick={() => setOpenMenuId(null)}
-                                                />
-                                                <div className="absolute right-0 top-full mt-1 w-48 bg-gray-700 rounded-lg shadow-xl border border-gray-600 py-1 z-20">
-                                                    <button
-                                                        onClick={() => {
-                                                            setEditingMonitor(monitor);
-                                                            setShowCreateModal(true);
-                                                            setOpenMenuId(null);
-                                                        }}
-                                                        className="w-full px-4 py-2 text-left text-gray-200 hover:bg-gray-600 flex items-center gap-2"
-                                                    >
-                                                        <Edit size={16} />
-                                                        Edit Campaign
-                                                    </button>
-                                                    <button
-                                                        onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/approve?profile=${monitor.id}`)}
-                                                        className="w-full px-4 py-2 text-left text-gray-200 hover:bg-gray-600 flex items-center gap-2"
-                                                    >
-                                                        <MessageSquare size={16} />
-                                                        View Comments
-                                                    </button>
-                                                    <hr className="my-1 border-gray-600" />
-                                                    <button
-                                                        onClick={() => deleteMonitor(monitor.id)}
-                                                        className="w-full px-4 py-2 text-left text-red-400 hover:bg-gray-600 flex items-center gap-2"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                        Delete Campaign
-                                                    </button>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            deleteMonitor(monitor.id);
+                                        }}
+                                        className="p-2 hover:bg-gray-700/50 hover:text-red-400 text-gray-400 rounded-lg transition-colors"
+                                        title="Delete Campaign"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     ))}
                 </div>
-            )}
+            )
+            }
 
             {/* Info Banner */}
             <div className="mt-6 p-4 bg-purple-900/20 border border-purple-700/30 rounded-lg">
@@ -384,20 +362,22 @@ export default function HashtagsListPage() {
             </div>
 
             {/* Modal */}
-            {showCreateModal && (
-                <CommentingCampaignModal
-                    isOpen={showCreateModal}
-                    onClose={() => {
-                        setShowCreateModal(false);
-                        setEditingMonitor(null);
-                        loadMonitors();
-                    }}
-                    workspaceId={workspaceId}
-                    editMode={!!editingMonitor}
-                    existingMonitor={editingMonitor || undefined}
-                    defaultTab="hashtags"
-                />
-            )}
+            {
+                showCreateModal && (
+                    <CommentingCampaignModal
+                        isOpen={showCreateModal}
+                        onClose={() => {
+                            setShowCreateModal(false);
+                            setEditingMonitor(null);
+                            loadMonitors();
+                        }}
+                        workspaceId={workspaceId}
+                        editMode={!!editingMonitor}
+                        existingMonitor={editingMonitor || undefined}
+                        defaultTab="hashtags"
+                    />
+                )
+            }
 
             {/* Confirm Modal */}
             <ConfirmModal
@@ -412,6 +392,6 @@ export default function HashtagsListPage() {
                 confirmText="Delete"
                 confirmVariant="danger"
             />
-        </div>
+        </div >
     );
 }

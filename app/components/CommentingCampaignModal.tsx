@@ -171,31 +171,59 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
 
       const hashtags: string[] = [];
 
-      // Add profiles
-      for (const target of allProfileTargets) {
-        let vanityName = target.trim();
-        if (vanityName.includes('linkedin.com/in/')) {
-          const match = vanityName.match(/linkedin\.com\/in\/([^\/\?#]+)/);
-          if (match) vanityName = match[1];
-        }
-        hashtags.push(`PROFILE:${vanityName}`);
-      }
+      // Add My Content targets if in My Content mode
+      if (myContentMode) {
+        if (myContentChoice === 'profile-companies') {
+          // Profile
+          let vanityName = myProfile.trim();
+          if (vanityName) {
+            if (vanityName.includes('linkedin.com/in/')) {
+              const match = vanityName.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+              if (match) vanityName = match[1];
+            }
+            hashtags.push(`PROFILE:${vanityName}`);
+          }
 
-      // Add companies
-      for (const target of allCompanyTargets) {
-        let companySlug = target.trim();
-        if (companySlug.includes('linkedin.com/company/')) {
-          const match = companySlug.match(/linkedin\.com\/company\/([^\/\?#]+)/);
-          if (match) companySlug = match[1];
+          // Companies
+          for (const company of myCompanies) {
+            let companySlug = company.trim();
+            if (companySlug) {
+              if (companySlug.includes('linkedin.com/company/')) {
+                const match = companySlug.match(/linkedin\.com\/company\/([^\/\?#]+)/);
+                if (match) companySlug = match[1];
+              }
+              hashtags.push(`COMPANY:${companySlug}`);
+            }
+          }
         }
-        hashtags.push(`COMPANY:${companySlug}`);
-      }
+      } else {
+        // Standard Campaign Monitor Logic
+        // Add profiles
+        for (const target of allProfileTargets) {
+          let vanityName = target.trim();
+          if (vanityName.includes('linkedin.com/in/')) {
+            const match = vanityName.match(/linkedin\.com\/in\/([^\/\?#]+)/);
+            if (match) vanityName = match[1];
+          }
+          hashtags.push(`PROFILE:${vanityName}`);
+        }
 
-      // Add hashtags
-      for (const target of allHashtagTargets) {
-        let keyword = target.trim().replace(/^#/, '');
-        if (keyword) {
-          hashtags.push(`HASHTAG:${keyword}`);
+        // Add companies
+        for (const target of allCompanyTargets) {
+          let companySlug = target.trim();
+          if (companySlug.includes('linkedin.com/company/')) {
+            const match = companySlug.match(/linkedin\.com\/company\/([^\/\?#]+)/);
+            if (match) companySlug = match[1];
+          }
+          hashtags.push(`COMPANY:${companySlug}`);
+        }
+
+        // Add hashtags
+        for (const target of allHashtagTargets) {
+          let keyword = target.trim().replace(/^#/, '');
+          if (keyword) {
+            hashtags.push(`HASHTAG:${keyword}`);
+          }
         }
       }
 
@@ -550,9 +578,10 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
                             </div>
                             <button
                               onClick={() => handleRemoveExisting(monitor.id)}
-                              className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                              className="p-1.5 text-gray-500 hover:text-red-400 bg-gray-600/20 hover:bg-red-900/20 rounded transition-colors"
+                              title="Delete Monitor"
                             >
-                              <X size={14} />
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         );
@@ -593,7 +622,11 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
             </button>
             <button
               onClick={handleCreate}
-              disabled={saving || (profileTargets.filter(t => t.trim()).length === 0 && companyTargets.filter(t => t.trim()).length === 0 && hashtagTargets.filter(t => t.trim()).length === 0)}
+              disabled={saving || (
+                myContentMode
+                  ? (!myProfile && myContentChoice === 'profile-companies' && myCompanies.every(c => !c.trim()))
+                  : (profileTargets.filter(t => t.trim()).length === 0 && companyTargets.filter(t => t.trim()).length === 0 && hashtagTargets.filter(t => t.trim()).length === 0)
+              )}
               className="px-6 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {saving ? (

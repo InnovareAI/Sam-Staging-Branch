@@ -250,8 +250,8 @@ export default function CompaniesListPage() {
                                         <div className="flex items-center gap-2 mb-1">
                                             <h3 className="text-white font-semibold truncate group-hover:text-blue-400 transition-colors">{monitor.name || 'Unnamed Campaign'}</h3>
                                             <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${monitor.status === 'active'
-                                                    ? 'bg-green-600/20 text-green-400'
-                                                    : 'bg-gray-600/20 text-gray-400'
+                                                ? 'bg-green-600/20 text-green-400'
+                                                : 'bg-gray-600/20 text-gray-400'
                                                 }`}>
                                                 {monitor.status}
                                             </span>
@@ -291,8 +291,8 @@ export default function CompaniesListPage() {
                                         onClick={() => toggleStatus(monitor)}
                                         disabled={actionLoading === monitor.id}
                                         className={`p-2 rounded-lg transition-colors ${monitor.status === 'active'
-                                                ? 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400'
-                                                : 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
+                                            ? 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400'
+                                            : 'bg-green-600/20 hover:bg-green-600/30 text-green-400'
                                             } disabled:opacity-50`}
                                         title={monitor.status === 'active' ? 'Pause monitoring' : 'Resume monitoring'}
                                     >
@@ -306,6 +306,17 @@ export default function CompaniesListPage() {
                                     </button>
 
                                     <div className="relative">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                deleteMonitor(monitor.id);
+                                            }}
+                                            className="p-2 hover:bg-gray-700/50 hover:text-red-400 text-gray-400 rounded-lg transition-colors mr-1"
+                                            title="Delete Campaign"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+
                                         <button
                                             onClick={() => setOpenMenuId(openMenuId === monitor.id ? null : monitor.id)}
                                             className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
