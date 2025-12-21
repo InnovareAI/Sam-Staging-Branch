@@ -22,18 +22,30 @@ interface CommentingCampaignModalProps {
   workspaceId: string;
   editMode?: boolean;
   existingMonitor?: Monitor;
+  myContentMode?: boolean;
 }
 
 type TargetingMode = 'hashtag' | 'keyword' | 'profile';
-type TargetTab = 'profiles' | 'companies' | 'hashtags';
+type TargetTab = 'profiles' | 'companies' | 'hashtags' | 'my-content';
 
-export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, editMode = false, existingMonitor }: CommentingCampaignModalProps) {
+export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, editMode = false, existingMonitor, myContentMode = false }: CommentingCampaignModalProps) {
   const [campaignName, setCampaignName] = useState('');
   const [targetingMode] = useState<TargetingMode>('profile'); // Only profile targeting supported
-  const [activeTab, setActiveTab] = useState<TargetTab>('profiles');
+  const [activeTab, setActiveTab] = useState<TargetTab>(myContentMode ? 'my-content' : 'profiles');
   const [profileTargets, setProfileTargets] = useState<string[]>(['']);
   const [companyTargets, setCompanyTargets] = useState<string[]>(['']);
   const [hashtagTargets, setHashtagTargets] = useState<string[]>(['']);
+
+  // My Content mode states
+  const [myContentChoice, setMyContentChoice] = useState<'profile-companies' | 'posts'>('profile-companies');
+  const [myProfile, setMyProfile] = useState('');
+  const [myCompanies, setMyCompanies] = useState<string[]>(['']);
+
+  // Lead Capture options
+  const [autoConnect, setAutoConnect] = useState(false);
+  const [autoDM, setAutoDM] = useState(false);
+  const [autoNurture, setAutoNurture] = useState(false);
+  const [autoApprove, setAutoApprove] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [existingMonitors, setExistingMonitors] = useState<Monitor[]>([]);
@@ -249,144 +261,245 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
 
         {/* Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
-          {/* Tab Switcher */}
-          <div className="flex gap-2 p-1 bg-gray-700/50 rounded-lg">
-            <button
-              onClick={() => setActiveTab('profiles')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'profiles'
-                ? 'bg-pink-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-gray-600'
-                }`}
-            >
-              <User size={18} />
-              <span className="font-medium">Personal Profiles</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('companies')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'companies'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-gray-600'
-                }`}
-            >
-              <Building2 size={18} />
-              <span className="font-medium">Company Pages</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('hashtags')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'hashtags'
-                ? 'bg-green-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-gray-600'
-                }`}
-            >
-              <Hash size={18} />
-              <span className="font-medium">Hashtags</span>
-            </button>
-          </div>
+          {/* Tab Switcher / My Content Mode */}
+          {myContentMode ? (
+            <div className="space-y-4">
+              <div className="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
+                <h3 className="text-white font-medium mb-3">Choose what to monitor:</h3>
+                <div className="space-y-3">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="myContentChoice"
+                      checked={myContentChoice === 'profile-companies'}
+                      onChange={() => setMyContentChoice('profile-companies')}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="text-white font-medium">Monitor My Profile & Companies</div>
+                      <div className="text-gray-400 text-sm">Capture leads from people who engage with your profile or company pages</div>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="myContentChoice"
+                      checked={myContentChoice === 'posts'}
+                      onChange={() => setMyContentChoice('posts')}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="text-white font-medium">Monitor My Posts</div>
+                      <div className="text-gray-400 text-sm">Auto-reply to comments on your own LinkedIn posts</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
 
-          {/* LinkedIn Targets to Monitor */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              {activeTab === 'profiles'
-                ? 'LinkedIn Profiles to Monitor (Max 30)'
-                : activeTab === 'companies'
-                  ? 'LinkedIn Company Pages to Monitor (Max 30)'
-                  : 'Hashtags to Monitor (Max 10)'
-              }
-            </label>
-            <p className="text-sm text-gray-400 mb-3">
-              {activeTab === 'profiles'
-                ? 'Enter LinkedIn profile vanity names (e.g., sama, andrewng, ylecun)'
-                : activeTab === 'companies'
-                  ? 'Enter LinkedIn company page URLs or names (e.g., microsoft, google, linkedin.com/company/openai)'
-                  : 'Enter hashtags to search for posts (e.g., #genAI, #sales, #marketing)'
-              }
-            </p>
-            {(activeTab === 'profiles' ? profileTargets : activeTab === 'companies' ? companyTargets : hashtagTargets).map((target, index) => (
-              <div key={index} className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={target}
-                  onChange={(e) => handleTargetChange(index, e.target.value)}
-                  placeholder={activeTab === 'profiles'
-                    ? 'e.g., sama, andrewng, or linkedin.com/in/username'
-                    : activeTab === 'companies'
-                      ? 'e.g., microsoft, openai, or linkedin.com/company/google'
-                      : 'e.g., genAI, sales, or #marketing'
-                  }
-                  className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                />
+              {myContentChoice === 'profile-companies' && (
+                <>
+                  {/* My Profile URL */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      My LinkedIn Profile URL
+                    </label>
+                    <input
+                      type="text"
+                      value={myProfile}
+                      onChange={(e) => setMyProfile(e.target.value)}
+                      placeholder="e.g., linkedin.com/in/yourname"
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                  </div>
+
+                  {/* My Company Pages */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      My Company Pages (Optional)
+                    </label>
+                    {myCompanies.map((company, index) => (
+                      <div key={index} className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={company}
+                          onChange={(e) => {
+                            const newCompanies = [...myCompanies];
+                            newCompanies[index] = e.target.value;
+                            setMyCompanies(newCompanies);
+                          }}
+                          placeholder="e.g., linkedin.com/company/yourcompany"
+                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Lead Capture Options */}
+                  <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-3">Lead Capture Options</h4>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={autoConnect} onChange={(e) => setAutoConnect(e.target.checked)} />
+                        <span className="text-gray-300">Auto-send connection request</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={autoDM} onChange={(e) => setAutoDM(e.target.checked)} />
+                        <span className="text-gray-300">Auto-send direct message</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={autoNurture} onChange={(e) => setAutoNurture(e.target.checked)} />
+                        <span className="text-gray-300">Auto-run multi-step nurturing sequence</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={autoApprove} onChange={(e) => setAutoApprove(e.target.checked)} />
+                        <span className="text-gray-300">Auto-approve all replies</span>
+                      </label>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2 p-1 bg-gray-700/50 rounded-lg">
                 <button
-                  onClick={() => handleRemoveTarget(index)}
-                  className="px-3 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 hover:text-red-300 rounded-lg transition-colors flex items-center gap-1.5 text-sm"
+                  onClick={() => setActiveTab('profiles')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'profiles'
+                    ? 'bg-pink-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                    }`}
                 >
-                  <X size={16} />
-                  Remove
+                  <User size={18} />
+                  <span className="font-medium">Personal Profiles</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('companies')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'companies'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                    }`}
+                >
+                  <Building2 size={18} />
+                  <span className="font-medium">Company Pages</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('hashtags')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${activeTab === 'hashtags'
+                    ? 'bg-green-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                    }`}
+                >
+                  <Hash size={18} />
+                  <span className="font-medium">Hashtags</span>
                 </button>
               </div>
-            ))}
-            <button
-              onClick={handleAddTarget}
-              className="text-sm text-pink-400 hover:text-pink-300 transition-colors"
-            >
-              + Add another {activeTab === 'profiles' ? 'profile' : activeTab === 'companies' ? 'company page' : 'hashtag'}
-            </button>
 
-            {/* Currently Following Section */}
-            <div className="mt-8">
-              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                <Clock size={16} className="text-gray-400" />
-                Currently Following
-              </h3>
-              {loadingMonitors ? (
-                <div className="flex items-center gap-2 text-gray-500 text-sm italic">
-                  <Clock size={14} className="animate-spin" />
-                  Loading followed {activeTab}...
-                </div>
-              ) : existingMonitors.filter(m => {
-                if (activeTab === 'profiles') return m.hashtags.some(h => h.startsWith('PROFILE:'));
-                if (activeTab === 'companies') return m.hashtags.some(h => h.startsWith('COMPANY:'));
-                return m.hashtags.some(h => h.startsWith('HASHTAG:'));
-              }).length === 0 ? (
-                <p className="text-sm text-gray-500 italic">No {activeTab} followed yet</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {existingMonitors.filter(m => {
+              {/* LinkedIn Targets to Monitor */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  {activeTab === 'profiles'
+                    ? 'LinkedIn Profiles to Monitor (Max 30)'
+                    : activeTab === 'companies'
+                      ? 'LinkedIn Company Pages to Monitor (Max 30)'
+                      : 'Hashtags to Monitor (Max 10)'
+                  }
+                </label>
+                <p className="text-sm text-gray-400 mb-3">
+                  {activeTab === 'profiles'
+                    ? 'Enter LinkedIn profile vanity names (e.g., sama, andrewng, ylecun)'
+                    : activeTab === 'companies'
+                      ? 'Enter LinkedIn company page URLs or names (e.g., microsoft, google, linkedin.com/company/openai)'
+                      : 'Enter hashtags to search for posts (e.g., #genAI, #sales, #marketing)'
+                  }
+                </p>
+                {(activeTab === 'profiles' ? profileTargets : activeTab === 'companies' ? companyTargets : hashtagTargets).map((target, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={target}
+                      onChange={(e) => handleTargetChange(index, e.target.value)}
+                      placeholder={activeTab === 'profiles'
+                        ? 'e.g., sama, andrewng, or linkedin.com/in/username'
+                        : activeTab === 'companies'
+                          ? 'e.g., microsoft, openai, or linkedin.com/company/google'
+                          : 'e.g., genAI, sales, or #marketing'
+                      }
+                      className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    />
+                    <button
+                      onClick={() => handleRemoveTarget(index)}
+                      className="px-3 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 hover:text-red-300 rounded-lg transition-colors flex items-center gap-1.5 text-sm"
+                    >
+                      <X size={16} />
+                      Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={handleAddTarget}
+                  className="text-sm text-pink-400 hover:text-pink-300 transition-colors"
+                >
+                  + Add another {activeTab === 'profiles' ? 'profile' : activeTab === 'companies' ? 'company page' : 'hashtag'}
+                </button>
+
+                {/* Currently Following Section */}
+                <div className="mt-8">
+                  <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <Clock size={16} className="text-gray-400" />
+                    Currently Following
+                  </h3>
+                  {loadingMonitors ? (
+                    <div className="flex items-center gap-2 text-gray-500 text-sm italic">
+                      <Clock size={14} className="animate-spin" />
+                      Loading followed {activeTab}...
+                    </div>
+                  ) : existingMonitors.filter(m => {
                     if (activeTab === 'profiles') return m.hashtags.some(h => h.startsWith('PROFILE:'));
                     if (activeTab === 'companies') return m.hashtags.some(h => h.startsWith('COMPANY:'));
                     return m.hashtags.some(h => h.startsWith('HASHTAG:'));
-                  }).map(monitor => {
-                    const tag = monitor.hashtags[0] || '';
-                    let displayName = monitor.name || tag;
-                    if (tag.startsWith('PROFILE:')) displayName = tag.replace('PROFILE:', '');
-                    if (tag.startsWith('COMPANY:')) displayName = tag.replace('COMPANY:', '');
-                    if (tag.startsWith('HASHTAG:')) displayName = '#' + tag.replace('HASHTAG:', '');
+                  }).length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">No {activeTab} followed yet</p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {existingMonitors.filter(m => {
+                        if (activeTab === 'profiles') return m.hashtags.some(h => h.startsWith('PROFILE:'));
+                        if (activeTab === 'companies') return m.hashtags.some(h => h.startsWith('COMPANY:'));
+                        return m.hashtags.some(h => h.startsWith('HASHTAG:'));
+                      }).map(monitor => {
+                        const tag = monitor.hashtags[0] || '';
+                        let displayName = monitor.name || tag;
+                        if (tag.startsWith('PROFILE:')) displayName = tag.replace('PROFILE:', '');
+                        if (tag.startsWith('COMPANY:')) displayName = tag.replace('COMPANY:', '');
+                        if (tag.startsWith('HASHTAG:')) displayName = '#' + tag.replace('HASHTAG:', '');
 
-                    return (
-                      <div key={monitor.id} className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg border border-gray-700">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTab === 'profiles' ? 'bg-pink-600/20 text-pink-400' :
-                            activeTab === 'companies' ? 'bg-blue-600/20 text-blue-400' :
-                              'bg-green-600/20 text-green-400'
-                            }`}>
-                            {activeTab === 'profiles' ? <User size={14} /> :
-                              activeTab === 'companies' ? <Building2 size={14} /> :
-                                <Hash size={14} />}
+                        return (
+                          <div key={monitor.id} className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg border border-gray-700">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTab === 'profiles' ? 'bg-pink-600/20 text-pink-400' :
+                                activeTab === 'companies' ? 'bg-blue-600/20 text-blue-400' :
+                                  'bg-green-600/20 text-green-400'
+                                }`}>
+                                {activeTab === 'profiles' ? <User size={14} /> :
+                                  activeTab === 'companies' ? <Building2 size={14} /> :
+                                    <Hash size={14} />}
+                              </div>
+                              <span className="text-sm text-white font-medium truncate">{displayName}</span>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveExisting(monitor.id)}
+                              className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                            >
+                              <X size={14} />
+                            </button>
                           </div>
-                          <span className="text-sm text-white font-medium truncate">{displayName}</span>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveExisting(monitor.id)}
-                          className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
 
           {/* AI Settings Note */}
           <div className="p-4 bg-purple-900/20 rounded-lg border border-purple-700/50">

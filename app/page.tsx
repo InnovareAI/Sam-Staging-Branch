@@ -203,7 +203,9 @@ export default function Page() {
   // Commenting Agent modal state
   const [showCommentingCampaignModal, setShowCommentingCampaignModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<any | null>(null);
+  const [workspaceLogo, setWorkspaceLogo] = useState<string | null>(null);
   const [commentingAgentView, setCommentingAgentView] = useState<'dashboard' | 'approve' | 'profiles' | 'companies' | 'hashtags' | 'my-profile'>('dashboard');
+  const [myContentMode, setMyContentMode] = useState(false);
   const [commentingCampaigns, setCommentingCampaigns] = useState<any[]>([]);
   const [commentingCampaignsLoading, setCommentingCampaignsLoading] = useState(false);
   const [expandedCampaignPosts, setExpandedCampaignPosts] = useState<string | null>(null);
@@ -3346,13 +3348,16 @@ export default function Page() {
                   <p className="text-gray-400 mb-6">Monitor your own posts and auto-reply to comments from your audience.</p>
                   <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
                     <UserCircle2 size={48} className="text-green-500 mx-auto mb-4" />
-                    <p className="text-white font-medium mb-2">Auto-detect your LinkedIn posts</p>
-                    <p className="text-gray-400 text-sm mb-4">We'll fetch your recent posts and let you monitor comments on each one.</p>
+                    <p className="text-white font-medium mb-2">Setup My Content Monitoring</p>
+                    <p className="text-gray-400 text-sm mb-4">Configure monitoring for your LinkedIn profile, company pages, and posts with lead capture options.</p>
                     <button
-                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/monitor-me`)}
+                      onClick={() => {
+                        setMyContentMode(true);
+                        setShowCommentingCampaignModal(true);
+                      }}
                       className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
                     >
-                      View My Posts
+                      Setup My Content
                     </button>
                   </div>
                 </div>
@@ -5423,9 +5428,11 @@ export default function Page() {
             isOpen={showCommentingCampaignModal}
             onClose={() => {
               setShowCommentingCampaignModal(false);
+              setMyContentMode(false);
               setEditingCampaign(null);
             }}
             workspaceId={selectedWorkspaceId || currentWorkspace?.id || ''}
+            myContentMode={myContentMode}
             editMode={!!editingCampaign}
             existingMonitor={editingCampaign || undefined}
           />
