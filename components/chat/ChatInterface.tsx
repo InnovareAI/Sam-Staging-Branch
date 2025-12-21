@@ -560,64 +560,62 @@ export function ChatInterface() {
                                         </div>
                                     )}
                                 </div>
+                                {/* Archive Button - Soft Gray Tint */}
+                                <button
+                                    onClick={async () => {
+                                        if (currentThread) {
+                                            await archiveThread(currentThread.id);
+                                        }
+                                    }}
+                                    disabled={!currentThread}
+                                    className={cn(
+                                        "w-11 h-11 rounded-full flex items-center justify-center transition-all ml-1",
+                                        !currentThread
+                                            ? "opacity-30 cursor-not-allowed bg-gray-500/5 text-gray-400"
+                                            : "bg-gray-500/15 text-gray-400 hover:bg-gray-500/25 hover:text-gray-300"
+                                    )}
+                                    title={currentThread ? "Archive this chat" : "No active chat to archive"}
+                                >
+                                    <Archive size={20} />
+                                </button>
                             </div>
 
-                            {/* Archive Button - Soft Gray Tint */}
-                            <button
-                                onClick={async () => {
-                                    if (currentThread) {
-                                        await archiveThread(currentThread.id);
-                                    }
-                                }}
-                                disabled={!currentThread}
-                                className={cn(
-                                    "w-11 h-11 rounded-full flex items-center justify-center transition-all ml-1",
-                                    !currentThread
-                                        ? "opacity-30 cursor-not-allowed bg-gray-500/5 text-gray-400"
-                                        : "bg-gray-500/15 text-gray-400 hover:bg-gray-500/25 hover:text-gray-300"
-                                )}
-                                title={currentThread ? "Archive this chat" : "No active chat to archive"}
-                            >
-                                <Archive size={20} />
-                            </button>
-                        </div>
+                            <div className="flex items-center gap-3">
+                                {/* Character Counter */}
+                                <span className={cn(
+                                    "text-xs transition-colors",
+                                    input.length > 1800 ? "text-yellow-500" : "text-muted-foreground/50",
+                                    input.length > 1950 ? "text-red-500" : ""
+                                )}>
+                                    {input.length > 0 && `${input.length}/2000`}
+                                </span>
 
-                        <div className="flex items-center gap-3">
-                            {/* Character Counter */}
-                            <span className={cn(
-                                "text-xs transition-colors",
-                                input.length > 1800 ? "text-yellow-500" : "text-muted-foreground/50",
-                                input.length > 1950 ? "text-red-500" : ""
-                            )}>
-                                {input.length > 0 && `${input.length}/2000`}
-                            </span>
-
-                            {/* Send Button - Purple/Magenta */}
-                            <button
-                                onClick={handleSend}
-                                disabled={!input.trim() || isSending}
-                                className={cn(
-                                    "h-11 px-5 rounded-full flex items-center justify-center gap-2 font-medium transition-all shadow-md",
-                                    input.trim()
-                                        ? "bg-gradient-to-br from-[#7C3AED] to-[#A855F7] text-white hover:shadow-lg hover:scale-105"
-                                        : "bg-surface-highlight text-muted-foreground"
-                                )}
-                            >
-                                <Send size={18} />
-                                <span>Send</span>
-                            </button>
+                                {/* Send Button - Purple/Magenta */}
+                                <button
+                                    onClick={handleSend}
+                                    disabled={!input.trim() || isSending}
+                                    className={cn(
+                                        "h-11 px-5 rounded-full flex items-center justify-center gap-2 font-medium transition-all shadow-md",
+                                        input.trim()
+                                            ? "bg-gradient-to-br from-[#7C3AED] to-[#A855F7] text-white hover:shadow-lg hover:scale-105"
+                                            : "bg-surface-highlight text-muted-foreground"
+                                    )}
+                                >
+                                    <Send size={18} />
+                                    <span>Send</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Footer Text */}
-                <div className="mt-2 flex items-center justify-center gap-3 text-[10px] text-muted-foreground/40 font-medium">
-                    <span>Sam Orchestration v4.5</span>
-                    <span>•</span>
-                    <span>⇧⏎ new line</span>
+                    {/* Footer Text */}
+                    <div className="mt-2 flex items-center justify-center gap-3 text-[10px] text-muted-foreground/40 font-medium">
+                        <span>Sam Orchestration v4.5</span>
+                        <span>•</span>
+                        <span>⇧⏎ new line</span>
+                    </div>
                 </div>
             </div>
         </div>
-        </div >
     );
 }
