@@ -1,0 +1,11 @@
+
+> sam-ai-platform@0.0.0 dev
+> next dev
+
+   ▲ Next.js 15.5.7
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.86.24:3000
+   - Environments: .env.local, .env.development, .env
+
+ ✓ Starting...
+ ✓ Ready in 1061ms

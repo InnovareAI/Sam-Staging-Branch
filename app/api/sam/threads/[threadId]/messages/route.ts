@@ -384,9 +384,8 @@ export async function GET(
     }
 
     // Load messages
-    const { data: messages, error } = await supabase
       .from('sam_conversation_messages')
-      .select('*, attachments:sam_conversation_attachments(*)')
+      .select('*') // Reverted attachments join to fix production crash (missing table)
       .eq('thread_id', resolvedParams.threadId)
       .order('message_order', { ascending: true })
 
@@ -613,6 +612,8 @@ export async function POST(
     }
 
     // Link attachments to this message if provided
+    /* 
+    // Temporarily disabled due to missing migration in production
     if (attachmentIds && Array.isArray(attachmentIds) && attachmentIds.length > 0) {
       const { error: attachError } = await supabase
         .from('sam_conversation_attachments')
@@ -625,6 +626,7 @@ export async function POST(
         // Non-fatal for the chat flow, but good to know
       }
     }
+    */
 
     // TRACK ANALYTICS (User Message)
     trackConversationAnalytics(

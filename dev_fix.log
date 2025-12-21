@@ -1,0 +1,12 @@
+
+> sam-ai-platform@0.0.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use by process 89844, using available port 3001 instead.
+   ▲ Next.js 15.5.7
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.86.24:3001
+   - Environments: .env.local, .env.development, .env
+
+ ✓ Starting...
+ ✓ Ready in 1320ms
