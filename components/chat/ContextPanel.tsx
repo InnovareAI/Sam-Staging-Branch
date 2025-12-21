@@ -1,12 +1,14 @@
 'use client';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BookOpen, BarChart3, Lightbulb } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { BookOpen, BarChart3, Lightbulb, History, Search, MessageSquare } from "lucide-react";
 import { useSamContext } from './SamContextProvider';
 import { useSamThreadedChat } from "@/lib/hooks/useSamThreadedChat";
 import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from 'date-fns';
 
 export function ContextPanel() {
     const {
@@ -18,77 +20,166 @@ export function ContextPanel() {
         refreshContext
     } = useSamContext();
 
-    const { currentThread } = useSamThreadedChat();
+    const { threads, currentThread, switchToThread, loadThreads } = useSamThreadedChat();
+    const [search, setSearch] = useState('');
+
+    // Load threads on mount
+    useEffect(() => {
+        loadThreads();
+    }, [loadThreads]);
+
+    // Filter threads by search
+    const filteredThreads = threads.filter(t =>
+        t.title.toLowerCase().includes(search.toLowerCase()) ||
+        t.last_sam_message?.toLowerCase().includes(search.toLowerCase()) ||
+        t.last_user_message?.toLowerCase().includes(search.toLowerCase())
+    );
 
     return (
         <div className="flex flex-col h-full bg-surface-muted/30">
             {/* Tabs Header */}
             <div className="px-4 pt-4 border-b border-border/40">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TooltipProvider delayDuration={200}>
-                        <div className="w-full flex justify-center gap-4 mb-4">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        onClick={() => setActiveTab('knowledge')}
-                                        className={cn(
-                                            "w-12 h-12 rounded-full flex items-center justify-center transition-all",
-                                            activeTab === 'knowledge'
-                                                ? "bg-[#8B5CF6]/25 text-[#A78BFA] ring-2 ring-[#8B5CF6]/40"
-                                                : "bg-[#8B5CF6]/10 text-[#A78BFA]/60 hover:bg-[#8B5CF6]/20 hover:text-[#A78BFA]"
-                                        )}
-                                    >
-                                        <BookOpen size={22} />
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom">
-                                    <p>Knowledge Base</p>
-                                </TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        onClick={() => setActiveTab('stats')}
-                                        className={cn(
-                                            "w-12 h-12 rounded-full flex items-center justify-center transition-all",
-                                            activeTab === 'stats'
-                                                ? "bg-[#EC4899]/25 text-[#F472B6] ring-2 ring-[#EC4899]/40"
-                                                : "bg-[#EC4899]/10 text-[#F472B6]/60 hover:bg-[#EC4899]/20 hover:text-[#F472B6]"
-                                        )}
-                                    >
-                                        <BarChart3 size={22} />
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom">
-                                    <p>Campaign Stats</p>
-                                </TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        onClick={() => setActiveTab('strategy')}
-                                        className={cn(
-                                            "w-12 h-12 rounded-full flex items-center justify-center transition-all",
-                                            activeTab === 'strategy'
-                                                ? "bg-[#F59E0B]/25 text-[#FBBF24] ring-2 ring-[#F59E0B]/40"
-                                                : "bg-[#F59E0B]/10 text-[#FBBF24]/60 hover:bg-[#F59E0B]/20 hover:text-[#FBBF24]"
-                                        )}
-                                    >
-                                        <Lightbulb size={22} />
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom">
-                                    <p>Strategy Advisor</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </div>
-                    </TooltipProvider>
-                </Tabs>
+                <TooltipProvider delayDuration={200}>
+                    <div className="w-full flex justify-center gap-3 mb-4">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={() => setActiveTab('history')}
+                                    className={cn(
+                                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                                        activeTab === 'history'
+                                            ? "bg-[#06B6D4]/25 text-[#22D3EE] ring-2 ring-[#06B6D4]/40"
+                                            : "bg-[#06B6D4]/10 text-[#22D3EE]/60 hover:bg-[#06B6D4]/20 hover:text-[#22D3EE]"
+                                    )}
+                                >
+                                    <History size={18} />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                                <p>Chat History</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={() => setActiveTab('knowledge')}
+                                    className={cn(
+                                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                                        activeTab === 'knowledge'
+                                            ? "bg-[#8B5CF6]/25 text-[#A78BFA] ring-2 ring-[#8B5CF6]/40"
+                                            : "bg-[#8B5CF6]/10 text-[#A78BFA]/60 hover:bg-[#8B5CF6]/20 hover:text-[#A78BFA]"
+                                    )}
+                                >
+                                    <BookOpen size={18} />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                                <p>Knowledge</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={() => setActiveTab('stats')}
+                                    className={cn(
+                                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                                        activeTab === 'stats'
+                                            ? "bg-[#EC4899]/25 text-[#F472B6] ring-2 ring-[#EC4899]/40"
+                                            : "bg-[#EC4899]/10 text-[#F472B6]/60 hover:bg-[#EC4899]/20 hover:text-[#F472B6]"
+                                    )}
+                                >
+                                    <BarChart3 size={18} />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                                <p>Stats</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={() => setActiveTab('strategy')}
+                                    className={cn(
+                                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                                        activeTab === 'strategy'
+                                            ? "bg-[#F59E0B]/25 text-[#FBBF24] ring-2 ring-[#F59E0B]/40"
+                                            : "bg-[#F59E0B]/10 text-[#FBBF24]/60 hover:bg-[#F59E0B]/20 hover:text-[#FBBF24]"
+                                    )}
+                                >
+                                    <Lightbulb size={18} />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                                <p>Strategy</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </div>
+                </TooltipProvider>
             </div>
 
             {/* Content Area */}
             <ScrollArea className="flex-1 p-4">
                 <div className="space-y-6">
+                    {/* History Tab */}
+                    {activeTab === 'history' && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                            {/* Search */}
+                            <div className="relative">
+                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search conversations..."
+                                    className="pl-9 bg-surface/50 border-border/50 h-9 text-sm"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Thread List */}
+                            <div className="space-y-2">
+                                {filteredThreads.length === 0 ? (
+                                    <div className="text-center py-8 text-muted-foreground/50 text-sm">
+                                        {search ? 'No matching conversations' : 'No conversations yet'}
+                                    </div>
+                                ) : (
+                                    filteredThreads.map((thread) => (
+                                        <button
+                                            key={thread.id}
+                                            onClick={() => switchToThread(thread)}
+                                            className={cn(
+                                                "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all",
+                                                currentThread?.id === thread.id
+                                                    ? "bg-[#06B6D4]/15 border border-[#06B6D4]/30"
+                                                    : "bg-surface/30 border border-border/30 hover:border-[#06B6D4]/30"
+                                            )}
+                                        >
+                                            <MessageSquare size={14} className={cn(
+                                                "mt-0.5 shrink-0",
+                                                currentThread?.id === thread.id ? "text-[#22D3EE]" : "text-muted-foreground"
+                                            )} />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-baseline gap-2">
+                                                    <span className={cn(
+                                                        "text-sm font-medium truncate",
+                                                        currentThread?.id === thread.id ? "text-foreground" : "text-muted-foreground"
+                                                    )}>
+                                                        {thread.title}
+                                                    </span>
+                                                    {thread.last_active_at && (
+                                                        <span className="text-[9px] text-muted-foreground/40 shrink-0">
+                                                            {formatDistanceToNow(new Date(thread.last_active_at), { addSuffix: true })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground/50 truncate mt-0.5">
+                                                    {thread.last_sam_message || thread.last_user_message || "No messages"}
+                                                </div>
+                                            </div>
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {activeLead && (
                         <div className="rounded-xl border border-border/60 bg-surface/30 p-4 space-y-4 shadow-sm">
