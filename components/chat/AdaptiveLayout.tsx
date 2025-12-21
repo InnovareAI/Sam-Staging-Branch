@@ -26,16 +26,7 @@ export function AdaptiveLayout({
     onToggleSidebar
 }: AdaptiveLayoutProps) {
     const params = useParams();
-    // const workspaceId = params.workspaceId as string; // Unused
-
-    // Check if we are already at root (checking window in useEffect is safer for hydration)
-    const [isAtRoot, setIsAtRoot] = useState(false);
-
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            setIsAtRoot(window.location.pathname === '/');
-        }
-    }, []);
+    const workspaceId = params.workspaceId as string;
 
     const handleBackToWorkspace = () => {
         // Navigate back to workspace home (legacy app for now)
@@ -56,20 +47,19 @@ export function AdaptiveLayout({
                 {/* Header / Toggle Controls */}
                 <header className="h-14 border-b border-border/40 flex items-center justify-between px-4 bg-background/80 backdrop-blur z-10">
                     <div className="flex items-center gap-2">
-                        {/* Back to Workspace Button - Hide if already at root */}
-                        {!isAtRoot && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleBackToWorkspace}
-                                className="gap-2 text-muted-foreground hover:text-foreground"
-                            >
-                                <ArrowLeft size={16} />
-                                <Home size={16} />
-                                <span className="hidden sm:inline">Workspace</span>
-                            </Button>
-                        )}
-                        {!isAtRoot && <span className="text-border/60 hidden sm:inline">|</span>}
+                        {/* Back to Workspace Button */}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleBackToWorkspace}
+                            className="gap-2 text-muted-foreground hover:text-foreground"
+                        >
+                            <ArrowLeft size={16} />
+                            <Home size={16} />
+                            <span className="hidden sm:inline">Workspace</span>
+                        </Button>
+
+                        <span className="text-border/60 hidden sm:inline">|</span>
 
                         <h1 className="font-semibold text-foreground">Sam <span className="text-muted-foreground font-normal mx-2">/</span> Orchestration</h1>
                     </div>
