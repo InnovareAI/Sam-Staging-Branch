@@ -123,7 +123,7 @@ export function ContextPanel() {
                             </div>
 
                             <div className="grid grid-cols-1 gap-3">
-                                {contextData?.knowledge?.sections && Object.entries(contextData.knowledge.sections).map(([name, data]: [string, any]) => (
+                                {contextData?.knowledge?.sections ? Object.entries(contextData.knowledge.sections).map(([name, data]: [string, any]) => (
                                     <div key={name} className="flex items-center justify-between p-3 rounded-lg bg-surface/40 border border-border/40 hover:border-[#8B5CF6]/30 transition-colors">
                                         <div className="flex flex-col">
                                             <span className="text-sm font-medium capitalize">{name.replace('_', ' ')}</span>
@@ -136,7 +136,11 @@ export function ContextPanel() {
                                             <span className="text-[10px] text-muted-foreground w-6 text-right">{data.percentage}%</span>
                                         </div>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="text-center py-6 text-muted-foreground/60 text-sm">
+                                        No knowledge base data available.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

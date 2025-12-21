@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     const existingUser = existingUsers.users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
-    
+
     if (existingUser) {
       // Email already exists - check if they're in a different workspace
       const { data: existingMemberships, error: membershipError } = await supabase
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if user is trying to join a different tenant
-      const isInDifferentWorkspace = existingMemberships?.some((membership: any) => 
+      const isInDifferentWorkspace = existingMemberships?.some((membership: any) =>
         membership.workspace_id !== targetWorkspaceId
       );
 
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
         const existingWorkspaces = existingMemberships?.map((m: any) => m.workspaces?.name || 'Unknown').join(', ');
         console.log(`🚫 SAFETY PROTOCOL: ${email} already exists in different workspace(s): ${existingWorkspaces}`);
         return NextResponse.json(
-          { 
+          {
             error: `This email is already registered with another workspace (${existingWorkspaces}). Each email can only be used in one tenant. Please use a different email address.`,
             code: 'EMAIL_ALREADY_USED_IN_DIFFERENT_TENANT'
           },
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       }
 
       // User exists and is in the same workspace - check if already a member
-      const isAlreadyMember = existingMemberships?.some((membership: any) => 
+      const isAlreadyMember = existingMemberships?.some((membership: any) =>
         membership.workspace_id === targetWorkspaceId
       );
 
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Step 2: Create new user via Supabase Auth Admin API
       console.log(`🆕 NEW USER: Creating user for ${email}`);
-      
+
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email: email,
         email_confirm: true, // Auto-confirm email to avoid Supabase's email templates
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
 
     // Step 4: Add user to workspace using UPSERT to handle race conditions
     console.log(`➕ ADDING MEMBER: Adding ${userId} to workspace ${targetWorkspaceId} as ${role}`);
-    
+
     const { data: membershipData, error: membershipError } = await supabase
       .from('workspace_members')
       .upsert({
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
     if (membershipError) {
       console.error('❌ MEMBERSHIP ERROR:', membershipError);
       return NextResponse.json(
-        { 
+        {
           error: 'Failed to add user to workspace',
           details: membershipError.message
         },
@@ -243,20 +243,20 @@ export async function POST(request: NextRequest) {
     // Step 5: Send email notification and sync to ActiveCampaign
     try {
       await sendSimpleNotification(email, firstName, targetWorkspaceId, company);
-      
+
       // Step 6: Sync to ActiveCampaign if available
-      if (process.env.ACTIVECAMPAIGN_API_KEY && process.env.ACTIVECAMPAIGN_BASE_URL) {
+      if (process.env.ACTIVECAMPAIGN_API_KEY && process.env.ACTIVECAMPAIGN_API_URL) {
         console.log(`🔄 Syncing ${email} to ActiveCampaign...`);
         try {
           const { activeCampaignService } = await import('../../../../lib/activecampaign');
           const acCompany = company === '3cubedai' || company === '3CubedAI' ? '3CubedAI' : 'InnovareAI';
           const acResult = await activeCampaignService.addSamUserToList(
-            email, 
-            firstName || '', 
-            lastName || '', 
+            email,
+            firstName || '',
+            lastName || '',
             acCompany as 'InnovareAI' | '3CubedAI'
           );
-          
+
           if (acResult.success) {
             console.log(`✅ ActiveCampaign sync successful for ${email}`);
           } else {
@@ -294,13 +294,13 @@ export async function POST(request: NextRequest) {
 // Custom email notification using Postmark with company-specific sender
 async function sendSimpleNotification(email: string, firstName?: string, workspaceId?: string, company?: string) {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com';
-  
+
   // Determine sender based on company
   const is3Cubed = company === '3cubedai' || company === '3CubedAI';
   const senderEmail = is3Cubed ? 'sophia@3cubed.ai' : 'sp@innovareai.com';
   const senderName = is3Cubed ? 'Sophia Caldwell' : 'Sarah Powell';
   const apiToken = is3Cubed ? process.env.POSTMARK_3CUBEDAI_API_KEY : process.env.POSTMARK_INNOVAREAI_API_KEY;
-  
+
   console.log('📧 SENDING CUSTOM EMAIL NOTIFICATION:');
   console.log(`   To: ${email}`);
   console.log(`   From: ${senderEmail} (${senderName})`);

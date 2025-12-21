@@ -22,15 +22,15 @@ class ActiveCampaignService {
 
   private initialize() {
     if (this.initialized) return;
-    
-    this.baseUrl = process.env.ACTIVECAMPAIGN_BASE_URL || '';
+
+    this.baseUrl = process.env.ACTIVECAMPAIGN_API_URL || '';
     this.apiKey = process.env.ACTIVECAMPAIGN_API_KEY || '';
     this.initialized = true;
   }
 
   private checkCredentials() {
     this.initialize();
-    
+
     if (!this.baseUrl || !this.apiKey) {
       throw new Error('ActiveCampaign API credentials not configured');
     }
@@ -39,7 +39,7 @@ class ActiveCampaignService {
   private async request(endpoint: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', data?: any) {
     this.checkCredentials();
     const url = `${this.baseUrl}/api/3/${endpoint}`;
-    
+
     const options: RequestInit = {
       method,
       headers: {
@@ -54,7 +54,7 @@ class ActiveCampaignService {
 
     try {
       const response = await fetch(url, options);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`ActiveCampaign API error (${response.status}): ${errorText}`);
@@ -78,7 +78,7 @@ class ActiveCampaignService {
     try {
       // First, try to find existing contact by email
       const searchResponse = await this.request(`contacts?email=${encodeURIComponent(contactData.email)}`);
-      
+
       if (searchResponse.contacts && searchResponse.contacts.length > 0) {
         console.log(`Contact ${contactData.email} already exists in ActiveCampaign`);
         return searchResponse.contacts[0];
@@ -98,7 +98,7 @@ class ActiveCampaignService {
       const createResponse = await this.request('contacts', 'POST', createData);
       console.log(`Created new contact in ActiveCampaign: ${contactData.email}`);
       return createResponse.contact;
-      
+
     } catch (error) {
       console.error(`Error finding/creating contact ${contactData.email}:`, error);
       throw error;
@@ -119,7 +119,7 @@ class ActiveCampaignService {
       const response = await this.request('contactLists', 'POST', subscriptionData);
       console.log(`Added contact ${contactId} to list ${listId}`);
       return response;
-      
+
     } catch (error) {
       console.error(`Error adding contact ${contactId} to list ${listId}:`, error);
       throw error;
@@ -193,7 +193,7 @@ class ActiveCampaignService {
       const response = await this.request('contactTags', 'POST', tagContactData);
       console.log(`Added tag ${tagId} to contact ${contactId}`);
       return response;
-      
+
     } catch (error) {
       console.error(`Error adding tag ${tagId} to contact ${contactId}:`, error);
       throw error;
@@ -204,7 +204,7 @@ class ActiveCampaignService {
   async addNewMemberToList(email: string, firstName: string, lastName: string, listId: string, additionalData?: any) {
     try {
       console.log(`Adding ${email} to ActiveCampaign list ${listId}...`);
-      
+
       // Find or create the contact
       const contact = await this.findOrCreateContact({
         email,
@@ -215,10 +215,10 @@ class ActiveCampaignService {
 
       // Add contact to the specified list
       await this.addContactToList(contact.id, listId);
-      
+
       console.log(`✅ Successfully added ${email} to ActiveCampaign list ${listId}`);
       return { success: true, contactId: contact.id };
-      
+
     } catch (error) {
       console.error(`❌ Failed to add ${email} to ActiveCampaign list ${listId}:`, error);
       return { success: false, error: error.message };
@@ -229,7 +229,7 @@ class ActiveCampaignService {
   async addSamUserToList(email: string, firstName: string, lastName: string, company: 'InnovareAI' | '3CubedAI') {
     try {
       console.log(`🚀 Adding SAM user ${email} from ${company} to ActiveCampaign...`);
-      
+
       // Find or create the contact
       const contact = await this.findOrCreateContact({
         email,
@@ -241,7 +241,7 @@ class ActiveCampaignService {
       // Find or create the SAM list
       const lists = await this.getLists();
       let samList = lists.find((list: any) => list.name === 'SAM');
-      
+
       if (!samList) {
         console.log('SAM list not found, creating it...');
         const createListData = {
@@ -283,16 +283,16 @@ class ActiveCampaignService {
 
       // Add company tag to contact  
       await this.addTagToContact(contact.id, companyTag.id);
-      
+
       console.log(`✅ Successfully added ${email} to SAM list with ${company} tag`);
-      return { 
-        success: true, 
-        contactId: contact.id, 
-        listId: samList.id, 
+      return {
+        success: true,
+        contactId: contact.id,
+        listId: samList.id,
         tagId: companyTag.id,
         company: company
       };
-      
+
     } catch (error) {
       console.error(`❌ Failed to add SAM user ${email}:`, error);
       return { success: false, error: error.message };

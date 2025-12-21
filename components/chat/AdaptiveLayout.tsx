@@ -37,10 +37,7 @@ export function AdaptiveLayout({
         <div className="flex h-screen bg-background overflow-hidden">
             {/* 1. Left Sidebar (Collapsible) */}
             <aside
-                className={cn(
-                    "w-64 border-r border-border/40 bg-surface-muted/30 transition-all duration-300 ease-in-out flex flex-col",
-                    !isSidebarOpen && "-ml-64 opacity-0 lg:ml-0 lg:opacity-100 lg:w-64" // Stick on desktop, toggle on mobile
-                )}
+                className="w-64 border-r border-border/40 bg-surface-muted/30 flex flex-col"
             >
                 {sidebar}
             </aside>
@@ -64,9 +61,6 @@ export function AdaptiveLayout({
 
                         <span className="text-border/60 hidden sm:inline">|</span>
 
-                        <Button variant="ghost" size="icon" onClick={onToggleSidebar} className="lg:hidden text-muted-foreground">
-                            <Menu size={20} />
-                        </Button>
                         <h1 className="font-semibold text-foreground">Sam <span className="text-muted-foreground font-normal mx-2">/</span> Orchestration</h1>
                     </div>
 

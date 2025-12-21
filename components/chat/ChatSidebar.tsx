@@ -128,8 +128,35 @@ export function ChatSidebar() {
             </ScrollArea>
 
             {/* Bottom Actions */}
-            <div className="p-4 border-t border-border/40 text-xs text-muted-foreground text-center">
-                InnovareAI Orchestration v4.5
+            <div className="p-4 border-t border-border/40 space-y-2">
+                <Button
+                    variant="ghost"
+                    onClick={() => {
+                        const isArchivedView = threads.some(t => t.status === 'archived');
+                        loadThreads({ status: isArchivedView ? 'active' : 'archived' });
+                    }}
+                    className={cn(
+                        "w-full justify-start gap-2 h-9 px-2 transition-colors",
+                        threads.some(t => t.status === 'archived')
+                            ? "bg-primary/10 text-primary hover:bg-primary/20"
+                            : "text-muted-foreground hover:text-foreground"
+                    )}
+                >
+                    {threads.some(t => t.status === 'archived') ? (
+                        <>
+                            <MessageSquare size={16} />
+                            Back to Active Chats
+                        </>
+                    ) : (
+                        <>
+                            <Archive size={16} />
+                            Archive History
+                        </>
+                    )}
+                </Button>
+                <div className="text-xs text-muted-foreground/60 text-center pt-2">
+                    InnovareAI Orchestration v4.5
+                </div>
             </div>
         </div>
     );

@@ -301,7 +301,7 @@ async function listAllAirtableRecords(tableId: string): Promise<any[]> {
  * Check if a contact exists in ActiveCampaign
  */
 async function checkContactExistsInActiveCampaign(email: string): Promise<boolean> {
-  const baseUrl = process.env.ACTIVECAMPAIGN_BASE_URL;
+  const baseUrl = process.env.ACTIVECAMPAIGN_API_URL;
   const apiKey = process.env.ACTIVECAMPAIGN_API_KEY;
 
   if (!baseUrl || !apiKey) return false;
@@ -460,24 +460,24 @@ async function sendSyncReport(report: SyncReport): Promise<void> {
               ],
             },
             ...(report.linkedIn.syncErrors.length > 0 ||
-            report.email.syncErrors.length > 0 ||
-            report.activeCampaign.syncErrors.length > 0
+              report.email.syncErrors.length > 0 ||
+              report.activeCampaign.syncErrors.length > 0
               ? [
-                  {
-                    header: '❌ Errors',
-                    widgets: [
-                      {
-                        textParagraph: {
-                          text: [
-                            ...report.linkedIn.syncErrors.slice(0, 3),
-                            ...report.email.syncErrors.slice(0, 3),
-                            ...report.activeCampaign.syncErrors.slice(0, 3),
-                          ].join('\n'),
-                        },
+                {
+                  header: '❌ Errors',
+                  widgets: [
+                    {
+                      textParagraph: {
+                        text: [
+                          ...report.linkedIn.syncErrors.slice(0, 3),
+                          ...report.email.syncErrors.slice(0, 3),
+                          ...report.activeCampaign.syncErrors.slice(0, 3),
+                        ].join('\n'),
                       },
-                    ],
-                  },
-                ]
+                    },
+                  ],
+                },
+              ]
               : []),
           ],
         },

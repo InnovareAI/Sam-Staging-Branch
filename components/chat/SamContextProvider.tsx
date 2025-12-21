@@ -44,27 +44,17 @@ const SamContext = createContext<SamContextType | undefined>(undefined);
 
 export function SamContextProvider({ children }: { children: ReactNode }) {
     const [activeTab, setActiveTab] = useState('knowledge');
-    const [activeLead, setActiveLead] = useState<LeadIntelligence | null>({
-        // Mock Initial Data while we connect real API
-        name: "Alex Johnson",
-        title: "CTO",
-        company: "TechFlow Systems",
-        linkedinUrl: "linkedin.com/in/alexj",
-        email: "alex@techflow.io",
-        crmStatus: "Discovery",
-        lastContact: "2 days ago",
-        score: 85
-    });
+    const [activeLead, setActiveLead] = useState<LeadIntelligence | null>(null);
 
     const [contextData, setContextData] = useState<any | null>(null);
     const [isLoadingContext, setIsLoadingContext] = useState(false);
 
     const [onboardingState, setOnboardingState] = useState<OnboardingState>({
-        currentStage: 3,
-        stageName: "Competitor Intelligence",
-        progress: 45,
-        tasksCompleted: 4,
-        totalTasks: 9
+        currentStage: 1,
+        stageName: "Initial Setup",
+        progress: 0,
+        tasksCompleted: 0,
+        totalTasks: 5
     });
 
     const updateOnboarding = (data: Partial<OnboardingState>) => {

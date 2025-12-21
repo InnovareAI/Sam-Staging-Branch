@@ -51,12 +51,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Exchange the code for tokens
-    const clientId = process.env.SLACK_CLIENT_ID;
+    const clientId = process.env.NEXT_PUBLIC_SLACK_CLIENT_ID;
     const clientSecret = process.env.SLACK_CLIENT_SECRET;
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com'}/api/integrations/slack/oauth-callback`;
 
     if (!clientId || !clientSecret) {
-      console.error('[Slack OAuth] Missing SLACK_CLIENT_ID or SLACK_CLIENT_SECRET env vars');
+      console.error('[Slack OAuth] Missing NEXT_PUBLIC_SLACK_CLIENT_ID or SLACK_CLIENT_SECRET env vars');
       if (isDirectInstall) {
         return NextResponse.redirect(
           new URL('/slack/connect?error=server_config', request.url)
