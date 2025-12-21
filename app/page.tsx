@@ -3047,15 +3047,15 @@ export default function Page() {
                   type="button"
                   onClick={() => setActiveMenuItem(item.id)}
                   className={`group w-full rounded-xl border border-transparent px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isActive
-                      ? 'bg-primary/15 text-white shadow-glow ring-1 ring-primary/35'
-                      : 'text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground'
+                    ? 'bg-primary/15 text-white shadow-glow ring-1 ring-primary/35'
+                    : 'text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground'
                     }`}
                 >
                   <div className="flex items-start gap-3">
                     <span
                       className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${isActive
-                          ? 'bg-primary/25 text-white'
-                          : 'bg-surface-highlight text-muted-foreground group-hover:text-foreground'
+                        ? 'bg-primary/25 text-white'
+                        : 'bg-surface-highlight text-muted-foreground group-hover:text-foreground'
                         }`}
                     >
                       <IconComponent size={18} />
@@ -3386,7 +3386,7 @@ export default function Page() {
 
                     {/* Card 4: My Profile */}
                     <div
-                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/my-posts`)}
+                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/monitor-me`)}
                       className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-green-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
                     >
                       <div className="flex items-start justify-between mb-4">
@@ -3628,8 +3628,8 @@ export default function Page() {
                                   <h3 className="text-white font-semibold text-lg">{workspace.name}</h3>
                                   {workspace.slug && (
                                     <span className={`text-xs px-2 py-1 rounded ${workspace.slug === 'innovareai'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-green-600 text-white'
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-green-600 text-white'
                                       }`}>
                                       {workspace.slug}
                                     </span>
@@ -3686,8 +3686,8 @@ export default function Page() {
                                       </div>
                                       <div className="flex items-center space-x-2">
                                         <span className={`text-xs px-2 py-1 rounded ${member.role === 'owner' ? 'bg-purple-600 text-white' :
-                                            member.role === 'admin' ? 'bg-blue-600 text-white' :
-                                              'bg-gray-500 text-white'
+                                          member.role === 'admin' ? 'bg-blue-600 text-white' :
+                                            'bg-gray-500 text-white'
                                           }`}>
                                           {member.role}
                                         </span>
@@ -3990,8 +3990,8 @@ export default function Page() {
                               <h3 className="text-white font-medium">{workspace.name}</h3>
                               {workspace.slug && (
                                 <span className={`text-xs px-2 py-1 rounded ${workspace.slug === 'innovareai'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-green-600 text-white'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-green-600 text-white'
                                   }`}>
                                   {workspace.slug}
                                 </span>
@@ -4129,8 +4129,8 @@ export default function Page() {
           <div className="fixed bottom-0 left-72 right-0 z-50 px-6 pb-6 pt-8 bg-background/95 backdrop-blur-sm border-t border-border/60">
             <div
               className={`mx-auto max-w-4xl overflow-hidden rounded-3xl border bg-surface-highlight/60 shadow-glow transition-all ${isDraggingFile
-                  ? 'border-purple-500 border-2 bg-purple-600/20 scale-[1.02]'
-                  : 'border-border/60'
+                ? 'border-purple-500 border-2 bg-purple-600/20 scale-[1.02]'
+                : 'border-border/60'
                 }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -4585,8 +4585,8 @@ export default function Page() {
                           </td>
                           <td className="py-3 px-4">
                             <span className={`px-2 py-1 rounded text-xs ${user.email_confirmed_at
-                                ? 'bg-green-600 text-white'
-                                : 'bg-yellow-600 text-white'
+                              ? 'bg-green-600 text-white'
+                              : 'bg-yellow-600 text-white'
                               }`}>
                               {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
                             </span>
@@ -4599,8 +4599,8 @@ export default function Page() {
                                     <div key={idx} className="text-xs">
                                       <span className="text-white">{membership.workspaces?.name || 'Unknown'}</span>
                                       <span className={`ml-2 px-1 py-0.5 rounded text-xs ${membership.workspaces?.slug === 'innovareai'
-                                          ? 'bg-blue-500 text-white'
-                                          : 'bg-green-500 text-white'
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-green-500 text-white'
                                         }`}>
                                         {membership.workspaces?.slug || 'Unknown'}
                                       </span>

@@ -112,8 +112,20 @@ const getNavigationData = (workspaceId?: string) => {
             url: `${wsPrefix}/commenting-agent`,
           },
           {
-            title: "Profiles",
+            title: "Personal Profiles",
             url: `${wsPrefix}/commenting-agent/profiles`,
+          },
+          {
+            title: "Company Pages",
+            url: `${wsPrefix}/commenting-agent/companies`,
+          },
+          {
+            title: "Hashtags",
+            url: `${wsPrefix}/commenting-agent/hashtags`,
+          },
+          {
+            title: "My Profile",
+            url: `${wsPrefix}/commenting-agent/monitor-me`,
           },
           {
             title: "Approve Comments",
