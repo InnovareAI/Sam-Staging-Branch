@@ -1,34 +1,31 @@
 'use client'
 
 import { useEffect, use } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 
 /**
- * Workspace Page - Redirects to main SAM interface with workspace context
+ * Workspace Page - Redirects to Commenting Agent
  *
- * This page exists for backward compatibility with signup flows that redirect to /workspace/[workspaceId].
- * Since SAM AI uses a single interface at the root level, we redirect to / with the workspace param.
+ * Default landing page for workspace routes.
+ * Redirects to /workspace/[workspaceId]/commenting-agent as the primary feature.
  */
 export default function WorkspacePage({ params }: { params: Promise<{ workspaceId: string }> }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const resolvedParams = use(params)
   const workspaceId = resolvedParams.workspaceId
 
   useEffect(() => {
-    // Preserve any query params (like slack_success, slack_error)
-    const queryString = searchParams.toString()
-    const redirectUrl = queryString
-      ? `/?workspace=${workspaceId}&${queryString}`
-      : `/?workspace=${workspaceId}`
-
-    // Redirect to main SAM interface with workspace context
-    router.push(redirectUrl)
-  }, [router, workspaceId, searchParams])
+    // Redirect to commenting-agent as default workspace landing page
+    router.push(`/workspace/${workspaceId}/commenting-agent`)
+  }, [router, workspaceId])
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="text-white">Loading workspace...</div>
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 size={32} className="animate-spin text-pink-500" />
+        <div className="text-white">Loading workspace...</div>
+      </div>
     </div>
   )
 }
