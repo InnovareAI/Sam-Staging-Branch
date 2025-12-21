@@ -56,10 +56,10 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // ROOT URL REWRITE: Make chat the default view (Dec 21, 2025)
-  // Rewrite "/" to "/workspace/[id]/chat" for authenticated users
-  // This keeps the URL as app.meet-sam.com while serving the chat interface
-  if (request.nextUrl.pathname === '/') {
+  // CLEAN URL REWRITE: Serve chat at /chat or / (Dec 21, 2025)
+  // Rewrite "/chat" or "/" to "/workspace/[id]/chat" for authenticated users
+  // Browser shows clean URL (app.meet-sam.com/chat) while serving workspace-specific content
+  if (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/chat') {
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -73,15 +73,15 @@ export async function middleware(request: NextRequest) {
           .single();
 
         if (workspace) {
-          // Rewrite to workspace chat (URL stays as "/")
+          // Rewrite to workspace chat (URL stays as "/" or "/chat")
           const chatUrl = new URL(`/workspace/${workspace.id}/chat`, request.url);
-          console.log(`[Middleware] Rewriting / to ${chatUrl.pathname} for user ${user.email}`);
+          console.log(`[Middleware] Rewriting ${request.nextUrl.pathname} to ${chatUrl.pathname} for user ${user.email}`);
           return NextResponse.rewrite(chatUrl);
         }
       }
       // If not authenticated or no workspace, fall through to show dashboard/login
     } catch (error) {
-      console.error('[Middleware] Error in root URL rewrite:', error);
+      console.error('[Middleware] Error in URL rewrite:', error);
       // Fall through to default behavior
     }
   }
