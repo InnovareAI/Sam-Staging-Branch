@@ -1573,6 +1573,16 @@ export default function Page() {
     }
   }, [activeMenuItem]);
 
+  // NEW: Force redirect to new workspace chat architecture if on chat/agent tabs
+  useEffect(() => {
+    const wsId = currentWorkspace?.id || selectedWorkspaceId;
+    if ((activeMenuItem === 'chat' || activeMenuItem === 'commenting-agent') && isLoaded && wsId) {
+      const target = activeMenuItem === 'chat' ? 'chat' : 'commenting-agent';
+      console.log(`🔄 Redirecting to new ${target} architecture:`, `/workspace/${wsId}/${target}`);
+      window.location.href = `/workspace/${wsId}/${target}`;
+    }
+  }, [activeMenuItem, isLoaded, currentWorkspace?.id, selectedWorkspaceId]);
+
   const menuItems = [
     {
       id: 'chat',
@@ -3052,11 +3062,12 @@ export default function Page() {
                   key={item.id}
                   type="button"
                   onClick={() => {
-                    if (item.id === 'commenting-agent') {
+                    if (item.id === 'commenting-agent' || item.id === 'chat') {
                       // Redirect to new workspace architecture
                       const wsId = currentWorkspace?.id || selectedWorkspaceId;
                       if (wsId) {
-                        window.location.href = `/workspace/${wsId}/commenting-agent`;
+                        const target = item.id === 'chat' ? 'chat' : 'commenting-agent';
+                        window.location.href = `/workspace/${wsId}/${target}`;
                       } else {
                         // Fallback if no workspace selected yet (rare)
                         router.push('/login');
