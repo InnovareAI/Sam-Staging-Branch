@@ -29,10 +29,8 @@ export default function ChatFallbackPage() {
 
         if (workspace) {
           router.push(`/workspace/${workspace.id}/chat`);
-        } else {
-          // No workspace found - redirect to home
-          router.push('/');
         }
+        // No workspace found - stay on page (don't redirect to /)
       }
     };
 

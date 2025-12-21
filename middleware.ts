@@ -56,10 +56,10 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // CLEAN URL REWRITE: Serve chat at /chat or / (Dec 21, 2025)
-  // Rewrite "/chat" or "/" to "/workspace/[id]/chat" for authenticated users
+  // CLEAN URL REWRITE: Serve chat at /chat (Dec 21, 2025)
+  // Rewrite "/chat" to "/workspace/[id]/chat" for authenticated users
   // Browser shows clean URL (app.meet-sam.com/chat) while serving workspace-specific content
-  if (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/chat') {
+  if (request.nextUrl.pathname === '/chat') {
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
