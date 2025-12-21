@@ -10,8 +10,8 @@ import { createClient } from '@/app/lib/supabase';
 const menuItems = [
     {
         id: 'chat',
-        label: 'Agent',
-        description: 'Collaborate with Sam',
+        label: 'Chat',
+        description: 'Talk to Sam AI',
         icon: MessageCircle,
         path: '/chat',
         isActive: true
