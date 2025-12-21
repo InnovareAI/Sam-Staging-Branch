@@ -23,10 +23,11 @@ export function ContextPanel() {
     const { threads, currentThread, switchToThread, loadThreads } = useSamThreadedChat();
     const [search, setSearch] = useState('');
 
-    // Load threads on mount
+    // Load threads and context on mount
     useEffect(() => {
         loadThreads();
-    }, [loadThreads]);
+        refreshContext();
+    }, [loadThreads, refreshContext]);
 
     // Filter threads by search
     const filteredThreads = threads.filter(t =>
@@ -233,28 +234,37 @@ export function ContextPanel() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Quick Action */}
+                            <button
+                                onClick={() => window.location.href = '/?tab=knowledge'}
+                                className="w-full p-3 rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 text-[#A78BFA] text-sm font-medium hover:bg-[#8B5CF6]/20 transition-colors"
+                            >
+                                Open Knowledgebase →
+                            </button>
                         </div>
                     )}
                     {/* Campaign Stats Tab */}
                     {activeTab === 'stats' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
                             <div className="p-4 rounded-xl border border-[#EC4899]/30 bg-[#EC4899]/5 space-y-4">
-                                <h4 className="font-semibold text-[#F472B6] flex items-center gap-2">
-                                    <BarChart3 size={18} /> Active Campaigns
-                                </h4>
+                                <div className="flex items-center justify-between">
+                                    <h4 className="font-semibold text-[#F472B6] flex items-center gap-2">
+                                        <BarChart3 size={18} /> Campaigns
+                                    </h4>
+                                    <span className="text-xs text-[#F472B6]/70">
+                                        {contextData?.stats?.campaign?.active || 0} active / {contextData?.stats?.campaign?.total || 0} total
+                                    </span>
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                        <div className="text-xs text-[#F472B6]/70">Total Sent</div>
+                                        <div className="text-xs text-[#F472B6]/70">Messages Sent</div>
                                         <div className="text-2xl font-bold text-foreground">{contextData?.stats?.campaign?.totalSent || 0}</div>
                                     </div>
                                     <div className="space-y-1">
                                         <div className="text-xs text-[#F472B6]/70">Response Rate</div>
                                         <div className="text-2xl font-bold text-foreground">{contextData?.stats?.campaign?.responseRate || '0%'}</div>
                                     </div>
-                                </div>
-                                <div className="pt-2 text-xs text-[#F472B6]/80 flex items-center gap-1.5">
-                                    <span className="flex h-1.5 w-1.5 rounded-full bg-green-500" />
-                                    {contextData?.stats?.campaign?.trend || 'Stable performance'}
                                 </div>
                             </div>
 
@@ -264,7 +274,7 @@ export function ContextPanel() {
                                     <div className="flex items-center justify-between">
                                         <div className="text-lg font-semibold">{contextData?.stats?.campaign?.meetings || 0}</div>
                                         <div className="h-2 w-24 bg-surface-highlight rounded-full overflow-hidden">
-                                            <div className="h-full bg-[#EC4899]/60" style={{ width: '30%' }} />
+                                            <div className="h-full bg-green-500/60" style={{ width: `${Math.min((contextData?.stats?.campaign?.meetings || 0) * 10, 100)}%` }} />
                                         </div>
                                     </div>
                                 </div>
@@ -273,6 +283,14 @@ export function ContextPanel() {
                                     <div className="text-lg font-semibold">{contextData?.stats?.campaign?.replied || 0}</div>
                                 </div>
                             </div>
+
+                            {/* Quick Actions */}
+                            <button
+                                onClick={() => window.location.href = '/?tab=campaign'}
+                                className="w-full p-3 rounded-lg border border-[#EC4899]/30 bg-[#EC4899]/10 text-[#F472B6] text-sm font-medium hover:bg-[#EC4899]/20 transition-colors"
+                            >
+                                Open Campaign Hub →
+                            </button>
                         </div>
                     )}
                     {/* Strategy Tab */}

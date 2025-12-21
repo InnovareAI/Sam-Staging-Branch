@@ -56,18 +56,46 @@ export async function GET(request: Request) {
         // 3. Fetch Strategy Context (ICPs)
         const icps = await supabaseKnowledge.getICPs({ workspaceId });
 
-        // 4. Fetch Stats (Thread activity + Mock campaign stats)
-        // In a real scenario, this would pull from active_campaigns or similar tables
+        // 4. Fetch Real Campaign Stats
+        const { data: campaigns } = await supabase
+            .from('campaigns')
+            .select('id, name, status')
+            .eq('workspace_id', workspaceId);
+
+        const activeCampaigns = campaigns?.filter(c => c.status === 'active' || c.status === 'running') || [];
+        const campaignIds = campaigns?.map(c => c.id) || [];
+
+        // Get prospect counts
+        let totalSent = 0;
+        let replied = 0;
+        let meetings = 0;
+
+        if (campaignIds.length > 0) {
+            const { data: prospects } = await supabase
+                .from('campaign_prospects')
+                .select('status, conversation_stage')
+                .in('campaign_id', campaignIds);
+
+            if (prospects) {
+                totalSent = prospects.filter(p => p.status === 'sent' || p.status === 'replied' || p.status === 'meeting_booked').length;
+                replied = prospects.filter(p => p.status === 'replied' || p.conversation_stage === 'replied').length;
+                meetings = prospects.filter(p => p.status === 'meeting_booked' || p.conversation_stage === 'meeting_scheduled').length;
+            }
+        }
+
+        const responseRate = totalSent > 0 ? `${((replied / totalSent) * 100).toFixed(1)}%` : '0%';
+
         const stats = {
             messageCount: thread?.message_count || 0,
             threadType: thread?.thread_type || 'general',
             campaign: {
-                active: 2,
-                totalSent: 124,
-                replied: 12,
-                meetings: 3,
-                responseRate: '9.7%',
-                trend: '+12% from last week'
+                active: activeCampaigns.length,
+                total: campaigns?.length || 0,
+                totalSent,
+                replied,
+                meetings,
+                responseRate,
+                trend: 'Real-time data'
             }
         };
 
