@@ -263,60 +263,58 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
           {/* Tab Switcher / My Content Mode */}
           {myContentMode ? (
-            <div className="space-y-4">
-              <div className="bg-gray-700/30 rounded-lg p-4 border border-gray-600">
-                <h3 className="text-white font-medium mb-3">Choose what to monitor:</h3>
-                <div className="space-y-3">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="myContentChoice"
-                      checked={myContentChoice === 'profile-companies'}
-                      onChange={() => setMyContentChoice('profile-companies')}
-                      className="mt-1"
-                    />
-                    <div>
-                      <div className="text-white font-medium">Monitor My Profile & Companies</div>
-                      <div className="text-gray-400 text-sm">Capture leads from people who engage with your profile or company pages</div>
-                    </div>
-                  </label>
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="myContentChoice"
-                      checked={myContentChoice === 'posts'}
-                      onChange={() => setMyContentChoice('posts')}
-                      className="mt-1"
-                    />
-                    <div>
-                      <div className="text-white font-medium">Monitor My Posts</div>
-                      <div className="text-gray-400 text-sm">Auto-reply to comments on your own LinkedIn posts</div>
-                    </div>
-                  </label>
-                </div>
+            <div className="space-y-6">
+              {/* Content Type Selection */}
+              <div className="flex gap-2 p-1 bg-gray-700/50 rounded-lg">
+                <button
+                  onClick={() => setMyContentChoice('profile-companies')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${myContentChoice === 'profile-companies'
+                    ? 'bg-green-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                    }`}
+                >
+                  <User size={18} />
+                  <span className="font-medium">My Profile & Companies</span>
+                </button>
+                <button
+                  onClick={() => setMyContentChoice('posts')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all ${myContentChoice === 'posts'
+                    ? 'bg-green-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-600'
+                    }`}
+                >
+                  <Target size={18} />
+                  <span className="font-medium">My Posts</span>
+                </button>
               </div>
 
-              {myContentChoice === 'profile-companies' && (
+              {myContentChoice === 'profile-companies' ? (
                 <>
-                  {/* My Profile URL */}
+                  {/* My Profile Section */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       My LinkedIn Profile URL
                     </label>
+                    <p className="text-sm text-gray-400 mb-3">
+                      Enter your LinkedIn profile URL to capture leads from people who engage with your profile
+                    </p>
                     <input
                       type="text"
                       value={myProfile}
                       onChange={(e) => setMyProfile(e.target.value)}
-                      placeholder="e.g., linkedin.com/in/yourname"
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      placeholder="e.g., linkedin.com/in/yourname or just yourname"
+                      className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                     />
                   </div>
 
-                  {/* My Company Pages */}
+                  {/* My Company Pages Section */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       My Company Pages (Optional)
                     </label>
+                    <p className="text-sm text-gray-400 mb-3">
+                      Add company pages you manage to capture leads from engagement
+                    </p>
                     {myCompanies.map((company, index) => (
                       <div key={index} className="flex gap-2 mb-2">
                         <input
@@ -328,35 +326,100 @@ export default function CommentingCampaignModal({ isOpen, onClose, workspaceId, 
                             setMyCompanies(newCompanies);
                           }}
                           placeholder="e.g., linkedin.com/company/yourcompany"
-                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                          className="flex-1 px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
+                        {myCompanies.length > 1 && (
+                          <button
+                            onClick={() => setMyCompanies(myCompanies.filter((_, i) => i !== index))}
+                            className="p-2.5 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-all"
+                          >
+                            Remove
+                          </button>
+                        )}
                       </div>
                     ))}
+                    <button
+                      onClick={() => setMyCompanies([...myCompanies, ''])}
+                      className="text-sm text-green-400 hover:text-green-300 font-medium mt-2"
+                    >
+                      + Add another company page
+                    </button>
                   </div>
 
                   {/* Lead Capture Options */}
                   <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
-                    <h4 className="text-white font-medium mb-3">Lead Capture Options</h4>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={autoConnect} onChange={(e) => setAutoConnect(e.target.checked)} />
-                        <span className="text-gray-300">Auto-send connection request</span>
+                    <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                      <Target size={18} className="text-green-400" />
+                      Lead Capture Options
+                    </h4>
+                    <p className="text-sm text-gray-400 mb-4">
+                      Automatically capture and nurture leads who engage with your profile or company pages
+                    </p>
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-green-900/10 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={autoConnect}
+                          onChange={(e) => setAutoConnect(e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <div>
+                          <div className="text-gray-200 font-medium">Auto-send connection request</div>
+                          <div className="text-xs text-gray-400">Automatically connect with engaged users</div>
+                        </div>
                       </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={autoDM} onChange={(e) => setAutoDM(e.target.checked)} />
-                        <span className="text-gray-300">Auto-send direct message</span>
+                      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-green-900/10 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={autoDM}
+                          onChange={(e) => setAutoDM(e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <div>
+                          <div className="text-gray-200 font-medium">Auto-send direct message</div>
+                          <div className="text-xs text-gray-400">Send a personalized DM after connection</div>
+                        </div>
                       </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={autoNurture} onChange={(e) => setAutoNurture(e.target.checked)} />
-                        <span className="text-gray-300">Auto-run multi-step nurturing sequence</span>
+                      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-green-900/10 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={autoNurture}
+                          onChange={(e) => setAutoNurture(e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <div>
+                          <div className="text-gray-200 font-medium">Auto-run multi-step nurturing sequence</div>
+                          <div className="text-xs text-gray-400">Follow up with automated nurture sequence</div>
+                        </div>
                       </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={autoApprove} onChange={(e) => setAutoApprove(e.target.checked)} />
-                        <span className="text-gray-300">Auto-approve all replies</span>
+                      <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-green-900/10 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={autoApprove}
+                          onChange={(e) => setAutoApprove(e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <div>
+                          <div className="text-gray-200 font-medium">Auto-approve all replies</div>
+                          <div className="text-xs text-gray-400">Skip manual approval for responses</div>
+                        </div>
                       </label>
                     </div>
                   </div>
                 </>
+              ) : (
+                <div className="text-center py-8">
+                  <Target size={48} className="text-green-500 mx-auto mb-4" />
+                  <h3 className="text-white font-semibold mb-2">Monitor Your Posts</h3>
+                  <p className="text-gray-400 text-sm mb-4">
+                    We'll automatically detect and monitor comments on your LinkedIn posts
+                  </p>
+                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 text-left">
+                    <p className="text-sm text-gray-300">
+                      This feature will fetch your recent posts and let you auto-reply to comments from your audience.
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           ) : (
