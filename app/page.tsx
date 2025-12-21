@@ -82,7 +82,10 @@ import {
   MessageSquare,
   CheckCircle,
   Hash,
-  Calendar
+  Calendar,
+  ExternalLink,
+  UserCircle2,
+  ArrowRight
 } from 'lucide-react';
 
 const USER_PROXY_SENTINEL = '__USER_PROXY__';
@@ -91,14 +94,14 @@ const USER_PROXY_SENTINEL = '__USER_PROXY__';
 
 // LinkedIn Logo Component (Official LinkedIn branding)
 const LinkedInLogo = ({ size = 16, className = "" }: { size?: number; className?: string }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
     className={className}
     fill="currentColor"
   >
-    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
   </svg>
 );
 
@@ -125,7 +128,7 @@ export default function Page() {
     if (session?.access_token) {
       return session.access_token;
     }
-    
+
     // Only call getSession if we don't have a cached token
     try {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -136,10 +139,10 @@ export default function Page() {
     } catch (error) {
       console.error('Error getting session:', error);
     }
-    
+
     return null;
   };
-  
+
   // Authentication and app state
   const [user, setUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
@@ -162,7 +165,7 @@ export default function Page() {
   const [threadId, setThreadId] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // CSV Upload state
   const [isUploadingCSV, setIsUploadingCSV] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -192,7 +195,7 @@ export default function Page() {
   const [isDeletingWorkspaces, setIsDeletingWorkspaces] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteWorkspaceId, setInviteWorkspaceId] = useState<string | null>(null);
-  
+
   // Authentication modal state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
@@ -215,7 +218,7 @@ export default function Page() {
   const [userStats, setUserStats] = useState<any>(null);
   const [showAssignWorkspace, setShowAssignWorkspace] = useState(false);
   const [selectedUserForWorkspace, setSelectedUserForWorkspace] = useState<any>(null);
-  const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'card' | 'info'>('info');
@@ -395,7 +398,7 @@ export default function Page() {
   const [showUnipileModal, setShowUnipileModal] = useState(false); // Only show when user clicks Advanced Setup
   const [showChannelSelectionModal, setShowChannelSelectionModal] = useState(false);
   const [showLinkedInSettingsModal, setShowLinkedInSettingsModal] = useState(false);
-  
+
   // Detail modal states
   const [showEmailIntegrationModal, setShowEmailIntegrationModal] = useState(false);
   const [showReachInboxModal, setShowReachInboxModal] = useState(false);
@@ -426,7 +429,7 @@ export default function Page() {
   const [selectedProspects, setSelectedProspects] = useState<number[]>([]);
   const [currentProxySettings, setCurrentProxySettings] = useState({
     country: '',
-    state: '', 
+    state: '',
     city: '',
     status: 'inactive',
     sessionId: '',
@@ -440,29 +443,29 @@ export default function Page() {
   const editingLinkedinAssignment = !isEditingUserProxy && selectedLinkedinAccount
     ? linkedinProxyAssignments.find((a) => a.linkedin_account_id === selectedLinkedinAccount)
     : null;
-  
+
   // Profile country state
   const [profileCountry, setProfileCountry] = useState<string>('');
   const [profileCountryLoading, setProfileCountryLoading] = useState(false);
   const [mcpStatus, setMcpStatus] = useState<any>(null);
   const [mcpStatusLoading, setMcpStatusLoading] = useState(false);
-  
+
   // Proxy info from Unipile
   const [proxyInfo, setProxyInfo] = useState<any>(null);
   const [proxyInfoLoading, setProxyInfoLoading] = useState(false);
-  
+
   // Load profile country when user is authenticated
   useEffect(() => {
     const loadProfileCountry = async () => {
       if (!user?.id) return;
-      
+
       try {
         const { data, error } = await supabase
           .from('users')
           .select('profile_country')
           .eq('id', user.id)
           .single();
-        
+
         if (data && data.profile_country) {
           setProfileCountry(data.profile_country);
           console.log('✅ Loaded profile country:', data.profile_country);
@@ -471,15 +474,15 @@ export default function Page() {
         console.error('Failed to load profile country:', error);
       }
     };
-    
+
     loadProfileCountry();
   }, [user?.id]);
-  
+
   // Load MCP status for super admins
   useEffect(() => {
     const loadMcpStatus = async () => {
       if (!isSuperAdmin) return;
-      
+
       setMcpStatusLoading(true);
       try {
         const response = await fetch('/api/mcp/health');
@@ -491,7 +494,7 @@ export default function Page() {
         setMcpStatusLoading(false);
       }
     };
-    
+
     if (isSuperAdmin) {
       loadMcpStatus();
       // Refresh every 30 seconds
@@ -528,12 +531,12 @@ export default function Page() {
   useEffect(() => {
     const loadProxyInfo = async () => {
       if (!showProxyCountryModal || !user?.id) return;
-      
+
       setProxyInfoLoading(true);
       try {
         const response = await fetch('/api/linkedin/proxy-info');
         const data = await response.json();
-        
+
         if (data.success && data.accounts && data.accounts.length > 0) {
           setProxyInfo(data.accounts[0]); // Use first account
           console.log('✅ Loaded proxy info:', data.accounts[0]);
@@ -566,7 +569,7 @@ export default function Page() {
         setProxyInfoLoading(false);
       }
     };
-    
+
     loadProxyInfo();
   }, [showProxyCountryModal, user?.id]);
 
@@ -788,7 +791,7 @@ export default function Page() {
 
       const data = await response.json();
       console.log('Proxy assignments response:', data);
-      
+
       if (data.current_assignments) {
         console.log(`Found ${data.current_assignments.length} assignments`);
         setLinkedinProxyAssignments(data.current_assignments);
@@ -865,7 +868,7 @@ export default function Page() {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setCurrentProxySettings(prev => ({
           ...prev,
@@ -1005,22 +1008,22 @@ export default function Page() {
         const companies = ['Tech Corp', 'Digital Solutions Inc', 'Innovation Labs', 'Growth Partners', 'Enterprise Systems', 'Data Analytics Co', 'Cloud Services Ltd', 'AI Solutions', 'Marketing Hub', 'Sales Platform'];
         const industries = ['SaaS', 'FinTech', 'HealthTech', 'EdTech', 'E-commerce', 'Manufacturing', 'Consulting', 'Marketing', 'Real Estate', 'Insurance'];
         const companySizes = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+'];
-        
+
         const randomTitle = titles[Math.floor(Math.random() * titles.length)];
         const randomCompany = companies[Math.floor(Math.random() * companies.length)];
         const randomIndustry = industries[Math.floor(Math.random() * industries.length)];
         const randomSize = companySizes[Math.floor(Math.random() * companySizes.length)];
-        
+
         // Calculate quality scores based on realistic criteria
-        const titleScore = ['CEO', 'CTO', 'VP Sales', 'Founder'].includes(randomTitle) ? 0.9 : 
-                          ['Director', 'Head of Growth'].includes(randomTitle) ? 0.7 : 0.5;
-        const sizeScore = ['201-500', '501-1000', '1000+'].includes(randomSize) ? 0.8 : 
-                         ['51-200'].includes(randomSize) ? 0.6 : 0.4;
+        const titleScore = ['CEO', 'CTO', 'VP Sales', 'Founder'].includes(randomTitle) ? 0.9 :
+          ['Director', 'Head of Growth'].includes(randomTitle) ? 0.7 : 0.5;
+        const sizeScore = ['201-500', '501-1000', '1000+'].includes(randomSize) ? 0.8 :
+          ['51-200'].includes(randomSize) ? 0.6 : 0.4;
         const industryScore = ['SaaS', 'FinTech', 'HealthTech'].includes(randomIndustry) ? 0.8 : 0.6;
-        
+
         const overallQuality = (titleScore + sizeScore + industryScore) / 3;
         const priority = overallQuality > 0.75 ? 'high' : overallQuality > 0.55 ? 'medium' : 'low';
-        
+
         return {
           name: `${randomTitle.split(' ')[0]} ${i + 1}`,
           email: `contact${i + 1}@${randomCompany.toLowerCase().replace(/[^a-z]/g, '')}.com`,
@@ -1082,7 +1085,7 @@ export default function Page() {
       });
 
       const sessionData = await sessionResponse.json();
-      
+
       if (!sessionData.success) {
         throw new Error(sessionData.error || 'Failed to create approval session');
       }
@@ -1102,15 +1105,15 @@ export default function Page() {
       });
 
       const decisionData = await decisionResponse.json();
-      
+
       if (decisionData.success) {
         const statusEmoji = decision === 'approved' ? '✅' : decision === 'rejected' ? '❌' : '⏳';
-        const avgQuality = filteredProspects.length > 0 ? 
+        const avgQuality = filteredProspects.length > 0 ?
           (filteredProspects.reduce((sum, p) => sum + p.qualityScore, 0) / filteredProspects.length).toFixed(2) : 0;
-        
+
         // Populate prospect review data for individual review
         updateProspectReviewData(filteredProspects);
-        
+
         toastError(`${statusEmoji} ${actionType} completed!\n\nAI Analysis Results:\n• Processed: ${filteredProspects.length} prospects\n• Average Quality Score: ${avgQuality}\n• Status: ${decision}\n• Session: ${sessionData.sessionId.slice(-8)}\n\n💡 Check "Individual Prospect Review" below to review each prospect individually.`);
       } else {
         throw new Error(decisionData.error || 'Failed to execute approval decision');
@@ -1126,8 +1129,8 @@ export default function Page() {
 
   // Individual prospect review handlers
   const handleSelectProspect = (index: number) => {
-    setSelectedProspects(prev => 
-      prev.includes(index) 
+    setSelectedProspects(prev =>
+      prev.includes(index)
         ? prev.filter(i => i !== index)
         : [...prev, index]
     );
@@ -1188,17 +1191,17 @@ export default function Page() {
 
     const status = action === 'approve_selected' ? 'approved' : 'rejected';
     const updatedData = [...prospectReviewData];
-    
+
     selectedProspects.forEach(index => {
       updatedData[index] = {
         ...updatedData[index],
         status
       };
     });
-    
+
     setProspectReviewData(updatedData);
     setSelectedProspects([]);
-    
+
     if (status === 'approved') {
       toastError(`✅ Approved ${selectedProspects.length} prospects!\n\n🎯 Next Steps:\n1. View all approved prospects in the "Prospect Database" section below\n2. Create campaigns using your approved data\n3. Launch outreach campaigns with confidence`);
     } else {
@@ -1208,7 +1211,7 @@ export default function Page() {
 
   const handleUseInCampaign = () => {
     const approvedProspects = prospectReviewData.filter(p => p.status === 'approved');
-    
+
     if (approvedProspects.length === 0) {
       toastError('No approved prospects to use in campaign. Please approve some prospects first.');
       return;
@@ -1216,10 +1219,10 @@ export default function Page() {
 
     // Store approved prospects for campaign use
     localStorage.setItem('campaignProspects', JSON.stringify(approvedProspects));
-    
+
     // Switch to campaign tab
     setActiveMenuItem('campaign');
-    
+
     toastError(`✅ ${approvedProspects.length} approved prospects transferred to Campaigns!\n\nSwitching to Campaign tab...`);
   };
 
@@ -1234,7 +1237,7 @@ export default function Page() {
     const userEmail = session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
     return userEmail.includes('innovareai.com');
   };
-  
+
   // Mock connected accounts - will be set based on user type
   const [connectedAccounts, setConnectedAccounts] = useState<any[]>([]);
 
@@ -1262,7 +1265,7 @@ export default function Page() {
           workspace_id: workspaceId,
           name: selection.campaignName || 'New Campaign',
           type: selection.strategy === 'linkedin-only' ? 'linkedin' :
-                selection.strategy === 'email-only' ? 'email' : 'multi-channel',
+            selection.strategy === 'email-only' ? 'email' : 'multi-channel',
           channels: selection.channels || [],
           prospects: approvedProspects || [],
           status: 'draft'
@@ -1380,7 +1383,7 @@ export default function Page() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state change:', event, session?.user ? 'user present' : 'no user');
-        
+
         // 🧠 MEMORY FIX: Preserve existing messages when auth state changes
         // Only clear messages on explicit SIGNED_OUT event, not on token refresh
         if (event === 'SIGNED_OUT') {
@@ -1391,7 +1394,7 @@ export default function Page() {
         } else {
           console.log('🧠 MEMORY: Auth state change - preserving conversation history');
         }
-        
+
         setUser(session?.user || null);
         setSession(session); // Cache session for token optimization
 
@@ -1401,7 +1404,7 @@ export default function Page() {
           // CRITICAL FIX (Dec 15): Pass access_token directly to avoid getSession() timing issues
           loadWorkspaces(session.user.id, isAdmin, session.user.email, session.access_token);
         }
-        
+
         // Only set auth loading to false if this is not the initial session event
         // The getUser() call above will handle the initial auth loading state
         if (event !== 'INITIAL_SESSION') {
@@ -1464,7 +1467,7 @@ export default function Page() {
     if (session || user) {
       const userEmail = session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
       const isInnovareAI = userEmail.includes('innovareai.com');
-      
+
       if (isInnovareAI) {
         // Set demo data for InnovareAI users
         setConnectedAccounts([
@@ -1476,7 +1479,7 @@ export default function Page() {
             status: 'active' as const
           },
           {
-            id: 'outlook-1', 
+            id: 'outlook-1',
             platform: 'outlook' as const,
             email: 'user@outlook.com',
             name: 'Outlook Account',
@@ -1489,10 +1492,10 @@ export default function Page() {
             status: 'active' as const
           }
         ]);
-        
+
         setCurrentProxySettings({
           country: 'Germany',
-          state: 'Bavaria', 
+          state: 'Bavaria',
           city: 'Munich',
           status: 'active',
           sessionId: 'auto_123456789',
@@ -1503,7 +1506,7 @@ export default function Page() {
         setConnectedAccounts([]);
         setCurrentProxySettings({
           country: '',
-          state: '', 
+          state: '',
           city: '',
           status: 'inactive',
           sessionId: '',
@@ -1526,7 +1529,7 @@ export default function Page() {
       checkLinkedInConnection();
     }
   }, [user, isAuthLoading]);
-  
+
   // Load profile country when user views profile or opens proxy modal
   useEffect(() => {
     const fetchProfileCountry = async () => {
@@ -1537,7 +1540,7 @@ export default function Page() {
             .select('profile_country')
             .eq('id', user.id)
             .maybeSingle();
-          
+
           if (!error && data?.profile_country) {
             setProfileCountry(data.profile_country);
           }
@@ -1546,7 +1549,7 @@ export default function Page() {
         }
       }
     };
-    
+
     fetchProfileCountry();
   }, [activeMenuItem, showUserProfileModal, showProxyCountryModal, user, supabase]);
 
@@ -1621,13 +1624,13 @@ export default function Page() {
     },
     ...(isSuperAdmin
       ? [
-          {
-            id: 'superadmin',
-            label: 'Super Admin',
-            description: 'Advanced controls for InnovareAI leadership',
-            icon: Shield,
-          },
-        ]
+        {
+          id: 'superadmin',
+          label: 'Super Admin',
+          description: 'Advanced controls for InnovareAI leadership',
+          icon: Shield,
+        },
+      ]
       : []),
   ];
 
@@ -1636,7 +1639,7 @@ export default function Page() {
   // Handle password change
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (passwordChangeData.password !== passwordChangeData.confirmPassword) {
       showNotification('error', 'Passwords do not match');
       return;
@@ -1807,52 +1810,52 @@ export default function Page() {
       setUploadProgress(100);
 
       const data = await response.json();
-      
+
       if (data.success) {
         const validCount = data.validation_results?.valid_records || 0;
         const totalCount = data.validation_results?.total_records || 0;
         const qualityScore = data.validation_results?.quality_score ? (data.validation_results.quality_score * 100).toFixed(0) : 0;
         const missingLinkedIn = data.validation_results?.missing_linkedin_count || 0;
-        
+
         // Show warning if LinkedIn URLs are missing
         if (missingLinkedIn > 0) {
           showNotification('error', `⚠️ WARNING: ${missingLinkedIn} prospects missing LinkedIn URLs!\n\nLinkedIn URLs are REQUIRED for LinkedIn campaigns.\nOnly ${validCount} valid prospects with LinkedIn URLs found.`);
         } else {
           showNotification('success', `CSV processed successfully! ${validCount} valid LinkedIn prospects found.`);
         }
-        
+
         // Store pasted prospects with 'uploaded' flag and systematic campaign name
         // Format: YYYYMMDD-ClientID-CampaignName
         const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
         const clientId = 'CLIENT'; // TODO: Get from workspace/user settings
-        
+
         // Prompt user for campaign name
         const defaultCampaignName = `CSV${csvUploadCounter}`;
         const userCampaignName = prompt(
           `Enter campaign name for this upload:\n\nFormat: ${today}-${clientId}-[CampaignName]`,
           defaultCampaignName
         ) || defaultCampaignName;
-        
+
         const fullCampaignName = `${today}-${clientId}-${userCampaignName.replace(/[^a-zA-Z0-9-_ ]/g, '')}`;
-        
+
         // REQUIRED: Select LinkedIn campaign type
         const campaignTypeChoice = prompt(
           `Select LinkedIn Campaign Type:\n\n1 = 1st Degree Direct (existing connections)\n2 = 2nd/3rd Degree Connection Request\n3 = 2nd/3rd Degree Group Message\n4 = Open InMail (Premium)\n\nEnter number (1-4):`,
           '2'
         );
-        
+
         const campaignTypeMap: Record<string, string> = {
           '1': '1st-degree-direct',
           '2': '2nd-3rd-connection',
           '3': '2nd-3rd-group',
           '4': 'open-inmail'
         };
-        
+
         const linkedinCampaignType = campaignTypeMap[campaignTypeChoice || '2'] || '2nd-3rd-connection';
-        
+
         // Prompt for connection degree
         let connectionDegree: '1st' | '2nd' | '3rd' | 'unknown' = 'unknown';
-        
+
         if (linkedinCampaignType === '1st-degree-direct') {
           connectionDegree = '1st';
           toastError('✓ 1st Degree Campaign\n\nThese prospects should already be connected to you.\nMake sure CSV includes Conversation IDs for threading.');
@@ -1863,16 +1866,16 @@ export default function Page() {
           );
           connectionDegree = degreeChoice === '3' ? '3rd' : '2nd';
         }
-        
+
         // Set campaign tag based on campaign type
         const campaignTag = linkedinCampaignType;
-        
+
         // Optional: Additional A/B testing tag
         const abTestTag = prompt(
           `Add A/B testing tag (optional):\nExamples: Industry-FinTech, Region-West, Variant-A\n\nLeave empty if not needed.`,
           ''
         ) || undefined;
-        
+
         const prospectsWithUploadedFlag = (data.preview_data || []).map((p: any) => ({
           ...p,
           uploaded: true,
@@ -1885,23 +1888,23 @@ export default function Page() {
         }));
         setUploadedProspects(prev => [...prev, ...prospectsWithUploadedFlag]);
         setCsvUploadCounter(prev => prev + 1);
-        
+
         // Switch to Data Approval section
         setActiveMenuItem('data-approval');
-        
+
         const linkedinProspectsCount = data.preview_data?.filter((p: any) => p.linkedinUrl || p.linkedin_url)?.length || 0;
-        
+
         const uploadMessage = {
           id: `msg_${Date.now()}`,
           role: 'assistant',
           content: `I've successfully processed your pasted CSV data.\n\n📊 **Processing Summary:**\n• Total records: ${totalCount}\n• Valid prospects: ${validCount}\n• LinkedIn profiles: ${linkedinProspectsCount}\n• Quality score: ${qualityScore}%\n\n🔍 **LinkedIn Validation:**\nI'm checking each prospect for:\n✓ Valid LinkedIn profile URLs\n✓ Complete contact information\n✓ Company and title data\n✓ No duplicates\n\n📋 **Next Steps:**\n1. Review and approve prospects in the Prospect Database\n2. Assign approved prospects to a campaign\n3. I'll help personalize outreach for each prospect\n\nThe Prospect Database section is now open. Would you like me to automatically approve prospects with 80%+ quality scores?`,
           created_at: new Date().toISOString()
         };
-        
+
         setMessages(prev => [...prev, uploadMessage]);
         setShowStarterScreen(false);
         setPastedCSV(''); // Clear the pasted data
-        
+
         if (data.session_id) {
           sessionStorage.setItem('latest_csv_upload_session', JSON.stringify({
             session_id: data.session_id,
@@ -1962,52 +1965,52 @@ export default function Page() {
       setUploadProgress(100);
 
       const data = await response.json();
-      
+
       if (data.success) {
         const validCount = data.validation_results?.valid_records || 0;
         const totalCount = data.validation_results?.total_records || 0;
         const qualityScore = data.validation_results?.quality_score ? (data.validation_results.quality_score * 100).toFixed(0) : 0;
         const missingLinkedIn = data.validation_results?.missing_linkedin_count || 0;
-        
+
         // Show warning if LinkedIn URLs are missing
         if (missingLinkedIn > 0) {
           showNotification('error', `⚠️ WARNING: ${missingLinkedIn} prospects missing LinkedIn URLs!\n\nLinkedIn URLs are REQUIRED for LinkedIn campaigns.\nOnly ${validCount} valid prospects with LinkedIn URLs found.`);
         } else {
           showNotification('success', `CSV uploaded successfully! ${validCount} valid LinkedIn prospects found.`);
         }
-        
+
         // Store uploaded prospects with 'uploaded' flag and systematic campaign name
         // Format: YYYYMMDD-ClientID-CampaignName
         const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
         const clientId = 'CLIENT'; // TODO: Get from workspace/user settings
-        
+
         // Prompt user for campaign name
         const defaultCampaignName = `CSV${csvUploadCounter}`;
         const userCampaignName = prompt(
           `Enter campaign name for this upload:\n\nFormat: ${today}-${clientId}-[CampaignName]`,
           defaultCampaignName
         ) || defaultCampaignName;
-        
+
         const fullCampaignName = `${today}-${clientId}-${userCampaignName.replace(/[^a-zA-Z0-9-_ ]/g, '')}`;
-        
+
         // REQUIRED: Select LinkedIn campaign type
         const campaignTypeChoice = prompt(
           `Select LinkedIn Campaign Type:\n\n1 = 1st Degree Direct (existing connections)\n2 = 2nd/3rd Degree Connection Request\n3 = 2nd/3rd Degree Group Message\n4 = Open InMail (Premium)\n\nEnter number (1-4):`,
           '2'
         );
-        
+
         const campaignTypeMap: Record<string, string> = {
           '1': '1st-degree-direct',
           '2': '2nd-3rd-connection',
           '3': '2nd-3rd-group',
           '4': 'open-inmail'
         };
-        
+
         const linkedinCampaignType = campaignTypeMap[campaignTypeChoice || '2'] || '2nd-3rd-connection';
-        
+
         // Prompt for connection degree
         let connectionDegree: '1st' | '2nd' | '3rd' | 'unknown' = 'unknown';
-        
+
         if (linkedinCampaignType === '1st-degree-direct') {
           connectionDegree = '1st';
           toastError('✓ 1st Degree Campaign\n\nThese prospects should already be connected to you.\nMake sure CSV includes Conversation IDs for threading.');
@@ -2018,16 +2021,16 @@ export default function Page() {
           );
           connectionDegree = degreeChoice === '3' ? '3rd' : '2nd';
         }
-        
+
         // Set campaign tag based on campaign type
         const campaignTag = linkedinCampaignType;
-        
+
         // Optional: Additional A/B testing tag
         const abTestTag = prompt(
           `Add A/B testing tag (optional):\nExamples: Industry-FinTech, Region-West, Variant-A\n\nLeave empty if not needed.`,
           ''
         ) || undefined;
-        
+
         const prospectsWithUploadedFlag = (data.preview_data || []).map((p: any) => ({
           ...p,
           uploaded: true,
@@ -2040,23 +2043,23 @@ export default function Page() {
         }));
         setUploadedProspects(prev => [...prev, ...prospectsWithUploadedFlag]);
         setCsvUploadCounter(prev => prev + 1);
-        
+
         // Switch to Data Approval section to review the uploaded prospects
         setActiveMenuItem('data-approval');
-        
+
         // Create detailed Sam message with LinkedIn validation info
         const linkedinProspectsCount = data.preview_data?.filter((p: any) => p.linkedinUrl || p.linkedin_url)?.length || 0;
-        
+
         const uploadMessage = {
           id: `msg_${Date.now()}`,
           role: 'assistant',
           content: `I've successfully uploaded and validated your CSV file "${file.name}".\n\n📊 **Upload Summary:**\n• Total records: ${totalCount}\n• Valid prospects: ${validCount}\n• LinkedIn profiles: ${linkedinProspectsCount}\n• Quality score: ${qualityScore}%\n\n🔍 **LinkedIn Validation:**\nI'm checking each prospect for:\n✓ Valid LinkedIn profile URLs\n✓ Complete contact information\n✓ Company and title data\n✓ No duplicates\n\n📋 **Next Steps:**\n1. Review and approve prospects in the Prospect Database\n2. Assign approved prospects to a campaign\n3. I'll help personalize outreach for each prospect\n\nThe Prospect Database section is now open. Would you like me to automatically approve prospects with 80%+ quality scores, or would you prefer to review each one manually?`,
           created_at: new Date().toISOString()
         };
-        
+
         setMessages(prev => [...prev, uploadMessage]);
         setShowStarterScreen(false);
-        
+
         // Store session info for campaign assignment
         if (data.session_id) {
           sessionStorage.setItem('latest_csv_upload_session', JSON.stringify({
@@ -2202,7 +2205,7 @@ export default function Page() {
       console.log('  - User email:', finalEmail);
       console.log('  - Is true super admin:', isTrueSuperAdmin);
       console.log('  - Should load all workspaces:', shouldLoadAllWorkspaces);
-      
+
       // Only true super admins can load all workspaces via admin API
       if (shouldLoadAllWorkspaces) {
         // Use passed token first, fallback to getAuthToken() for backwards compatibility
@@ -2352,8 +2355,8 @@ export default function Page() {
         let companyColor = 'bg-blue-600';
 
         if (workspace.name.toLowerCase().includes('3cubed') || workspace.name === '3cubed' ||
-            workspace.name.toLowerCase().includes('sendingcell') ||
-            workspace.name.toLowerCase().includes('wt') || workspace.name.toLowerCase().includes('matchmaker')) {
+          workspace.name.toLowerCase().includes('sendingcell') ||
+          workspace.name.toLowerCase().includes('wt') || workspace.name.toLowerCase().includes('matchmaker')) {
           company = '3cubed';
           companyColor = 'bg-orange-600';
         }
@@ -2427,38 +2430,38 @@ export default function Page() {
   const disconnectLinkedIn = async () => {
     try {
       setIsDisconnectingLinkedIn(true);
-      
+
       // First, get all LinkedIn accounts
       const response = await fetch('/api/unipile/accounts');
       if (!response.ok) {
         throw new Error('Failed to get LinkedIn accounts');
       }
-      
+
       const data = await response.json();
-      
+
       // If we have account data, we need to get the actual accounts list
       // to find LinkedIn account IDs for deletion
       const accountsResponse = await fetch('/api/unipile/accounts');
       const accountsData = await accountsResponse.json();
-      
+
       // For now, we'll show a confirmation and then clear the connection status
       // This is a placeholder - in production, you'd want to delete specific accounts
       const confirmed = window.confirm(
         'Are you sure you want to disconnect all LinkedIn accounts? This will disable LinkedIn features in SAM AI.'
       );
-      
+
       if (confirmed) {
         // Note: In a full implementation, you'd iterate through LinkedIn accounts and delete them
         // For now, we'll just update the local state and show the disconnection
         setHasLinkedInConnection(false);
         localStorage.removeItem('linkedin-onboarding-skipped'); // Reset skip preference
-        
+
         // You could also make API calls to delete specific accounts here:
         // await fetch('/api/unipile/accounts', { method: 'DELETE', body: JSON.stringify({ account_id: 'specific-id' }) });
-        
+
         showNotification('success', 'LinkedIn accounts have been disconnected successfully.');
       }
-      
+
     } catch (error) {
       console.error('LinkedIn disconnection failed:', error);
       showNotification('error', 'Failed to disconnect LinkedIn accounts. Please try again.');
@@ -2471,24 +2474,24 @@ export default function Page() {
   const loadUsers = async () => {
     try {
       setUsersLoading(true);
-      
+
       // 🚨 SECURITY: Only allow true super admins to load ALL users
       // Get email from Supabase session since user object may not have email
       const { data: { session } } = await supabase.auth.getSession();
       const userEmail = session?.user?.email?.toLowerCase() || user?.email?.toLowerCase() || '';
       const isTrueSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(userEmail);
-      
+
       console.log('🛡️ USER LOADING SECURITY CHECK:');
       console.log('  - User email:', userEmail);
       console.log('  - Is true super admin:', isTrueSuperAdmin);
-      
+
       if (!isTrueSuperAdmin) {
         console.log('🛡️ BLOCKED: Regular user cannot load all users');
         setUsers([]);
         setUserStats({});
         return;
       }
-      
+
       const token = await getAuthToken();
       const response = await fetch('/api/admin/users', {
         method: 'GET',
@@ -2518,7 +2521,7 @@ export default function Page() {
 
     try {
       console.log('Attempting workspace creation via service role API...');
-      
+
       // Use bulletproof service role API that bypasses ALL RLS issues
       const response = await fetch('/api/admin/create-workspace-minimal', {
         method: 'POST',
@@ -2571,7 +2574,7 @@ export default function Page() {
       for (let i = 0; i < attempts.length; i++) {
         try {
           console.log(`Direct attempt ${i + 1}:`, attempts[i]);
-          
+
           const { data: result, error } = await supabase
             .from('workspaces')
             .insert(attempts[i])
@@ -2608,7 +2611,7 @@ export default function Page() {
     } catch (error: any) {
       console.error('Complete workspace creation failure:', error);
       const errorMessage = error?.message || 'Unknown error occurred';
-      
+
       if (errorMessage.includes('infinite recursion') || errorMessage.includes('Database RLS')) {
         showNotification('error', `${errorMessage}. To fix: Execute the SQL script in FIX_RLS_POLICIES_MANUAL.sql via Supabase console.`);
       } else {
@@ -2737,10 +2740,10 @@ export default function Page() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${await getAuthToken()}`
         },
-        body: JSON.stringify({ 
-          userId: selectedUserForWorkspace.id, 
-          workspaceId, 
-          role 
+        body: JSON.stringify({
+          userId: selectedUserForWorkspace.id,
+          workspaceId,
+          role
         })
       });
 
@@ -2763,7 +2766,7 @@ export default function Page() {
   const handleReassignWorkspace = async (userId: string, workspaceId: string, role: string) => {
     const user = users.find(u => u.id === userId);
     const workspace = workspaces.find(w => w.id === workspaceId);
-    
+
     if (!user || !workspace) {
       showNotification('error', 'User or workspace not found');
       return;
@@ -2788,10 +2791,10 @@ export default function Page() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${await getAuthToken()}`
         },
-        body: JSON.stringify({ 
-          userId, 
-          workspaceId, 
-          role 
+        body: JSON.stringify({
+          userId,
+          workspaceId,
+          role
         })
       });
 
@@ -3043,19 +3046,17 @@ export default function Page() {
                   key={item.id}
                   type="button"
                   onClick={() => setActiveMenuItem(item.id)}
-                  className={`group w-full rounded-xl border border-transparent px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-                    isActive
+                  className={`group w-full rounded-xl border border-transparent px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isActive
                       ? 'bg-primary/15 text-white shadow-glow ring-1 ring-primary/35'
                       : 'text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start gap-3">
                     <span
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-                        isActive
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${isActive
                           ? 'bg-primary/25 text-white'
                           : 'bg-surface-highlight text-muted-foreground group-hover:text-foreground'
-                      }`}
+                        }`}
                     >
                       <IconComponent size={18} />
                     </span>
@@ -3079,67 +3080,67 @@ export default function Page() {
           {/* Workspace is auto-selected based on user's current_workspace_id */}
 
           <div className="space-y-4 px-5 py-5">
-          <button
-            type="button"
-            onClick={async () => {
-              if (confirm('Clear all conversation history? This cannot be undone.')) {
-                await resetConversation();
-                setActiveMenuItem('chat');
-                showNotification('success', 'Chat history cleared successfully');
-              }
-            }}
-            className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-surface-highlight/50 px-4 py-3 text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-surface-highlight hover:text-foreground"
-          >
-            <span className="flex items-center gap-2">
-              <Settings size={16} />
-              Clear Session
-            </span>
-            <span className="text-xs text-muted-foreground/80">⌘⇧⌫</span>
-          </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (confirm('Clear all conversation history? This cannot be undone.')) {
+                  await resetConversation();
+                  setActiveMenuItem('chat');
+                  showNotification('success', 'Chat history cleared successfully');
+                }
+              }}
+              className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-surface-highlight/50 px-4 py-3 text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-surface-highlight hover:text-foreground"
+            >
+              <span className="flex items-center gap-2">
+                <Settings size={16} />
+                Clear Session
+              </span>
+              <span className="text-xs text-muted-foreground/80">⌘⇧⌫</span>
+            </button>
 
-          <div className="px-1">
-            <DemoModeToggle variant="switch" size="sm" />
-          </div>
+            <div className="px-1">
+              <DemoModeToggle variant="switch" size="sm" />
+            </div>
 
-          <div className="rounded-xl border border-border/60 bg-surface-highlight/40 px-4 py-4">
-            {testUser ? (
-              <div className="space-y-4">
+            <div className="rounded-xl border border-border/60 bg-surface-highlight/40 px-4 py-4">
+              {testUser ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/25 text-sm font-semibold text-white">
+                      {(testUser.user_metadata?.full_name || testUser.user_metadata?.first_name || testUser.email || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <p className="truncate text-sm font-medium text-white">
+                        {testUser.user_metadata?.full_name ||
+                          (testUser.user_metadata?.first_name && testUser.user_metadata?.last_name
+                            ? `${testUser.user_metadata.first_name} ${testUser.user_metadata.last_name}`
+                            : testUser.email) || 'Authenticated User'}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{testUser.email}</p>
+                      <p className="text-xs text-green-500">Active session</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-surface text-sm font-medium text-muted-foreground transition hover:bg-surface-highlight hover:text-white"
+                  >
+                    <LogOut size={16} />
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/25 text-sm font-semibold text-white">
-                    {(testUser.user_metadata?.full_name || testUser.user_metadata?.first_name || testUser.email || 'U').charAt(0).toUpperCase()}
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-white">
+                    A
                   </div>
-                  <div className="flex-1">
-                    <p className="truncate text-sm font-medium text-white">
-                      {testUser.user_metadata?.full_name ||
-                       (testUser.user_metadata?.first_name && testUser.user_metadata?.last_name
-                         ? `${testUser.user_metadata.first_name} ${testUser.user_metadata.last_name}`
-                         : testUser.email) || 'Authenticated User'}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">{testUser.email}</p>
-                    <p className="text-xs text-green-500">Active session</p>
+                  <div>
+                    <p className="text-sm font-medium text-white">Anonymous User</p>
+                    <p className="text-xs text-muted-foreground">No authentication</p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-surface text-sm font-medium text-muted-foreground transition hover:bg-surface-highlight hover:text-white"
-                >
-                  <LogOut size={16} />
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-white">
-                  A
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">Anonymous User</p>
-                  <p className="text-xs text-muted-foreground">No authentication</p>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -3160,1224 +3161,977 @@ export default function Page() {
         <ConnectionStatusBar />
 
         <div className="flex-1 overflow-y-auto px-6 py-6" style={{ paddingBottom: activeMenuItem === 'chat' ? '240px' : '24px' }}>
-        {activeMenuItem === 'ai-config' ? (
-          <AIConfiguration workspaceId={selectedWorkspaceId} workspaceName={currentWorkspace?.name} />
-        ) : activeMenuItem === 'knowledge' ? (
-          <KnowledgeBase />
-        ) : activeMenuItem === 'data-approval' ? (
-          /* Data Approval - Unified via DataCollectionHub */
-          <DataCollectionHub
-            userSession={session}
-            workspaceId={currentWorkspace?.id || null}
-            workspacesLoading={workspacesLoading}
-            userVerified={userVerified}
-            onDataCollected={(data, source) => {
-              // Handle data collected from DataCollectionHub
-              console.log('Data collected:', data, 'Source:', source);
-            }}
-            onApprovalComplete={(approvedData, campaignType, draftId) => {
-              // CRITICAL FIX (Dec 7): Force state commit before navigation + pass draftId
-              // flushSync prevents race condition where campaignType is undefined
-              console.log('Approved prospects:', approvedData.length, 'Campaign type:', campaignType, 'Draft ID:', draftId);
-              flushSync(() => {
-                setPendingCampaignProspects(approvedData);
-                setPendingCampaignType(campaignType);
-                setPendingDraftId(draftId);
-              });
-              // State is now committed - safe to navigate
-              setActiveMenuItem('campaign');
-            }}
-            initialUploadedData={uploadedProspects}
-          />
-        ) : activeMenuItem === 'campaign' ? (
-          <div className="flex-1 flex flex-col">
-            {/* Conditional View */}
-            <div className="flex-1 overflow-y-auto">
-              {showCampaignApprovalView ? (
-                <DataCollectionHub
-                  userSession={session}
-                  workspaceId={currentWorkspace?.id || null}
-                  workspacesLoading={workspacesLoading}
-                  onDataCollected={(data, source) => {
-                    console.log('Data collected:', data, 'Source:', source);
-                  }}
-                  onApprovalComplete={(approvedData, campaignType) => {
-                    // Store approved prospects and switch to campaign creation view
-                    // Dec 8 FIX: MUST reset pendingDraftId to prevent loading old draft with all session prospects
-                    console.log('Approved prospects:', approvedData, 'Campaign type:', campaignType);
-                    setPendingCampaignProspects(approvedData);
-                    setPendingCampaignType(campaignType);
-                    setPendingDraftId(undefined); // CRITICAL: Clear stale draft ID to prevent data leakage
-                    setShowCampaignApprovalView(false); // Switch to campaign hub after approval
-                  }}
-                  initialUploadedData={uploadedProspects}
-                />
-              ) : (
-                <CampaignHub
-                  workspaceId={currentWorkspace?.id || null}
-                  initialProspects={pendingCampaignProspects}
-                  initialCampaignType={pendingCampaignType}
-                  initialDraftId={pendingDraftId}
-                  onCampaignCreated={() => {
-                    setPendingCampaignProspects(null);
-                    setPendingCampaignType(undefined);
-                    setPendingDraftId(undefined);
-                  }}
-                />
-              )}
-            </div>
-          </div>
-        ) : activeMenuItem === 'commenting-agent' ? (
-          commentingAgentView === 'approve' && selectedWorkspaceId ? (
-            <CommentApprovalWorkflow
-              workspaceId={selectedWorkspaceId}
-              onBack={() => setCommentingAgentView('dashboard')}
+          {activeMenuItem === 'ai-config' ? (
+            <AIConfiguration workspaceId={selectedWorkspaceId} workspaceName={currentWorkspace?.name} />
+          ) : activeMenuItem === 'knowledge' ? (
+            <KnowledgeBase />
+          ) : activeMenuItem === 'data-approval' ? (
+            /* Data Approval - Unified via DataCollectionHub */
+            <DataCollectionHub
+              userSession={session}
+              workspaceId={currentWorkspace?.id || null}
+              workspacesLoading={workspacesLoading}
+              userVerified={userVerified}
+              onDataCollected={(data, source) => {
+                // Handle data collected from DataCollectionHub
+                console.log('Data collected:', data, 'Source:', source);
+              }}
+              onApprovalComplete={(approvedData, campaignType, draftId) => {
+                // CRITICAL FIX (Dec 7): Force state commit before navigation + pass draftId
+                // flushSync prevents race condition where campaignType is undefined
+                console.log('Approved prospects:', approvedData.length, 'Campaign type:', campaignType, 'Draft ID:', draftId);
+                flushSync(() => {
+                  setPendingCampaignProspects(approvedData);
+                  setPendingCampaignType(campaignType);
+                  setPendingDraftId(draftId);
+                });
+                // State is now committed - safe to navigate
+                setActiveMenuItem('campaign');
+              }}
+              initialUploadedData={uploadedProspects}
             />
-          ) : (
-            <div className="min-h-screen bg-gray-900">
-              <div className="w-full space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-end">
-                  <button
-                    onClick={() => setShowCommentingCampaignModal(true)}
-                    className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                  >
-                    <Plus size={20} />
-                    Add Monitor
-                  </button>
-                </div>
-
-              {/* Stats Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400 text-sm">Active Profiles</span>
-                    <Target size={20} className="text-blue-400" />
-                  </div>
-                  <div className="text-3xl font-bold text-white">{commentingCampaigns.filter(c => c.status === 'active').length}</div>
-                  <div className="text-xs text-gray-500 mt-1">{commentingCampaigns.filter(c => c.status === 'active').length === 0 ? 'No profiles active' : `${commentingCampaigns.length} total`}</div>
-                </div>
-
-                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400 text-sm">Pending Approvals</span>
-                    <Clock size={20} className="text-yellow-400" />
-                  </div>
-                  <div className="text-3xl font-bold text-white">{pendingCommentsLoading ? '...' : pendingComments.length}</div>
-                  <div className="text-xs text-gray-500 mt-1">Comments awaiting review</div>
-                </div>
-
-                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400 text-sm">Posted Today</span>
-                    <MessageSquare size={20} className="text-green-400" />
-                  </div>
-                  <div className="text-3xl font-bold text-white">0</div>
-                  <div className="text-xs text-gray-500 mt-1">0 / 30 daily limit</div>
-                </div>
-
-                <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400 text-sm">Engagement Rate</span>
-                    <TrendingUp size={20} className="text-pink-400" />
-                  </div>
-                  <div className="text-3xl font-bold text-white">--</div>
-                  <div className="text-xs text-gray-500 mt-1">No data yet</div>
-                </div>
-              </div>
-
-              {/* Pending Approvals - Most Important */}
-              <div className="bg-gray-800 rounded-lg border border-gray-700">
-                <div className="p-6 border-b border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-yellow-600/20 rounded-lg flex items-center justify-center">
-                        <Clock size={20} className="text-yellow-400" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-semibold text-white">Pending Approvals</h2>
-                        <p className="text-sm text-gray-400">Review and approve comments before posting</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="px-3 py-1 bg-yellow-600/20 text-yellow-400 rounded-full text-sm font-medium">
-                        {pendingCommentsLoading ? '...' : pendingComments.length} pending
-                      </span>
-                      {pendingComments.length > 0 && (
-                        <button
-                          onClick={() => setCommentingAgentView('approve')}
-                          className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                        >
-                          <Eye size={16} />
-                          View Approval Workflow
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {pendingCommentsLoading ? (
-                  <div className="p-8 text-center">
-                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Clock size={32} className="text-gray-500 animate-spin" />
-                    </div>
-                    <p className="text-gray-400">Loading pending comments...</p>
-                  </div>
-                ) : pendingComments.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <CheckCircle size={32} className="text-gray-500" />
-                    </div>
-                    <p className="text-gray-400 mb-2">No comments awaiting approval</p>
-                    <p className="text-sm text-gray-500">Click "Generate Comment" on discovered posts to create comments</p>
-                  </div>
+          ) : activeMenuItem === 'campaign' ? (
+            <div className="flex-1 flex flex-col">
+              {/* Conditional View */}
+              <div className="flex-1 overflow-y-auto">
+                {showCampaignApprovalView ? (
+                  <DataCollectionHub
+                    userSession={session}
+                    workspaceId={currentWorkspace?.id || null}
+                    workspacesLoading={workspacesLoading}
+                    onDataCollected={(data, source) => {
+                      console.log('Data collected:', data, 'Source:', source);
+                    }}
+                    onApprovalComplete={(approvedData, campaignType) => {
+                      // Store approved prospects and switch to campaign creation view
+                      // Dec 8 FIX: MUST reset pendingDraftId to prevent loading old draft with all session prospects
+                      console.log('Approved prospects:', approvedData, 'Campaign type:', campaignType);
+                      setPendingCampaignProspects(approvedData);
+                      setPendingCampaignType(campaignType);
+                      setPendingDraftId(undefined); // CRITICAL: Clear stale draft ID to prevent data leakage
+                      setShowCampaignApprovalView(false); // Switch to campaign hub after approval
+                    }}
+                    initialUploadedData={uploadedProspects}
+                  />
                 ) : (
-                  <div className="p-6 space-y-3">
-                    {pendingComments.slice(0, 3).map((comment: any) => (
-                      <div key={comment.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium text-white">{comment.post.author_name}</span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(comment.post.post_date).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-400 line-clamp-2 mb-2">{comment.post.post_content}</p>
-                            <div className="bg-gray-800/50 rounded p-2 border-l-2 border-yellow-500">
-                              <p className="text-xs text-gray-500 mb-1">AI Generated Comment:</p>
-                              <p className="text-sm text-gray-300">{comment.comment_text}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {pendingComments.length > 3 && (
-                      <button
-                        onClick={() => setCommentingAgentView('approve')}
-                        className="w-full py-2 text-sm text-gray-400 hover:text-white transition-colors"
-                      >
-                        View all {pendingComments.length} pending comments →
-                      </button>
-                    )}
-                  </div>
+                  <CampaignHub
+                    workspaceId={currentWorkspace?.id || null}
+                    initialProspects={pendingCampaignProspects}
+                    initialCampaignType={pendingCampaignType}
+                    initialDraftId={pendingDraftId}
+                    onCampaignCreated={() => {
+                      setPendingCampaignProspects(null);
+                      setPendingCampaignType(undefined);
+                      setPendingDraftId(undefined);
+                    }}
+                  />
                 )}
               </div>
-
-              {/* Monitored Profiles */}
-              <div className="bg-gray-800 rounded-lg border border-gray-700">
-                <div className="p-6 border-b border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-pink-600/20 rounded-lg flex items-center justify-center">
-                        <Target size={20} className="text-pink-400" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-semibold text-white">Monitored Profiles</h2>
-                        <p className="text-sm text-gray-400">Manage profiles you're monitoring for comments</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {commentingCampaignsLoading ? (
-                  <div className="p-8 text-center">
-                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Clock size={32} className="text-gray-500 animate-spin" />
-                    </div>
-                    <p className="text-gray-400">Loading profiles...</p>
-                  </div>
-                ) : commentingCampaigns.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Target size={32} className="text-gray-500" />
-                    </div>
-                    <p className="text-gray-400 mb-4">No profiles added yet</p>
+            </div>
+          ) : activeMenuItem === 'commenting-agent' ? (
+            commentingAgentView === 'approve' && selectedWorkspaceId ? (
+              <CommentApprovalWorkflow
+                workspaceId={selectedWorkspaceId}
+                onBack={() => setCommentingAgentView('dashboard')}
+              />
+            ) : (
+              <div className="min-h-screen bg-gray-900">
+                <div className="w-full space-y-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-end">
                     <button
                       onClick={() => setShowCommentingCampaignModal(true)}
-                      className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
+                      className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                     >
                       <Plus size={20} />
-                      Add Your First Profile
+                      Add Monitor
                     </button>
-                    <p className="text-sm text-gray-500 mt-4">
-                      Monitor LinkedIn profiles and auto-comment with AI
-                    </p>
                   </div>
-                ) : (
-                  <div className="p-6 space-y-4">
-                    {commentingCampaigns.map((campaign) => {
-                      // Extract profile vanities from hashtags array (format: "PROFILE:vanity_name")
-                      const hashtags = campaign.hashtags || [];
-                      const profileVanities = hashtags
-                        .filter((tag: string) => tag.startsWith('PROFILE:'))
-                        .map((tag: string) => tag.replace('PROFILE:', ''));
-                      // Extract hashtag monitors (format: "HASHTAG:keyword")
-                      const hashtagMonitors = hashtags
-                        .filter((tag: string) => tag.startsWith('HASHTAG:'))
-                        .map((tag: string) => '#' + tag.replace('HASHTAG:', ''));
-                      // Extract company monitors (format: "COMPANY:slug")
-                      const companyMonitors = hashtags
-                        .filter((tag: string) => tag.startsWith('COMPANY:'))
-                        .map((tag: string) => tag.replace('COMPANY:', ''));
-                      const keywords = campaign.keywords || [];
-                      const campaignName = campaign.name || campaign.campaign_name || 'Unnamed Campaign';
 
-                      // Determine monitor type for display
-                      const isHashtagMonitor = hashtagMonitors.length > 0;
-                      const isCompanyMonitor = companyMonitors.length > 0;
-                      const isProfileMonitor = profileVanities.length > 0;
-
-                      return (
-                        <div
-                          key={campaign.id}
-                          onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${campaign.id}`)}
-                          className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 cursor-pointer hover:border-gray-500 transition-colors"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-600/20">
-                                <User size={16} className="text-purple-400" />
-                              </div>
-                              <h3 className="text-white font-medium">{campaignName}</h3>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'
-                              }`}>
-                                {campaign.status === 'active' ? 'Active' : 'Inactive'}
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingCampaign(campaign);
-                                  setShowCommentingCampaignModal(true);
-                                }}
-                                className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded text-xs transition-colors"
-                              >
-                                Edit
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Monitor Target Display */}
-                          <div className="space-y-2 mb-3" onClick={(e) => e.stopPropagation()}>
-                            {isHashtagMonitor ? (
-                              // Hashtag monitor - show hashtags as clickable targets
-                              <div className="flex flex-wrap gap-2">
-                                {hashtagMonitors.map((hashtag, idx) => (
-                                  <span key={idx} className="px-3 py-1.5 bg-green-600/20 text-green-400 rounded-full text-sm font-medium">
-                                    {hashtag}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : isCompanyMonitor ? (
-                              // Company monitor - show company names
-                              <div className="flex flex-wrap gap-2">
-                                {companyMonitors.map((company, idx) => (
-                                  <span key={idx} className="px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-full text-sm font-medium flex items-center gap-1">
-                                    <Building2 size={14} />
-                                    {company}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : profileVanities.length > 0 ? (
-                              // Profile monitor - show profile buttons
-                              profileVanities.map((vanity, idx) => (
-                                <button
-                                  key={idx}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Toggle expanded view for this profile
-                                    const profileKey = `${campaign.id}-${vanity}`;
-                                    if (expandedCampaignPosts === profileKey) {
-                                      setExpandedCampaignPosts(null);
-                                    } else {
-                                      setExpandedCampaignPosts(profileKey);
-                                      // Fetch posts if not already loaded
-                                      if (!campaignPosts[profileKey]) {
-                                        fetch(`/api/linkedin-commenting/get-discovered-posts?monitor_id=${campaign.id}&limit=50`)
-                                          .then(res => res.json())
-                                          .then(posts => {
-                                            setCampaignPosts(prev => ({ ...prev, [profileKey]: posts }));
-                                          })
-                                          .catch(err => console.error('Error fetching posts:', err));
-                                      }
-                                    }
-                                  }}
-                                  className="w-full flex items-center justify-between gap-2 text-sm text-gray-300 bg-gray-800/50 hover:bg-gray-800 rounded px-3 py-2 transition-colors"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <User size={14} className="text-purple-400" />
-                                    <span>{vanity}</span>
-                                  </div>
-                                  <span className="text-xs text-gray-500">
-                                    {expandedCampaignPosts === `${campaign.id}-${vanity}` ? 'Hide Posts' : 'View Posts'}
-                                  </span>
-                                </button>
-                              ))
-                            ) : (
-                              <div className="text-sm text-gray-500 italic">No target configured - click Edit to add</div>
-                            )}
-                          </div>
-
-                          {/* Stats */}
-                          <div className="flex items-center gap-4 text-xs text-gray-400 pt-2 border-t border-gray-600">
-                            <span>Posts: {campaign.posts_count || 0}</span>
-                            {keywords.length > 0 && <span>Keywords: {keywords.join(', ')}</span>}
-                            <span>Auto-approve: {campaign.auto_approve_enabled ? 'Yes' : 'No'}</span>
-                          </div>
-
-                          {/* Expanded Posts Section - Shows for specific profile */}
-                          {profileVanities.some(vanity => expandedCampaignPosts === `${campaign.id}-${vanity}`) && (
-                            <div className="mt-4 pt-4 border-t border-gray-600 space-y-3">
-                              {(() => {
-                                const activeProfileKey = expandedCampaignPosts;
-                                const posts = campaignPosts[activeProfileKey];
-                                return posts ? (
-                                  posts.length > 0 ? (
-                                    posts.map((post: any, idx: number) => (
-                                      <div key={post.id} className="bg-gray-800/50 rounded-lg p-4 space-y-3 border border-gray-700">
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-2">
-                                              <span className="text-sm font-medium text-white">{post.author_name}</span>
-                                              <span className="text-xs text-gray-500">
-                                                {new Date(post.post_date).toLocaleDateString()}
-                                              </span>
-                                              <span className={`px-2 py-0.5 rounded text-xs ${
-                                                post.status === 'discovered' ? 'bg-blue-600/20 text-blue-400' :
-                                                post.status === 'comment_generated' ? 'bg-green-600/20 text-green-400' :
-                                                post.status === 'skipped' ? 'bg-gray-600/20 text-gray-400' :
-                                                'bg-yellow-600/20 text-yellow-400'
-                                              }`}>
-                                                {post.status}
-                                              </span>
-                                            </div>
-                                            <p className="text-sm text-gray-300 whitespace-pre-wrap">{post.post_content}</p>
-                                          </div>
-                                        </div>
-                                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                                        <span>👍 {post.engagement_metrics?.reactions || 0}</span>
-                                        <span>💬 {post.engagement_metrics?.comments || 0}</span>
-                                        <span>🔄 {post.engagement_metrics?.reposts || 0}</span>
-                                        {post.share_url && (
-                                          <a
-                                            href={post.share_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="text-purple-400 hover:text-purple-300 underline"
-                                          >
-                                            View on LinkedIn →
-                                          </a>
-                                        )}
-                                        {post.status === 'discovered' && (
-                                          <button
-                                            onClick={async (e) => {
-                                              e.stopPropagation();
-                                              try {
-                                                const response = await fetch('/api/linkedin-commenting/generate-comment-ui', {
-                                                  method: 'POST',
-                                                  headers: { 'Content-Type': 'application/json' },
-                                                  body: JSON.stringify({ post_id: post.id })
-                                                });
-                                                const result = await response.json();
-                                                if (result.success) {
-                                                  alert('✅ Comment generated! Refresh to see it.');
-                                                  // Refresh posts
-                                                  fetch(`/api/linkedin-commenting/get-discovered-posts?monitor_id=${campaign.id}&limit=50`)
-                                                    .then(res => res.json())
-                                                    .then(posts => {
-                                                      setCampaignPosts(prev => ({ ...prev, [campaign.id]: posts }));
-                                                    });
-                                                } else if (result.skipped) {
-                                                  alert(`⚠️ Post skipped: ${result.reason}`);
-                                                } else {
-                                                  alert(`❌ Error: ${result.error || 'Unknown error'}`);
-                                                }
-                                              } catch (err) {
-                                                alert('❌ Failed to generate comment');
-                                                console.error(err);
-                                              }
-                                            }}
-                                            className="ml-auto px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs"
-                                          >
-                                            Generate Comment
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="text-sm text-gray-500 italic text-center py-4">
-                                    No posts discovered yet for this profile
-                                  </div>
-                                )
-                              ) : (
-                                <div className="text-sm text-gray-500 italic text-center py-4">
-                                  Loading posts...
-                                </div>
-                              );
-                            })()}
-                            </div>
-                          )}
+                  {/* Stats Overview */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center">
+                          <Target size={16} className="text-white" />
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Quick Tips */}
-              <div className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 rounded-lg border border-blue-700/50 p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Sparkles size={20} className="text-blue-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">How it works</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <div className="text-pink-400 font-medium mb-1">1. Add LinkedIn Profiles</div>
-                        <div className="text-gray-300">Monitor thought leaders in your niche (e.g., sama, andrewng, ylecun). System scrapes 100 posts/day per profile via Unipile API.</div>
+                        <div>
+                          <p className="text-2xl font-bold text-white">{commentingCampaigns.filter(c => c.status === 'active').length}</p>
+                          <p className="text-xs text-gray-400">Active Monitors</p>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-pink-400 font-medium mb-1">2. AI Generates Comments</div>
-                        <div className="text-gray-300">Sam writes human-like comments using your brand voice. Comments sound natural, not robotic.</div>
-                      </div>
-                      <div>
-                        <div className="text-pink-400 font-medium mb-1">3. Review & Post</div>
-                        <div className="text-gray-300">Approve AI comments before posting. Smart timing prevents spam detection (1 comment every 73 minutes).</div>
-                      </div>
+                      <p className="text-xs text-gray-500">{commentingCampaigns.length} total</p>
                     </div>
+
+                    <div
+                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/approve`)}
+                      className="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-amber-500 transition-all"
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center">
+                          <Clock size={16} className="text-white" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-white">{pendingCommentsLoading ? '...' : pendingComments.length}</p>
+                          <p className="text-xs text-gray-400 group-hover:text-amber-400 transition-colors">Pending Approval</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500">Awaiting review</p>
+                    </div>
+
+                    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                          <CheckCircle size={16} className="text-white" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-white">0</p>
+                          <p className="text-xs text-gray-400">Posted Today</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500">0 / 30 daily limit</p>
+                    </div>
+
+                    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                          <BarChart3 size={16} className="text-white" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-white">--%</p>
+                          <p className="text-xs text-gray-400">Engagement Rate</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500">Average</p>
+                    </div>
+                  </div>
+
+                  {/* Main Navigation Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+                    {/* Card 1: Personal Profiles */}
+                    <div
+                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/profiles`)}
+                      className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-pink-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-pink-600/20 rounded-xl flex items-center justify-center group-hover:bg-pink-600/30 transition-colors">
+                          <Target size={24} className="text-pink-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-400">
+                            {commentingCampaigns.filter(c => c.status === 'active' && c.hashtags?.some(h => h.startsWith('PROFILE:'))).length} Active
+                          </span>
+                          <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-pink-400 transition-colors">Personal Profiles</h3>
+                      <p className="text-gray-400 text-sm mb-4">
+                        Monitor and engage with specific LinkedIn user profiles. Build relationships with influencers and leads.
+                      </p>
+                      <button className="text-pink-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                        View Campaigns <ArrowRight size={16} />
+                      </button>
+                    </div>
+
+                    {/* Card 2: Company Pages */}
+                    <div
+                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/companies`)}
+                      className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-blue-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
+                          <Building2 size={24} className="text-blue-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-400">
+                            {commentingCampaigns.filter(c => c.status === 'active' && c.hashtags?.some(h => h.startsWith('COMPANY:'))).length} Active
+                          </span>
+                          <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Company Pages</h3>
+                      <p className="text-gray-400 text-sm mb-4">
+                        Track competitors or partners. Engage with company updates to increase brand visibility.
+                      </p>
+                      <button className="text-blue-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                        View Companies <ArrowRight size={16} />
+                      </button>
+                    </div>
+
+                    {/* Card 3: Hashtags */}
+                    <div
+                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/hashtags`)}
+                      className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center group-hover:bg-purple-600/30 transition-colors">
+                          <Hash size={24} className="text-purple-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-400">
+                            {commentingCampaigns.filter(c => c.status === 'active' && (c.keywords?.length > 0 || c.hashtags?.some(h => h.startsWith('#') || h.startsWith('HASHTAG:')))).length} Active
+                          </span>
+                          <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Hashtags</h3>
+                      <p className="text-gray-400 text-sm mb-4">
+                        Discover posts by topic or keyword (e.g. #SaaS, #AI). Find trends and join relevant conversations.
+                      </p>
+                      <button className="text-purple-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                        View Hashtags <ArrowRight size={16} />
+                      </button>
+                    </div>
+
+                    {/* Card 4: My Profile */}
+                    <div
+                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/my-posts`)}
+                      className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-green-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-green-600/20 rounded-xl flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
+                          <UserCircle2 size={24} className="text-green-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-400">
+                            View
+                          </span>
+                          <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">My Profile</h3>
+                      <p className="text-gray-400 text-sm mb-4">
+                        Auto-reply to comments on your own posts. Engage with your audience and capture leads.
+                      </p>
+                      <button className="text-green-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                        Manage My Posts <ArrowRight size={16} />
+                      </button>
+                    </div>
+
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-          )
-        ) : activeMenuItem === 'analytics' ? (
-          <Analytics workspaceId={currentWorkspace?.id || null} />
-        ) : activeMenuItem === 'audit' ? (
-          <AuditTrail />
-        ) : activeMenuItem === 'settings' ? (
-          <div className="min-h-screen">
-            <div className="w-full">
-            {/* Main Settings Tiles */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                
-                {/* LinkedIn Integration */}
-                <SimpleTileCard
-                  title="LinkedIn Settings"
-                  description="Configure LinkedIn account connections, automation settings, and personalization preferences for outreach campaigns."
-                  icon={LinkedinIcon}
-                  color="blue"
-                  onClick={() => setShowLinkedInSettingsModal(true)}
-                />
+            )
+          ) : activeMenuItem === 'analytics' ? (
+            <Analytics workspaceId={currentWorkspace?.id || null} />
+          ) : activeMenuItem === 'audit' ? (
+            <AuditTrail />
+          ) : activeMenuItem === 'settings' ? (
+            <div className="min-h-screen">
+              <div className="w-full">
+                {/* Main Settings Tiles */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                {/* Email Integration */}
-                <SimpleTileCard
-                  title="Email Integration"
-                  description="Connect Google, Microsoft, or SMTP email accounts for automated campaigns and prospect outreach."
-                  icon={Mail}
-                  color="green"
-                  onClick={() => setShowEmailIntegrationModal(true)}
-                />
+                  {/* LinkedIn Integration */}
+                  <SimpleTileCard
+                    title="LinkedIn Settings"
+                    description="Configure LinkedIn account connections, automation settings, and personalization preferences for outreach campaigns."
+                    icon={LinkedinIcon}
+                    color="blue"
+                    onClick={() => setShowLinkedInSettingsModal(true)}
+                  />
 
-                {/* ReachInbox Integration */}
-                <SimpleTileCard
-                  title="ReachInbox"
-                  description="Configure ReachInbox API integration for email campaigns. Push leads to existing ReachInbox campaigns."
-                  icon={Send}
-                  color="pink"
-                  onClick={() => setShowReachInboxModal(true)}
-                />
+                  {/* Email Integration */}
+                  <SimpleTileCard
+                    title="Email Integration"
+                    description="Connect Google, Microsoft, or SMTP email accounts for automated campaigns and prospect outreach."
+                    icon={Mail}
+                    color="green"
+                    onClick={() => setShowEmailIntegrationModal(true)}
+                  />
 
-                {/* User Profile & Country */}
-                <SimpleTileCard
-                  title="User Profile"
-                  description="Manage your account details, profile country for proxy assignment, and personal preferences."
-                  icon={User}
-                  color="blue"
-                  onClick={() => setShowUserProfileModal(true)}
-                />
-                
-                {/* BrightData Proxy Country (Advanced) */}
-                <SimpleTileCard
-                  title="LinkedIn Proxy Management"
-                  description="Advanced proxy configuration for LinkedIn accounts. Manually override automatic proxy assignment per account."
-                  icon={Globe}
-                  color="purple"
-                  onClick={() => setShowProxyCountryModal(true)}
-                />
+                  {/* ReachInbox Integration */}
+                  <SimpleTileCard
+                    title="ReachInbox"
+                    description="Configure ReachInbox API integration for email campaigns. Push leads to existing ReachInbox campaigns."
+                    icon={Send}
+                    color="pink"
+                    onClick={() => setShowReachInboxModal(true)}
+                  />
 
-                {/* Blacklists */}
-                <SimpleTileCard
-                  title="Blacklists"
-                  description="Block companies, people, or profiles from outreach. Upload CSV or manage individual entries."
-                  icon={Ban}
-                  color="red"
-                  onClick={() => setShowBlacklistModal(true)}
-                />
+                  {/* User Profile & Country */}
+                  <SimpleTileCard
+                    title="User Profile"
+                    description="Manage your account details, profile country for proxy assignment, and personal preferences."
+                    icon={User}
+                    color="blue"
+                    onClick={() => setShowUserProfileModal(true)}
+                  />
 
-                {/* Calendar Integration */}
-                <SimpleTileCard
-                  title="Calendar"
-                  description="Connect Google Calendar, Outlook, Calendly, or Cal.com for meeting scheduling and availability."
-                  icon={Calendar}
-                  color="blue"
-                  onClick={() => setShowCalendarIntegrationModal(true)}
-                />
+                  {/* BrightData Proxy Country (Advanced) */}
+                  <SimpleTileCard
+                    title="LinkedIn Proxy Management"
+                    description="Advanced proxy configuration for LinkedIn accounts. Manually override automatic proxy assignment per account."
+                    icon={Globe}
+                    color="purple"
+                    onClick={() => setShowProxyCountryModal(true)}
+                  />
 
+                  {/* Blacklists */}
+                  <SimpleTileCard
+                    title="Blacklists"
+                    description="Block companies, people, or profiles from outreach. Upload CSV or manage individual entries."
+                    icon={Ban}
+                    color="red"
+                    onClick={() => setShowBlacklistModal(true)}
+                  />
+
+                  {/* Calendar Integration */}
+                  <SimpleTileCard
+                    title="Calendar"
+                    description="Connect Google Calendar, Outlook, Calendly, or Cal.com for meeting scheduling and availability."
+                    icon={Calendar}
+                    color="blue"
+                    onClick={() => setShowCalendarIntegrationModal(true)}
+                  />
+
+                </div>
               </div>
             </div>
-          </div>
-        ) : activeMenuItem === 'workspace' ? (
-          <div className="min-h-screen">
-            <div className="w-full">
-            {/* Main Workspace Tiles */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                
-                {/* Team Management */}
-                <SimpleTileCard
-                  title="Team Management"
-                  description="Invite team members, manage roles and permissions, and configure workspace access for your organization."
-                  icon={Users}
-                  color="blue"
-                  onClick={() => {
-                    console.log('Team Management clicked, workspaces:', workspaces.length);
-                    console.log('Setting showTeamManagementModal to true');
-                    setShowTeamManagementModal(true);
-                  }}
-                />
+          ) : activeMenuItem === 'workspace' ? (
+            <div className="min-h-screen">
+              <div className="w-full">
+                {/* Main Workspace Tiles */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                {/* Manage Subscription - Only for credit card customers */}
-                {(() => {
-                  // Find target workspace
-                  const targetWorkspace = isSuperAdmin
-                    ? workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0]
-                    : workspaces.find(ws =>
+                  {/* Team Management */}
+                  <SimpleTileCard
+                    title="Team Management"
+                    description="Invite team members, manage roles and permissions, and configure workspace access for your organization."
+                    icon={Users}
+                    color="blue"
+                    onClick={() => {
+                      console.log('Team Management clicked, workspaces:', workspaces.length);
+                      console.log('Setting showTeamManagementModal to true');
+                      setShowTeamManagementModal(true);
+                    }}
+                  />
+
+                  {/* Manage Subscription - Only for credit card customers */}
+                  {(() => {
+                    // Find target workspace
+                    const targetWorkspace = isSuperAdmin
+                      ? workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0]
+                      : workspaces.find(ws =>
                         ws.owner_id === user?.id ||
                         ws.workspace_members?.some((member: any) => member.user_id === user?.id)
                       );
 
-                  // Check if direct billing (3cubed customer)
-                  const isDirectBilling = targetWorkspace?.organization_id && targetWorkspace?.slug?.includes('3cubed');
+                    // Check if direct billing (3cubed customer)
+                    const isDirectBilling = targetWorkspace?.organization_id && targetWorkspace?.slug?.includes('3cubed');
 
-                  // Only show for credit card customers
-                  if (isDirectBilling) {
-                    return null;
-                  }
+                    // Only show for credit card customers
+                    if (isDirectBilling) {
+                      return null;
+                    }
 
-                  return (
-                    <SimpleTileCard
-                      title="Manage Subscription"
-                      description="View your subscription details, update payment methods, and access billing history. Manage your plan and invoices."
-                      icon={CreditCard}
-                      color="green"
-                      onClick={() => setShowManageSubscriptionModal(true)}
-                    />
-                  );
-                })()}
+                    return (
+                      <SimpleTileCard
+                        title="Manage Subscription"
+                        description="View your subscription details, update payment methods, and access billing history. Manage your plan and invoices."
+                        icon={CreditCard}
+                        color="green"
+                        onClick={() => setShowManageSubscriptionModal(true)}
+                      />
+                    );
+                  })()}
 
-                {/* Workspace Settings */}
-                <SimpleTileCard
-                  title="Workspace Settings"
-                  description="Configure workspace name, branding, and general settings. Customize your workspace preferences and appearance."
-                  icon={Settings}
-                  color="blue"
-                  onClick={() => setShowWorkspaceSettingsModal(true)}
-                />
+                  {/* Workspace Settings */}
+                  <SimpleTileCard
+                    title="Workspace Settings"
+                    description="Configure workspace name, branding, and general settings. Customize your workspace preferences and appearance."
+                    icon={Settings}
+                    color="blue"
+                    onClick={() => setShowWorkspaceSettingsModal(true)}
+                  />
 
-                {/* CRM Integration */}
-                <SimpleTileCard
-                  title="CRM Integration"
-                  description="Connect Salesforce, HubSpot, Pipedrive, and other CRMs. Configure field mapping and sync settings for seamless data flow."
-                  icon={Database}
-                  color="cyan"
-                  onClick={() => setShowCrmIntegrationModal(true)}
-                />
+                  {/* CRM Integration */}
+                  <SimpleTileCard
+                    title="CRM Integration"
+                    description="Connect Salesforce, HubSpot, Pipedrive, and other CRMs. Configure field mapping and sync settings for seamless data flow."
+                    icon={Database}
+                    color="cyan"
+                    onClick={() => setShowCrmIntegrationModal(true)}
+                  />
 
-                {/* Integrations & Tools */}
-                <SimpleTileCard
-                  title="Integrations & Tools"
-                  description="Manage LinkedIn Premium connections, email providers, and third-party tool integrations for your outreach stack."
-                  icon={Zap}
-                  color="yellow"
-                  onClick={() => setShowIntegrationsToolsModal(true)}
-                />
+                  {/* Integrations & Tools */}
+                  <SimpleTileCard
+                    title="Integrations & Tools"
+                    description="Manage LinkedIn Premium connections, email providers, and third-party tool integrations for your outreach stack."
+                    icon={Zap}
+                    color="yellow"
+                    onClick={() => setShowIntegrationsToolsModal(true)}
+                  />
 
-                {/* Security & Compliance */}
-                <SimpleTileCard
-                  title="Security & Compliance"
-                  description="Configure security settings, compliance requirements, audit logs, and data protection policies for your workspace."
-                  icon={Shield}
-                  color="pink"
-                  onClick={() => setShowSecurityComplianceModal(true)}
-                />
+                  {/* Security & Compliance */}
+                  <SimpleTileCard
+                    title="Security & Compliance"
+                    description="Configure security settings, compliance requirements, audit logs, and data protection policies for your workspace."
+                    icon={Shield}
+                    color="pink"
+                    onClick={() => setShowSecurityComplianceModal(true)}
+                  />
 
-                {/* Analytics & Reporting */}
-                <SimpleTileCard
-                  title="Analytics & Reporting"
-                  description="Access workspace-level analytics, performance metrics, and custom reporting features for team productivity insights."
-                  icon={BarChart3}
-                  color="indigo"
-                  onClick={() => setShowAnalyticsReportingModal(true)}
-                />
+                  {/* Analytics & Reporting */}
+                  <SimpleTileCard
+                    title="Analytics & Reporting"
+                    description="Access workspace-level analytics, performance metrics, and custom reporting features for team productivity insights."
+                    icon={BarChart3}
+                    color="indigo"
+                    onClick={() => setShowAnalyticsReportingModal(true)}
+                  />
+
+                </div>
 
               </div>
-
             </div>
-          </div>
-        ) : activeMenuItem === 'admin' ? (
-          /* WORKSPACE ADMIN PAGE */
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold text-white flex items-center">
-                  <Shield className="mr-3 text-primary" size={36} />
-                  Workspace Administration
-                </h1>
-                <button 
-                  onClick={() => setActiveMenuItem('chat')}
-                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
-                >
-                  ← Back to Chat
-                </button>
-              </div>
+          ) : activeMenuItem === 'admin' ? (
+            /* WORKSPACE ADMIN PAGE */
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                  <h1 className="text-3xl font-bold text-white flex items-center">
+                    <Shield className="mr-3 text-primary" size={36} />
+                    Workspace Administration
+                  </h1>
+                  <button
+                    onClick={() => setActiveMenuItem('chat')}
+                    className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                  >
+                    ← Back to Chat
+                  </button>
+                </div>
 
-              {/* Workspace Management */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">My Workspace</h2>
-                
-                {workspacesLoading ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-400">Loading workspace information...</div>
-                  </div>
-                ) : workspaces.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-700 rounded-lg">
-                    <Shield className="mx-auto mb-4 text-gray-600" size={48} />
-                    <p className="text-gray-400">No workspace access available</p>
-                    <p className="text-gray-500 text-sm">Contact your administrator for workspace access</p>
-                  </div>
-                ) : (
+                {/* Workspace Management */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">My Workspace</h2>
+
+                  {workspacesLoading ? (
+                    <div className="text-center py-8">
+                      <div className="text-gray-400">Loading workspace information...</div>
+                    </div>
+                  ) : workspaces.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-700 rounded-lg">
+                      <Shield className="mx-auto mb-4 text-gray-600" size={48} />
+                      <p className="text-gray-400">No workspace access available</p>
+                      <p className="text-gray-500 text-sm">Contact your administrator for workspace access</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {workspaces.filter(workspace => workspace.owner_id === user?.id ||
+                        workspace.workspace_members?.some((member: any) => member.user_id === user?.id && member.role === 'admin')).map((workspace) => (
+                          <div key={workspace.id} className="bg-gray-700 rounded-lg p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <h3 className="text-white font-semibold text-lg">{workspace.name}</h3>
+                                  {workspace.slug && (
+                                    <span className={`text-xs px-2 py-1 rounded ${workspace.slug === 'innovareai'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-green-600 text-white'
+                                      }`}>
+                                      {workspace.slug}
+                                    </span>
+                                  )}
+                                  {workspace.owner_id === user?.id && (
+                                    <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded">Owner</span>
+                                  )}
+                                </div>
+                                <p className="text-gray-400 text-sm">
+                                  Created {new Date(workspace.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-gray-400">
+                                  {workspace.workspace_members?.length || 0} members
+                                </span>
+                                {/* Only super admins can invite members */}
+                                {isSuperAdmin && (
+                                  <button
+                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-1 transition-colors"
+                                    onClick={() => {
+                                      setInviteWorkspaceId(workspace.id);
+                                      setShowInviteUser(true);
+                                    }}
+                                  >
+                                    <UserPlus size={16} />
+                                    <span>Invite Member</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Workspace Members List */}
+                            {workspace.workspace_members && workspace.workspace_members.length > 0 ? (
+                              <div className="mt-4">
+                                <h4 className="text-white font-medium mb-3">Team Members</h4>
+                                <div className="space-y-2">
+                                  {workspace.workspace_members.map((member: any, idx: number) => (
+                                    <div key={idx} className="flex items-center justify-between bg-gray-600 px-4 py-2 rounded-lg">
+                                      <div className="flex items-center space-x-3">
+                                        <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                                          <span className="text-white text-sm font-medium">
+                                            {member.users?.email ? member.users.email.charAt(0).toUpperCase() : 'U'}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <p className="text-white font-medium">
+                                            {member.users?.email || `User ${member.user_id.slice(0, 8)}`}
+                                          </p>
+                                          <p className="text-gray-400 text-sm">
+                                            Joined {new Date(member.joined_at).toLocaleDateString()}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <span className={`text-xs px-2 py-1 rounded ${member.role === 'owner' ? 'bg-purple-600 text-white' :
+                                            member.role === 'admin' ? 'bg-blue-600 text-white' :
+                                              'bg-gray-500 text-white'
+                                          }`}>
+                                          {member.role}
+                                        </span>
+                                        {workspace.owner_id === user?.id && member.role !== 'owner' && (
+                                          <button
+                                            className="text-red-400 hover:text-red-300 text-sm"
+                                            onClick={() => {
+                                              if (confirm('Remove this member from the workspace?')) {
+                                                // TODO: Implement member removal
+                                                showNotification('error', 'Member removal functionality will be implemented');
+                                              }
+                                            }}
+                                          >
+                                            Remove
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mt-4 text-gray-500 text-sm bg-gray-600 rounded-lg p-4 text-center">
+                                No team members yet - invite your first coworker!
+                              </div>
+                            )}
+
+                            {/* Workspace Settings */}
+                            {workspace.owner_id === user?.id && (
+                              <div className="mt-6 pt-4 border-t border-gray-600">
+                                <h4 className="text-white font-medium mb-3">Workspace Settings</h4>
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-gray-300">Workspace Name</p>
+                                    <p className="text-gray-400 text-sm">Change the display name of this workspace</p>
+                                  </div>
+                                  <button className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm transition-colors">
+                                    Edit Name
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : activeMenuItem === 'profile' ? (
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                  <h1 className="text-3xl font-bold text-white flex items-center">
+                    <User className="mr-3" size={36} />
+                    User Profile
+                  </h1>
+                  <button
+                    onClick={() => setActiveMenuItem('chat')}
+                    className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                  >
+                    ← Back to Chat
+                  </button>
+                </div>
+
+                {/* User Profile Section */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">Profile Information</h2>
                   <div className="space-y-4">
-                    {workspaces.filter(workspace => workspace.owner_id === user?.id || 
-                      workspace.workspace_members?.some((member: any) => member.user_id === user?.id && member.role === 'admin')).map((workspace) => (
-                      <div key={workspace.id} className="bg-gray-700 rounded-lg p-6">
-                        <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={user?.email || ''}
+                        disabled
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
+                      />
+                      <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>
+                        <input
+                          type="text"
+                          value={user?.user_metadata?.first_name || ''}
+                          readOnly
+                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                          placeholder="Enter first name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
+                        <input
+                          type="text"
+                          value={user?.user_metadata?.last_name || ''}
+                          readOnly
+                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                          placeholder="Enter last name"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Account Created</label>
+                      <input
+                        type="text"
+                        value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                        disabled
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
+                      />
+                    </div>
+
+                    {/* Profile Country for Proxy Configuration */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">🌍 Profile Country</label>
+                      <select
+                        value={profileCountry}
+                        onChange={async (e) => {
+                          const newCountry = e.target.value;
+                          setProfileCountry(newCountry);
+                          setProfileCountryLoading(true);
+
+                          try {
+                            const response = await fetch('/api/profile/update-country', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ country: newCountry })
+                            });
+
+                            if (response.ok) {
+                              showNotification('success', 'Profile country updated! This will be used for LinkedIn proxy assignment.');
+                            } else {
+                              const data = await response.json();
+                              showNotification('error', data.error || 'Failed to update country');
+                            }
+                          } catch (error) {
+                            showNotification('error', 'Network error updating country');
+                          } finally {
+                            setProfileCountryLoading(false);
+                          }
+                        }}
+                        disabled={profileCountryLoading}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="">Select your country...</option>
+                        <option value="us">🇺🇸 United States</option>
+                        <option value="gb">🇬🇧 United Kingdom</option>
+                        <option value="ca">🇨🇦 Canada</option>
+                        <option value="de">🇩🇪 Germany</option>
+                        <option value="fr">🇫🇷 France</option>
+                        <option value="au">🇦🇺 Australia</option>
+                        <option value="nl">🇳🇱 Netherlands</option>
+                        <option value="br">🇧🇷 Brazil</option>
+                        <option value="es">🇪🇸 Spain</option>
+                        <option value="it">🇮🇹 Italy</option>
+                        <option value="jp">🇯🇵 Japan</option>
+                        <option value="sg">🇸🇬 Singapore</option>
+                        <option value="in">🇮🇳 India</option>
+                        <option value="at">🇦🇹 Austria</option>
+                        <option value="ch">🇨🇭 Switzerland</option>
+                        <option value="ar">🇦🇷 Argentina</option>
+                        <option value="be">🇧🇪 Belgium</option>
+                        <option value="bg">🇧🇬 Bulgaria</option>
+                        <option value="hr">🇭🇷 Croatia</option>
+                        <option value="cy">🇨🇾 Cyprus</option>
+                        <option value="cz">🇨🇿 Czech Republic</option>
+                        <option value="dk">🇩🇰 Denmark</option>
+                        <option value="hk">🇭🇰 Hong Kong</option>
+                        <option value="mx">🇲🇽 Mexico</option>
+                        <option value="no">🇳🇴 Norway</option>
+                        <option value="pl">🇵🇱 Poland</option>
+                        <option value="pt">🇵🇹 Portugal</option>
+                        <option value="ro">🇷🇴 Romania</option>
+                        <option value="za">🇿🇦 South Africa</option>
+                        <option value="se">🇸🇪 Sweden</option>
+                        <option value="tr">🇹🇷 Turkey</option>
+                        <option value="ua">🇺🇦 Ukraine</option>
+                        <option value="ae">🇦🇪 UAE</option>
+                      </select>
+                      <p className="text-gray-400 text-xs mt-1">
+                        {profileCountryLoading ? '⏳ Updating...' : '📍 This country will be used for LinkedIn proxy assignment'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+
+                {/* App Settings */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">App Settings</h2>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-white font-medium">Clear Chat History</h3>
+                        <p className="text-gray-400 text-sm">Remove all conversation history from this device</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (confirm('Clear all conversation history? This cannot be undone.')) {
+                            await resetConversation();
+                            setActiveMenuItem('chat');
+                            showNotification('success', 'Chat history cleared successfully');
+                          }
+                        }}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Clear History
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-white font-medium">Change Password</h3>
+                        <p className="text-gray-400 text-sm">Update your account password</p>
+                      </div>
+                      <button
+                        onClick={() => setShowPasswordChange(true)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Change Password
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Account Actions */}
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">Account Actions</h2>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-white font-medium">Sign Out</h3>
+                        <p className="text-gray-400 text-sm">Sign out of your SAM AI account</p>
+                      </div>
+                      <button
+                        onClick={handleLogout}
+                        className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <LogOut size={16} />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : activeMenuItem === 'superadmin' ? (
+            /* SUPER ADMIN PAGE */
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                  <h1 className="text-3xl font-bold text-white flex items-center">
+                    <Shield className="mr-3 text-purple-500" size={36} />
+                    Super Admin
+                  </h1>
+                  <button
+                    onClick={() => setActiveMenuItem('chat')}
+                    className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                  >
+                    ← Back to Chat
+                  </button>
+                </div>
+
+                {/* Super Admin Controls */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">System Overview</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <div className="text-3xl font-bold text-white">{workspaces.length}</div>
+                      <div className="text-gray-400 text-sm">Total Workspaces</div>
+                    </div>
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <div className="text-3xl font-bold text-green-400">Active</div>
+                      <div className="text-gray-400 text-sm">System Status</div>
+                    </div>
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <div className="text-3xl font-bold text-purple-400">v2.0</div>
+                      <div className="text-gray-400 text-sm">Platform Version</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* All Workspaces */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">All Workspaces</h2>
+                  {workspacesLoading ? (
+                    <div className="text-center py-8">
+                      <div className="text-gray-400">Loading workspaces...</div>
+                    </div>
+                  ) : workspaces.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-700 rounded-lg">
+                      <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
+                      <p className="text-gray-400">No workspaces found</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {workspaces.map((workspace) => (
+                        <div key={workspace.id} className="bg-gray-700 rounded-lg p-4 flex items-center justify-between">
                           <div>
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h3 className="text-white font-semibold text-lg">{workspace.name}</h3>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="text-white font-medium">{workspace.name}</h3>
                               {workspace.slug && (
-                                <span className={`text-xs px-2 py-1 rounded ${
-                                  workspace.slug === 'innovareai' 
-                                    ? 'bg-blue-600 text-white' 
+                                <span className={`text-xs px-2 py-1 rounded ${workspace.slug === 'innovareai'
+                                    ? 'bg-blue-600 text-white'
                                     : 'bg-green-600 text-white'
-                                }`}>
+                                  }`}>
                                   {workspace.slug}
                                 </span>
                               )}
-                              {workspace.owner_id === user?.id && (
-                                <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded">Owner</span>
-                              )}
                             </div>
                             <p className="text-gray-400 text-sm">
-                              Created {new Date(workspace.created_at).toLocaleDateString()}
+                              {workspace.workspace_members?.length || 0} {(workspace.workspace_members?.length || 0) === 1 ? 'member' : 'members'} · Created {new Date(workspace.created_at).toLocaleDateString()}
                             </p>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-400">
-                              {workspace.workspace_members?.length || 0} members
-                            </span>
-                            {/* Only super admins can invite members */}
-                            {isSuperAdmin && (
-                              <button
-                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-1 transition-colors"
-                                onClick={() => {
-                                  setInviteWorkspaceId(workspace.id);
-                                  setShowInviteUser(true);
-                                }}
-                              >
-                                <UserPlus size={16} />
-                                <span>Invite Member</span>
-                              </button>
-                            )}
+                          <div className="text-gray-400 text-sm">
+                            ID: {workspace.id.slice(0, 8)}...
                           </div>
                         </div>
-                        
-                        {/* Workspace Members List */}
-                        {workspace.workspace_members && workspace.workspace_members.length > 0 ? (
-                          <div className="mt-4">
-                            <h4 className="text-white font-medium mb-3">Team Members</h4>
-                            <div className="space-y-2">
-                              {workspace.workspace_members.map((member: any, idx: number) => (
-                                <div key={idx} className="flex items-center justify-between bg-gray-600 px-4 py-2 rounded-lg">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                                      <span className="text-white text-sm font-medium">
-                                        {member.users?.email ? member.users.email.charAt(0).toUpperCase() : 'U'}
-                                      </span>
-                                    </div>
-                                    <div>
-                                      <p className="text-white font-medium">
-                                        {member.users?.email || `User ${member.user_id.slice(0, 8)}`}
-                                      </p>
-                                      <p className="text-gray-400 text-sm">
-                                        Joined {new Date(member.joined_at).toLocaleDateString()}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <span className={`text-xs px-2 py-1 rounded ${
-                                      member.role === 'owner' ? 'bg-purple-600 text-white' :
-                                      member.role === 'admin' ? 'bg-blue-600 text-white' :
-                                      'bg-gray-500 text-white'
-                                    }`}>
-                                      {member.role}
-                                    </span>
-                                    {workspace.owner_id === user?.id && member.role !== 'owner' && (
-                                      <button
-                                        className="text-red-400 hover:text-red-300 text-sm"
-                                        onClick={() => {
-                                          if (confirm('Remove this member from the workspace?')) {
-                                            // TODO: Implement member removal
-                                            showNotification('error', 'Member removal functionality will be implemented');
-                                          }
-                                        }}
-                                      >
-                                        Remove
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-4 text-gray-500 text-sm bg-gray-600 rounded-lg p-4 text-center">
-                            No team members yet - invite your first coworker!
-                          </div>
-                        )}
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-                        {/* Workspace Settings */}
-                        {workspace.owner_id === user?.id && (
-                          <div className="mt-6 pt-4 border-t border-gray-600">
-                            <h4 className="text-white font-medium mb-3">Workspace Settings</h4>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-gray-300">Workspace Name</p>
-                                <p className="text-gray-400 text-sm">Change the display name of this workspace</p>
-                              </div>
-                              <button className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm transition-colors">
-                                Edit Name
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                {/* Admin Actions - Only visible to super admins */}
+                {isSuperAdmin && (
+                  <div className="bg-gray-800 rounded-lg p-6">
+                    <h2 className="text-2xl font-semibold text-white mb-6">Admin Actions</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <button
+                        onClick={() => {
+                          setShowCreateWorkspace(true);
+                        }}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <Plus size={20} />
+                        <span>Create Workspace</span>
+                      </button>
+                      <button
+                        onClick={() => setShowInviteUser(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <UserPlus size={20} />
+                        <span>Invite User</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-          </div>
-        ) : activeMenuItem === 'profile' ? (
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold text-white flex items-center">
-                  <User className="mr-3" size={36} />
-                  User Profile
-                </h1>
-                <button 
-                  onClick={() => setActiveMenuItem('chat')}
-                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
-                >
-                  ← Back to Chat
-                </button>
+          ) : showStarterScreen ? (
+            /* STARTER SCREEN */
+            <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
+              <div className="mb-12">
+                <img
+                  src="/SAM.jpg"
+                  alt="Sam AI"
+                  className="w-48 h-48 rounded-full object-cover shadow-lg"
+                  style={{ objectPosition: 'center 30%' }}
+                />
               </div>
 
-              {/* User Profile Section */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">Profile Information</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={user?.email || ''}
-                      disabled
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
-                    />
-                    <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>
-                      <input
-                        type="text"
-                        value={user?.user_metadata?.first_name || ''}
-                        readOnly
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                        placeholder="Enter first name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
-                      <input
-                        type="text"
-                        value={user?.user_metadata?.last_name || ''}
-                        readOnly
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                        placeholder="Enter last name"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Account Created</label>
-                    <input
-                      type="text"
-                      value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-                      disabled
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
-                    />
-                  </div>
-                  
-                  {/* Profile Country for Proxy Configuration */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">🌍 Profile Country</label>
-                    <select
-                      value={profileCountry}
-                      onChange={async (e) => {
-                        const newCountry = e.target.value;
-                        setProfileCountry(newCountry);
-                        setProfileCountryLoading(true);
-                        
-                        try {
-                          const response = await fetch('/api/profile/update-country', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ country: newCountry })
-                          });
-                          
-                          if (response.ok) {
-                            showNotification('success', 'Profile country updated! This will be used for LinkedIn proxy assignment.');
-                          } else {
-                            const data = await response.json();
-                            showNotification('error', data.error || 'Failed to update country');
-                          }
-                        } catch (error) {
-                          showNotification('error', 'Network error updating country');
-                        } finally {
-                          setProfileCountryLoading(false);
-                        }
-                      }}
-                      disabled={profileCountryLoading}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="">Select your country...</option>
-                      <option value="us">🇺🇸 United States</option>
-                      <option value="gb">🇬🇧 United Kingdom</option>
-                      <option value="ca">🇨🇦 Canada</option>
-                      <option value="de">🇩🇪 Germany</option>
-                      <option value="fr">🇫🇷 France</option>
-                      <option value="au">🇦🇺 Australia</option>
-                      <option value="nl">🇳🇱 Netherlands</option>
-                      <option value="br">🇧🇷 Brazil</option>
-                      <option value="es">🇪🇸 Spain</option>
-                      <option value="it">🇮🇹 Italy</option>
-                      <option value="jp">🇯🇵 Japan</option>
-                      <option value="sg">🇸🇬 Singapore</option>
-                      <option value="in">🇮🇳 India</option>
-                      <option value="at">🇦🇹 Austria</option>
-                      <option value="ch">🇨🇭 Switzerland</option>
-                      <option value="ar">🇦🇷 Argentina</option>
-                      <option value="be">🇧🇪 Belgium</option>
-                      <option value="bg">🇧🇬 Bulgaria</option>
-                      <option value="hr">🇭🇷 Croatia</option>
-                      <option value="cy">🇨🇾 Cyprus</option>
-                      <option value="cz">🇨🇿 Czech Republic</option>
-                      <option value="dk">🇩🇰 Denmark</option>
-                      <option value="hk">🇭🇰 Hong Kong</option>
-                      <option value="mx">🇲🇽 Mexico</option>
-                      <option value="no">🇳🇴 Norway</option>
-                      <option value="pl">🇵🇱 Poland</option>
-                      <option value="pt">🇵🇹 Portugal</option>
-                      <option value="ro">🇷🇴 Romania</option>
-                      <option value="za">🇿🇦 South Africa</option>
-                      <option value="se">🇸🇪 Sweden</option>
-                      <option value="tr">🇹🇷 Turkey</option>
-                      <option value="ua">🇺🇦 Ukraine</option>
-                      <option value="ae">🇦🇪 UAE</option>
-                    </select>
-                    <p className="text-gray-400 text-xs mt-1">
-                      {profileCountryLoading ? '⏳ Updating...' : '📍 This country will be used for LinkedIn proxy assignment'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-
-              {/* App Settings */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">App Settings</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white font-medium">Clear Chat History</h3>
-                      <p className="text-gray-400 text-sm">Remove all conversation history from this device</p>
-                    </div>
-                    <button 
-                      onClick={async () => {
-                        if (confirm('Clear all conversation history? This cannot be undone.')) {
-                          await resetConversation();
-                          setActiveMenuItem('chat');
-                          showNotification('success', 'Chat history cleared successfully');
-                        }
-                      }}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-                    >
-                      Clear History
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white font-medium">Change Password</h3>
-                      <p className="text-gray-400 text-sm">Update your account password</p>
-                    </div>
-                    <button 
-                      onClick={() => setShowPasswordChange(true)}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
-                    >
-                      Change Password
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Account Actions */}
-              <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">Account Actions</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white font-medium">Sign Out</h3>
-                      <p className="text-gray-400 text-sm">Sign out of your SAM AI account</p>
-                    </div>
-                    <button 
-                      onClick={handleLogout}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                    >
-                      <LogOut size={16} />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                </div>
+              <div className="text-center">
+                <h2 className="text-white text-2xl font-medium">
+                  What do you want to get done today?
+                </h2>
               </div>
             </div>
-          </div>
-        ) : activeMenuItem === 'superadmin' ? (
-          /* SUPER ADMIN PAGE */
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold text-white flex items-center">
-                  <Shield className="mr-3 text-purple-500" size={36} />
-                  Super Admin
-                </h1>
-                <button
-                  onClick={() => setActiveMenuItem('chat')}
-                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
-                >
-                  ← Back to Chat
-                </button>
-              </div>
-
-              {/* Super Admin Controls */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">System Overview</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="text-3xl font-bold text-white">{workspaces.length}</div>
-                    <div className="text-gray-400 text-sm">Total Workspaces</div>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="text-3xl font-bold text-green-400">Active</div>
-                    <div className="text-gray-400 text-sm">System Status</div>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="text-3xl font-bold text-purple-400">v2.0</div>
-                    <div className="text-gray-400 text-sm">Platform Version</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* All Workspaces */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">All Workspaces</h2>
-                {workspacesLoading ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-400">Loading workspaces...</div>
-                  </div>
-                ) : workspaces.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-700 rounded-lg">
-                    <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
-                    <p className="text-gray-400">No workspaces found</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {workspaces.map((workspace) => (
-                      <div key={workspace.id} className="bg-gray-700 rounded-lg p-4 flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h3 className="text-white font-medium">{workspace.name}</h3>
-                            {workspace.slug && (
-                              <span className={`text-xs px-2 py-1 rounded ${
-                                workspace.slug === 'innovareai'
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-green-600 text-white'
-                              }`}>
-                                {workspace.slug}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-gray-400 text-sm">
-                            {workspace.workspace_members?.length || 0} {(workspace.workspace_members?.length || 0) === 1 ? 'member' : 'members'} · Created {new Date(workspace.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="text-gray-400 text-sm">
-                          ID: {workspace.id.slice(0, 8)}...
+          ) : (
+            /* CHAT MESSAGES */
+            <div
+              ref={messagesContainerRef}
+              className="space-y-4"
+            >
+              {/* Sam is thinking indicator */}
+              {isSending && (
+                <div className="flex justify-start">
+                  <div className="max-w-[70%]">
+                    <div className="flex items-start space-x-3 min-w-0">
+                      <img
+                        src="/SAM.jpg"
+                        alt="Sam AI"
+                        className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
+                        style={{ objectPosition: 'center 30%' }}
+                      />
+                      <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl overflow-hidden min-w-0 flex-1">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                          <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                          <span className="text-sm text-gray-300 ml-2">Sam is thinking...</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Admin Actions - Only visible to super admins */}
-              {isSuperAdmin && (
-                <div className="bg-gray-800 rounded-lg p-6">
-                  <h2 className="text-2xl font-semibold text-white mb-6">Admin Actions</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button
-                      onClick={() => {
-                        setShowCreateWorkspace(true);
-                      }}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
-                    >
-                      <Plus size={20} />
-                      <span>Create Workspace</span>
-                    </button>
-                    <button
-                      onClick={() => setShowInviteUser(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
-                    >
-                      <UserPlus size={20} />
-                      <span>Invite User</span>
-                    </button>
+                    </div>
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-                ) : showStarterScreen ? (
-          /* STARTER SCREEN */
-          <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
-            <div className="mb-12">
-              <img 
-                src="/SAM.jpg" 
-                alt="Sam AI" 
-                className="w-48 h-48 rounded-full object-cover shadow-lg"
-                style={{ objectPosition: 'center 30%' }}
-              />
-            </div>
-            
-            <div className="text-center">
-              <h2 className="text-white text-2xl font-medium">
-                What do you want to get done today?
-              </h2>
-            </div>
-          </div>
-        ) : (
-          /* CHAT MESSAGES */
-          <div
-            ref={messagesContainerRef}
-            className="space-y-4"
-          >
-            {/* Sam is thinking indicator */}
-            {isSending && (
-              <div className="flex justify-start">
-                <div className="max-w-[70%]">
-                  <div className="flex items-start space-x-3 min-w-0">
-                    <img
-                      src="/SAM.jpg"
-                      alt="Sam AI"
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
-                      style={{ objectPosition: 'center 30%' }}
-                    />
-                    <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl overflow-hidden min-w-0 flex-1">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                        <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                        <span className="text-sm text-gray-300 ml-2">Sam is thinking...</span>
-                      </div>
+              {messages.map((message, index) => {
+                // Only animate the last (newest) assistant message
+                const isNewestAssistantMessage = index === messages.length - 1 && message.role === 'assistant' && !isSending;
+
+                return (
+                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
+                      {message.role === 'assistant' && (
+                        <div className="flex items-start space-x-3 min-w-0">
+                          <img
+                            src="/SAM.jpg"
+                            alt="Sam AI"
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
+                            style={{ objectPosition: 'center 30%' }}
+                          />
+                          <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl break-words overflow-hidden min-w-0 flex-1">
+                            <AnimatedMessage
+                              content={message.display_content ?? message.content}
+                              animate={isNewestAssistantMessage}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {message.role === 'user' && (
+                        <>
+                          <div className="flex items-center justify-end space-x-2 mb-1">
+                            <span className="text-gray-400 text-sm font-medium">You</span>
+                          </div>
+                          <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl break-words overflow-hidden">
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.display_content ?? message.content}</p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
-            {messages.map((message, index) => {
-              // Only animate the last (newest) assistant message
-              const isNewestAssistantMessage = index === messages.length - 1 && message.role === 'assistant' && !isSending;
-              
-              return (
-                <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
-                    {message.role === 'assistant' && (
-                      <div className="flex items-start space-x-3 min-w-0">
-                        <img
-                          src="/SAM.jpg"
-                          alt="Sam AI"
-                          className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
-                          style={{ objectPosition: 'center 30%' }}
-                        />
-                        <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl break-words overflow-hidden min-w-0 flex-1">
-                          <AnimatedMessage
-                            content={message.display_content ?? message.content}
-                            animate={isNewestAssistantMessage}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    {message.role === 'user' && (
-                      <>
-                        <div className="flex items-center justify-end space-x-2 mb-1">
-                          <span className="text-gray-400 text-sm font-medium">You</span>
-                        </div>
-                        <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl break-words overflow-hidden">
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.display_content ?? message.content}</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* CHAT INPUT CONTAINER */}
         {activeMenuItem === 'chat' && (
           <div className="fixed bottom-0 left-72 right-0 z-50 px-6 pb-6 pt-8 bg-background/95 backdrop-blur-sm border-t border-border/60">
-            <div 
-              className={`mx-auto max-w-4xl overflow-hidden rounded-3xl border bg-surface-highlight/60 shadow-glow transition-all ${
-                isDraggingFile 
-                  ? 'border-purple-500 border-2 bg-purple-600/20 scale-[1.02]' 
+            <div
+              className={`mx-auto max-w-4xl overflow-hidden rounded-3xl border bg-surface-highlight/60 shadow-glow transition-all ${isDraggingFile
+                  ? 'border-purple-500 border-2 bg-purple-600/20 scale-[1.02]'
                   : 'border-border/60'
-              }`}
+                }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -4390,14 +4144,14 @@ export default function Page() {
                     <span className="text-xs text-purple-400">{uploadProgress}%</span>
                   </div>
                   <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-purple-500 transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
                 </div>
               )}
-              
+
               <div className="flex items-end gap-3 px-5 py-4">
                 <button
                   onClick={() => setShowConversationHistory(true)}
@@ -4406,7 +4160,7 @@ export default function Page() {
                 >
                   <History size={18} />
                 </button>
-                
+
                 {/* CSV Upload Button (Paperclip) */}
                 <input
                   ref={fileInputRef}
@@ -4416,7 +4170,7 @@ export default function Page() {
                   className="hidden"
                   id="csv-file-upload"
                 />
-                <button 
+                <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingCSV}
                   className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground hover:bg-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed sm:flex"
@@ -4424,9 +4178,9 @@ export default function Page() {
                 >
                   <Paperclip size={18} />
                 </button>
-                
+
                 {/* Paste CSV Button */}
-                <button 
+                <button
                   onClick={() => setShowPasteModal(true)}
                   disabled={isUploadingCSV}
                   className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground hover:bg-green-600/20 disabled:opacity-50 disabled:cursor-not-allowed sm:flex"
@@ -4434,7 +4188,7 @@ export default function Page() {
                 >
                   <FileText size={18} />
                 </button>
-                
+
                 <textarea
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
@@ -4457,1137 +4211,1133 @@ export default function Page() {
           </div>
         )}
 
-      {/* Conversation History */}
-      <ConversationHistory
-        isOpen={showConversationHistory}
-        onClose={() => setShowConversationHistory(false)}
-        currentMessages={messages}
-        onLoadConversation={handleLoadConversation}
-      />
+        {/* Conversation History */}
+        <ConversationHistory
+          isOpen={showConversationHistory}
+          onClose={() => setShowConversationHistory(false)}
+          currentMessages={messages}
+          onLoadConversation={handleLoadConversation}
+        />
 
-      {/* Paste CSV Modal */}
-      {showPasteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-3xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold text-white">Paste CSV Data</h3>
-              <button
-                onClick={() => {
-                  setShowPasteModal(false);
-                  setPastedCSV('');
-                }}
-                className="text-gray-400 hover:text-white"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Paste your CSV data below (with headers)
-              </label>
-              <textarea
-                value={pastedCSV}
-                onChange={(e) => setPastedCSV(e.target.value)}
-                placeholder="name,linkedin_url,company,title\nJohn Doe,https://linkedin.com/in/johndoe,TechCorp,CEO\nJane Smith,https://linkedin.com/in/janesmith,InnovateLabs,CTO"
-                className="w-full h-64 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
-              />
-              <p className="text-xs text-gray-400 mt-2">
-                💡 Tip: Copy directly from Excel/Google Sheets or paste CSV text with commas
-              </p>
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={() => {
-                  setShowPasteModal(false);
-                  setPastedCSV('');
-                }}
-                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePasteCSV}
-                disabled={!pastedCSV.trim()}
-                className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-              >
-                Process CSV
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invite User Modal */}
-      {showInviteUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-xl font-semibold text-white mb-4">Invite User to Workspace</h3>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-              <input
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="user@example.com"
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">Select Workspace</label>
-              <select
-                value={inviteWorkspaceId || ''}
-                onChange={(e) => setInviteWorkspaceId(e.target.value)}
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-              >
-                <option value="">Select a workspace...</option>
-                {workspaces.map((workspace) => (
-                  <option key={workspace.id} value={workspace.id}>
-                    {workspace.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">Company</label>
-              <div className="flex items-center space-x-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="InnovareAI"
-                    checked={selectedCompany === 'InnovareAI'}
-                    onChange={(e) => setSelectedCompany(e.target.value as 'InnovareAI')}
-                    className="mr-2"
-                  />
-                  <span className="text-white">InnovareAI</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="3cubedai"
-                    checked={selectedCompany === '3cubedai'}
-                    onChange={(e) => setSelectedCompany(e.target.value as '3cubedai')}
-                    className="mr-2"
-                  />
-                  <span className="text-white">3CubedAI</span>
-                </label>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">
-                Invitation will be sent from: {
-                  selectedCompany === 'All' ? 'sp@innovareai.com or sophia@3cubed.ai' :
-                  selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'
-                }
-              </p>
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={async () => {
-                  if (!inviteEmail.trim() || !inviteWorkspaceId) {
-                    showNotification('error', 'Please fill in all fields');
-                    return;
-                  }
-
-                  try {
-                    const response = await fetch('/api/admin/simple-invite', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${await getAuthToken()}`
-                      },
-                      body: JSON.stringify({
-                        email: inviteEmail,
-                        firstName: inviteEmail.split('@')[0],
-                        lastName: 'User',
-                        workspaceId: inviteWorkspaceId,
-                        company: selectedCompany,
-                        role: 'member'
-                      })
-                    });
-
-                    const data = await response.json();
-
-                    if (response.ok) {
-                      showNotification('success', `Invitation sent successfully to ${inviteEmail} from ${selectedCompany}!`);
-                      setShowInviteUser(false);
-                      setInviteEmail('');
-                      setInviteWorkspaceId(null);
-                    } else {
-                      showNotification('error', `Failed to send invitation: ${data.error}`);
-                    }
-                  } catch (error) {
-                    console.error('Error sending invitation:', error);
-                    showNotification('error', 'Failed to send invitation');
-                  }
-                }}
-                disabled={!inviteEmail.trim() || !inviteWorkspaceId}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-2 rounded-lg transition-colors"
-              >
-                Send Invitation
-              </button>
-              <button
-                onClick={() => {
-                  setShowInviteUser(false);
-                  setInviteEmail('');
-                  setInviteWorkspaceId(null);
-                }}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Workspace Modal */}
-      {showCreateWorkspace && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-xl font-semibold text-white mb-4">Create New Workspace</h3>
-            <input
-              type="text"
-              value={newWorkspaceName}
-              onChange={(e) => setNewWorkspaceName(e.target.value)}
-              placeholder="Workspace name"
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  createWorkspace();
-                }
-              }}
-            />
-            <div className="flex space-x-3">
-              <button
-                onClick={createWorkspace}
-                disabled={!newWorkspaceName.trim()}
-                className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-2 rounded-lg transition-colors"
-              >
-                Create
-              </button>
-              <button
-                onClick={() => {
-                  setShowCreateWorkspace(false);
-                  setNewWorkspaceName('');
-                }}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Password Change Modal */}
-      {showPasswordChange && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold text-white mb-4">Change Password</h2>
-            <p className="text-gray-400 mb-6">Enter your new password below</p>
-            
-            <form onSubmit={handlePasswordChange} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  New Password
-                </label>
-                <input 
-                  type="password" 
-                  value={passwordChangeData.password}
-                  onChange={(e) => setPasswordChangeData(prev => ({ ...prev, password: e.target.value }))}
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter new password (min 6 characters)"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Confirm New Password
-                </label>
-                <input 
-                  type="password" 
-                  value={passwordChangeData.confirmPassword}
-                  onChange={(e) => setPasswordChangeData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Confirm new password"
-                />
-              </div>
-              
-              <div className="flex space-x-4 pt-4">
-                <button 
-                  type="submit"
-                  disabled={passwordChangeData.loading}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
-                >
-                  {passwordChangeData.loading ? 'Updating...' : 'Update Password'}
-                </button>
-                <button 
-                  type="button"
+        {/* Paste CSV Modal */}
+        {showPasteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-3xl">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold text-white">Paste CSV Data</h3>
+                <button
                   onClick={() => {
-                    setShowPasswordChange(false);
-                    setPasswordChangeData({ password: '', confirmPassword: '', loading: false });
+                    setShowPasteModal(false);
+                    setPastedCSV('');
                   }}
-                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Paste your CSV data below (with headers)
+                </label>
+                <textarea
+                  value={pastedCSV}
+                  onChange={(e) => setPastedCSV(e.target.value)}
+                  placeholder="name,linkedin_url,company,title\nJohn Doe,https://linkedin.com/in/johndoe,TechCorp,CEO\nJane Smith,https://linkedin.com/in/janesmith,InnovateLabs,CTO"
+                  className="w-full h-64 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
+                />
+                <p className="text-xs text-gray-400 mt-2">
+                  💡 Tip: Copy directly from Excel/Google Sheets or paste CSV text with commas
+                </p>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowPasteModal(false);
+                    setPastedCSV('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handlePasteCSV}
+                  disabled={!pastedCSV.trim()}
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                >
+                  Process CSV
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Invite User Modal */}
+        {showInviteUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-xl font-semibold text-white mb-4">Invite User to Workspace</h3>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Select Workspace</label>
+                <select
+                  value={inviteWorkspaceId || ''}
+                  onChange={(e) => setInviteWorkspaceId(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                >
+                  <option value="">Select a workspace...</option>
+                  {workspaces.map((workspace) => (
+                    <option key={workspace.id} value={workspace.id}>
+                      {workspace.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Company</label>
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="InnovareAI"
+                      checked={selectedCompany === 'InnovareAI'}
+                      onChange={(e) => setSelectedCompany(e.target.value as 'InnovareAI')}
+                      className="mr-2"
+                    />
+                    <span className="text-white">InnovareAI</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="3cubedai"
+                      checked={selectedCompany === '3cubedai'}
+                      onChange={(e) => setSelectedCompany(e.target.value as '3cubedai')}
+                      className="mr-2"
+                    />
+                    <span className="text-white">3CubedAI</span>
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Invitation will be sent from: {
+                    selectedCompany === 'All' ? 'sp@innovareai.com or sophia@3cubed.ai' :
+                      selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'
+                  }
+                </p>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={async () => {
+                    if (!inviteEmail.trim() || !inviteWorkspaceId) {
+                      showNotification('error', 'Please fill in all fields');
+                      return;
+                    }
+
+                    try {
+                      const response = await fetch('/api/admin/simple-invite', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${await getAuthToken()}`
+                        },
+                        body: JSON.stringify({
+                          email: inviteEmail,
+                          firstName: inviteEmail.split('@')[0],
+                          lastName: 'User',
+                          workspaceId: inviteWorkspaceId,
+                          company: selectedCompany,
+                          role: 'member'
+                        })
+                      });
+
+                      const data = await response.json();
+
+                      if (response.ok) {
+                        showNotification('success', `Invitation sent successfully to ${inviteEmail} from ${selectedCompany}!`);
+                        setShowInviteUser(false);
+                        setInviteEmail('');
+                        setInviteWorkspaceId(null);
+                      } else {
+                        showNotification('error', `Failed to send invitation: ${data.error}`);
+                      }
+                    } catch (error) {
+                      console.error('Error sending invitation:', error);
+                      showNotification('error', 'Failed to send invitation');
+                    }
+                  }}
+                  disabled={!inviteEmail.trim() || !inviteWorkspaceId}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-2 rounded-lg transition-colors"
+                >
+                  Send Invitation
+                </button>
+                <button
+                  onClick={() => {
+                    setShowInviteUser(false);
+                    setInviteEmail('');
+                    setInviteWorkspaceId(null);
+                  }}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* User Management Modal */}
-      {showManageUsers && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-semibold text-white">Manage Users</h3>
-              <button
-                onClick={() => setShowManageUsers(false)}
-                className="text-gray-400 hover:text-gray-200"
-              >
-                ✕
-              </button>
             </div>
-            
-            {/* User Statistics */}
-            {userStats && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-white">{userStats.total_users}</div>
-                  <div className="text-sm text-gray-400">Total Users</div>
-                </div>
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-green-400">{userStats.active_users}</div>
-                  <div className="text-sm text-gray-400">Active Users</div>
-                </div>
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-yellow-400">{userStats.pending_invitations}</div>
-                  <div className="text-sm text-gray-400">Pending Invites</div>
-                </div>
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <div className="text-2xl font-bold text-purple-400">{userStats.super_admins}</div>
-                  <div className="text-sm text-gray-400">Super Admins</div>
-                </div>
-              </div>
-            )}
+          </div>
+        )}
 
-            {/* Users List */}
-            {usersLoading ? (
-              <div className="text-center py-8">
-                <div className="text-gray-400">Loading users...</div>
+        {/* Create Workspace Modal */}
+        {showCreateWorkspace && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-xl font-semibold text-white mb-4">Create New Workspace</h3>
+              <input
+                type="text"
+                value={newWorkspaceName}
+                onChange={(e) => setNewWorkspaceName(e.target.value)}
+                placeholder="Workspace name"
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    createWorkspace();
+                  }
+                }}
+              />
+              <div className="flex space-x-3">
+                <button
+                  onClick={createWorkspace}
+                  disabled={!newWorkspaceName.trim()}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-2 rounded-lg transition-colors"
+                >
+                  Create
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCreateWorkspace(false);
+                    setNewWorkspaceName('');
+                  }}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-600">
-                      <th className="text-left py-3 px-4 text-gray-300 w-12">
-                        <input
-                          type="checkbox"
-                          onChange={(e) => handleSelectAllUsers(e.target.checked)}
-                          checked={selectedUsers.size > 0 && selectedUsers.size === users.filter(u => !u.is_super_admin).length}
-                          className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
-                        />
-                      </th>
-                      <th className="text-left py-3 px-4 text-gray-300">Email</th>
-                      <th className="text-left py-3 px-4 text-gray-300">Status</th>
-                      <th className="text-left py-3 px-4 text-gray-300">Workspace</th>
-                      <th className="text-left py-3 px-4 text-gray-300">Last Sign In</th>
-                      <th className="text-left py-3 px-4 text-gray-300">Created</th>
-                      <th className="text-left py-3 px-4 text-gray-300">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((user) => (
-                      <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/30">
-                        <td className="py-3 px-4">
+            </div>
+          </div>
+        )}
+
+        {/* Password Change Modal */}
+        {showPasswordChange && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
+              <h2 className="text-2xl font-bold text-white mb-4">Change Password</h2>
+              <p className="text-gray-400 mb-6">Enter your new password below</p>
+
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordChangeData.password}
+                    onChange={(e) => setPasswordChangeData(prev => ({ ...prev, password: e.target.value }))}
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Enter new password (min 6 characters)"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordChangeData.confirmPassword}
+                    onChange={(e) => setPasswordChangeData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Confirm new password"
+                  />
+                </div>
+
+                <div className="flex space-x-4 pt-4">
+                  <button
+                    type="submit"
+                    disabled={passwordChangeData.loading}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                  >
+                    {passwordChangeData.loading ? 'Updating...' : 'Update Password'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPasswordChange(false);
+                      setPasswordChangeData({ password: '', confirmPassword: '', loading: false });
+                    }}
+                    className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* User Management Modal */}
+        {showManageUsers && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-white">Manage Users</h3>
+                <button
+                  onClick={() => setShowManageUsers(false)}
+                  className="text-gray-400 hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* User Statistics */}
+              {userStats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-white">{userStats.total_users}</div>
+                    <div className="text-sm text-gray-400">Total Users</div>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-green-400">{userStats.active_users}</div>
+                    <div className="text-sm text-gray-400">Active Users</div>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-yellow-400">{userStats.pending_invitations}</div>
+                    <div className="text-sm text-gray-400">Pending Invites</div>
+                  </div>
+                  <div className="bg-gray-700 rounded-lg p-4">
+                    <div className="text-2xl font-bold text-purple-400">{userStats.super_admins}</div>
+                    <div className="text-sm text-gray-400">Super Admins</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Users List */}
+              {usersLoading ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-400">Loading users...</div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-600">
+                        <th className="text-left py-3 px-4 text-gray-300 w-12">
                           <input
                             type="checkbox"
-                            checked={selectedUsers.has(user.id)}
-                            onChange={(e) => handleUserSelect(user.id, e.target.checked)}
-                            disabled={user.is_super_admin}
-                            className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onChange={(e) => handleSelectAllUsers(e.target.checked)}
+                            checked={selectedUsers.size > 0 && selectedUsers.size === users.filter(u => !u.is_super_admin).length}
+                            className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
                           />
-                        </td>
-                        <td className="py-3 px-4">
-                          <div>
-                            <div className="text-white font-medium">{user.email}</div>
-                            {user.is_super_admin && (
-                              <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded mt-1 inline-block">
-                                Super Admin
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            user.email_confirmed_at 
-                              ? 'bg-green-600 text-white'
-                              : 'bg-yellow-600 text-white'
-                          }`}>
-                            {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="text-gray-300">
-                            {user.memberships.length > 0 ? (
-                              <div className="space-y-1">
-                                {user.memberships.map((membership: any, idx: number) => (
-                                  <div key={idx} className="text-xs">
-                                    <span className="text-white">{membership.workspaces?.name || 'Unknown'}</span>
-                                    <span className={`ml-2 px-1 py-0.5 rounded text-xs ${
-                                      membership.workspaces?.slug === 'innovareai' 
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-green-500 text-white'
-                                    }`}>
-                                      {membership.workspaces?.slug || 'Unknown'}
-                                    </span>
-                                    <span className="ml-2 text-gray-400">({membership.role})</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">No workspaces</span>
-                            )}
-                            {user.pending_invitations.length > 0 && (
-                              <div className="text-yellow-400 text-xs mt-1">
-                                {user.pending_invitations.length} pending invite(s)
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-gray-300 text-sm">
-                          {user.last_sign_in_at 
-                            ? new Date(user.last_sign_in_at).toLocaleDateString()
-                            : 'Never'
-                          }
-                        </td>
-                        <td className="py-3 px-4 text-gray-300 text-sm">
-                          {new Date(user.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleResetPassword(user.email)}
-                              className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs transition-colors"
-                              title="Send password reset email"
-                            >
-                              Reset Password
-                            </button>
-                            <select
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  const [workspaceId, role] = e.target.value.split('|');
-                                  handleAssignWorkspace(workspaceId, role);
-                                  e.target.value = ''; // Reset selection
-                                }
-                              }}
-                              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors border-none cursor-pointer"
-                              title="Assign user to workspace"
-                            >
-                              <option value="">Assign Workspace</option>
-                              {workspaces.map((workspace) => (
-                                <optgroup key={workspace.id} label={`${workspace.name} (${workspace.slug})`}>
-                                  <option value={`${workspace.id}|member`}>→ Member</option>
-                                  <option value={`${workspace.id}|admin`}>→ Admin</option>
-                                  <option value={`${workspace.id}|owner`}>→ Owner</option>
-                                </optgroup>
-                              ))}
-                            </select>
-                            <select
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  const [workspaceId, role] = e.target.value.split('|');
-                                  handleReassignWorkspace(user.id, workspaceId, role);
-                                  e.target.value = ''; // Reset selection
-                                }
-                              }}
-                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition-colors border-none cursor-pointer ml-2"
-                              title="⚠️ Reassign user to different workspace (DELETES ALL HISTORY)"
-                            >
-                              <option value="">Reassign + Delete History</option>
-                              {workspaces.map((workspace) => (
-                                <optgroup key={workspace.id} label={`${workspace.name} (${workspace.slug})`}>
-                                  <option value={`${workspace.id}|member`}>→ Member</option>
-                                  <option value={`${workspace.id}|admin`}>→ Admin</option>
-                                  <option value={`${workspace.id}|owner`}>→ Owner</option>
-                                </optgroup>
-                              ))}
-                            </select>
-                          </div>
-                        </td>
+                        </th>
+                        <th className="text-left py-3 px-4 text-gray-300">Email</th>
+                        <th className="text-left py-3 px-4 text-gray-300">Status</th>
+                        <th className="text-left py-3 px-4 text-gray-300">Workspace</th>
+                        <th className="text-left py-3 px-4 text-gray-300">Last Sign In</th>
+                        <th className="text-left py-3 px-4 text-gray-300">Created</th>
+                        <th className="text-left py-3 px-4 text-gray-300">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody>
+                      {users.map((user) => (
+                        <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/30">
+                          <td className="py-3 px-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedUsers.has(user.id)}
+                              onChange={(e) => handleUserSelect(user.id, e.target.checked)}
+                              disabled={user.is_super_admin}
+                              className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <div className="text-white font-medium">{user.email}</div>
+                              {user.is_super_admin && (
+                                <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded mt-1 inline-block">
+                                  Super Admin
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-1 rounded text-xs ${user.email_confirmed_at
+                                ? 'bg-green-600 text-white'
+                                : 'bg-yellow-600 text-white'
+                              }`}>
+                              {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="text-gray-300">
+                              {user.memberships.length > 0 ? (
+                                <div className="space-y-1">
+                                  {user.memberships.map((membership: any, idx: number) => (
+                                    <div key={idx} className="text-xs">
+                                      <span className="text-white">{membership.workspaces?.name || 'Unknown'}</span>
+                                      <span className={`ml-2 px-1 py-0.5 rounded text-xs ${membership.workspaces?.slug === 'innovareai'
+                                          ? 'bg-blue-500 text-white'
+                                          : 'bg-green-500 text-white'
+                                        }`}>
+                                        {membership.workspaces?.slug || 'Unknown'}
+                                      </span>
+                                      <span className="ml-2 text-gray-400">({membership.role})</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-gray-500">No workspaces</span>
+                              )}
+                              {user.pending_invitations.length > 0 && (
+                                <div className="text-yellow-400 text-xs mt-1">
+                                  {user.pending_invitations.length} pending invite(s)
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-gray-300 text-sm">
+                            {user.last_sign_in_at
+                              ? new Date(user.last_sign_in_at).toLocaleDateString()
+                              : 'Never'
+                            }
+                          </td>
+                          <td className="py-3 px-4 text-gray-300 text-sm">
+                            {new Date(user.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleResetPassword(user.email)}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                                title="Send password reset email"
+                              >
+                                Reset Password
+                              </button>
+                              <select
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    const [workspaceId, role] = e.target.value.split('|');
+                                    handleAssignWorkspace(workspaceId, role);
+                                    e.target.value = ''; // Reset selection
+                                  }
+                                }}
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors border-none cursor-pointer"
+                                title="Assign user to workspace"
+                              >
+                                <option value="">Assign Workspace</option>
+                                {workspaces.map((workspace) => (
+                                  <optgroup key={workspace.id} label={`${workspace.name} (${workspace.slug})`}>
+                                    <option value={`${workspace.id}|member`}>→ Member</option>
+                                    <option value={`${workspace.id}|admin`}>→ Admin</option>
+                                    <option value={`${workspace.id}|owner`}>→ Owner</option>
+                                  </optgroup>
+                                ))}
+                              </select>
+                              <select
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    const [workspaceId, role] = e.target.value.split('|');
+                                    handleReassignWorkspace(user.id, workspaceId, role);
+                                    e.target.value = ''; // Reset selection
+                                  }
+                                }}
+                                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition-colors border-none cursor-pointer ml-2"
+                                title="⚠️ Reassign user to different workspace (DELETES ALL HISTORY)"
+                              >
+                                <option value="">Reassign + Delete History</option>
+                                {workspaces.map((workspace) => (
+                                  <optgroup key={workspace.id} label={`${workspace.name} (${workspace.slug})`}>
+                                    <option value={`${workspace.id}|member`}>→ Member</option>
+                                    <option value={`${workspace.id}|admin`}>→ Admin</option>
+                                    <option value={`${workspace.id}|owner`}>→ Owner</option>
+                                  </optgroup>
+                                ))}
+                              </select>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
-            <div className="flex justify-between items-center mt-6">
-              <div className="flex items-center space-x-4">
-                {selectedUsers.size > 0 && (
-                  <button
-                    onClick={handleBulkDeleteUsers}
-                    disabled={isDeleting}
-                    className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-6 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                  >
-                    <span>{isDeleting ? 'Deleting...' : `Delete ${selectedUsers.size} User${selectedUsers.size > 1 ? 's' : ''}`}</span>
-                  </button>
-                )}
-                {selectedUsers.size > 0 && (
-                  <span className="text-gray-400 text-sm">
-                    {selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''} selected
-                  </span>
-                )}
+              <div className="flex justify-between items-center mt-6">
+                <div className="flex items-center space-x-4">
+                  {selectedUsers.size > 0 && (
+                    <button
+                      onClick={handleBulkDeleteUsers}
+                      disabled={isDeleting}
+                      className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-6 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                    >
+                      <span>{isDeleting ? 'Deleting...' : `Delete ${selectedUsers.size} User${selectedUsers.size > 1 ? 's' : ''}`}</span>
+                    </button>
+                  )}
+                  {selectedUsers.size > 0 && (
+                    <span className="text-gray-400 text-sm">
+                      {selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''} selected
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowManageUsers(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
               </div>
-              <button
-                onClick={() => setShowManageUsers(false)}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
-              >
-                Close
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Assign Workspace Modal */}
-      {showAssignWorkspace && selectedUserForWorkspace && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">Assign Workspace</h3>
-              <button
-                onClick={() => {
-                  setShowAssignWorkspace(false);
-                  setSelectedUserForWorkspace(null);
-                }}
-                className="text-gray-400 hover:text-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="mb-4">
-              <p className="text-gray-300 mb-2">
-                Assigning workspace to: <strong className="text-white">{selectedUserForWorkspace.email}</strong>
-              </p>
-            </div>
-
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const workspaceId = formData.get('workspace') as string;
-              const role = formData.get('role') as string;
-              
-              if (workspaceId && role) {
-                handleAssignWorkspace(workspaceId, role);
-              }
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Workspace
-                  </label>
-                  <select
-                    name="workspace"
-                    required
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="">Select a workspace</option>
-                    {workspaces.map((workspace) => (
-                      <option key={workspace.id} value={workspace.id}>
-                        {workspace.name} ({workspace.slug})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Role
-                  </label>
-                  <select
-                    name="role"
-                    required
-                    defaultValue="member"
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                    <option value="owner">Owner</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 mt-6">
+        {/* Assign Workspace Modal */}
+        {showAssignWorkspace && selectedUserForWorkspace && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-white">Assign Workspace</h3>
                 <button
-                  type="button"
                   onClick={() => {
                     setShowAssignWorkspace(false);
                     setSelectedUserForWorkspace(null);
                   }}
-                  className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
+                  className="text-gray-400 hover:text-gray-200"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
-                >
-                  Assign Workspace
+                  ✕
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* Invite User Popup */}
-      <InviteUserPopup
-        isOpen={showInviteUser}
-        onClose={() => setShowInviteUser(false)}
-        onSubmit={handleInviteUser}
-        workspaces={workspaces}
-      />
-
-
-      {/* LinkedIn integration moved to dedicated /linkedin-integration page */}
-
-      {/* Unipile Multi-Channel Integration Modal */}
-      <UnipileModal
-        isOpen={showUnipileModal}
-        onClose={() => setShowUnipileModal(false)}
-        workspaceId={selectedWorkspaceId || undefined}
-      />
-
-      {/* Channel Selection Modal - Triggered by SAM when needed */}
-      <ChannelSelectionModal
-        isOpen={showChannelSelectionModal}
-        onClose={() => setShowChannelSelectionModal(false)}
-        onConfirm={handleChannelSelectionConfirm}
-        connectedAccounts={connectedAccounts}
-      />
-
-      {/* LinkedIn Settings Modal */}
-      {showLinkedInSettingsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center">
-                <LinkedinIcon className="mr-3 text-blue-400" size={28} />
-                LinkedIn Integration
-              </h2>
-              <button 
-                onClick={() => setShowLinkedInSettingsModal(false)}
-                className="text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <h3 className="text-white font-medium">LinkedIn Account Connection</h3>
-                    {linkedInLoading ? (
-                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                      <div className={`w-3 h-3 rounded-full ${hasLinkedInConnection ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    )}
-                  </div>
-                  <p className="text-gray-400 text-sm">
-                    {linkedInLoading ? 'Checking connection status...' : 
-                     hasLinkedInConnection ? 'LinkedIn account connected - prospect features enabled' :
-                     'Connect your LinkedIn account to enable prospect research and enrichment'}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button 
-                    onClick={checkLinkedInConnection}
-                    disabled={linkedInLoading}
-                    className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg transition-colors text-sm"
-                  >
-                    {linkedInLoading ? 'Checking...' : 'Refresh'}
-                  </button>
-                  
-                  {hasLinkedInConnection ? (
-                    <>
-                      <button 
-                        onClick={() => window.location.href = '/linkedin-integration'}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                      >
-                        <LinkedInLogo size={16} className="text-white" />
-                        <span>Manage LinkedIn</span>
-                      </button>
-                      <button 
-                        onClick={disconnectLinkedIn}
-                        disabled={isDisconnectingLinkedIn}
-                        className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                      >
-                        <LinkedInLogo size={16} className="text-white" />
-                        <span>{isDisconnectingLinkedIn ? 'Disconnecting...' : 'Disconnect'}</span>
-                      </button>
-                    </>
-                  ) : (
-                    <button 
-                      onClick={requireLinkedInConnection}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                    >
-                      <LinkedInLogo size={16} className="text-white" />
-                      <span>Connect LinkedIn</span>
-                    </button>
-                  )}
-                </div>
+              <div className="mb-4">
+                <p className="text-gray-300 mb-2">
+                  Assigning workspace to: <strong className="text-white">{selectedUserForWorkspace.email}</strong>
+                </p>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Email Integration Modal */}
-      <EmailProvidersModal
-        isOpen={showEmailIntegrationModal}
-        onClose={() => setShowEmailIntegrationModal(false)}
-        workspaceId={selectedWorkspaceId || undefined}
-      />
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const workspaceId = formData.get('workspace') as string;
+                const role = formData.get('role') as string;
 
-      {/* ReachInbox Modal */}
-      <ReachInboxModal
-        isOpen={showReachInboxModal}
-        onClose={() => setShowReachInboxModal(false)}
-        workspaceId={selectedWorkspaceId || ''}
-      />
-
-      <BlacklistModal
-        isOpen={showBlacklistModal}
-        onClose={() => setShowBlacklistModal(false)}
-        workspaceId={selectedWorkspaceId || ''}
-      />
-
-      {/* Calendar Integration Modal */}
-      <CalendarIntegrationModal
-        isOpen={showCalendarIntegrationModal}
-        onClose={() => setShowCalendarIntegrationModal(false)}
-        workspaceId={selectedWorkspaceId || ''}
-      />
-
-      {/* LLM Model Configuration Modal */}
-      <LLMConfigModal
-        isOpen={showLLMConfigModal}
-        onClose={() => setShowLLMConfigModal(false)}
-        onSave={() => {
-          setShowLLMConfigModal(false);
-          // Optionally show success message
-        }}
-      />
-
-      {/* User Profile Modal */}
-      {showUserProfileModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center">
-                <User className="mr-3 text-blue-400" size={28} />
-                User Profile
-              </h2>
-              <button 
-                onClick={() => setShowUserProfileModal(false)}
-                className="text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-6">
-              {/* Profile Information Section */}
-              <div className="bg-gray-700 rounded-lg p-5">
-                <h3 className="text-lg font-semibold text-white mb-4">Account Information</h3>
+                if (workspaceId && role) {
+                  handleAssignWorkspace(workspaceId, role);
+                }
+              }}>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={user?.email || ''}
-                      disabled
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white opacity-50"
-                    />
-                    <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Workspace
+                    </label>
+                    <select
+                      name="workspace"
+                      required
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="">Select a workspace</option>
+                      {workspaces.map((workspace) => (
+                        <option key={workspace.id} value={workspace.id}>
+                          {workspace.name} ({workspace.slug})
+                        </option>
+                      ))}
+                    </select>
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Account Created</label>
-                    <input
-                      type="text"
-                      value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-                      disabled
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white opacity-50"
-                    />
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Role
+                    </label>
+                    <select
+                      name="role"
+                      required
+                      defaultValue="member"
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="member">Member</option>
+                      <option value="admin">Admin</option>
+                      <option value="owner">Owner</option>
+                    </select>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Footer Actions */}
-            <div className="flex justify-end mt-6 pt-4 border-t border-gray-700">
-              <button
-                onClick={() => setShowUserProfileModal(false)}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
-              >
-                Close
-              </button>
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAssignWorkspace(false);
+                      setSelectedUserForWorkspace(null);
+                    }}
+                    className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
+                  >
+                    Assign Workspace
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Proxy Country Modal */}
-      {showProxyCountryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-white flex items-center">
-                <Globe className="mr-3 text-blue-400" size={28} />
-                LinkedIn Account Proxy Management
-              </h2>
-              <div className="flex items-center space-x-2">
+        {/* Invite User Popup */}
+        <InviteUserPopup
+          isOpen={showInviteUser}
+          onClose={() => setShowInviteUser(false)}
+          onSubmit={handleInviteUser}
+          workspaces={workspaces}
+        />
+
+
+        {/* LinkedIn integration moved to dedicated /linkedin-integration page */}
+
+        {/* Unipile Multi-Channel Integration Modal */}
+        <UnipileModal
+          isOpen={showUnipileModal}
+          onClose={() => setShowUnipileModal(false)}
+          workspaceId={selectedWorkspaceId || undefined}
+        />
+
+        {/* Channel Selection Modal - Triggered by SAM when needed */}
+        <ChannelSelectionModal
+          isOpen={showChannelSelectionModal}
+          onClose={() => setShowChannelSelectionModal(false)}
+          onConfirm={handleChannelSelectionConfirm}
+          connectedAccounts={connectedAccounts}
+        />
+
+        {/* LinkedIn Settings Modal */}
+        {showLinkedInSettingsModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <LinkedinIcon className="mr-3 text-blue-400" size={28} />
+                  LinkedIn Integration
+                </h2>
                 <button
-                  onClick={() => {
-                    setShowProxyCountryModal(false);
-                    setSelectedLinkedinAccount(null);
-                  }}
+                  onClick={() => setShowLinkedInSettingsModal(false)}
                   className="text-gray-400 hover:text-gray-200 transition-colors"
                 >
                   <X size={24} />
                 </button>
               </div>
-            </div>
-            
-            <div className="space-y-6">
-              {/* Info banner about proxy assignment */}
-              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
-                <h3 className="text-blue-400 font-semibold text-sm mb-2 flex items-center">
-                  <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="16" x2="12" y2="12"/>
-                    <line x1="12" y1="8" x2="12.01" y2="8"/>
-                  </svg>
-                  How Proxy Assignment Works
-                </h3>
-                <p className="text-gray-300 text-xs leading-relaxed">
-                  Unipile automatically detects your location from your LinkedIn profile and assigns a residential proxy from that country. This ensures your LinkedIn activity appears authentic and prevents automation detection.
-                </p>
-              </div>
 
-              {/* My LinkedIn Account & Proxy Info */}
-              <div className="bg-gray-700 rounded-lg p-5 border border-gray-600">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                  <svg className="mr-2 text-blue-400" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
-                  </svg>
-                  My LinkedIn Account
-                </h3>
-                {proxyInfoLoading ? (
-                  <div className="text-center py-4">
-                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-                    <p className="text-gray-400 text-sm mt-2">Loading...</p>
-                  </div>
-                ) : proxyInfo ? (
-                  <div className="space-y-3">
-                    <div className="text-gray-400 text-sm">
-                      <p className="mb-2">Account: <span className="text-white">{proxyInfo.account_email || proxyInfo.account_name || user?.email}</span></p>
-                      <p className="mb-2">Name: <span className="text-white">{proxyInfo.account_name || 'N/A'}</span></p>
-                      <p className="mb-2">Status: <span className="text-green-400">Connected via Unipile</span></p>
-                      {proxyInfo.detected_location && (
-                        <p className="mb-2">Location: <span className="text-white">{proxyInfo.detected_location}</span></p>
-                      )}
-                      <p className="text-xs text-gray-500 mt-3">
-                        Proxy details are managed automatically by Unipile based on your LinkedIn profile location.
-                      </p>
-                    </div>
-                  </div>
-                ) : user?.email ? (
-                  <div className="space-y-3">
-                    <div className="text-gray-400 text-sm">
-                      <p className="mb-2">Account: <span className="text-white">{user.email}</span></p>
-                      <p className="mb-2">Status: <span className="text-yellow-400">Checking connection...</span></p>
-                      <p className="text-xs text-gray-500 mt-3">
-                        Proxy details are managed automatically by Unipile based on your LinkedIn profile location.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-gray-400">No LinkedIn account connected</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Detailed Proxy Information */}
-              <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-5">
-                <h3 className="text-blue-400 font-semibold text-sm mb-3 flex items-center">
-                  <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="16" x2="12" y2="12"/>
-                    <line x1="12" y1="8" x2="12.01" y2="8"/>
-                  </svg>
-                  Proxy Information
-                </h3>
-                <div className="space-y-3 text-sm">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Provider</p>
-                      <p className="text-white">Unipile</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400 text-xs mb-1">Connection Type</p>
-                      <p className="text-white">Residential Proxy</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-gray-400 text-xs mb-2">Current Proxy Location</p>
-                      {proxyInfoLoading ? (
-                        <p className="text-gray-400 flex items-center">
-                          <span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-blue-400 mr-2"></span>
-                          Fetching from Unipile...
-                        </p>
-                      ) : proxyInfo?.proxy_country ? (
-                        <div>
-                          <p className="text-white text-lg font-semibold">
-                            {proxyInfo.proxy_country}
-                            {proxyInfo.proxy_city && ` - ${proxyInfo.proxy_city}`}
-                          </p>
-                          {proxyInfo.proxy_country.toLowerCase().includes('france') || proxyInfo.proxy_city?.toLowerCase().includes('paris') ? (
-                            <p className="text-yellow-400 text-xs mt-2 flex items-center">
-                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              Using Unipile default proxy. Update your LinkedIn location and reconnect to get a country-specific proxy.
-                            </p>
-                          ) : null}
-                        </div>
-                      ) : proxyInfo?.detected_location ? (
-                        <div>
-                          <p className="text-white text-lg">Auto-detected: {proxyInfo.detected_location}</p>
-                          <p className="text-gray-400 text-xs mt-1">Proxy will be assigned from this location</p>
-                        </div>
-                      ) : proxyInfo && proxyInfo.connection_status === 'OK' ? (
-                        <div>
-                          <p className="text-green-400 text-lg font-semibold flex items-center">
-                            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                            </svg>
-                            Residential Proxy Active
-                          </p>
-                          <p className="text-gray-300 text-xs mt-2">
-                            Unipile automatically assigns and manages a residential proxy based on your LinkedIn profile location. Specific proxy details are managed internally for security.
-                          </p>
-                        </div>
-                      ) : proxyInfo ? (
-                        <p className="text-yellow-400">Proxy connection checking...</p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h3 className="text-white font-medium">LinkedIn Account Connection</h3>
+                      {linkedInLoading ? (
+                        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                       ) : (
-                        <p className="text-gray-400">No LinkedIn account connected</p>
+                        <div className={`w-3 h-3 rounded-full ${hasLinkedInConnection ? 'bg-green-500' : 'bg-red-500'}`}></div>
                       )}
                     </div>
-                    
-                    {proxyInfo?.detected_location && (
-                      <div className="border-t border-gray-600 pt-3">
-                        <p className="text-gray-400 text-xs mb-1">LinkedIn Profile Location</p>
-                        <p className="text-white">{proxyInfo.detected_location}</p>
-                        <p className="text-gray-400 text-xs mt-1">This is what Unipile detected from your LinkedIn profile</p>
-                      </div>
+                    <p className="text-gray-400 text-sm">
+                      {linkedInLoading ? 'Checking connection status...' :
+                        hasLinkedInConnection ? 'LinkedIn account connected - prospect features enabled' :
+                          'Connect your LinkedIn account to enable prospect research and enrichment'}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={checkLinkedInConnection}
+                      disabled={linkedInLoading}
+                      className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                    >
+                      {linkedInLoading ? 'Checking...' : 'Refresh'}
+                    </button>
+
+                    {hasLinkedInConnection ? (
+                      <>
+                        <button
+                          onClick={() => window.location.href = '/linkedin-integration'}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                        >
+                          <LinkedInLogo size={16} className="text-white" />
+                          <span>Manage LinkedIn</span>
+                        </button>
+                        <button
+                          onClick={disconnectLinkedIn}
+                          disabled={isDisconnectingLinkedIn}
+                          className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                        >
+                          <LinkedInLogo size={16} className="text-white" />
+                          <span>{isDisconnectingLinkedIn ? 'Disconnecting...' : 'Disconnect'}</span>
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={requireLinkedInConnection}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <LinkedInLogo size={16} className="text-white" />
+                        <span>Connect LinkedIn</span>
+                      </button>
                     )}
-                    
-                    <div className="border-t border-gray-600 pt-3">
-                      <p className="text-gray-400 text-xs mb-1">Connection Status</p>
-                      <p className="text-green-400 flex items-center">
-                        <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                        {proxyInfo?.connection_status === 'OK' ? 'Active & Connected' : 'Active'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="border-t border-blue-500/20 pt-3 mt-3">
-                    <p className="text-gray-300 text-xs leading-relaxed">
-                      <strong className="text-blue-300">How it works:</strong> All LinkedIn activity from your account is routed through a dedicated residential proxy in your selected country. This ensures your connection appears authentic and prevents LinkedIn from detecting automation.
-                    </p>
-                  </div>
-                  <div className="border-t border-blue-500/20 pt-3">
-                    <p className="text-gray-300 text-xs leading-relaxed">
-                      <strong className="text-blue-300">Security:</strong> Your proxy configuration is managed automatically and securely by Unipile. IP addresses are rotated intelligently to maintain account health while ensuring consistent geolocation.
-                    </p>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+        )}
 
-            <div className="flex justify-end space-x-3 mt-6">
-              <button 
-                onClick={() => setShowProxyCountryModal(false)}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Close
-              </button>
+        {/* Email Integration Modal */}
+        <EmailProvidersModal
+          isOpen={showEmailIntegrationModal}
+          onClose={() => setShowEmailIntegrationModal(false)}
+          workspaceId={selectedWorkspaceId || undefined}
+        />
+
+        {/* ReachInbox Modal */}
+        <ReachInboxModal
+          isOpen={showReachInboxModal}
+          onClose={() => setShowReachInboxModal(false)}
+          workspaceId={selectedWorkspaceId || ''}
+        />
+
+        <BlacklistModal
+          isOpen={showBlacklistModal}
+          onClose={() => setShowBlacklistModal(false)}
+          workspaceId={selectedWorkspaceId || ''}
+        />
+
+        {/* Calendar Integration Modal */}
+        <CalendarIntegrationModal
+          isOpen={showCalendarIntegrationModal}
+          onClose={() => setShowCalendarIntegrationModal(false)}
+          workspaceId={selectedWorkspaceId || ''}
+        />
+
+        {/* LLM Model Configuration Modal */}
+        <LLMConfigModal
+          isOpen={showLLMConfigModal}
+          onClose={() => setShowLLMConfigModal(false)}
+          onSave={() => {
+            setShowLLMConfigModal(false);
+            // Optionally show success message
+          }}
+        />
+
+        {/* User Profile Modal */}
+        {showUserProfileModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <User className="mr-3 text-blue-400" size={28} />
+                  User Profile
+                </h2>
+                <button
+                  onClick={() => setShowUserProfileModal(false)}
+                  className="text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Profile Information Section */}
+                <div className="bg-gray-700 rounded-lg p-5">
+                  <h3 className="text-lg font-semibold text-white mb-4">Account Information</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={user?.email || ''}
+                        disabled
+                        className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white opacity-50"
+                      />
+                      <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Account Created</label>
+                      <input
+                        type="text"
+                        value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                        disabled
+                        className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white opacity-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex justify-end mt-6 pt-4 border-t border-gray-700">
+                <button
+                  onClick={() => setShowUserProfileModal(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Team Management Modal */}
-      {showTeamManagementModal && (
-        workspaces.length > 0 ? (() => {
+        {/* Proxy Country Modal */}
+        {showProxyCountryModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold text-white flex items-center">
+                  <Globe className="mr-3 text-blue-400" size={28} />
+                  LinkedIn Account Proxy Management
+                </h2>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      setShowProxyCountryModal(false);
+                      setSelectedLinkedinAccount(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Info banner about proxy assignment */}
+                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                  <h3 className="text-blue-400 font-semibold text-sm mb-2 flex items-center">
+                    <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="16" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    How Proxy Assignment Works
+                  </h3>
+                  <p className="text-gray-300 text-xs leading-relaxed">
+                    Unipile automatically detects your location from your LinkedIn profile and assigns a residential proxy from that country. This ensures your LinkedIn activity appears authentic and prevents automation detection.
+                  </p>
+                </div>
+
+                {/* My LinkedIn Account & Proxy Info */}
+                <div className="bg-gray-700 rounded-lg p-5 border border-gray-600">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg className="mr-2 text-blue-400" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
+                    </svg>
+                    My LinkedIn Account
+                  </h3>
+                  {proxyInfoLoading ? (
+                    <div className="text-center py-4">
+                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
+                      <p className="text-gray-400 text-sm mt-2">Loading...</p>
+                    </div>
+                  ) : proxyInfo ? (
+                    <div className="space-y-3">
+                      <div className="text-gray-400 text-sm">
+                        <p className="mb-2">Account: <span className="text-white">{proxyInfo.account_email || proxyInfo.account_name || user?.email}</span></p>
+                        <p className="mb-2">Name: <span className="text-white">{proxyInfo.account_name || 'N/A'}</span></p>
+                        <p className="mb-2">Status: <span className="text-green-400">Connected via Unipile</span></p>
+                        {proxyInfo.detected_location && (
+                          <p className="mb-2">Location: <span className="text-white">{proxyInfo.detected_location}</span></p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-3">
+                          Proxy details are managed automatically by Unipile based on your LinkedIn profile location.
+                        </p>
+                      </div>
+                    </div>
+                  ) : user?.email ? (
+                    <div className="space-y-3">
+                      <div className="text-gray-400 text-sm">
+                        <p className="mb-2">Account: <span className="text-white">{user.email}</span></p>
+                        <p className="mb-2">Status: <span className="text-yellow-400">Checking connection...</span></p>
+                        <p className="text-xs text-gray-500 mt-3">
+                          Proxy details are managed automatically by Unipile based on your LinkedIn profile location.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-gray-400">No LinkedIn account connected</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Detailed Proxy Information */}
+                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-5">
+                  <h3 className="text-blue-400 font-semibold text-sm mb-3 flex items-center">
+                    <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="16" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    Proxy Information
+                  </h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-gray-400 text-xs mb-1">Provider</p>
+                        <p className="text-white">Unipile</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-xs mb-1">Connection Type</p>
+                        <p className="text-white">Residential Proxy</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-gray-400 text-xs mb-2">Current Proxy Location</p>
+                        {proxyInfoLoading ? (
+                          <p className="text-gray-400 flex items-center">
+                            <span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-blue-400 mr-2"></span>
+                            Fetching from Unipile...
+                          </p>
+                        ) : proxyInfo?.proxy_country ? (
+                          <div>
+                            <p className="text-white text-lg font-semibold">
+                              {proxyInfo.proxy_country}
+                              {proxyInfo.proxy_city && ` - ${proxyInfo.proxy_city}`}
+                            </p>
+                            {proxyInfo.proxy_country.toLowerCase().includes('france') || proxyInfo.proxy_city?.toLowerCase().includes('paris') ? (
+                              <p className="text-yellow-400 text-xs mt-2 flex items-center">
+                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                Using Unipile default proxy. Update your LinkedIn location and reconnect to get a country-specific proxy.
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : proxyInfo?.detected_location ? (
+                          <div>
+                            <p className="text-white text-lg">Auto-detected: {proxyInfo.detected_location}</p>
+                            <p className="text-gray-400 text-xs mt-1">Proxy will be assigned from this location</p>
+                          </div>
+                        ) : proxyInfo && proxyInfo.connection_status === 'OK' ? (
+                          <div>
+                            <p className="text-green-400 text-lg font-semibold flex items-center">
+                              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Residential Proxy Active
+                            </p>
+                            <p className="text-gray-300 text-xs mt-2">
+                              Unipile automatically assigns and manages a residential proxy based on your LinkedIn profile location. Specific proxy details are managed internally for security.
+                            </p>
+                          </div>
+                        ) : proxyInfo ? (
+                          <p className="text-yellow-400">Proxy connection checking...</p>
+                        ) : (
+                          <p className="text-gray-400">No LinkedIn account connected</p>
+                        )}
+                      </div>
+
+                      {proxyInfo?.detected_location && (
+                        <div className="border-t border-gray-600 pt-3">
+                          <p className="text-gray-400 text-xs mb-1">LinkedIn Profile Location</p>
+                          <p className="text-white">{proxyInfo.detected_location}</p>
+                          <p className="text-gray-400 text-xs mt-1">This is what Unipile detected from your LinkedIn profile</p>
+                        </div>
+                      )}
+
+                      <div className="border-t border-gray-600 pt-3">
+                        <p className="text-gray-400 text-xs mb-1">Connection Status</p>
+                        <p className="text-green-400 flex items-center">
+                          <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                          {proxyInfo?.connection_status === 'OK' ? 'Active & Connected' : 'Active'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="border-t border-blue-500/20 pt-3 mt-3">
+                      <p className="text-gray-300 text-xs leading-relaxed">
+                        <strong className="text-blue-300">How it works:</strong> All LinkedIn activity from your account is routed through a dedicated residential proxy in your selected country. This ensures your connection appears authentic and prevents LinkedIn from detecting automation.
+                      </p>
+                    </div>
+                    <div className="border-t border-blue-500/20 pt-3">
+                      <p className="text-gray-300 text-xs leading-relaxed">
+                        <strong className="text-blue-300">Security:</strong> Your proxy configuration is managed automatically and securely by Unipile. IP addresses are rotated intelligently to maintain account health while ensuring consistent geolocation.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => setShowProxyCountryModal(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Team Management Modal */}
+        {showTeamManagementModal && (
+          workspaces.length > 0 ? (() => {
+            const targetWorkspace = isSuperAdmin
+              ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+              : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+
+            // Check if workspace uses direct billing (3cubed customers)
+            const isDirectBilling = targetWorkspace?.organization_id && targetWorkspace?.slug?.includes('3cubed');
+
+            return (
+              <InviteUserPopup
+                isOpen={showTeamManagementModal}
+                onClose={() => setShowTeamManagementModal(false)}
+                workspaceId={targetWorkspace?.id}
+                workspaceName={targetWorkspace?.name || 'Workspace'}
+                isDirectBilling={isDirectBilling}
+              />
+            );
+          })() : (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                <h2 className="text-xl font-semibold text-white mb-4">No Workspace Found</h2>
+                <p className="text-gray-300 mb-6">You need to be logged in and have a workspace to invite team members.</p>
+                <button
+                  onClick={() => setShowTeamManagementModal(false)}
+                  className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Workspace Settings Modal */}
+        {showWorkspaceSettingsModal && (() => {
           const targetWorkspace = isSuperAdmin
             ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
             : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
 
-          // Check if workspace uses direct billing (3cubed customers)
-          const isDirectBilling = targetWorkspace?.organization_id && targetWorkspace?.slug?.includes('3cubed');
-
           return (
-            <InviteUserPopup
-              isOpen={showTeamManagementModal}
-              onClose={() => setShowTeamManagementModal(false)}
+            <WorkspaceSettingsModal
+              isOpen={showWorkspaceSettingsModal}
+              onClose={() => setShowWorkspaceSettingsModal(false)}
               workspaceId={targetWorkspace?.id}
               workspaceName={targetWorkspace?.name || 'Workspace'}
-              isDirectBilling={isDirectBilling}
             />
           );
-        })() : (
+        })()}
+
+        {/* Manage Subscription Modal */}
+        {showManageSubscriptionModal && (() => {
+          const targetWorkspace = isSuperAdmin
+            ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+            : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+
+          return (
+            <ManageSubscriptionModal
+              isOpen={showManageSubscriptionModal}
+              onClose={() => setShowManageSubscriptionModal(false)}
+              workspaceId={targetWorkspace?.id}
+              workspaceName={targetWorkspace?.name || 'Workspace'}
+            />
+          );
+        })()}
+
+        {/* CRM Integration Modal */}
+        {showCrmIntegrationModal && (() => {
+          const targetWorkspace = isSuperAdmin
+            ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+            : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+
+          return (
+            <CRMIntegrationModal
+              isOpen={showCrmIntegrationModal}
+              onClose={() => setShowCrmIntegrationModal(false)}
+              workspaceId={targetWorkspace?.id}
+              workspaceName={targetWorkspace?.name || 'Workspace'}
+            />
+          );
+        })()}
+
+        {/* Integrations Tools Modal */}
+        {showIntegrationsToolsModal && (() => {
+          const targetWorkspace = isSuperAdmin
+            ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+            : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+
+          if (!targetWorkspace?.id) return null;
+          return (
+            <IntegrationsToolsModal
+              isOpen={showIntegrationsToolsModal}
+              onClose={() => setShowIntegrationsToolsModal(false)}
+              workspaceId={targetWorkspace.id}
+            />
+          );
+        })()}
+
+        {/* Commenting Campaign Modal */}
+        {showCommentingCampaignModal && (selectedWorkspaceId || currentWorkspace?.id) && (
+          <CommentingCampaignModal
+            isOpen={showCommentingCampaignModal}
+            onClose={() => {
+              setShowCommentingCampaignModal(false);
+              setEditingCampaign(null);
+            }}
+            workspaceId={selectedWorkspaceId || currentWorkspace?.id || ''}
+            editMode={!!editingCampaign}
+            existingMonitor={editingCampaign || undefined}
+          />
+        )}
+
+        {/* Custom Notification Modal */}
+        {notification && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">No Workspace Found</h2>
-              <p className="text-gray-300 mb-6">You need to be logged in and have a workspace to invite team members.</p>
-              <button
-                onClick={() => setShowTeamManagementModal(false)}
-                className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                Close
-              </button>
+            <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600">
+              <div className="flex items-center space-x-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+                  }`}>
+                  {notification.type === 'success' ? '✓' : '✕'}
+                </div>
+                <div className="flex-1">
+                  <h3 className={`font-medium ${notification.type === 'success' ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                    {notification.type === 'success' ? 'Success' : 'Error'}
+                  </h3>
+                  <p className="text-gray-300 text-sm">{notification.message}</p>
+                </div>
+                <button
+                  onClick={() => setNotification(null)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           </div>
-        )
-      )}
+        )}
 
-      {/* Workspace Settings Modal */}
-      {showWorkspaceSettingsModal && (() => {
-        const targetWorkspace = isSuperAdmin
-          ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
-          : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
-
-        return (
-          <WorkspaceSettingsModal
-            isOpen={showWorkspaceSettingsModal}
-            onClose={() => setShowWorkspaceSettingsModal(false)}
-            workspaceId={targetWorkspace?.id}
-            workspaceName={targetWorkspace?.name || 'Workspace'}
-          />
-        );
-      })()}
-
-      {/* Manage Subscription Modal */}
-      {showManageSubscriptionModal && (() => {
-        const targetWorkspace = isSuperAdmin
-          ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
-          : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
-
-        return (
-          <ManageSubscriptionModal
-            isOpen={showManageSubscriptionModal}
-            onClose={() => setShowManageSubscriptionModal(false)}
-            workspaceId={targetWorkspace?.id}
-            workspaceName={targetWorkspace?.name || 'Workspace'}
-          />
-        );
-      })()}
-
-      {/* CRM Integration Modal */}
-      {showCrmIntegrationModal && (() => {
-        const targetWorkspace = isSuperAdmin
-          ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
-          : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
-
-        return (
-          <CRMIntegrationModal
-            isOpen={showCrmIntegrationModal}
-            onClose={() => setShowCrmIntegrationModal(false)}
-            workspaceId={targetWorkspace?.id}
-            workspaceName={targetWorkspace?.name || 'Workspace'}
-          />
-        );
-      })()}
-
-      {/* Integrations Tools Modal */}
-      {showIntegrationsToolsModal && (() => {
-        const targetWorkspace = isSuperAdmin
-          ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
-          : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
-
-        if (!targetWorkspace?.id) return null;
-        return (
-          <IntegrationsToolsModal
-            isOpen={showIntegrationsToolsModal}
-            onClose={() => setShowIntegrationsToolsModal(false)}
-            workspaceId={targetWorkspace.id}
-          />
-        );
-      })()}
-
-      {/* Commenting Campaign Modal */}
-      {showCommentingCampaignModal && (selectedWorkspaceId || currentWorkspace?.id) && (
-        <CommentingCampaignModal
-          isOpen={showCommentingCampaignModal}
-          onClose={() => {
-            setShowCommentingCampaignModal(false);
-            setEditingCampaign(null);
-          }}
-          workspaceId={selectedWorkspaceId || currentWorkspace?.id || ''}
-          editMode={!!editingCampaign}
-          existingMonitor={editingCampaign || undefined}
-        />
-      )}
-
-      {/* Custom Notification Modal */}
-      {notification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600">
-            <div className="flex items-center space-x-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-              }`}>
-                {notification.type === 'success' ? '✓' : '✕'}
-              </div>
-              <div className="flex-1">
-                <h3 className={`font-medium ${
-                  notification.type === 'success' ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {notification.type === 'success' ? 'Success' : 'Error'}
-                </h3>
-                <p className="text-gray-300 text-sm">{notification.message}</p>
-              </div>
-              <button
-                onClick={() => setNotification(null)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm Modal */}
-      <ConfirmDialog />
+        {/* Confirm Modal */}
+        <ConfirmDialog />
+      </div>
     </div>
-  </div>
   );
 }
