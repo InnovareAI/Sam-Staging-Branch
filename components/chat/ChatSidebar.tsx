@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, MessageSquare, Clock, Sparkles, Archive } from 'lucide-react';
+import { Search, Plus, MessageSquare, Clock, Sparkles, Archive, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ export function ChatSidebar() {
         currentThread,
         switchToThread,
         createThread,
+        clearAllThreads,
         isLoading
     } = useSamThreadedChat();
 
@@ -154,6 +155,20 @@ export function ChatSidebar() {
                         </>
                     )}
                 </Button>
+                {threads.length > 0 && (
+                    <Button
+                        variant="ghost"
+                        onClick={async () => {
+                            if (confirm('Clear all chat history? This cannot be undone.')) {
+                                await clearAllThreads();
+                            }
+                        }}
+                        className="w-full justify-start gap-2 h-9 px-2 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    >
+                        <Trash2 size={16} />
+                        Clear All History
+                    </Button>
+                )}
                 <div className="text-xs text-muted-foreground/60 text-center pt-2">
                     InnovareAI Orchestration v4.5
                 </div>

@@ -372,6 +372,27 @@ export function useSamThreadedChat() {
       .slice(0, limit);
   }, [threads]);
 
+  // Clear all threads
+  const clearAllThreads = useCallback(async () => {
+    try {
+      const response = await fetch('/api/sam/threads/clear-all', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear threads');
+      }
+
+      setThreads([]);
+      setCurrentThread(null);
+      setMessages([]);
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      return false;
+    }
+  }, []);
+
   return {
     // State
     threads,
@@ -391,6 +412,7 @@ export function useSamThreadedChat() {
     updateThread,
     archiveThread,
     deleteThread,
+    clearAllThreads,
 
     // Helpers
     getThreadsByType,
