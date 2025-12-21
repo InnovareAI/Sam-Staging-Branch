@@ -181,6 +181,23 @@ export default function WorkspaceLayout({
 
   const activeSection = menuItems.find(item => item.id === activeMenuItem) || menuItems[0];
 
+  // Handle navigation
+  const handleMenuClick = (item: any) => {
+    if (item.id === 'commenting-agent') {
+      // [NEW] Redirect to the new Adaptive Chat Interface
+      window.location.href = `/workspace/${workspaceId}/chat`;
+      return;
+    }
+
+    if (item.isLegacy) {
+      // Redirect to legacy app with tab param
+      window.location.href = `/?tab=${item.id}`;
+    } else {
+      // Modern navigation
+      router.push(`/workspace/${workspaceId}/${item.id}`);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background text-foreground">
       {/* Left Sidebar - Custom Design */}
@@ -214,15 +231,8 @@ export default function WorkspaceLayout({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => {
-                    if (item.isLegacy) {
-                      // Redirect to legacy app with tab param
-                      window.location.href = item.path;
-                    } else {
-                      // Navigate within modern workspace
-                      router.push(`/workspace/${workspaceId}${item.path}`);
-                    }
-                  }}
+                  // Handle navigation
+                  onClick={() => handleMenuClick(item)}
                   className={`group w-full rounded-xl border border-transparent px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isActive
                     ? 'bg-primary/15 text-white shadow-glow ring-1 ring-primary/35'
                     : 'text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground'
@@ -304,6 +314,6 @@ export default function WorkspaceLayout({
           {children}
         </div>
       </div>
-    </div>
+    </div >
   );
 }
