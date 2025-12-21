@@ -203,7 +203,7 @@ export default function Page() {
   // Commenting Agent modal state
   const [showCommentingCampaignModal, setShowCommentingCampaignModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<any | null>(null);
-  const [commentingAgentView, setCommentingAgentView] = useState<'dashboard' | 'approve'>('dashboard');
+  const [commentingAgentView, setCommentingAgentView] = useState<'dashboard' | 'approve' | 'profiles' | 'companies' | 'hashtags' | 'my-profile'>('dashboard');
   const [commentingCampaigns, setCommentingCampaigns] = useState<any[]>([]);
   const [commentingCampaignsLoading, setCommentingCampaignsLoading] = useState(false);
   const [expandedCampaignPosts, setExpandedCampaignPosts] = useState<string | null>(null);
@@ -3234,6 +3234,129 @@ export default function Page() {
                 workspaceId={selectedWorkspaceId}
                 onBack={() => setCommentingAgentView('dashboard')}
               />
+            ) : commentingAgentView === 'profiles' ? (
+              <div className="min-h-screen bg-gray-900 p-6">
+                <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                  <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
+                </button>
+                <div className="max-w-4xl">
+                  <h1 className="text-2xl font-bold text-white mb-2">Personal Profiles</h1>
+                  <p className="text-gray-400 mb-6">Monitor specific LinkedIn user profiles for new posts and auto-generate comments.</p>
+                  <div className="space-y-4">
+                    {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('PROFILE:'))).map((campaign) => (
+                      <div key={campaign.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-white font-medium">{campaign.name || 'Profile Campaign'}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs ${campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'}`}>
+                            {campaign.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {campaign.hashtags?.filter((h: string) => h.startsWith('PROFILE:')).map((h: string, i: number) => (
+                            <span key={i} className="px-2 py-1 bg-pink-600/20 text-pink-400 rounded text-sm">{h.replace('PROFILE:', '')}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('PROFILE:'))).length === 0 && (
+                      <div className="text-center py-12 text-gray-500">
+                        <p>No profile monitors yet.</p>
+                        <button onClick={() => setShowCommentingCampaignModal(true)} className="mt-4 px-4 py-2 bg-pink-600 text-white rounded-lg">Add Profile Monitor</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : commentingAgentView === 'companies' ? (
+              <div className="min-h-screen bg-gray-900 p-6">
+                <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                  <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
+                </button>
+                <div className="max-w-4xl">
+                  <h1 className="text-2xl font-bold text-white mb-2">Company Pages</h1>
+                  <p className="text-gray-400 mb-6">Monitor LinkedIn company pages for updates and engage with their content.</p>
+                  <div className="space-y-4">
+                    {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('COMPANY:'))).map((campaign) => (
+                      <div key={campaign.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-white font-medium">{campaign.name || 'Company Campaign'}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs ${campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'}`}>
+                            {campaign.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {campaign.hashtags?.filter((h: string) => h.startsWith('COMPANY:')).map((h: string, i: number) => (
+                            <span key={i} className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm flex items-center gap-1"><Building2 size={14} />{h.replace('COMPANY:', '')}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('COMPANY:'))).length === 0 && (
+                      <div className="text-center py-12 text-gray-500">
+                        <p>No company monitors yet.</p>
+                        <button onClick={() => setShowCommentingCampaignModal(true)} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">Add Company Monitor</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : commentingAgentView === 'hashtags' ? (
+              <div className="min-h-screen bg-gray-900 p-6">
+                <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                  <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
+                </button>
+                <div className="max-w-4xl">
+                  <h1 className="text-2xl font-bold text-white mb-2">Hashtags & Keywords</h1>
+                  <p className="text-gray-400 mb-6">Discover posts by topic or keyword and join relevant conversations.</p>
+                  <div className="space-y-4">
+                    {commentingCampaigns.filter(c => c.keywords?.length > 0 || c.hashtags?.some((h: string) => h.startsWith('HASHTAG:') || h.startsWith('#'))).map((campaign) => (
+                      <div key={campaign.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-white font-medium">{campaign.name || 'Hashtag Campaign'}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs ${campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'}`}>
+                            {campaign.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {campaign.hashtags?.filter((h: string) => h.startsWith('HASHTAG:') || h.startsWith('#')).map((h: string, i: number) => (
+                            <span key={i} className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-sm">#{h.replace('HASHTAG:', '').replace('#', '')}</span>
+                          ))}
+                          {campaign.keywords?.map((k: string, i: number) => (
+                            <span key={`kw-${i}`} className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-sm">{k}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {commentingCampaigns.filter(c => c.keywords?.length > 0 || c.hashtags?.some((h: string) => h.startsWith('HASHTAG:') || h.startsWith('#'))).length === 0 && (
+                      <div className="text-center py-12 text-gray-500">
+                        <p>No hashtag monitors yet.</p>
+                        <button onClick={() => setShowCommentingCampaignModal(true)} className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg">Add Hashtag Monitor</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : commentingAgentView === 'my-profile' ? (
+              <div className="min-h-screen bg-gray-900 p-6">
+                <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                  <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
+                </button>
+                <div className="max-w-4xl">
+                  <h1 className="text-2xl font-bold text-white mb-2">My Profile</h1>
+                  <p className="text-gray-400 mb-6">Monitor your own posts and auto-reply to comments from your audience.</p>
+                  <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
+                    <UserCircle2 size={48} className="text-green-500 mx-auto mb-4" />
+                    <p className="text-white font-medium mb-2">Auto-detect your LinkedIn posts</p>
+                    <p className="text-gray-400 text-sm mb-4">We'll fetch your recent posts and let you monitor comments on each one.</p>
+                    <button
+                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/monitor-me`)}
+                      className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                    >
+                      View My Posts
+                    </button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="min-h-screen bg-gray-900">
                 <div className="w-full space-y-6">
@@ -3311,7 +3434,7 @@ export default function Page() {
 
                     {/* Card 1: Personal Profiles */}
                     <div
-                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/profiles`)}
+                      onClick={() => setCommentingAgentView('profiles')}
                       className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-pink-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
                     >
                       <div className="flex items-start justify-between mb-4">
@@ -3336,7 +3459,7 @@ export default function Page() {
 
                     {/* Card 2: Company Pages */}
                     <div
-                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/companies`)}
+                      onClick={() => setCommentingAgentView('companies')}
                       className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-blue-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
                     >
                       <div className="flex items-start justify-between mb-4">
@@ -3361,7 +3484,7 @@ export default function Page() {
 
                     {/* Card 3: Hashtags */}
                     <div
-                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/hashtags`)}
+                      onClick={() => setCommentingAgentView('hashtags')}
                       className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
                     >
                       <div className="flex items-start justify-between mb-4">
@@ -3386,7 +3509,7 @@ export default function Page() {
 
                     {/* Card 4: My Profile */}
                     <div
-                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/monitor-me`)}
+                      onClick={() => setCommentingAgentView('my-profile')}
                       className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-green-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
                     >
                       <div className="flex items-start justify-between mb-4">
