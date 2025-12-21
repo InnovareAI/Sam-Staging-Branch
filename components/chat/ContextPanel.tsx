@@ -52,11 +52,11 @@ export function ContextPanel() {
                                             : "bg-[#06B6D4]/10 text-[#22D3EE]/60 hover:bg-[#06B6D4]/20 hover:text-[#22D3EE]"
                                     )}
                                 >
-                                    <History size={18} />
+                                    <Search size={18} />
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom">
-                                <p>Chat History</p>
+                                <p>Search History</p>
                             </TooltipContent>
                         </Tooltip>
                         <Tooltip>

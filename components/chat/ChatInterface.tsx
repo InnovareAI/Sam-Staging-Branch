@@ -560,7 +560,7 @@ export function ChatInterface() {
                                         </div>
                                     )}
                                 </div>
-                                {/* Archive Button - Soft Gray Tint */}
+                                {/* Archive Button - Orange Tint */}
                                 <button
                                     onClick={async () => {
                                         if (currentThread) {
@@ -569,10 +569,10 @@ export function ChatInterface() {
                                     }}
                                     disabled={!currentThread}
                                     className={cn(
-                                        "w-11 h-11 rounded-full flex items-center justify-center transition-all ml-1",
+                                        "w-11 h-11 rounded-full flex items-center justify-center transition-all",
                                         !currentThread
-                                            ? "opacity-30 cursor-not-allowed bg-gray-500/5 text-gray-400"
-                                            : "bg-gray-500/15 text-gray-400 hover:bg-gray-500/25 hover:text-gray-300"
+                                            ? "opacity-30 cursor-not-allowed bg-orange-500/5 text-orange-300"
+                                            : "bg-orange-500/15 text-orange-400 hover:bg-orange-500/25 hover:text-orange-300"
                                     )}
                                     title={currentThread ? "Archive this chat" : "No active chat to archive"}
                                 >
