@@ -384,6 +384,7 @@ export async function GET(
     }
 
     // Load messages
+    const { data: messages, error } = await supabase
       .from('sam_conversation_messages')
       .select('*') // Reverted attachments join to fix production crash (missing table)
       .eq('thread_id', resolvedParams.threadId)
