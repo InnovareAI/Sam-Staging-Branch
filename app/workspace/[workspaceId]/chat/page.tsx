@@ -10,7 +10,7 @@ import { SamContextProvider } from '@/components/chat/SamContextProvider';
 
 export default function ChatPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [isContextOpen, setIsContextOpen] = useState(true);
+    const [isContextOpen, setIsContextOpen] = useState(false);
 
     return (
         <SamContextProvider>
