@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/app/lib/supabase';
-import { Loader2, MessageSquare, LogOut } from 'lucide-react';
+import { Loader2, MessageSquare, LogOut, MessageCircle, Brain, CheckSquare, Megaphone, BarChart3, Settings, Building2, Shield } from 'lucide-react';
 
 interface User {
   id: string;
@@ -24,13 +24,77 @@ interface Workspace {
 
 const menuItems = [
   {
+    id: 'chat',
+    label: 'Agent',
+    description: 'Collaborate with Sam in real time',
+    icon: MessageCircle,
+    path: '/?tab=chat',
+    isLegacy: true
+  },
+  {
+    id: 'knowledge',
+    label: 'Knowledgebase',
+    description: 'Curate training assets and product intel',
+    icon: Brain,
+    path: '/?tab=knowledge',
+    isLegacy: true
+  },
+  {
+    id: 'data-approval',
+    label: 'Prospect Database',
+    description: 'Review, approve and manage prospect data',
+    icon: CheckSquare,
+    path: '/?tab=data-approval',
+    isLegacy: true
+  },
+  {
+    id: 'campaign',
+    label: 'Campaigns',
+    description: 'Plan multi-channel outreach with Sam',
+    icon: Megaphone,
+    path: '/?tab=campaign',
+    isLegacy: true
+  },
+  {
     id: 'commenting-agent',
     label: 'Commenting Agent',
     description: 'Automated LinkedIn engagement and commenting',
     icon: MessageSquare,
-    path: '/commenting-agent'
+    path: '/commenting-agent',
+    isLegacy: false
   },
-  // Add more menu items here as they're migrated to workspace architecture
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    description: 'Monitor performance and coverage metrics',
+    icon: BarChart3,
+    path: '/?tab=analytics',
+    isLegacy: true
+  },
+  {
+    id: 'settings',
+    label: 'Settings & Profile',
+    description: 'Configure integrations, channels, and account',
+    icon: Settings,
+    path: '/?tab=settings',
+    isLegacy: true
+  },
+  {
+    id: 'workspace',
+    label: 'Workspace',
+    description: 'Organize teams, tenants, and invitations',
+    icon: Building2,
+    path: '/?tab=workspace',
+    isLegacy: true
+  },
+  {
+    id: 'ai-config',
+    label: 'AI Configuration',
+    description: 'Configure AI agents, models, and automation',
+    icon: Brain,
+    path: '/?tab=ai-config',
+    isLegacy: true
+  }
 ];
 
 export default function WorkspaceLayout({
@@ -150,17 +214,25 @@ export default function WorkspaceLayout({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => router.push(`/workspace/${workspaceId}${item.path}`)}
+                  onClick={() => {
+                    if (item.isLegacy) {
+                      // Redirect to legacy app with tab param
+                      window.location.href = item.path;
+                    } else {
+                      // Navigate within modern workspace
+                      router.push(`/workspace/${workspaceId}${item.path}`);
+                    }
+                  }}
                   className={`group w-full rounded-xl border border-transparent px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isActive
-                      ? 'bg-primary/15 text-white shadow-glow ring-1 ring-primary/35'
-                      : 'text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground'
+                    ? 'bg-primary/15 text-white shadow-glow ring-1 ring-primary/35'
+                    : 'text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground'
                     }`}
                 >
                   <div className="flex items-start gap-3">
                     <span
                       className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${isActive
-                          ? 'bg-primary/25 text-white'
-                          : 'bg-surface-highlight text-muted-foreground group-hover:text-foreground'
+                        ? 'bg-primary/25 text-white'
+                        : 'bg-surface-highlight text-muted-foreground group-hover:text-foreground'
                         }`}
                     >
                       <IconComponent size={18} />
