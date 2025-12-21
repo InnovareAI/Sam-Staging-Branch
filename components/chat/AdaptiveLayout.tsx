@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
+
 import { cn } from '@/lib/utils';
 import { PanelRightClose, PanelRightOpen, Menu, ArrowLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,12 +25,12 @@ export function AdaptiveLayout({
     isSidebarOpen,
     onToggleSidebar
 }: AdaptiveLayoutProps) {
-    const params = useParams();
-    const workspaceId = params.workspaceId as string;
-
     const handleBackToWorkspace = () => {
         // Navigate back to workspace home (legacy app for now)
-        window.location.href = `/?tab=chat`;
+        if (typeof window !== 'undefined') {
+            // If we are already at root, this might reload, which is fine
+            window.location.href = `/?tab=chat`;
+        }
     };
 
     return (

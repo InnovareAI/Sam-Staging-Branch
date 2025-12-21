@@ -34,6 +34,7 @@ import CommentApprovalWorkflow from '@/app/components/CommentApprovalWorkflow';
 import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
 import { IntegrationsToolsModal } from '@/app/components/IntegrationsToolsModal';
 import CalendarIntegrationModal from '@/app/components/CalendarIntegrationModal';
+import RootChatWrapper from '@/components/chat/RootChatWrapper';
 // SuperAdminPage removed - no cross-workspace data access allowed
 import {
   Activity,
@@ -147,6 +148,8 @@ export default function Page() {
   const [user, setUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [shouldRenderChat, setShouldRenderChat] = useState(false);
+
   const [showStarterScreen, setShowStarterScreen] = useState(true);
   const [inputMessage, setInputMessage] = useState('');
   const [activeMenuItem, setActiveMenuItem] = useState(() => {
@@ -266,6 +269,7 @@ export default function Page() {
       // Mark user as verified so DataCollectionHub can start fetching
       // Workspace will be set by loadUserWorkspaces from database
       setUserVerified(true);
+      setShouldRenderChat(true);
     }
   }, [user?.id]);
 
@@ -3028,6 +3032,10 @@ export default function Page() {
   };
 
   // Authenticated user - show main app
+  if (shouldRenderChat && user && selectedWorkspaceId) {
+    return <RootChatWrapper />;
+  }
+
   return (
     <div className="flex h-screen bg-background text-foreground">
       {/* Left Sidebar */}
