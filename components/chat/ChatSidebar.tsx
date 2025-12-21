@@ -168,26 +168,6 @@ export function ChatSidebar() {
             {/* Sidebar Bottom */}
             <div className="space-y-0 border-t border-border/60">
                 <div className="space-y-4 px-5 py-5">
-                    {/* Clear Session Button (Styled like dashboard) */}
-                    <button
-                        type="button"
-                        onClick={async () => {
-                            // This would need reset logic passed down, but for now we just show it
-                            // Or we can import useSamThreadedChat to clear?
-                            // For visual consistency primarily
-                            if (window.confirm('Clear conversation context?')) {
-                                window.location.reload();
-                            }
-                        }}
-                        className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-surface-highlight/50 px-4 py-3 text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-surface-highlight hover:text-foreground"
-                    >
-                        <span className="flex items-center gap-2">
-                            <Settings size={16} />
-                            Clear Session
-                        </span>
-                        <span className="text-xs text-muted-foreground/80">⌘⇧⌫</span>
-                    </button>
-
                     {/* User Profile Card */}
                     <div className="rounded-xl border border-border/60 bg-surface-highlight/40 px-4 py-4">
                         <div className="space-y-4">
