@@ -6,6 +6,9 @@ import { createClient } from '@/app/lib/supabase';
 import AuthModal from '@/components/AuthModal';
 import { Loader2 } from 'lucide-react';
 
+// Force dynamic to prevent static generation issues
+export const dynamic = 'force-dynamic';
+
 /**
  * Login Page
  * 
