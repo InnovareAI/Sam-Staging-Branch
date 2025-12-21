@@ -1,9 +1,11 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { MessageCircle, Brain, CheckSquare, Megaphone, MessageSquare, BarChart3, Settings, Building2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { MessageCircle, Brain, CheckSquare, Megaphone, MessageSquare, BarChart3, Settings, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { createClient } from '@/app/lib/supabase';
 
 const menuItems = [
     {
@@ -66,6 +68,26 @@ const menuItems = [
 export function ChatSidebar() {
     const params = useParams();
     const workspaceId = params.workspaceId as string;
+    const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [userName, setUserName] = useState<string | null>(null);
+
+    useEffect(() => {
+        const loadUser = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUserEmail(user.email || null);
+                setUserName(user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || null);
+            }
+        };
+        loadUser();
+    }, []);
+
+    const handleLogout = async () => {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        window.location.href = '/login';
+    };
 
     const handleNavClick = (item: typeof menuItems[0]) => {
         if (item.isActive) return; // Already on this page
@@ -129,10 +151,23 @@ export function ChatSidebar() {
                 </nav>
             </ScrollArea>
 
-            {/* Footer */}
-            <div className="p-4 border-t border-border/40">
-                <div className="text-[10px] text-muted-foreground/50 text-center">
-                    InnovareAI v4.5
+            {/* Footer - User Info */}
+            <div className="p-3 border-t border-border/40">
+                <div className="flex items-center gap-3 p-2 rounded-lg bg-surface/30 border border-border/30">
+                    <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                        <User size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{userName || 'User'}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{userEmail}</p>
+                    </div>
+                    <button
+                        onClick={handleLogout}
+                        className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors shrink-0"
+                        title="Sign out"
+                    >
+                        <LogOut size={14} />
+                    </button>
                 </div>
             </div>
         </div>
