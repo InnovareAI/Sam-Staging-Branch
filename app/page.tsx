@@ -34,11 +34,13 @@ export default function HomePage() {
                     .from('workspace_members')
                     .select('workspace_id')
                     .eq('user_id', user.id)
-                    .order('created_at', { ascending: true })
+                    .order('joined_at', { ascending: true })
                     .limit(1)
 
                 if (error) {
                     console.error('Error fetching workspace:', error)
+                    // Force sign out to prevent infinite redirect loop between / and /login
+                    await supabase.auth.signOut()
                     router.push('/login')
                     return
                 }
