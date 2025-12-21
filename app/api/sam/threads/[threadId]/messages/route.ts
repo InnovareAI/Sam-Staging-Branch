@@ -386,7 +386,7 @@ export async function GET(
     // Load messages
     const { data: messages, error } = await supabase
       .from('sam_conversation_messages')
-      .select('*')
+      .select('*, attachments:sam_conversation_attachments(*)')
       .eq('thread_id', resolvedParams.threadId)
       .order('message_order', { ascending: true })
 
@@ -449,7 +449,7 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { content } = body
+    const { content, attachmentIds } = body
 
     if (!content?.trim()) {
       return NextResponse.json({
@@ -600,8 +600,8 @@ export async function POST(
           thread_id: resolvedParams.threadId,
           user_id: user.id,
           role: 'user',
-          message_order: nextOrder,
-          has_prospect_intelligence: hasProspectIntelligence
+          content_preview: content?.slice(0, 100) + '...',
+          message_order: nextOrder
         }
       }, null, 2))
       return NextResponse.json({
@@ -610,6 +610,20 @@ export async function POST(
         details: userError.message,
         hint: userError.hint
       }, { status: 500 })
+    }
+
+    // Link attachments to this message if provided
+    if (attachmentIds && Array.isArray(attachmentIds) && attachmentIds.length > 0) {
+      const { error: attachError } = await supabase
+        .from('sam_conversation_attachments')
+        .update({ message_id: userMessage.id })
+        .in('id', attachmentIds)
+        .eq('user_id', user.id); // Security: ensure user owns these attachments
+
+      if (attachError) {
+        console.error('❌ Failed to link attachments to message:', attachError);
+        // Non-fatal for the chat flow, but good to know
+      }
     }
 
     // TRACK ANALYTICS (User Message)

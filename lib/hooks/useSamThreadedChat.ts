@@ -1,5 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 
+export interface SamAttachment {
+  id: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  mime_type: string;
+  storage_path: string;
+  processing_status: 'pending' | 'processing' | 'completed' | 'failed';
+  created_at: string;
+}
+
 export interface SamThreadMessage {
   id: string;
   thread_id: string;
@@ -14,6 +25,7 @@ export interface SamThreadMessage {
   message_order: number;
   has_prospect_intelligence?: boolean;
   prospect_intelligence_data?: any;
+  attachments?: SamAttachment[];
   created_at: string;
 }
 
@@ -33,14 +45,14 @@ export interface SamConversationThread {
   campaign_name?: string;
   tags?: string[];
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  
+
   // Discovery context
   current_discovery_stage?: string;
   discovery_progress?: number;
   sales_methodology: 'meddic' | 'spin' | 'challenger';
   deal_stage?: string;
   deal_value?: number;
-  
+
   // Activity
   last_sam_message?: string;
   last_user_message?: string;
@@ -71,16 +83,16 @@ export function useSamThreadedChat() {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const params = new URLSearchParams();
       if (filters?.thread_type) params.append('type', filters.thread_type);
       if (filters?.status) params.append('status', filters.status);
       if (filters?.priority) params.append('priority', filters.priority);
       if (filters?.search) params.append('search', filters.search);
       if (filters?.tags?.length) params.append('tags', filters.tags.join(','));
-      
+
       const response = await fetch(`/api/sam/threads?${params}`);
-      
+
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           console.log('💡 User not authenticated, skipping thread load');
@@ -105,7 +117,7 @@ export function useSamThreadedChat() {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/sam/threads/${threadId}/messages`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to load thread messages');
       }
@@ -149,11 +161,11 @@ export function useSamThreadedChat() {
 
       const data = await response.json();
       const newThread = data.thread;
-      
+
       setThreads(prev => [newThread, ...prev]);
       setCurrentThread(newThread);
       setMessages([]);
-      
+
       return newThread;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -169,7 +181,7 @@ export function useSamThreadedChat() {
     prospectName?: string,
     prospectCompany?: string
   ) => {
-    const title = prospectName && prospectCompany 
+    const title = prospectName && prospectCompany
       ? `${prospectName} - ${prospectCompany}`
       : `LinkedIn Research - ${new Date().toLocaleDateString()}`;
 
@@ -186,15 +198,15 @@ export function useSamThreadedChat() {
   }, [createThread]);
 
   // Send message to thread
-  const sendMessage = useCallback(async (content: string, threadId?: string) => {
-    if (!content.trim()) return null;
+  const sendMessage = useCallback(async (content: string, threadId?: string, attachmentIds?: string[]) => {
+    if (!content.trim() && (!attachmentIds || attachmentIds.length === 0)) return null;
 
     let targetThread = currentThread;
-    
+
     // Auto-detect LinkedIn URLs and create appropriate thread
     const linkedInUrlPattern = /https?:\/\/(www\.)?linkedin\.com\/in\/[^\s]+/gi;
     const linkedInUrls = content.match(linkedInUrlPattern);
-    
+
     if (linkedInUrls && !targetThread) {
       console.log('🔗 LinkedIn URL detected, creating research thread...');
       targetThread = await createLinkedInThread(linkedInUrls[0]);
@@ -221,7 +233,7 @@ export function useSamThreadedChat() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, attachmentIds }),
       });
 
       if (!response.ok) {
@@ -230,7 +242,7 @@ export function useSamThreadedChat() {
       }
 
       const data = await response.json();
-      
+
       // Add messages to current thread
       if (data.userMessage && data.samMessage) {
         setMessages(prev => {
@@ -243,18 +255,18 @@ export function useSamThreadedChat() {
           }
           return [...newMessages, ...prev];
         });
-        
+
         // Update thread in list
-        setThreads(prev => 
-          prev.map(thread => 
-            thread.id === targetId 
+        setThreads(prev =>
+          prev.map(thread =>
+            thread.id === targetId
               ? {
-                  ...thread,
-                  last_user_message: data.userMessage.content,
-                  last_sam_message: data.samMessage.content,
-                  message_count: thread.message_count + 2,
-                  last_active_at: new Date().toISOString()
-                }
+                ...thread,
+                last_user_message: data.userMessage.content,
+                last_sam_message: data.samMessage.content,
+                message_count: thread.message_count + 2,
+                last_active_at: new Date().toISOString()
+              }
               : thread
           )
         );
@@ -293,17 +305,17 @@ export function useSamThreadedChat() {
 
       const data = await response.json();
       const updatedThread = data.thread;
-      
-      setThreads(prev => 
-        prev.map(thread => 
+
+      setThreads(prev =>
+        prev.map(thread =>
           thread.id === threadId ? updatedThread : thread
         )
       );
-      
+
       if (currentThread?.id === threadId) {
         setCurrentThread(updatedThread);
       }
-      
+
       return updatedThread;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -328,12 +340,12 @@ export function useSamThreadedChat() {
       }
 
       setThreads(prev => prev.filter(thread => thread.id !== threadId));
-      
+
       if (currentThread?.id === threadId) {
         setCurrentThread(null);
         setMessages([]);
       }
-      
+
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -368,7 +380,7 @@ export function useSamThreadedChat() {
     isLoading,
     isSending,
     error,
-    
+
     // Actions
     loadThreads,
     loadMessages,
@@ -379,7 +391,7 @@ export function useSamThreadedChat() {
     updateThread,
     archiveThread,
     deleteThread,
-    
+
     // Helpers
     getThreadsByType,
     getRecentThreads,

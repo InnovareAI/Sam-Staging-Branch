@@ -6,20 +6,24 @@ import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { ContextPanel } from '@/components/chat/ContextPanel';
 
+import { SamContextProvider } from '@/components/chat/SamContextProvider';
+
 export default function ChatPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isContextOpen, setIsContextOpen] = useState(true);
 
     return (
-        <AdaptiveLayout
-            isSidebarOpen={isSidebarOpen}
-            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-            isContextOpen={isContextOpen}
-            onToggleContext={() => setIsContextOpen(!isContextOpen)}
-            sidebar={<ChatSidebar />}
-            contextPanel={<ContextPanel />}
-        >
-            <ChatInterface />
-        </AdaptiveLayout>
+        <SamContextProvider>
+            <AdaptiveLayout
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                isContextOpen={isContextOpen}
+                onToggleContext={() => setIsContextOpen(!isContextOpen)}
+                sidebar={<ChatSidebar />}
+                contextPanel={<ContextPanel />}
+            >
+                <ChatInterface />
+            </AdaptiveLayout>
+        </SamContextProvider>
     );
 }

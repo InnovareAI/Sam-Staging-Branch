@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { PanelRightClose, PanelRightOpen, Menu } from 'lucide-react';
+import { PanelRightClose, PanelRightOpen, Menu, ArrowLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AdaptiveLayoutProps {
@@ -24,6 +25,14 @@ export function AdaptiveLayout({
     isSidebarOpen,
     onToggleSidebar
 }: AdaptiveLayoutProps) {
+    const params = useParams();
+    const workspaceId = params.workspaceId as string;
+
+    const handleBackToWorkspace = () => {
+        // Navigate back to workspace home (legacy app for now)
+        window.location.href = `/?tab=chat`;
+    };
+
     return (
         <div className="flex h-screen bg-background overflow-hidden">
             {/* 1. Left Sidebar (Collapsible) */}
@@ -41,6 +50,20 @@ export function AdaptiveLayout({
                 {/* Header / Toggle Controls */}
                 <header className="h-14 border-b border-border/40 flex items-center justify-between px-4 bg-background/80 backdrop-blur z-10">
                     <div className="flex items-center gap-2">
+                        {/* Back to Workspace Button */}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleBackToWorkspace}
+                            className="gap-2 text-muted-foreground hover:text-foreground"
+                        >
+                            <ArrowLeft size={16} />
+                            <Home size={16} />
+                            <span className="hidden sm:inline">Workspace</span>
+                        </Button>
+
+                        <span className="text-border/60 hidden sm:inline">|</span>
+
                         <Button variant="ghost" size="icon" onClick={onToggleSidebar} className="lg:hidden text-muted-foreground">
                             <Menu size={20} />
                         </Button>

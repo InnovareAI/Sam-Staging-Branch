@@ -97,6 +97,10 @@ const menuItems = [
   }
 ];
 
+// Routes that should hide the global sidebar and render in full-screen mode
+// These routes have their own internal navigation (e.g., ChatSidebar)
+const FULL_SCREEN_ROUTES = ['/chat'];
+
 export default function WorkspaceLayout({
   children,
 }: {
@@ -174,6 +178,9 @@ export default function WorkspaceLayout({
     );
   }
 
+  // Determine if this is a full-screen route (hides global sidebar)
+  const isFullScreenRoute = FULL_SCREEN_ROUTES.some(route => pathname?.includes(route));
+
   // Determine active menu item based on current path
   const activeMenuItem = menuItems.find(item =>
     pathname?.includes(item.path)
@@ -197,6 +204,15 @@ export default function WorkspaceLayout({
       router.push(`/workspace/${workspaceId}/${item.id}`);
     }
   };
+
+  // Full-screen mode: render children directly without global sidebar
+  if (isFullScreenRoute) {
+    return (
+      <div className="h-screen bg-background text-foreground overflow-hidden">
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-background text-foreground">
