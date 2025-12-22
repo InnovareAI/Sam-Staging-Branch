@@ -3093,86 +3093,87 @@ export default function Page() {
   }
 
   return (
-    {/* Left Sidebar */ }
-    < div className = "hidden w-72 flex-col border-r border-border/60 bg-surface-muted/70 backdrop-blur lg:flex overflow-y-auto" >
-      {/* Sidebar Header */ }
-      < div className = "border-b border-border/60 px-6 py-6" >
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent">
-            <img
-              src="/SAM.jpg"
-              alt="Sam AI"
-              className="h-11 w-11 rounded-2xl object-cover"
-              style={{ objectPosition: 'center 30%' }}
-            />
+    <div className="flex h-screen bg-background text-foreground">
+      {/* Left Sidebar */}
+      <div className="hidden w-72 flex-col border-r border-border/60 bg-surface-muted/70 backdrop-blur lg:flex overflow-y-auto">
+        {/* Sidebar Header */}
+        <div className="border-b border-border/60 px-6 py-6">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent">
+              <img
+                src="/SAM.jpg"
+                alt="Sam AI"
+                className="h-11 w-11 rounded-2xl object-cover"
+                style={{ objectPosition: 'center 30%' }}
+              />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Sam AI</p>
+              <h2 className="text-xl font-semibold text-white">Your AI Sales Agent</h2>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Sam AI</p>
-            <h2 className="text-xl font-semibold text-white">Your AI Sales Agent</h2>
-          </div>
-        </div>
         </div >
 
-    {/* Navigation Menu */ }
-    < div className = "flex-1 overflow-y-auto py-4" >
-      <nav className="space-y-2 px-4">
-        {menuItems.map((item) => {
-          const IconComponent = item.icon;
-          const isActive = item.id === activeMenuItem;
+        {/* Navigation Menu */}
+        < div className="flex-1 overflow-y-auto py-4" >
+          <nav className="space-y-2 px-4">
+            {menuItems.map((item) => {
+              const IconComponent = item.icon;
+              const isActive = item.id === activeMenuItem;
 
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => {
-                if (item.id === 'commenting-agent' || item.id === 'chat') {
-                  // Redirect to new workspace architecture
-                  const wsId = currentWorkspace?.id || selectedWorkspaceId;
-                  if (wsId) {
-                    const target = item.id === 'chat' ? 'chat' : 'commenting-agent';
-                    window.location.href = `/workspace/${wsId}/${target}`;
-                  } else {
-                    // Fallback if no workspace selected yet (rare)
-                    router.push('/login');
-                  }
-                } else {
-                  setActiveMenuItem(item.id);
-                }
-              }}
-              className={`group w-full rounded-xl border border-transparent px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isActive
-                ? 'bg-primary/15 text-white shadow-glow ring-1 ring-primary/35'
-                : 'text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground'
-                }`}
-            >
-              <div className="flex items-start gap-3">
-                <span
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${isActive
-                    ? 'bg-primary/25 text-white'
-                    : 'bg-surface-highlight text-muted-foreground group-hover:text-foreground'
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    if (item.id === 'commenting-agent' || item.id === 'chat') {
+                      // Redirect to new workspace architecture
+                      const wsId = currentWorkspace?.id || selectedWorkspaceId;
+                      if (wsId) {
+                        const target = item.id === 'chat' ? 'chat' : 'commenting-agent';
+                        window.location.href = `/workspace/${wsId}/${target}`;
+                      } else {
+                        // Fallback if no workspace selected yet (rare)
+                        router.push('/login');
+                      }
+                    } else {
+                      setActiveMenuItem(item.id);
+                    }
+                  }}
+                  className={`group w-full rounded-xl border border-transparent px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${isActive
+                    ? 'bg-primary/15 text-white shadow-glow ring-1 ring-primary/35'
+                    : 'text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground'
                     }`}
                 >
-                  <IconComponent size={18} />
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold leading-tight text-foreground group-hover:text-white">
-                    {item.label}
-                  </p>
-                  <p className="mt-1 text-xs leading-snug text-muted-foreground group-hover:text-muted-foreground/90">
-                    {item.description}
-                  </p>
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </nav>
+                  <div className="flex items-start gap-3">
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${isActive
+                        ? 'bg-primary/25 text-white'
+                        : 'bg-surface-highlight text-muted-foreground group-hover:text-foreground'
+                        }`}
+                    >
+                      <IconComponent size={18} />
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold leading-tight text-foreground group-hover:text-white">
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-xs leading-snug text-muted-foreground group-hover:text-muted-foreground/90">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </nav>
         </div >
 
-    {/* Sidebar Bottom */ }
-    < div className = "space-y-0 border-t border-border/60" >
-      {/* Workspace is auto-selected based on user's current_workspace_id */ }
+        {/* Sidebar Bottom */}
+        < div className="space-y-0 border-t border-border/60" >
+          {/* Workspace is auto-selected based on user's current_workspace_id */}
 
-      < div className = "space-y-4 px-5 py-5" >
+          < div className="space-y-4 px-5 py-5" >
             <button
               type="button"
               onClick={async () => {
@@ -3238,19 +3239,19 @@ export default function Page() {
         </div >
       </div >
 
-    {/* Main Content Area */ }
-    < div className = "flex-1 flex flex-col bg-surface" >
-      <div className="border-b border-border/60 px-6 py-5 backdrop-blur">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Workspace</p>
-            <h1 className="mt-2 text-2xl font-semibold text-white">{activeSection.label}</h1>
-            <p className="text-sm text-muted-foreground/90 lg:max-w-xl">{activeSection.description}</p>
+      {/* Main Content Area */}
+      < div className="flex-1 flex flex-col bg-surface" >
+        <div className="border-b border-border/60 px-6 py-5 backdrop-blur">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Workspace</p>
+              <h1 className="mt-2 text-2xl font-semibold text-white">{activeSection.label}</h1>
+              <p className="text-sm text-muted-foreground/90 lg:max-w-xl">{activeSection.description}</p>
+            </div>
           </div>
         </div>
-      </div>
 
-  {/* Connection Status Bar */ }
+        {/* Connection Status Bar */}
         <ConnectionStatusBar />
 
         <div className="flex-1 overflow-y-auto px-6 py-6" style={{ paddingBottom: activeMenuItem === 'chat' ? '240px' : '24px' }}>
@@ -4297,814 +4298,814 @@ export default function Page() {
           )}
         </div>
 
-  {/* CHAT INPUT CONTAINER */ }
-  {
-    activeMenuItem === 'chat' && (
-      <div className="fixed bottom-0 left-72 right-0 z-50 px-6 pb-6 pt-8 bg-background/95 backdrop-blur-sm border-t border-border/60">
-        <div
-          className={`mx-auto max-w-4xl overflow-hidden rounded-3xl border bg-surface-highlight/60 shadow-glow transition-all ${isDraggingFile
-            ? 'border-purple-500 border-2 bg-purple-600/20 scale-[1.02]'
-            : 'border-border/60'
-            }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {/* Upload Progress Bar */}
-          {isUploadingCSV && (
-            <div className="px-5 pt-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-purple-400">Uploading CSV...</span>
-                <span className="text-xs text-purple-400">{uploadProgress}%</span>
-              </div>
-              <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-purple-500 transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-end gap-3 px-5 py-4">
-            <button
-              onClick={() => setShowConversationHistory(true)}
-              className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground sm:flex"
-              title="Conversation History"
-            >
-              <History size={18} />
-            </button>
-
-            {/* CSV Upload Button (Paperclip) */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={handleCSVUpload}
-              className="hidden"
-              id="csv-file-upload"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploadingCSV}
-              className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground hover:bg-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed sm:flex"
-              title="Upload CSV file with prospects"
-            >
-              <Paperclip size={18} />
-            </button>
-
-            {/* Paste CSV Button */}
-            <button
-              onClick={() => setShowPasteModal(true)}
-              disabled={isUploadingCSV}
-              className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground hover:bg-green-600/20 disabled:opacity-50 disabled:cursor-not-allowed sm:flex"
-              title="Paste CSV data"
-            >
-              <FileText size={18} />
-            </button>
-
-            <textarea
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={isDraggingFile ? "Drop CSV file here..." : "What do you want to get done?"}
-              className="flex-1 resize-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
-              rows={3}
-              disabled={isUploadingCSV}
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={isSending || !inputMessage.trim() || isUploadingCSV}
-              className="inline-flex items-center gap-2 rounded-full bg-primary/80 px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary disabled:bg-primary/30 disabled:text-primary-foreground/60"
-            >
-              <span>{isSending ? 'Sending…' : 'Send'}</span>
-              <Send size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  {/* Conversation History */ }
-  <ConversationHistory
-    isOpen={showConversationHistory}
-    onClose={() => setShowConversationHistory(false)}
-    currentMessages={messages}
-    onLoadConversation={handleLoadConversation}
-  />
-
-  {/* Paste CSV Modal */ }
-  {
-    showPasteModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 w-full max-w-3xl">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-white">Paste CSV Data</h3>
-            <button
-              onClick={() => {
-                setShowPasteModal(false);
-                setPastedCSV('');
-              }}
-              className="text-gray-400 hover:text-white"
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Paste your CSV data below (with headers)
-            </label>
-            <textarea
-              value={pastedCSV}
-              onChange={(e) => setPastedCSV(e.target.value)}
-              placeholder="name,linkedin_url,company,title\nJohn Doe,https://linkedin.com/in/johndoe,TechCorp,CEO\nJane Smith,https://linkedin.com/in/janesmith,InnovateLabs,CTO"
-              className="w-full h-64 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
-            />
-            <p className="text-xs text-gray-400 mt-2">
-              💡 Tip: Copy directly from Excel/Google Sheets or paste CSV text with commas
-            </p>
-          </div>
-
-          <div className="flex space-x-3">
-            <button
-              onClick={() => {
-                setShowPasteModal(false);
-                setPastedCSV('');
-              }}
-              className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handlePasteCSV}
-              disabled={!pastedCSV.trim()}
-              className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-            >
-              Process CSV
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  {/* Invite User Modal */ }
-  {
-    showInviteUser && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-          <h3 className="text-xl font-semibold text-white mb-4">Invite User to Workspace</h3>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="user@example.com"
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Select Workspace</label>
-            <select
-              value={inviteWorkspaceId || ''}
-              onChange={(e) => setInviteWorkspaceId(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-            >
-              <option value="">Select a workspace...</option>
-              {workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Company</label>
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  value="InnovareAI"
-                  checked={selectedCompany === 'InnovareAI'}
-                  onChange={(e) => setSelectedCompany(e.target.value as 'InnovareAI')}
-                  className="mr-2"
-                />
-                <span className="text-white">InnovareAI</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  value="3cubedai"
-                  checked={selectedCompany === '3cubedai'}
-                  onChange={(e) => setSelectedCompany(e.target.value as '3cubedai')}
-                  className="mr-2"
-                />
-                <span className="text-white">3CubedAI</span>
-              </label>
-            </div>
-            <p className="text-xs text-gray-400 mt-1">
-              Invitation will be sent from: {
-                selectedCompany === 'All' ? 'sp@innovareai.com or sophia@3cubed.ai' :
-                  selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'
-              }
-            </p>
-          </div>
-
-          <div className="flex space-x-3">
-            <button
-              onClick={async () => {
-                if (!inviteEmail.trim() || !inviteWorkspaceId) {
-                  showNotification('error', 'Please fill in all fields');
-                  return;
-                }
-
-                try {
-                  const response = await fetch('/api/admin/simple-invite', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${await getAuthToken()}`
-                    },
-                    body: JSON.stringify({
-                      email: inviteEmail,
-                      firstName: inviteEmail.split('@')[0],
-                      lastName: 'User',
-                      workspaceId: inviteWorkspaceId,
-                      company: selectedCompany,
-                      role: 'member'
-                    })
-                  });
-
-                  const data = await response.json();
-
-                  if (response.ok) {
-                    showNotification('success', `Invitation sent successfully to ${inviteEmail} from ${selectedCompany}!`);
-                    setShowInviteUser(false);
-                    setInviteEmail('');
-                    setInviteWorkspaceId(null);
-                  } else {
-                    showNotification('error', `Failed to send invitation: ${data.error}`);
-                  }
-                } catch (error) {
-                  console.error('Error sending invitation:', error);
-                  showNotification('error', 'Failed to send invitation');
-                }
-              }}
-              disabled={!inviteEmail.trim() || !inviteWorkspaceId}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-2 rounded-lg transition-colors"
-            >
-              Send Invitation
-            </button>
-            <button
-              onClick={() => {
-                setShowInviteUser(false);
-                setInviteEmail('');
-                setInviteWorkspaceId(null);
-              }}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  {/* Create Workspace Modal */ }
-  {
-    showCreateWorkspace && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-          <h3 className="text-xl font-semibold text-white mb-4">Create New Workspace</h3>
-          <input
-            type="text"
-            value={newWorkspaceName}
-            onChange={(e) => setNewWorkspaceName(e.target.value)}
-            placeholder="Workspace name"
-            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                createWorkspace();
-              }
-            }}
-          />
-          <div className="flex space-x-3">
-            <button
-              onClick={createWorkspace}
-              disabled={!newWorkspaceName.trim()}
-              className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-2 rounded-lg transition-colors"
-            >
-              Create
-            </button>
-            <button
-              onClick={() => {
-                setShowCreateWorkspace(false);
-                setNewWorkspaceName('');
-              }}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  {/* Password Change Modal */ }
-  {
-    showPasswordChange && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
-          <h2 className="text-2xl font-bold text-white mb-4">Change Password</h2>
-          <p className="text-gray-400 mb-6">Enter your new password below</p>
-
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                New Password
-              </label>
-              <input
-                type="password"
-                value={passwordChangeData.password}
-                onChange={(e) => setPasswordChangeData(prev => ({ ...prev, password: e.target.value }))}
-                required
-                minLength={6}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Enter new password (min 6 characters)"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Confirm New Password
-              </label>
-              <input
-                type="password"
-                value={passwordChangeData.confirmPassword}
-                onChange={(e) => setPasswordChangeData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                required
-                minLength={6}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Confirm new password"
-              />
-            </div>
-
-            <div className="flex space-x-4 pt-4">
-              <button
-                type="submit"
-                disabled={passwordChangeData.loading}
-                className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+        {/* CHAT INPUT CONTAINER */}
+        {
+          activeMenuItem === 'chat' && (
+            <div className="fixed bottom-0 left-72 right-0 z-50 px-6 pb-6 pt-8 bg-background/95 backdrop-blur-sm border-t border-border/60">
+              <div
+                className={`mx-auto max-w-4xl overflow-hidden rounded-3xl border bg-surface-highlight/60 shadow-glow transition-all ${isDraggingFile
+                  ? 'border-purple-500 border-2 bg-purple-600/20 scale-[1.02]'
+                  : 'border-border/60'
+                  }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
               >
-                {passwordChangeData.loading ? 'Updating...' : 'Update Password'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPasswordChange(false);
-                  setPasswordChangeData({ password: '', confirmPassword: '', loading: false });
-                }}
-                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )
-  }
-
-  {/* User Management Modal */ }
-  {
-    showManageUsers && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-semibold text-white">Manage Users</h3>
-            <button
-              onClick={() => setShowManageUsers(false)}
-              className="text-gray-400 hover:text-gray-200"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* User Statistics */}
-          {userStats && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-gray-700 rounded-lg p-4">
-                <div className="text-2xl font-bold text-white">{userStats.total_users}</div>
-                <div className="text-sm text-gray-400">Total Users</div>
-              </div>
-              <div className="bg-gray-700 rounded-lg p-4">
-                <div className="text-2xl font-bold text-green-400">{userStats.active_users}</div>
-                <div className="text-sm text-gray-400">Active Users</div>
-              </div>
-              <div className="bg-gray-700 rounded-lg p-4">
-                <div className="text-2xl font-bold text-yellow-400">{userStats.pending_invitations}</div>
-                <div className="text-sm text-gray-400">Pending Invites</div>
-              </div>
-              <div className="bg-gray-700 rounded-lg p-4">
-                <div className="text-2xl font-bold text-purple-400">{userStats.super_admins}</div>
-                <div className="text-sm text-gray-400">Super Admins</div>
-              </div>
-            </div>
-          )}
-
-          {/* Users List */}
-          {usersLoading ? (
-            <div className="text-center py-8">
-              <div className="text-gray-400">Loading users...</div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-600">
-                    <th className="text-left py-3 px-4 text-gray-300 w-12">
-                      <input
-                        type="checkbox"
-                        onChange={(e) => handleSelectAllUsers(e.target.checked)}
-                        checked={selectedUsers.size > 0 && selectedUsers.size === users.filter(u => !u.is_super_admin).length}
-                        className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
+                {/* Upload Progress Bar */}
+                {isUploadingCSV && (
+                  <div className="px-5 pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-purple-400">Uploading CSV...</span>
+                      <span className="text-xs text-purple-400">{uploadProgress}%</span>
+                    </div>
+                    <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-purple-500 transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
                       />
-                    </th>
-                    <th className="text-left py-3 px-4 text-gray-300">Email</th>
-                    <th className="text-left py-3 px-4 text-gray-300">Status</th>
-                    <th className="text-left py-3 px-4 text-gray-300">Workspace</th>
-                    <th className="text-left py-3 px-4 text-gray-300">Last Sign In</th>
-                    <th className="text-left py-3 px-4 text-gray-300">Created</th>
-                    <th className="text-left py-3 px-4 text-gray-300">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/30">
-                      <td className="py-3 px-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedUsers.has(user.id)}
-                          onChange={(e) => handleUserSelect(user.id, e.target.checked)}
-                          disabled={user.is_super_admin}
-                          className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        />
-                      </td>
-                      <td className="py-3 px-4">
-                        <div>
-                          <div className="text-white font-medium">{user.email}</div>
-                          {user.is_super_admin && (
-                            <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded mt-1 inline-block">
-                              Super Admin
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded text-xs ${user.email_confirmed_at
-                          ? 'bg-green-600 text-white'
-                          : 'bg-yellow-600 text-white'
-                          }`}>
-                          {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="text-gray-300">
-                          {user.memberships.length > 0 ? (
-                            <div className="space-y-1">
-                              {user.memberships.map((membership: any, idx: number) => (
-                                <div key={idx} className="text-xs">
-                                  <span className="text-white">{membership.workspaces?.name || 'Unknown'}</span>
-                                  <span className={`ml-2 px-1 py-0.5 rounded text-xs ${membership.workspaces?.slug === 'innovareai'
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-green-500 text-white'
-                                    }`}>
-                                    {membership.workspaces?.slug || 'Unknown'}
-                                  </span>
-                                  <span className="ml-2 text-gray-400">({membership.role})</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">No workspaces</span>
-                          )}
-                          {user.pending_invitations.length > 0 && (
-                            <div className="text-yellow-400 text-xs mt-1">
-                              {user.pending_invitations.length} pending invite(s)
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-300 text-sm">
-                        {user.last_sign_in_at
-                          ? new Date(user.last_sign_in_at).toLocaleDateString()
-                          : 'Never'
-                        }
-                      </td>
-                      <td className="py-3 px-4 text-gray-300 text-sm">
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleResetPassword(user.email)}
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs transition-colors"
-                            title="Send password reset email"
-                          >
-                            Reset Password
-                          </button>
-                          <select
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                const [workspaceId, role] = e.target.value.split('|');
-                                handleAssignWorkspace(workspaceId, role);
-                                e.target.value = ''; // Reset selection
-                              }
-                            }}
-                            className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors border-none cursor-pointer"
-                            title="Assign user to workspace"
-                          >
-                            <option value="">Assign Workspace</option>
-                            {workspaces.map((workspace) => (
-                              <optgroup key={workspace.id} label={`${workspace.name} (${workspace.slug})`}>
-                                <option value={`${workspace.id}|member`}>→ Member</option>
-                                <option value={`${workspace.id}|admin`}>→ Admin</option>
-                                <option value={`${workspace.id}|owner`}>→ Owner</option>
-                              </optgroup>
-                            ))}
-                          </select>
-                          <select
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                const [workspaceId, role] = e.target.value.split('|');
-                                handleReassignWorkspace(user.id, workspaceId, role);
-                                e.target.value = ''; // Reset selection
-                              }
-                            }}
-                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition-colors border-none cursor-pointer ml-2"
-                            title="⚠️ Reassign user to different workspace (DELETES ALL HISTORY)"
-                          >
-                            <option value="">Reassign + Delete History</option>
-                            {workspaces.map((workspace) => (
-                              <optgroup key={workspace.id} label={`${workspace.name} (${workspace.slug})`}>
-                                <option value={`${workspace.id}|member`}>→ Member</option>
-                                <option value={`${workspace.id}|admin`}>→ Admin</option>
-                                <option value={`${workspace.id}|owner`}>→ Owner</option>
-                              </optgroup>
-                            ))}
-                          </select>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <div className="flex justify-between items-center mt-6">
-            <div className="flex items-center space-x-4">
-              {selectedUsers.size > 0 && (
-                <button
-                  onClick={handleBulkDeleteUsers}
-                  disabled={isDeleting}
-                  className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-6 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                >
-                  <span>{isDeleting ? 'Deleting...' : `Delete ${selectedUsers.size} User${selectedUsers.size > 1 ? 's' : ''}`}</span>
-                </button>
-              )}
-              {selectedUsers.size > 0 && (
-                <span className="text-gray-400 text-sm">
-                  {selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''} selected
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => setShowManageUsers(false)}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  {/* Assign Workspace Modal */ }
-  {
-    showAssignWorkspace && selectedUserForWorkspace && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-white">Assign Workspace</h3>
-            <button
-              onClick={() => {
-                setShowAssignWorkspace(false);
-                setSelectedUserForWorkspace(null);
-              }}
-              className="text-gray-400 hover:text-gray-200"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="mb-4">
-            <p className="text-gray-300 mb-2">
-              Assigning workspace to: <strong className="text-white">{selectedUserForWorkspace.email}</strong>
-            </p>
-          </div>
-
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            const workspaceId = formData.get('workspace') as string;
-            const role = formData.get('role') as string;
-
-            if (workspaceId && role) {
-              handleAssignWorkspace(workspaceId, role);
-            }
-          }}>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Workspace
-                </label>
-                <select
-                  name="workspace"
-                  required
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="">Select a workspace</option>
-                  {workspaces.map((workspace) => (
-                    <option key={workspace.id} value={workspace.id}>
-                      {workspace.name} ({workspace.slug})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Role
-                </label>
-                <select
-                  name="role"
-                  required
-                  defaultValue="member"
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                  <option value="owner">Owner</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAssignWorkspace(false);
-                  setSelectedUserForWorkspace(null);
-                }}
-                className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
-              >
-                Assign Workspace
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )
-  }
-
-  {/* Invite User Popup */ }
-  <InviteUserPopup
-    isOpen={showInviteUser}
-    onClose={() => setShowInviteUser(false)}
-    onSubmit={handleInviteUser}
-    workspaces={workspaces}
-  />
-
-
-  {/* LinkedIn integration moved to dedicated /linkedin-integration page */ }
-
-  {/* Unipile Multi-Channel Integration Modal */ }
-  <UnipileModal
-    isOpen={showUnipileModal}
-    onClose={() => setShowUnipileModal(false)}
-    workspaceId={selectedWorkspaceId || undefined}
-  />
-
-  {/* Channel Selection Modal - Triggered by SAM when needed */ }
-  <ChannelSelectionModal
-    isOpen={showChannelSelectionModal}
-    onClose={() => setShowChannelSelectionModal(false)}
-    onConfirm={handleChannelSelectionConfirm}
-    connectedAccounts={connectedAccounts}
-  />
-
-  {/* LinkedIn Settings Modal */ }
-  {
-    showLinkedInSettingsModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-white flex items-center">
-              <LinkedinIcon className="mr-3 text-blue-400" size={28} />
-              LinkedIn Integration
-            </h2>
-            <button
-              onClick={() => setShowLinkedInSettingsModal(false)}
-              className="text-gray-400 hover:text-gray-200 transition-colors"
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center space-x-2 mb-2">
-                  <h3 className="text-white font-medium">LinkedIn Account Connection</h3>
-                  {linkedInLoading ? (
-                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <div className={`w-3 h-3 rounded-full ${hasLinkedInConnection ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  )}
-                </div>
-                <p className="text-gray-400 text-sm">
-                  {linkedInLoading ? 'Checking connection status...' :
-                    hasLinkedInConnection ? 'LinkedIn account connected - prospect features enabled' :
-                      'Connect your LinkedIn account to enable prospect research and enrichment'}
-                </p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={checkLinkedInConnection}
-                  disabled={linkedInLoading}
-                  className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg transition-colors text-sm"
-                >
-                  {linkedInLoading ? 'Checking...' : 'Refresh'}
-                </button>
-
-                {hasLinkedInConnection ? (
-                  <>
-                    <button
-                      onClick={() => window.location.href = '/linkedin-integration'}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                    >
-                      <LinkedInLogo size={16} className="text-white" />
-                      <span>Manage LinkedIn</span>
-                    </button>
-                    <button
-                      onClick={disconnectLinkedIn}
-                      disabled={isDisconnectingLinkedIn}
-                      className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                    >
-                      <LinkedInLogo size={16} className="text-white" />
-                      <span>{isDisconnectingLinkedIn ? 'Disconnecting...' : 'Disconnect'}</span>
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={requireLinkedInConnection}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                  >
-                    <LinkedInLogo size={16} className="text-white" />
-                    <span>Connect LinkedIn</span>
-                  </button>
+                    </div>
+                  </div>
                 )}
+
+                <div className="flex items-end gap-3 px-5 py-4">
+                  <button
+                    onClick={() => setShowConversationHistory(true)}
+                    className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground sm:flex"
+                    title="Conversation History"
+                  >
+                    <History size={18} />
+                  </button>
+
+                  {/* CSV Upload Button (Paperclip) */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVUpload}
+                    className="hidden"
+                    id="csv-file-upload"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingCSV}
+                    className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground hover:bg-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed sm:flex"
+                    title="Upload CSV file with prospects"
+                  >
+                    <Paperclip size={18} />
+                  </button>
+
+                  {/* Paste CSV Button */}
+                  <button
+                    onClick={() => setShowPasteModal(true)}
+                    disabled={isUploadingCSV}
+                    className="hidden rounded-full bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground hover:bg-green-600/20 disabled:opacity-50 disabled:cursor-not-allowed sm:flex"
+                    title="Paste CSV data"
+                  >
+                    <FileText size={18} />
+                  </button>
+
+                  <textarea
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder={isDraggingFile ? "Drop CSV file here..." : "What do you want to get done?"}
+                    className="flex-1 resize-none bg-transparent text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
+                    rows={3}
+                    disabled={isUploadingCSV}
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={isSending || !inputMessage.trim() || isUploadingCSV}
+                    className="inline-flex items-center gap-2 rounded-full bg-primary/80 px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary disabled:bg-primary/30 disabled:text-primary-foreground/60"
+                  >
+                    <span>{isSending ? 'Sending…' : 'Send'}</span>
+                    <Send size={16} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+          )
+        }
 
-  {/* Email Integration Modal */ }
-  <EmailProvidersModal
-    isOpen={showEmailIntegrationModal}
-    onClose={() => setShowEmailIntegrationModal(false)}
-    workspaceId={selectedWorkspaceId || undefined}
-  />
+        {/* Conversation History */}
+        <ConversationHistory
+          isOpen={showConversationHistory}
+          onClose={() => setShowConversationHistory(false)}
+          currentMessages={messages}
+          onLoadConversation={handleLoadConversation}
+        />
 
-  {/* ReachInbox Modal */ }
+        {/* Paste CSV Modal */}
+        {
+          showPasteModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 w-full max-w-3xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-white">Paste CSV Data</h3>
+                  <button
+                    onClick={() => {
+                      setShowPasteModal(false);
+                      setPastedCSV('');
+                    }}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Paste your CSV data below (with headers)
+                  </label>
+                  <textarea
+                    value={pastedCSV}
+                    onChange={(e) => setPastedCSV(e.target.value)}
+                    placeholder="name,linkedin_url,company,title\nJohn Doe,https://linkedin.com/in/johndoe,TechCorp,CEO\nJane Smith,https://linkedin.com/in/janesmith,InnovateLabs,CTO"
+                    className="w-full h-64 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">
+                    💡 Tip: Copy directly from Excel/Google Sheets or paste CSV text with commas
+                  </p>
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowPasteModal(false);
+                      setPastedCSV('');
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handlePasteCSV}
+                    disabled={!pastedCSV.trim()}
+                    className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                  >
+                    Process CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        {/* Invite User Modal */}
+        {
+          showInviteUser && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+                <h3 className="text-xl font-semibold text-white mb-4">Invite User to Workspace</h3>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="user@example.com"
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Select Workspace</label>
+                  <select
+                    value={inviteWorkspaceId || ''}
+                    onChange={(e) => setInviteWorkspaceId(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  >
+                    <option value="">Select a workspace...</option>
+                    {workspaces.map((workspace) => (
+                      <option key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Company</label>
+                  <div className="flex items-center space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="InnovareAI"
+                        checked={selectedCompany === 'InnovareAI'}
+                        onChange={(e) => setSelectedCompany(e.target.value as 'InnovareAI')}
+                        className="mr-2"
+                      />
+                      <span className="text-white">InnovareAI</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="3cubedai"
+                        checked={selectedCompany === '3cubedai'}
+                        onChange={(e) => setSelectedCompany(e.target.value as '3cubedai')}
+                        className="mr-2"
+                      />
+                      <span className="text-white">3CubedAI</span>
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Invitation will be sent from: {
+                      selectedCompany === 'All' ? 'sp@innovareai.com or sophia@3cubed.ai' :
+                        selectedCompany === 'InnovareAI' ? 'sp@innovareai.com' : 'sophia@3cubed.ai'
+                    }
+                  </p>
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    onClick={async () => {
+                      if (!inviteEmail.trim() || !inviteWorkspaceId) {
+                        showNotification('error', 'Please fill in all fields');
+                        return;
+                      }
+
+                      try {
+                        const response = await fetch('/api/admin/simple-invite', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${await getAuthToken()}`
+                          },
+                          body: JSON.stringify({
+                            email: inviteEmail,
+                            firstName: inviteEmail.split('@')[0],
+                            lastName: 'User',
+                            workspaceId: inviteWorkspaceId,
+                            company: selectedCompany,
+                            role: 'member'
+                          })
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok) {
+                          showNotification('success', `Invitation sent successfully to ${inviteEmail} from ${selectedCompany}!`);
+                          setShowInviteUser(false);
+                          setInviteEmail('');
+                          setInviteWorkspaceId(null);
+                        } else {
+                          showNotification('error', `Failed to send invitation: ${data.error}`);
+                        }
+                      } catch (error) {
+                        console.error('Error sending invitation:', error);
+                        showNotification('error', 'Failed to send invitation');
+                      }
+                    }}
+                    disabled={!inviteEmail.trim() || !inviteWorkspaceId}
+                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-2 rounded-lg transition-colors"
+                  >
+                    Send Invitation
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowInviteUser(false);
+                      setInviteEmail('');
+                      setInviteWorkspaceId(null);
+                    }}
+                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        {/* Create Workspace Modal */}
+        {
+          showCreateWorkspace && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+                <h3 className="text-xl font-semibold text-white mb-4">Create New Workspace</h3>
+                <input
+                  type="text"
+                  value={newWorkspaceName}
+                  onChange={(e) => setNewWorkspaceName(e.target.value)}
+                  placeholder="Workspace name"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white mb-4"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      createWorkspace();
+                    }
+                  }}
+                />
+                <div className="flex space-x-3">
+                  <button
+                    onClick={createWorkspace}
+                    disabled={!newWorkspaceName.trim()}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white py-2 rounded-lg transition-colors"
+                  >
+                    Create
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCreateWorkspace(false);
+                      setNewWorkspaceName('');
+                    }}
+                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        {/* Password Change Modal */}
+        {
+          showPasswordChange && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
+                <h2 className="text-2xl font-bold text-white mb-4">Change Password</h2>
+                <p className="text-gray-400 mb-6">Enter your new password below</p>
+
+                <form onSubmit={handlePasswordChange} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordChangeData.password}
+                      onChange={(e) => setPasswordChangeData(prev => ({ ...prev, password: e.target.value }))}
+                      required
+                      minLength={6}
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Enter new password (min 6 characters)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordChangeData.confirmPassword}
+                      onChange={(e) => setPasswordChangeData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      required
+                      minLength={6}
+                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+
+                  <div className="flex space-x-4 pt-4">
+                    <button
+                      type="submit"
+                      disabled={passwordChangeData.loading}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                      {passwordChangeData.loading ? 'Updating...' : 'Update Password'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPasswordChange(false);
+                        setPasswordChangeData({ password: '', confirmPassword: '', loading: false });
+                      }}
+                      className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )
+        }
+
+        {/* User Management Modal */}
+        {
+          showManageUsers && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-semibold text-white">Manage Users</h3>
+                  <button
+                    onClick={() => setShowManageUsers(false)}
+                    className="text-gray-400 hover:text-gray-200"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* User Statistics */}
+                {userStats && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-white">{userStats.total_users}</div>
+                      <div className="text-sm text-gray-400">Total Users</div>
+                    </div>
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-green-400">{userStats.active_users}</div>
+                      <div className="text-sm text-gray-400">Active Users</div>
+                    </div>
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-yellow-400">{userStats.pending_invitations}</div>
+                      <div className="text-sm text-gray-400">Pending Invites</div>
+                    </div>
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-purple-400">{userStats.super_admins}</div>
+                      <div className="text-sm text-gray-400">Super Admins</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Users List */}
+                {usersLoading ? (
+                  <div className="text-center py-8">
+                    <div className="text-gray-400">Loading users...</div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-600">
+                          <th className="text-left py-3 px-4 text-gray-300 w-12">
+                            <input
+                              type="checkbox"
+                              onChange={(e) => handleSelectAllUsers(e.target.checked)}
+                              checked={selectedUsers.size > 0 && selectedUsers.size === users.filter(u => !u.is_super_admin).length}
+                              className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500"
+                            />
+                          </th>
+                          <th className="text-left py-3 px-4 text-gray-300">Email</th>
+                          <th className="text-left py-3 px-4 text-gray-300">Status</th>
+                          <th className="text-left py-3 px-4 text-gray-300">Workspace</th>
+                          <th className="text-left py-3 px-4 text-gray-300">Last Sign In</th>
+                          <th className="text-left py-3 px-4 text-gray-300">Created</th>
+                          <th className="text-left py-3 px-4 text-gray-300">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((user) => (
+                          <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/30">
+                            <td className="py-3 px-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedUsers.has(user.id)}
+                                onChange={(e) => handleUserSelect(user.id, e.target.checked)}
+                                disabled={user.is_super_admin}
+                                className="rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                            </td>
+                            <td className="py-3 px-4">
+                              <div>
+                                <div className="text-white font-medium">{user.email}</div>
+                                {user.is_super_admin && (
+                                  <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded mt-1 inline-block">
+                                    Super Admin
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-1 rounded text-xs ${user.email_confirmed_at
+                                ? 'bg-green-600 text-white'
+                                : 'bg-yellow-600 text-white'
+                                }`}>
+                                {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="text-gray-300">
+                                {user.memberships.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {user.memberships.map((membership: any, idx: number) => (
+                                      <div key={idx} className="text-xs">
+                                        <span className="text-white">{membership.workspaces?.name || 'Unknown'}</span>
+                                        <span className={`ml-2 px-1 py-0.5 rounded text-xs ${membership.workspaces?.slug === 'innovareai'
+                                          ? 'bg-blue-500 text-white'
+                                          : 'bg-green-500 text-white'
+                                          }`}>
+                                          {membership.workspaces?.slug || 'Unknown'}
+                                        </span>
+                                        <span className="ml-2 text-gray-400">({membership.role})</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-500">No workspaces</span>
+                                )}
+                                {user.pending_invitations.length > 0 && (
+                                  <div className="text-yellow-400 text-xs mt-1">
+                                    {user.pending_invitations.length} pending invite(s)
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-gray-300 text-sm">
+                              {user.last_sign_in_at
+                                ? new Date(user.last_sign_in_at).toLocaleDateString()
+                                : 'Never'
+                              }
+                            </td>
+                            <td className="py-3 px-4 text-gray-300 text-sm">
+                              {new Date(user.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleResetPassword(user.email)}
+                                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                                  title="Send password reset email"
+                                >
+                                  Reset Password
+                                </button>
+                                <select
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      const [workspaceId, role] = e.target.value.split('|');
+                                      handleAssignWorkspace(workspaceId, role);
+                                      e.target.value = ''; // Reset selection
+                                    }
+                                  }}
+                                  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors border-none cursor-pointer"
+                                  title="Assign user to workspace"
+                                >
+                                  <option value="">Assign Workspace</option>
+                                  {workspaces.map((workspace) => (
+                                    <optgroup key={workspace.id} label={`${workspace.name} (${workspace.slug})`}>
+                                      <option value={`${workspace.id}|member`}>→ Member</option>
+                                      <option value={`${workspace.id}|admin`}>→ Admin</option>
+                                      <option value={`${workspace.id}|owner`}>→ Owner</option>
+                                    </optgroup>
+                                  ))}
+                                </select>
+                                <select
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      const [workspaceId, role] = e.target.value.split('|');
+                                      handleReassignWorkspace(user.id, workspaceId, role);
+                                      e.target.value = ''; // Reset selection
+                                    }
+                                  }}
+                                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition-colors border-none cursor-pointer ml-2"
+                                  title="⚠️ Reassign user to different workspace (DELETES ALL HISTORY)"
+                                >
+                                  <option value="">Reassign + Delete History</option>
+                                  {workspaces.map((workspace) => (
+                                    <optgroup key={workspace.id} label={`${workspace.name} (${workspace.slug})`}>
+                                      <option value={`${workspace.id}|member`}>→ Member</option>
+                                      <option value={`${workspace.id}|admin`}>→ Admin</option>
+                                      <option value={`${workspace.id}|owner`}>→ Owner</option>
+                                    </optgroup>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center mt-6">
+                  <div className="flex items-center space-x-4">
+                    {selectedUsers.size > 0 && (
+                      <button
+                        onClick={handleBulkDeleteUsers}
+                        disabled={isDeleting}
+                        className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-6 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <span>{isDeleting ? 'Deleting...' : `Delete ${selectedUsers.size} User${selectedUsers.size > 1 ? 's' : ''}`}</span>
+                      </button>
+                    )}
+                    {selectedUsers.size > 0 && (
+                      <span className="text-gray-400 text-sm">
+                        {selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''} selected
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowManageUsers(false)}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        {/* Assign Workspace Modal */}
+        {
+          showAssignWorkspace && selectedUserForWorkspace && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-white">Assign Workspace</h3>
+                  <button
+                    onClick={() => {
+                      setShowAssignWorkspace(false);
+                      setSelectedUserForWorkspace(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-200"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-gray-300 mb-2">
+                    Assigning workspace to: <strong className="text-white">{selectedUserForWorkspace.email}</strong>
+                  </p>
+                </div>
+
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const workspaceId = formData.get('workspace') as string;
+                  const role = formData.get('role') as string;
+
+                  if (workspaceId && role) {
+                    handleAssignWorkspace(workspaceId, role);
+                  }
+                }}>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Workspace
+                      </label>
+                      <select
+                        name="workspace"
+                        required
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="">Select a workspace</option>
+                        {workspaces.map((workspace) => (
+                          <option key={workspace.id} value={workspace.id}>
+                            {workspace.name} ({workspace.slug})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Role
+                      </label>
+                      <select
+                        name="role"
+                        required
+                        defaultValue="member"
+                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                        <option value="owner">Owner</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAssignWorkspace(false);
+                        setSelectedUserForWorkspace(null);
+                      }}
+                      className="px-4 py-2 text-gray-400 hover:text-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
+                    >
+                      Assign Workspace
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )
+        }
+
+        {/* Invite User Popup */}
+        <InviteUserPopup
+          isOpen={showInviteUser}
+          onClose={() => setShowInviteUser(false)}
+          onSubmit={handleInviteUser}
+          workspaces={workspaces}
+        />
+
+
+        {/* LinkedIn integration moved to dedicated /linkedin-integration page */}
+
+        {/* Unipile Multi-Channel Integration Modal */}
+        <UnipileModal
+          isOpen={showUnipileModal}
+          onClose={() => setShowUnipileModal(false)}
+          workspaceId={selectedWorkspaceId || undefined}
+        />
+
+        {/* Channel Selection Modal - Triggered by SAM when needed */}
+        <ChannelSelectionModal
+          isOpen={showChannelSelectionModal}
+          onClose={() => setShowChannelSelectionModal(false)}
+          onConfirm={handleChannelSelectionConfirm}
+          connectedAccounts={connectedAccounts}
+        />
+
+        {/* LinkedIn Settings Modal */}
+        {
+          showLinkedInSettingsModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <LinkedinIcon className="mr-3 text-blue-400" size={28} />
+                    LinkedIn Integration
+                  </h2>
+                  <button
+                    onClick={() => setShowLinkedInSettingsModal(false)}
+                    className="text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <h3 className="text-white font-medium">LinkedIn Account Connection</h3>
+                        {linkedInLoading ? (
+                          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <div className={`w-3 h-3 rounded-full ${hasLinkedInConnection ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        )}
+                      </div>
+                      <p className="text-gray-400 text-sm">
+                        {linkedInLoading ? 'Checking connection status...' :
+                          hasLinkedInConnection ? 'LinkedIn account connected - prospect features enabled' :
+                            'Connect your LinkedIn account to enable prospect research and enrichment'}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={checkLinkedInConnection}
+                        disabled={linkedInLoading}
+                        className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-3 py-2 rounded-lg transition-colors text-sm"
+                      >
+                        {linkedInLoading ? 'Checking...' : 'Refresh'}
+                      </button>
+
+                      {hasLinkedInConnection ? (
+                        <>
+                          <button
+                            onClick={() => window.location.href = '/linkedin-integration'}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                          >
+                            <LinkedInLogo size={16} className="text-white" />
+                            <span>Manage LinkedIn</span>
+                          </button>
+                          <button
+                            onClick={disconnectLinkedIn}
+                            disabled={isDisconnectingLinkedIn}
+                            className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                          >
+                            <LinkedInLogo size={16} className="text-white" />
+                            <span>{isDisconnectingLinkedIn ? 'Disconnecting...' : 'Disconnect'}</span>
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={requireLinkedInConnection}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                        >
+                          <LinkedInLogo size={16} className="text-white" />
+                          <span>Connect LinkedIn</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        {/* Email Integration Modal */}
+        <EmailProvidersModal
+          isOpen={showEmailIntegrationModal}
+          onClose={() => setShowEmailIntegrationModal(false)}
+          workspaceId={selectedWorkspaceId || undefined}
+        />
+
+        {/* ReachInbox Modal */}
         <ReachInboxModal
           isOpen={showReachInboxModal}
           onClose={() => setShowReachInboxModal(false)}
@@ -5117,435 +5118,435 @@ export default function Page() {
           workspaceId={selectedWorkspaceId || ''}
         />
 
-  {/* Calendar Integration Modal */ }
-  <CalendarIntegrationModal
-    isOpen={showCalendarIntegrationModal}
-    onClose={() => setShowCalendarIntegrationModal(false)}
-    workspaceId={selectedWorkspaceId || ''}
-  />
+        {/* Calendar Integration Modal */}
+        <CalendarIntegrationModal
+          isOpen={showCalendarIntegrationModal}
+          onClose={() => setShowCalendarIntegrationModal(false)}
+          workspaceId={selectedWorkspaceId || ''}
+        />
 
-  {/* LLM Model Configuration Modal */ }
-  <LLMConfigModal
-    isOpen={showLLMConfigModal}
-    onClose={() => setShowLLMConfigModal(false)}
-    onSave={() => {
-      setShowLLMConfigModal(false);
-      // Optionally show success message
-    }}
-  />
+        {/* LLM Model Configuration Modal */}
+        <LLMConfigModal
+          isOpen={showLLMConfigModal}
+          onClose={() => setShowLLMConfigModal(false)}
+          onSave={() => {
+            setShowLLMConfigModal(false);
+            // Optionally show success message
+          }}
+        />
 
-  {/* User Profile Modal */ }
-  {
-    showUserProfileModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-white flex items-center">
-              <User className="mr-3 text-blue-400" size={28} />
-              User Profile
-            </h2>
-            <button
-              onClick={() => setShowUserProfileModal(false)}
-              className="text-gray-400 hover:text-gray-200 transition-colors"
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            {/* Profile Information Section */}
-            <div className="bg-gray-700 rounded-lg p-5">
-              <h3 className="text-lg font-semibold text-white mb-4">Account Information</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={user?.email || ''}
-                    disabled
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white opacity-50"
-                  />
-                  <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
+        {/* User Profile Modal */}
+        {
+          showUserProfileModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <User className="mr-3 text-blue-400" size={28} />
+                    User Profile
+                  </h2>
+                  <button
+                    onClick={() => setShowUserProfileModal(false)}
+                    className="text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Account Created</label>
-                  <input
-                    type="text"
-                    value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-                    disabled
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white opacity-50"
-                  />
+
+                <div className="space-y-6">
+                  {/* Profile Information Section */}
+                  <div className="bg-gray-700 rounded-lg p-5">
+                    <h3 className="text-lg font-semibold text-white mb-4">Account Information</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                        <input
+                          type="email"
+                          value={user?.email || ''}
+                          disabled
+                          className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white opacity-50"
+                        />
+                        <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Account Created</label>
+                        <input
+                          type="text"
+                          value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                          disabled
+                          className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white opacity-50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="flex justify-end mt-6 pt-4 border-t border-gray-700">
+                  <button
+                    onClick={() => setShowUserProfileModal(false)}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
+          )
+        }
 
-          {/* Footer Actions */}
-          <div className="flex justify-end mt-6 pt-4 border-t border-gray-700">
-            <button
-              onClick={() => setShowUserProfileModal(false)}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  {/* Proxy Country Modal */ }
-  {
-    showProxyCountryModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-white flex items-center">
-              <Globe className="mr-3 text-blue-400" size={28} />
-              LinkedIn Account Proxy Management
-            </h2>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => {
-                  setShowProxyCountryModal(false);
-                  setSelectedLinkedinAccount(null);
-                }}
-                className="text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            {/* Info banner about proxy assignment */}
-            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
-              <h3 className="text-blue-400 font-semibold text-sm mb-2 flex items-center">
-                <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="16" x2="12" y2="12" />
-                  <line x1="12" y1="8" x2="12.01" y2="8" />
-                </svg>
-                How Proxy Assignment Works
-              </h3>
-              <p className="text-gray-300 text-xs leading-relaxed">
-                Unipile automatically detects your location from your LinkedIn profile and assigns a residential proxy from that country. This ensures your LinkedIn activity appears authentic and prevents automation detection.
-              </p>
-            </div>
-
-            {/* My LinkedIn Account & Proxy Info */}
-            <div className="bg-gray-700 rounded-lg p-5 border border-gray-600">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
-                <svg className="mr-2 text-blue-400" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
-                </svg>
-                My LinkedIn Account
-              </h3>
-              {proxyInfoLoading ? (
-                <div className="text-center py-4">
-                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-                  <p className="text-gray-400 text-sm mt-2">Loading...</p>
+        {/* Proxy Country Modal */}
+        {
+          showProxyCountryModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4 border border-gray-600 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <Globe className="mr-3 text-blue-400" size={28} />
+                    LinkedIn Account Proxy Management
+                  </h2>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        setShowProxyCountryModal(false);
+                        setSelectedLinkedinAccount(null);
+                      }}
+                      className="text-gray-400 hover:text-gray-200 transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
                 </div>
-              ) : proxyInfo ? (
-                <div className="space-y-3">
-                  <div className="text-gray-400 text-sm">
-                    <p className="mb-2">Account: <span className="text-white">{proxyInfo.account_email || proxyInfo.account_name || user?.email}</span></p>
-                    <p className="mb-2">Name: <span className="text-white">{proxyInfo.account_name || 'N/A'}</span></p>
-                    <p className="mb-2">Status: <span className="text-green-400">Connected via Unipile</span></p>
-                    {proxyInfo.detected_location && (
-                      <p className="mb-2">Location: <span className="text-white">{proxyInfo.detected_location}</span></p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-3">
-                      Proxy details are managed automatically by Unipile based on your LinkedIn profile location.
+
+                <div className="space-y-6">
+                  {/* Info banner about proxy assignment */}
+                  <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                    <h3 className="text-blue-400 font-semibold text-sm mb-2 flex items-center">
+                      <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                      </svg>
+                      How Proxy Assignment Works
+                    </h3>
+                    <p className="text-gray-300 text-xs leading-relaxed">
+                      Unipile automatically detects your location from your LinkedIn profile and assigns a residential proxy from that country. This ensures your LinkedIn activity appears authentic and prevents automation detection.
                     </p>
                   </div>
-                </div>
-              ) : user?.email ? (
-                <div className="space-y-3">
-                  <div className="text-gray-400 text-sm">
-                    <p className="mb-2">Account: <span className="text-white">{user.email}</span></p>
-                    <p className="mb-2">Status: <span className="text-yellow-400">Checking connection...</span></p>
-                    <p className="text-xs text-gray-500 mt-3">
-                      Proxy details are managed automatically by Unipile based on your LinkedIn profile location.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-gray-400">No LinkedIn account connected</p>
-                </div>
-              )}
-            </div>
 
-            {/* Detailed Proxy Information */}
-            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-5">
-              <h3 className="text-blue-400 font-semibold text-sm mb-3 flex items-center">
-                <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="16" x2="12" y2="12" />
-                  <line x1="12" y1="8" x2="12.01" y2="8" />
-                </svg>
-                Proxy Information
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-gray-400 text-xs mb-1">Provider</p>
-                    <p className="text-white">Unipile</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-xs mb-1">Connection Type</p>
-                    <p className="text-white">Residential Proxy</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-gray-400 text-xs mb-2">Current Proxy Location</p>
+                  {/* My LinkedIn Account & Proxy Info */}
+                  <div className="bg-gray-700 rounded-lg p-5 border border-gray-600">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+                      <svg className="mr-2 text-blue-400" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
+                      </svg>
+                      My LinkedIn Account
+                    </h3>
                     {proxyInfoLoading ? (
-                      <p className="text-gray-400 flex items-center">
-                        <span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-blue-400 mr-2"></span>
-                        Fetching from Unipile...
-                      </p>
-                    ) : proxyInfo?.proxy_country ? (
-                      <div>
-                        <p className="text-white text-lg font-semibold">
-                          {proxyInfo.proxy_country}
-                          {proxyInfo.proxy_city && ` - ${proxyInfo.proxy_city}`}
-                        </p>
-                        {proxyInfo.proxy_country.toLowerCase().includes('france') || proxyInfo.proxy_city?.toLowerCase().includes('paris') ? (
-                          <p className="text-yellow-400 text-xs mt-2 flex items-center">
-                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                            Using Unipile default proxy. Update your LinkedIn location and reconnect to get a country-specific proxy.
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : proxyInfo?.detected_location ? (
-                      <div>
-                        <p className="text-white text-lg">Auto-detected: {proxyInfo.detected_location}</p>
-                        <p className="text-gray-400 text-xs mt-1">Proxy will be assigned from this location</p>
-                      </div>
-                    ) : proxyInfo && proxyInfo.connection_status === 'OK' ? (
-                      <div>
-                        <p className="text-green-400 text-lg font-semibold flex items-center">
-                          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                          Residential Proxy Active
-                        </p>
-                        <p className="text-gray-300 text-xs mt-2">
-                          Unipile automatically assigns and manages a residential proxy based on your LinkedIn profile location. Specific proxy details are managed internally for security.
-                        </p>
+                      <div className="text-center py-4">
+                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
+                        <p className="text-gray-400 text-sm mt-2">Loading...</p>
                       </div>
                     ) : proxyInfo ? (
-                      <p className="text-yellow-400">Proxy connection checking...</p>
+                      <div className="space-y-3">
+                        <div className="text-gray-400 text-sm">
+                          <p className="mb-2">Account: <span className="text-white">{proxyInfo.account_email || proxyInfo.account_name || user?.email}</span></p>
+                          <p className="mb-2">Name: <span className="text-white">{proxyInfo.account_name || 'N/A'}</span></p>
+                          <p className="mb-2">Status: <span className="text-green-400">Connected via Unipile</span></p>
+                          {proxyInfo.detected_location && (
+                            <p className="mb-2">Location: <span className="text-white">{proxyInfo.detected_location}</span></p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-3">
+                            Proxy details are managed automatically by Unipile based on your LinkedIn profile location.
+                          </p>
+                        </div>
+                      </div>
+                    ) : user?.email ? (
+                      <div className="space-y-3">
+                        <div className="text-gray-400 text-sm">
+                          <p className="mb-2">Account: <span className="text-white">{user.email}</span></p>
+                          <p className="mb-2">Status: <span className="text-yellow-400">Checking connection...</span></p>
+                          <p className="text-xs text-gray-500 mt-3">
+                            Proxy details are managed automatically by Unipile based on your LinkedIn profile location.
+                          </p>
+                        </div>
+                      </div>
                     ) : (
-                      <p className="text-gray-400">No LinkedIn account connected</p>
+                      <div className="text-center py-4">
+                        <p className="text-gray-400">No LinkedIn account connected</p>
+                      </div>
                     )}
                   </div>
 
-                  {proxyInfo?.detected_location && (
-                    <div className="border-t border-gray-600 pt-3">
-                      <p className="text-gray-400 text-xs mb-1">LinkedIn Profile Location</p>
-                      <p className="text-white">{proxyInfo.detected_location}</p>
-                      <p className="text-gray-400 text-xs mt-1">This is what Unipile detected from your LinkedIn profile</p>
-                    </div>
-                  )}
+                  {/* Detailed Proxy Information */}
+                  <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-5">
+                    <h3 className="text-blue-400 font-semibold text-sm mb-3 flex items-center">
+                      <svg className="mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                      </svg>
+                      Proxy Information
+                    </h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-gray-400 text-xs mb-1">Provider</p>
+                          <p className="text-white">Unipile</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-xs mb-1">Connection Type</p>
+                          <p className="text-white">Residential Proxy</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-gray-400 text-xs mb-2">Current Proxy Location</p>
+                          {proxyInfoLoading ? (
+                            <p className="text-gray-400 flex items-center">
+                              <span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-blue-400 mr-2"></span>
+                              Fetching from Unipile...
+                            </p>
+                          ) : proxyInfo?.proxy_country ? (
+                            <div>
+                              <p className="text-white text-lg font-semibold">
+                                {proxyInfo.proxy_country}
+                                {proxyInfo.proxy_city && ` - ${proxyInfo.proxy_city}`}
+                              </p>
+                              {proxyInfo.proxy_country.toLowerCase().includes('france') || proxyInfo.proxy_city?.toLowerCase().includes('paris') ? (
+                                <p className="text-yellow-400 text-xs mt-2 flex items-center">
+                                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  Using Unipile default proxy. Update your LinkedIn location and reconnect to get a country-specific proxy.
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : proxyInfo?.detected_location ? (
+                            <div>
+                              <p className="text-white text-lg">Auto-detected: {proxyInfo.detected_location}</p>
+                              <p className="text-gray-400 text-xs mt-1">Proxy will be assigned from this location</p>
+                            </div>
+                          ) : proxyInfo && proxyInfo.connection_status === 'OK' ? (
+                            <div>
+                              <p className="text-green-400 text-lg font-semibold flex items-center">
+                                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                Residential Proxy Active
+                              </p>
+                              <p className="text-gray-300 text-xs mt-2">
+                                Unipile automatically assigns and manages a residential proxy based on your LinkedIn profile location. Specific proxy details are managed internally for security.
+                              </p>
+                            </div>
+                          ) : proxyInfo ? (
+                            <p className="text-yellow-400">Proxy connection checking...</p>
+                          ) : (
+                            <p className="text-gray-400">No LinkedIn account connected</p>
+                          )}
+                        </div>
 
-                  <div className="border-t border-gray-600 pt-3">
-                    <p className="text-gray-400 text-xs mb-1">Connection Status</p>
-                    <p className="text-green-400 flex items-center">
-                      <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                      {proxyInfo?.connection_status === 'OK' ? 'Active & Connected' : 'Active'}
-                    </p>
+                        {proxyInfo?.detected_location && (
+                          <div className="border-t border-gray-600 pt-3">
+                            <p className="text-gray-400 text-xs mb-1">LinkedIn Profile Location</p>
+                            <p className="text-white">{proxyInfo.detected_location}</p>
+                            <p className="text-gray-400 text-xs mt-1">This is what Unipile detected from your LinkedIn profile</p>
+                          </div>
+                        )}
+
+                        <div className="border-t border-gray-600 pt-3">
+                          <p className="text-gray-400 text-xs mb-1">Connection Status</p>
+                          <p className="text-green-400 flex items-center">
+                            <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                            {proxyInfo?.connection_status === 'OK' ? 'Active & Connected' : 'Active'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="border-t border-blue-500/20 pt-3 mt-3">
+                        <p className="text-gray-300 text-xs leading-relaxed">
+                          <strong className="text-blue-300">How it works:</strong> All LinkedIn activity from your account is routed through a dedicated residential proxy in your selected country. This ensures your connection appears authentic and prevents LinkedIn from detecting automation.
+                        </p>
+                      </div>
+                      <div className="border-t border-blue-500/20 pt-3">
+                        <p className="text-gray-300 text-xs leading-relaxed">
+                          <strong className="text-blue-300">Security:</strong> Your proxy configuration is managed automatically and securely by Unipile. IP addresses are rotated intelligently to maintain account health while ensuring consistent geolocation.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="border-t border-blue-500/20 pt-3 mt-3">
-                  <p className="text-gray-300 text-xs leading-relaxed">
-                    <strong className="text-blue-300">How it works:</strong> All LinkedIn activity from your account is routed through a dedicated residential proxy in your selected country. This ensures your connection appears authentic and prevents LinkedIn from detecting automation.
-                  </p>
-                </div>
-                <div className="border-t border-blue-500/20 pt-3">
-                  <p className="text-gray-300 text-xs leading-relaxed">
-                    <strong className="text-blue-300">Security:</strong> Your proxy configuration is managed automatically and securely by Unipile. IP addresses are rotated intelligently to maintain account health while ensuring consistent geolocation.
-                  </p>
+
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    onClick={() => setShowProxyCountryModal(false)}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
+          )
+        }
 
-          <div className="flex justify-end space-x-3 mt-6">
-            <button
-              onClick={() => setShowProxyCountryModal(false)}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+        {/* Team Management Modal */}
+        {
+          showTeamManagementModal && (
+            workspaces.length > 0 ? (() => {
+              const targetWorkspace = isSuperAdmin
+                ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+                : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
 
-  {/* Team Management Modal */ }
-  {
-    showTeamManagementModal && (
-      workspaces.length > 0 ? (() => {
-        const targetWorkspace = isSuperAdmin
-          ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
-          : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+              // Check if workspace uses direct billing (3cubed customers)
+              const isDirectBilling = targetWorkspace?.organization_id && targetWorkspace?.slug?.includes('3cubed');
 
-        // Check if workspace uses direct billing (3cubed customers)
-        const isDirectBilling = targetWorkspace?.organization_id && targetWorkspace?.slug?.includes('3cubed');
+              return (
+                <InviteUserPopup
+                  isOpen={showTeamManagementModal}
+                  onClose={() => setShowTeamManagementModal(false)}
+                  workspaceId={targetWorkspace?.id}
+                  workspaceName={targetWorkspace?.name || 'Workspace'}
+                  isDirectBilling={isDirectBilling}
+                />
+              );
+            })() : (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                  <h2 className="text-xl font-semibold text-white mb-4">No Workspace Found</h2>
+                  <p className="text-gray-300 mb-6">You need to be logged in and have a workspace to invite team members.</p>
+                  <button
+                    onClick={() => setShowTeamManagementModal(false)}
+                    className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )
+          )
+        }
 
-        return (
-          <InviteUserPopup
-            isOpen={showTeamManagementModal}
-            onClose={() => setShowTeamManagementModal(false)}
-            workspaceId={targetWorkspace?.id}
-            workspaceName={targetWorkspace?.name || 'Workspace'}
-            isDirectBilling={isDirectBilling}
-          />
-        );
-      })() : (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">No Workspace Found</h2>
-            <p className="text-gray-300 mb-6">You need to be logged in and have a workspace to invite team members.</p>
-            <button
-              onClick={() => setShowTeamManagementModal(false)}
-              className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )
-    )
-  }
+        {/* Workspace Settings Modal */}
+        {
+          showWorkspaceSettingsModal && (() => {
+            const targetWorkspace = isSuperAdmin
+              ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+              : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
 
-  {/* Workspace Settings Modal */ }
-  {
-    showWorkspaceSettingsModal && (() => {
-      const targetWorkspace = isSuperAdmin
-        ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
-        : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+            return (
+              <WorkspaceSettingsModal
+                isOpen={showWorkspaceSettingsModal}
+                onClose={() => setShowWorkspaceSettingsModal(false)}
+                workspaceId={targetWorkspace?.id}
+                workspaceName={targetWorkspace?.name || 'Workspace'}
+              />
+            );
+          })()
+        }
 
-      return (
-        <WorkspaceSettingsModal
-          isOpen={showWorkspaceSettingsModal}
-          onClose={() => setShowWorkspaceSettingsModal(false)}
-          workspaceId={targetWorkspace?.id}
-          workspaceName={targetWorkspace?.name || 'Workspace'}
-        />
-      );
-    })()
-  }
+        {/* Manage Subscription Modal */}
+        {
+          showManageSubscriptionModal && (() => {
+            const targetWorkspace = isSuperAdmin
+              ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+              : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
 
-  {/* Manage Subscription Modal */ }
-  {
-    showManageSubscriptionModal && (() => {
-      const targetWorkspace = isSuperAdmin
-        ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
-        : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+            return (
+              <ManageSubscriptionModal
+                isOpen={showManageSubscriptionModal}
+                onClose={() => setShowManageSubscriptionModal(false)}
+                workspaceId={targetWorkspace?.id}
+                workspaceName={targetWorkspace?.name || 'Workspace'}
+              />
+            );
+          })()
+        }
 
-      return (
-        <ManageSubscriptionModal
-          isOpen={showManageSubscriptionModal}
-          onClose={() => setShowManageSubscriptionModal(false)}
-          workspaceId={targetWorkspace?.id}
-          workspaceName={targetWorkspace?.name || 'Workspace'}
-        />
-      );
-    })()
-  }
+        {/* CRM Integration Modal */}
+        {
+          showCrmIntegrationModal && (() => {
+            const targetWorkspace = isSuperAdmin
+              ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+              : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
 
-  {/* CRM Integration Modal */ }
-  {
-    showCrmIntegrationModal && (() => {
-      const targetWorkspace = isSuperAdmin
-        ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
-        : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+            return (
+              <CRMIntegrationModal
+                isOpen={showCrmIntegrationModal}
+                onClose={() => setShowCrmIntegrationModal(false)}
+                workspaceId={targetWorkspace?.id}
+                workspaceName={targetWorkspace?.name || 'Workspace'}
+              />
+            );
+          })()
+        }
 
-      return (
-        <CRMIntegrationModal
-          isOpen={showCrmIntegrationModal}
-          onClose={() => setShowCrmIntegrationModal(false)}
-          workspaceId={targetWorkspace?.id}
-          workspaceName={targetWorkspace?.name || 'Workspace'}
-        />
-      );
-    })()
-  }
+        {/* Integrations Tools Modal */}
+        {
+          showIntegrationsToolsModal && (() => {
+            const targetWorkspace = isSuperAdmin
+              ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
+              : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
 
-  {/* Integrations Tools Modal */ }
-  {
-    showIntegrationsToolsModal && (() => {
-      const targetWorkspace = isSuperAdmin
-        ? (workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0])
-        : (workspaces.find(ws => ws.owner_id === user?.id || ws.workspace_members?.some((member: any) => member.user_id === user?.id)) || workspaces[0]);
+            if (!targetWorkspace?.id) return null;
+            return (
+              <IntegrationsToolsModal
+                isOpen={showIntegrationsToolsModal}
+                onClose={() => setShowIntegrationsToolsModal(false)}
+                workspaceId={targetWorkspace.id}
+              />
+            );
+          })()
+        }
 
-      if (!targetWorkspace?.id) return null;
-      return (
-        <IntegrationsToolsModal
-          isOpen={showIntegrationsToolsModal}
-          onClose={() => setShowIntegrationsToolsModal(false)}
-          workspaceId={targetWorkspace.id}
-        />
-      );
-    })()
-  }
+        {/* Commenting Campaign Modal */}
+        {
+          showCommentingCampaignModal && (selectedWorkspaceId || currentWorkspace?.id) && (
+            <CommentingCampaignModal
+              isOpen={showCommentingCampaignModal}
+              onClose={() => {
+                setShowCommentingCampaignModal(false);
+                setMyContentMode(false);
+                setEditingCampaign(null);
+              }}
+              workspaceId={selectedWorkspaceId || currentWorkspace?.id || ''}
+              myContentMode={myContentMode}
+              editMode={!!editingCampaign}
+              existingMonitor={editingCampaign || undefined}
+            />
+          )
+        }
 
-  {/* Commenting Campaign Modal */ }
-  {
-    showCommentingCampaignModal && (selectedWorkspaceId || currentWorkspace?.id) && (
-      <CommentingCampaignModal
-        isOpen={showCommentingCampaignModal}
-        onClose={() => {
-          setShowCommentingCampaignModal(false);
-          setMyContentMode(false);
-          setEditingCampaign(null);
-        }}
-        workspaceId={selectedWorkspaceId || currentWorkspace?.id || ''}
-        myContentMode={myContentMode}
-        editMode={!!editingCampaign}
-        existingMonitor={editingCampaign || undefined}
-      />
-    )
-  }
-
-  {/* Custom Notification Modal */ }
-  {
-    notification && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600">
-          <div className="flex items-center space-x-3">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-              }`}>
-              {notification.type === 'success' ? '✓' : '✕'}
+        {/* Custom Notification Modal */}
+        {
+          notification && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-600">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+                    }`}>
+                    {notification.type === 'success' ? '✓' : '✕'}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className={`font-medium ${notification.type === 'success' ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                      {notification.type === 'success' ? 'Success' : 'Error'}
+                    </h3>
+                    <p className="text-gray-300 text-sm">{notification.message}</p>
+                  </div>
+                  <button
+                    onClick={() => setNotification(null)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="flex-1">
-              <h3 className={`font-medium ${notification.type === 'success' ? 'text-green-400' : 'text-red-400'
-                }`}>
-                {notification.type === 'success' ? 'Success' : 'Error'}
-              </h3>
-              <p className="text-gray-300 text-sm">{notification.message}</p>
-            </div>
-            <button
-              onClick={() => setNotification(null)}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+          )
+        }
 
-  {/* Confirm Modal */ }
-  <ConfirmDialog />
+        {/* Confirm Modal */}
+        <ConfirmDialog />
       </div >
     </div >
   );
