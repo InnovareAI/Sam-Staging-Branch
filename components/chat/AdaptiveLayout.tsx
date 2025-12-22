@@ -47,20 +47,20 @@ export function AdaptiveLayout({
                             variant="ghost"
                             size="sm"
                             onClick={onToggleSidebar}
-                            className={cn("p-2", isSidebarOpen ? "text-primary" : "text-muted-foreground")}
+                            className={cn("p-2 gap-2", isSidebarOpen ? "text-primary" : "text-muted-foreground")}
                         >
                             {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+                            <span className="text-xs font-medium">{isSidebarOpen ? 'Close Navigation' : 'Open Navigation'}</span>
                         </Button>
-
-                        <h1 className="font-semibold text-foreground text-sm">Sam</h1>
                     </div>
 
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={onToggleContext}
-                        className={cn("p-2", isContextOpen ? "text-primary" : "text-muted-foreground")}
+                        className={cn("p-2 gap-2", isContextOpen ? "text-primary" : "text-muted-foreground")}
                     >
+                        <span className="text-xs font-medium">{isContextOpen ? 'Close Context' : 'Open Context'}</span>
                         {isContextOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
                     </Button>
                 </header>
