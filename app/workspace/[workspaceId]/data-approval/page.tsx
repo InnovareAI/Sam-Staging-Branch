@@ -1,11 +1,11 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import DataCollectionHub from '@/components/DataCollectionHub'
+import ProspectHub from './components/ProspectHub'
 
 /**
  * Data Approval Page - New Workspace Architecture
- * Renders DataCollectionHub (Prospect Database) directly within the workspace layout
+ * Renders ProspectHub (Redesigned Prospect Database) directly within the workspace layout
  */
 export default function WorkspaceDataApprovalPage() {
     const params = useParams()
@@ -13,7 +13,7 @@ export default function WorkspaceDataApprovalPage() {
 
     return (
         <div className="h-full overflow-y-auto">
-            <DataCollectionHub workspaceId={workspaceId} />
+            <ProspectHub workspaceId={workspaceId} />
         </div>
     )
 }

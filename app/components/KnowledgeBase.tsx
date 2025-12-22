@@ -15,6 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 
@@ -340,12 +342,12 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
         {uploadMode === 'url' && (
           <div className="border-2 border-dashed border-purple-500/30 rounded-lg p-6 bg-gradient-to-br from-purple-900/10 to-purple-800/10 hover:border-purple-500/50 transition-colors">
             <Globe className="mx-auto mb-3 text-purple-400" size={32} />
-            <input
+            <Input
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/document-or-page"
-              className="w-full bg-gray-800/80 text-gray-200 text-sm rounded-lg px-4 py-3 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-500"
+              className="bg-gray-800/80 text-gray-200 h-11 border-gray-700 placeholder:text-gray-500 focus-visible:ring-purple-500"
             />
             <p className="text-xs text-gray-400 mt-3">
               Web pages, Google Docs, presentations, PDFs, articles
@@ -360,10 +362,10 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
               <span className="text-sm text-gray-300 truncate mr-3">
                 {file ? file.name : url}
               </span>
-              <button
+              <Button
                 onClick={handleFileUpload}
                 disabled={status !== 'idle' && status !== 'error'}
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 whitespace-nowrap"
+                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 text-white border-0"
               >
                 {status === 'idle' && 'Process with AI'}
                 {status === 'uploading' && 'Uploading...'}
@@ -373,17 +375,15 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
                 {status === 'vectorizing' && 'Vectorizing...'}
                 {status === 'done' && '✓ Complete'}
                 {status === 'error' && 'Retry'}
-              </button>
+              </Button>
             </div>
 
             {/* Progress Bar */}
             {(status !== 'idle' && status !== 'error') && (
-              <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden shadow-inner">
-                <div
-                  className="bg-gradient-to-r from-purple-500 to-purple-600 h-2.5 rounded-full transition-all duration-500 shadow-lg"
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
+              <Progress
+                value={progress}
+                className="h-2.5 bg-gray-800 [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-purple-600"
+              />
             )}
 
             {/* Status Messages */}
@@ -426,10 +426,10 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
               </div>
             )}
             {status === 'error' && error && (
-              <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/30 border border-red-800/30 rounded-lg p-3">
-                <AlertCircle size={14} />
-                <span>{error}</span>
-              </div>
+              <Alert variant="destructive" className="bg-red-950/30 border-red-800/30 text-red-400">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
           </div>
         )}
@@ -570,43 +570,51 @@ function ICPConfiguration({
       </div>
 
       {/* Create ICP Form Modal */}
-      {showCreateForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 w-96">
-            <h3 className="text-xl font-semibold text-white mb-4">Create New ICP Profile</h3>
-            <input
+      {/* Create ICP Form Modal */}
+      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+        <DialogContent className="sm:max-w-[425px] bg-gray-800 border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle>Create New ICP Profile</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Enter a name for your new Ideal Customer Profile.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Input
               type="text"
               placeholder="Enter ICP profile name..."
-              className="w-full bg-gray-700 border border-gray-600 px-3 py-2 rounded text-white placeholder-gray-400 mb-4"
+              className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                   handleCreateICPSubmit(e.currentTarget.value.trim());
                 }
               }}
+              id="icp-name-input"
               autoFocus
             />
-            <div className="flex space-x-2">
-              <button
-                onClick={() => {
-                  const input = document.querySelector('input[placeholder="Enter ICP profile name..."]') as HTMLInputElement;
-                  if (input?.value.trim()) {
-                    handleCreateICPSubmit(input.value.trim());
-                  }
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition-colors"
-              >
-                Create
-              </button>
-              <button
-                onClick={() => setShowCreateForm(false)}
-                className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                const input = document.getElementById('icp-name-input') as HTMLInputElement;
+                if (input?.value.trim()) {
+                  handleCreateICPSubmit(input.value.trim());
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Create
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setShowCreateForm(false)}
+              className="bg-gray-600 hover:bg-gray-500 text-white"
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Category Navigation - Always Show (Box Design) */}
       <div className="mb-6">
@@ -754,9 +762,9 @@ function ICPConfiguration({
                       <label className="text-gray-300 text-sm font-medium block mb-1">Employee Count</label>
                       <div className="flex flex-wrap gap-2">
                         {['50-100', '100-500', '500-1000', '1000+'].map(range => (
-                          <span key={range} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                          <Badge key={range} variant="secondary" className="px-3 py-1 text-xs">
                             {range}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -764,9 +772,9 @@ function ICPConfiguration({
                       <label className="text-gray-300 text-sm font-medium block mb-1">Revenue Range</label>
                       <div className="flex flex-wrap gap-2">
                         {['$10M-$50M', '$50M-$100M'].map(range => (
-                          <span key={range} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                          <Badge key={range} variant="secondary" className="px-3 py-1 text-xs">
                             {range}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -774,9 +782,9 @@ function ICPConfiguration({
                       <label className="text-gray-300 text-sm font-medium block mb-1">Growth Stage</label>
                       <div className="flex flex-wrap gap-2">
                         {['Series A', 'Series B', 'Growth'].map(stage => (
-                          <span key={stage} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
+                          <Badge key={stage} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-xs text-white">
                             {stage}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -794,9 +802,9 @@ function ICPConfiguration({
                       <label className="text-gray-300 text-sm font-medium block mb-1">Primary Markets</label>
                       <div className="flex flex-wrap gap-2">
                         {['United States', 'Canada'].map(market => (
-                          <span key={market} className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
+                          <Badge key={market} className="bg-green-600 hover:bg-green-700 px-3 py-1 text-xs text-white">
                             {market}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -814,9 +822,9 @@ function ICPConfiguration({
                       <label className="text-gray-300 text-sm font-medium block mb-1">Expansion Markets</label>
                       <div className="flex flex-wrap gap-2">
                         {['United Kingdom', 'Australia'].map(market => (
-                          <span key={market} className="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs">
+                          <Badge key={market} className="bg-yellow-600 hover:bg-yellow-700 px-3 py-1 text-xs text-white">
                             {market}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -834,9 +842,9 @@ function ICPConfiguration({
                       <label className="text-gray-300 text-sm font-medium block mb-1">Primary Industries</label>
                       <div className="flex flex-wrap gap-2">
                         {['SaaS', 'FinTech', 'HealthTech'].map(industry => (
-                          <span key={industry} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
+                          <Badge key={industry} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-xs text-white">
                             {industry}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -844,9 +852,9 @@ function ICPConfiguration({
                       <label className="text-gray-300 text-sm font-medium block mb-1">Secondary Industries</label>
                       <div className="flex flex-wrap gap-2">
                         {['MarTech', 'EdTech', 'PropTech'].map(industry => (
-                          <span key={industry} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                          <Badge key={industry} variant="secondary" className="px-3 py-1 text-xs">
                             {industry}
-                          </span>
+                          </Badge>
                         ))}
                       </div>
                     </div>
@@ -1171,15 +1179,15 @@ function ICPConfiguration({
                   <div className="space-y-2">
                     {currentICP?.messaging?.value_propositions?.length > 0 ?
                       currentICP.messaging.value_propositions.map((prop: string, i: number) => (
-                        <div key={i} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
+                        <Badge key={i} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-xs text-white mb-1 mr-1">
                           {prop}
-                        </div>
+                        </Badge>
                       )) :
                       <div className="border border-gray-600 rounded p-2 bg-gray-800 space-y-1">
-                        <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Save 40% on operational costs</div>
-                        <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Reduce time-to-market by 60%</div>
-                        <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Enterprise-grade security & compliance</div>
-                        <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Seamless integration with existing tools</div>
+                        <Badge className="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-xs text-white">Save 40% on operational costs</Badge>
+                        <Badge className="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-xs text-white">Reduce time-to-market by 60%</Badge>
+                        <Badge className="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-xs text-white">Enterprise-grade security & compliance</Badge>
+                        <Badge className="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-xs text-white">Seamless integration with existing tools</Badge>
                       </div>
                     }
                   </div>
@@ -4050,7 +4058,7 @@ const KnowledgeBase: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
