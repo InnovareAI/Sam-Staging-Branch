@@ -15,15 +15,13 @@ import {
 } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -36,7 +34,7 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronsUpDown, MoreHorizontal, Star, Linkedin, Mail, CheckCircle, XCircle, Trash2, Eye } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, MoreHorizontal, Star, Linkedin, Mail, CheckCircle, XCircle, Trash2, Eye, Upload } from "lucide-react";
 import { ProspectData } from "./types";
 
 interface ProspectsTableProps {
@@ -45,11 +43,14 @@ interface ProspectsTableProps {
     onReject: (ids: string[]) => void;
     onDelete: (id: string) => void;
     onViewDetails: (prospect: ProspectData) => void;
+    onImportClick?: () => void;
+    onAddToCampaign?: (ids: string[]) => void;
 }
 
 export const columns: ColumnDef<ProspectData>[] = [
     {
         id: "select",
+        size: 40,
         header: ({ table }) => (
             <Checkbox
                 checked={
@@ -71,6 +72,7 @@ export const columns: ColumnDef<ProspectData>[] = [
     },
     {
         accessorKey: "name",
+        size: 200,
         header: ({ column }) => {
             return (
                 <Button
@@ -94,16 +96,19 @@ export const columns: ColumnDef<ProspectData>[] = [
     },
     {
         accessorKey: "company",
+        size: 150,
         header: "Company",
         cell: ({ row }) => <div className="font-medium">{row.getValue("company")}</div>
     },
     {
         accessorKey: "campaignTag",
+        size: 120,
         header: "Search Name",
         cell: ({ row }) => <div className="text-sm text-gray-400">{row.getValue("campaignTag") || '-'}</div>
     },
     {
         accessorKey: "qualityScore",
+        size: 80,
         header: "Quality",
         cell: ({ row }) => {
             const score = row.getValue("qualityScore") as number;
@@ -122,6 +127,7 @@ export const columns: ColumnDef<ProspectData>[] = [
     },
     {
         accessorKey: "status",
+        size: 100,
         header: "Status",
         cell: ({ row }) => {
             const status = row.original.approvalStatus;
@@ -136,6 +142,7 @@ export const columns: ColumnDef<ProspectData>[] = [
     },
     {
         id: "contacts",
+        size: 80,
         header: "Contacts",
         cell: ({ row }) => {
             const p = row.original;
@@ -149,16 +156,17 @@ export const columns: ColumnDef<ProspectData>[] = [
     },
     {
         id: "actions",
+        size: 160,
         enableHiding: false,
         cell: ({ table, row }) => {
             const prospect = row.original;
-            // @ts-ignore - meta injected via useReactTable
             // @ts-ignore - meta injected via useReactTable
             const meta = table.options.meta as {
                 onApprove?: (ids: string[]) => void;
                 onReject?: (ids: string[]) => void;
                 onDelete?: (id: string) => void;
                 onViewDetails?: (prospect: ProspectData) => void;
+                onAddToCampaign?: (ids: string[]) => void;
             };
 
             return (
@@ -200,6 +208,10 @@ export const columns: ColumnDef<ProspectData>[] = [
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => meta.onAddToCampaign?.([prospect.id])} className="text-blue-600 focus:text-blue-700 cursor-pointer">
+                                <Upload className="mr-2 h-4 w-4" /> Add to Campaign
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => meta.onDelete?.(prospect.id)} className="text-red-600 focus:text-red-700 cursor-pointer">
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
@@ -211,7 +223,7 @@ export const columns: ColumnDef<ProspectData>[] = [
     }
 ];
 
-export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDetails }: ProspectsTableProps) {
+export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDetails, onImportClick, onAddToCampaign }: ProspectsTableProps) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -232,7 +244,8 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
             onApprove,
             onReject,
             onDelete,
-            onViewDetails
+            onViewDetails,
+            onAddToCampaign
         },
         state: {
             sorting,
@@ -252,6 +265,15 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                         onChange={(event) => table.getColumn("company")?.setFilterValue(event.target.value)}
                         className="max-w-sm"
                     />
+                    {onImportClick && (
+                        <Button
+                            onClick={onImportClick}
+                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Import Prospects
+                        </Button>
+                    )}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="ml-auto">
@@ -283,7 +305,10 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                                 <TableRow key={headerGroup.id}>
                                     {headerGroup.headers.map((header) => {
                                         return (
-                                            <TableHead key={header.id}>
+                                            <TableHead
+                                                key={header.id}
+                                                style={{ width: header.getSize() }}
+                                            >
                                                 {header.isPlaceholder
                                                     ? null
                                                     : flexRender(header.column.columnDef.header, header.getContext())}
@@ -298,7 +323,10 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                                 table.getRowModel().rows.map((row) => (
                                     <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
                                         {row.getVisibleCells().map((cell) => (
-                                            <TableCell key={cell.id}>
+                                            <TableCell
+                                                key={cell.id}
+                                                style={{ width: cell.column.getSize() }}
+                                            >
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                             </TableCell>
                                         ))}
@@ -315,9 +343,56 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                     </Table>
                 </div>
                 <div className="flex items-center justify-end space-x-2 pt-4">
-                    <div className="text-muted-foreground flex-1 text-sm">
-                        {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                        {table.getFilteredRowModel().rows.length} row(s) selected.
+                    <div className="flex-1 flex items-center gap-2">
+                        <span className="text-muted-foreground text-sm">
+                            {table.getFilteredSelectedRowModel().rows.length} of{" "}
+                            {table.getFilteredRowModel().rows.length} row(s) selected.
+                        </span>
+                        {table.getFilteredSelectedRowModel().rows.length > 0 && (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="ml-2 text-green-600 border-green-200 hover:bg-green-50"
+                                    onClick={() => {
+                                        const ids = table.getFilteredSelectedRowModel().rows.map(r => r.original.id);
+                                        onApprove(ids);
+                                        setRowSelection({});
+                                    }}
+                                >
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Approve ({table.getFilteredSelectedRowModel().rows.length})
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                    onClick={() => {
+                                        const ids = table.getFilteredSelectedRowModel().rows.map(r => r.original.id);
+                                        onReject(ids);
+                                        setRowSelection({});
+                                    }}
+                                >
+                                    <XCircle className="mr-2 h-4 w-4" />
+                                    Reject ({table.getFilteredSelectedRowModel().rows.length})
+                                </Button>
+                                {meta.onAddToCampaign && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="ml-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                        onClick={() => {
+                                            const ids = table.getFilteredSelectedRowModel().rows.map(r => r.original.id);
+                                            meta.onAddToCampaign?.(ids);
+                                            // Don't clear selection immediately, let modal handle success
+                                        }}
+                                    >
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Add to Campaign
+                                    </Button>
+                                )}
+                            </>
+                        )}
                     </div>
                     <div className="space-x-2">
                         <Button

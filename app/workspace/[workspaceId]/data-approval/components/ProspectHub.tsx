@@ -104,15 +104,9 @@ import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 import ImportProspectsModal from '@/components/ImportProspectsModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useRouter } from 'next/navigation';
-import { CheckSquare, Upload, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Upload } from 'lucide-react';
+import { AddToCampaignModal } from './AddToCampaignModal';
 
-interface ProspectHubProps {
-    workspaceId: string;
-}
-
-// ... calculateQualityScore ... (keep existing)
-
-// ... fetchApprovalSessions ... (keep existing)
 
 export default function ProspectHub({ workspaceId }: ProspectHubProps) {
     const queryClient = useQueryClient();
@@ -160,6 +154,8 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
 
     const [stats, setStats] = useState({ total: 0, approved: 0, rejected: 0, pending: 0 });
     const [showImportModal, setShowImportModal] = useState(false);
+    const [showAddToCampaignModal, setShowAddToCampaignModal] = useState(false);
+    const [addToCampaignIds, setAddToCampaignIds] = useState<string[]>([]);
     const [importInitialTab, setImportInitialTab] = useState('file');
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
@@ -268,17 +264,6 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
 
             {/* Prospects Table Section */}
             <div className="mt-6">
-                {/* Action Bar */}
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold">Prospects</h2>
-                    <button
-                        onClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
-                        className="flex items-center gap-2 px-4 py-2 text-sm rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
-                    >
-                        <Upload className="w-4 h-4" />
-                        Import Prospects
-                    </button>
-                </div>
 
                 {isLoading && prospects.length === 0 ? (
                     <ProspectTableSkeleton />
@@ -296,6 +281,11 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                             onReject={handleReject}
                             onDelete={handleDelete}
                             onViewDetails={handleViewDetails}
+                            onImportClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
+                            onAddToCampaign={(ids) => {
+                                setAddToCampaignIds(ids);
+                                setShowAddToCampaignModal(true);
+                            }}
                         />
                     </>
                 )}
@@ -309,6 +299,22 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                     onDataCollected={handleDataCollected}
                     workspaceId={workspaceId}
                     initialTab={importInitialTab}
+                />
+            )}
+
+            {showAddToCampaignModal && (
+                <AddToCampaignModal
+                    open={showAddToCampaignModal}
+                    onClose={() => setShowAddToCampaignModal(false)}
+                    workspaceId={workspaceId}
+                    prospectIds={addToCampaignIds}
+                    onSuccess={() => {
+                        // Refresh data to show updated status/removal
+                        refetch();
+                        // Also clear selection by forcing table re-render or similar if needed, 
+                        // but refetch usually handles data updates.
+                        // Ideally we'd also uncheck the boxes, but the table state handle that.
+                    }}
                 />
             )}
 
