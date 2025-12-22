@@ -7,7 +7,16 @@ import { motion } from 'framer-motion';
 import SAMOnboarding from './SAMOnboarding';
 import KnowledgeBaseAnalytics from './KnowledgeBaseAnalytics';
 import ICPConfigEditable from './ICPConfigEditable';
-// Custom Tailwind components - no shadcn imports needed
+
+// shadcn components
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
+
 
 type KnowledgeDocument = {
   id: string;
@@ -100,8 +109,8 @@ const ensureRecord = (value: unknown): Record<string, unknown> =>
 const ensureArray = (value: unknown): string[] =>
   Array.isArray(value)
     ? value
-        .map((item) => (typeof item === 'string' ? item.trim() : String(item).trim()))
-        .filter((item) => item.length > 0)
+      .map((item) => (typeof item === 'string' ? item.trim() : String(item).trim()))
+      .filter((item) => item.length > 0)
     : [];
 
 const transformICPResponse = (icp: Record<string, unknown>): ICPProfile => {
@@ -158,7 +167,7 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
   const [progress, setProgress] = useState(0);
   const [aiTags, setAiTags] = useState<string[]>([]);
   const [error, setError] = useState<string>('');
-  
+
   const handleFileUpload = async () => {
     if (!file && !url) {
       setError('Please select a file or enter a URL');
@@ -210,7 +219,7 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
       const uploadResult = await uploadResponse.json();
       console.log('[KB Upload] Upload successful:', uploadResult.documentId);
       setProgress(50);
-      
+
       // Step 2: AI Processing and Tagging
       setStatus('tagging');
       setProgress(70);
@@ -293,153 +302,139 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
       }
     }
   };
-  
+
   return (
-    <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border border-gray-700 rounded-xl p-5 backdrop-blur-sm">
-      {/* Upload Mode Toggle */}
-      <div className="flex mb-4 gap-2 p-1 bg-gray-800/50 rounded-lg">
-        <button
-          onClick={() => setUploadMode('file')}
-          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-            uploadMode === 'file'
-              ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/20'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-          }`}
-        >
-          <span className="flex items-center justify-center gap-2">
-            <Upload size={16} />
-            File Upload
-          </span>
-        </button>
-        <button
-          onClick={() => setUploadMode('url')}
-          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-            uploadMode === 'url'
-              ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-500/20'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-          }`}
-        >
-          <span className="flex items-center justify-center gap-2">
-            <Globe size={16} />
-            URL/Link
-          </span>
-        </button>
-      </div>
+    <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700 backdrop-blur-sm">
+      <CardContent className="p-5">
+        {/* Upload Mode Toggle - using shadcn Tabs */}
+        <Tabs value={uploadMode} onValueChange={(v) => setUploadMode(v as 'file' | 'url')} className="mb-4">
+          <TabsList className="grid w-full grid-cols-2 bg-gray-800/50">
+            <TabsTrigger value="file" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-700">
+              <Upload size={16} className="mr-2" />
+              File Upload
+            </TabsTrigger>
+            <TabsTrigger value="url" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-700">
+              <Globe size={16} className="mr-2" />
+              URL/Link
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-      {/* File Upload Mode */}
-      {uploadMode === 'file' && (
-        <div className="border-2 border-dashed border-purple-500/30 rounded-lg p-6 text-center bg-gradient-to-br from-purple-900/10 to-purple-800/10 hover:border-purple-500/50 transition-colors">
-          <Upload className="mx-auto mb-3 text-purple-400" size={32} />
-          <input
-            type="file"
-            accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.gif,.webp"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="text-gray-300 text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 file:cursor-pointer cursor-pointer"
-          />
-          <p className="text-xs text-gray-400 mt-3">
-            Supported: PDF, TXT, MD, PNG, JPG, GIF, WEBP (max 25MB)
-          </p>
-        </div>
-      )}
-
-      {/* URL Upload Mode */}
-      {uploadMode === 'url' && (
-        <div className="border-2 border-dashed border-purple-500/30 rounded-lg p-6 bg-gradient-to-br from-purple-900/10 to-purple-800/10 hover:border-purple-500/50 transition-colors">
-          <Globe className="mx-auto mb-3 text-purple-400" size={32} />
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com/document-or-page"
-            className="w-full bg-gray-800/80 text-gray-200 text-sm rounded-lg px-4 py-3 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-500"
-          />
-          <p className="text-xs text-gray-400 mt-3">
-            Web pages, Google Docs, presentations, PDFs, articles
-          </p>
-        </div>
-      )}
-
-      {/* Upload Status and Actions */}
-      {(file || url) && (
-        <div className="mt-4 space-y-3">
-          <div className="flex items-center justify-between bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
-            <span className="text-sm text-gray-300 truncate mr-3">
-              {file ? file.name : url}
-            </span>
-            <button
-              onClick={handleFileUpload}
-              disabled={status !== 'idle' && status !== 'error'}
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 whitespace-nowrap"
-            >
-              {status === 'idle' && 'Process with AI'}
-              {status === 'uploading' && 'Uploading...'}
-              {status === 'extracting' && 'Extracting...'}
-              {status === 'processing' && 'Processing...'}
-              {status === 'tagging' && 'AI Tagging...'}
-              {status === 'vectorizing' && 'Vectorizing...'}
-              {status === 'done' && '✓ Complete'}
-              {status === 'error' && 'Retry'}
-            </button>
+        {/* File Upload Mode */}
+        {uploadMode === 'file' && (
+          <div className="border-2 border-dashed border-purple-500/30 rounded-lg p-6 text-center bg-gradient-to-br from-purple-900/10 to-purple-800/10 hover:border-purple-500/50 transition-colors">
+            <Upload className="mx-auto mb-3 text-purple-400" size={32} />
+            <input
+              type="file"
+              accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.gif,.webp"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="text-gray-300 text-sm w-full file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 file:cursor-pointer cursor-pointer"
+            />
+            <p className="text-xs text-gray-400 mt-3">
+              Supported: PDF, TXT, MD, PNG, JPG, GIF, WEBP (max 25MB)
+            </p>
           </div>
+        )}
 
-          {/* Progress Bar */}
-          {(status !== 'idle' && status !== 'error') && (
-            <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden shadow-inner">
-              <div
-                className="bg-gradient-to-r from-purple-500 to-purple-600 h-2.5 rounded-full transition-all duration-500 shadow-lg"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
-          )}
+        {/* URL Upload Mode */}
+        {uploadMode === 'url' && (
+          <div className="border-2 border-dashed border-purple-500/30 rounded-lg p-6 bg-gradient-to-br from-purple-900/10 to-purple-800/10 hover:border-purple-500/50 transition-colors">
+            <Globe className="mx-auto mb-3 text-purple-400" size={32} />
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/document-or-page"
+              className="w-full bg-gray-800/80 text-gray-200 text-sm rounded-lg px-4 py-3 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-500"
+            />
+            <p className="text-xs text-gray-400 mt-3">
+              Web pages, Google Docs, presentations, PDFs, articles
+            </p>
+          </div>
+        )}
 
-          {/* Status Messages */}
-          {status === 'extracting' && (
-            <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-950/30 border border-blue-800/30 rounded-lg p-3">
-              <FileText size={14} />
-              <span>Extracting text content and metadata...</span>
+        {/* Upload Status and Actions */}
+        {(file || url) && (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+              <span className="text-sm text-gray-300 truncate mr-3">
+                {file ? file.name : url}
+              </span>
+              <button
+                onClick={handleFileUpload}
+                disabled={status !== 'idle' && status !== 'error'}
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 whitespace-nowrap"
+              >
+                {status === 'idle' && 'Process with AI'}
+                {status === 'uploading' && 'Uploading...'}
+                {status === 'extracting' && 'Extracting...'}
+                {status === 'processing' && 'Processing...'}
+                {status === 'tagging' && 'AI Tagging...'}
+                {status === 'vectorizing' && 'Vectorizing...'}
+                {status === 'done' && '✓ Complete'}
+                {status === 'error' && 'Retry'}
+              </button>
             </div>
-          )}
-          {status === 'tagging' && (
-            <div className="flex items-center gap-2 text-xs text-purple-400 bg-purple-950/30 border border-purple-800/30 rounded-lg p-3">
-              <Brain size={14} />
-              <span>AI analyzing content for smart categorization...</span>
-            </div>
-          )}
-          {status === 'vectorizing' && (
-            <div className="flex items-center gap-2 text-xs text-green-400 bg-green-950/30 border border-green-800/30 rounded-lg p-3">
-              <Cpu size={14} />
-              <span>Creating embeddings for SAM AI knowledge access...</span>
-            </div>
-          )}
-          {status === 'done' && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-950/30 border border-green-800/30 rounded-lg p-3">
-                <Activity size={14} />
-                <span>Document processed and integrated into Knowledgebase</span>
+
+            {/* Progress Bar */}
+            {(status !== 'idle' && status !== 'error') && (
+              <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden shadow-inner">
+                <div
+                  className="bg-gradient-to-r from-purple-500 to-purple-600 h-2.5 rounded-full transition-all duration-500 shadow-lg"
+                  style={{ width: `${progress}%` }}
+                ></div>
               </div>
-              {aiTags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {aiTags.slice(0, 4).map((tag, i) => (
-                    <span key={i} className="text-xs bg-gradient-to-r from-purple-600 to-purple-700 text-white px-3 py-1.5 rounded-full font-medium shadow-sm">
-                      {tag}
-                    </span>
-                  ))}
-                  {aiTags.length > 4 && (
-                    <span className="text-xs text-gray-400 bg-gray-800 px-3 py-1.5 rounded-full">+{aiTags.length - 4} more</span>
-                  )}
+            )}
+
+            {/* Status Messages */}
+            {status === 'extracting' && (
+              <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-950/30 border border-blue-800/30 rounded-lg p-3">
+                <FileText size={14} />
+                <span>Extracting text content and metadata...</span>
+              </div>
+            )}
+            {status === 'tagging' && (
+              <div className="flex items-center gap-2 text-xs text-purple-400 bg-purple-950/30 border border-purple-800/30 rounded-lg p-3">
+                <Brain size={14} />
+                <span>AI analyzing content for smart categorization...</span>
+              </div>
+            )}
+            {status === 'vectorizing' && (
+              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-950/30 border border-green-800/30 rounded-lg p-3">
+                <Cpu size={14} />
+                <span>Creating embeddings for SAM AI knowledge access...</span>
+              </div>
+            )}
+            {status === 'done' && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-green-400 bg-green-950/30 border border-green-800/30 rounded-lg p-3">
+                  <Activity size={14} />
+                  <span>Document processed and integrated into Knowledgebase</span>
                 </div>
-              )}
-            </div>
-          )}
-          {status === 'error' && error && (
-            <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/30 border border-red-800/30 rounded-lg p-3">
-              <AlertCircle size={14} />
-              <span>{error}</span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+                {aiTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {aiTags.slice(0, 4).map((tag, i) => (
+                      <span key={i} className="text-xs bg-gradient-to-r from-purple-600 to-purple-700 text-white px-3 py-1.5 rounded-full font-medium shadow-sm">
+                        {tag}
+                      </span>
+                    ))}
+                    {aiTags.length > 4 && (
+                      <span className="text-xs text-gray-400 bg-gray-800 px-3 py-1.5 rounded-full">+{aiTags.length - 4} more</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {status === 'error' && error && (
+              <div className="flex items-center gap-2 text-xs text-red-400 bg-red-950/30 border border-red-800/30 rounded-lg p-3">
+                <AlertCircle size={14} />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -458,7 +453,7 @@ function ICPConfiguration({
   const [icpProfiles, setIcpProfiles] = useState<Record<string, ICPProfile>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  
+
   const currentICP = selectedICP && icpProfiles[selectedICP] ? icpProfiles[selectedICP] : null;
 
   // Fetch ICP profiles on component mount
@@ -505,11 +500,11 @@ function ICPConfiguration({
       const response = await fetch('/api/knowledge-base/icps', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           name: icpName
         })
       });
-      
+
       if (response.ok) {
         const payload = await response.json();
         const createdRaw = (payload?.icp ?? {}) as Record<string, unknown>;
@@ -560,7 +555,7 @@ function ICPConfiguration({
           </h2>
         </div>
         <div className="flex space-x-2">
-          <button 
+          <button
             onClick={handleCreateICP}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center"
           >
@@ -579,8 +574,8 @@ function ICPConfiguration({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 w-96">
             <h3 className="text-xl font-semibold text-white mb-4">Create New ICP Profile</h3>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Enter ICP profile name..."
               className="w-full bg-gray-700 border border-gray-600 px-3 py-2 rounded text-white placeholder-gray-400 mb-4"
               onKeyPress={(e) => {
@@ -591,7 +586,7 @@ function ICPConfiguration({
               autoFocus
             />
             <div className="flex space-x-2">
-              <button 
+              <button
                 onClick={() => {
                   const input = document.querySelector('input[placeholder="Enter ICP profile name..."]') as HTMLInputElement;
                   if (input?.value.trim()) {
@@ -602,7 +597,7 @@ function ICPConfiguration({
               >
                 Create
               </button>
-              <button 
+              <button
                 onClick={() => setShowCreateForm(false)}
                 className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded transition-colors"
               >
@@ -621,7 +616,7 @@ function ICPConfiguration({
             <div className="text-gray-400 text-sm">Loading ICP profiles...</div>
           </div>
         )}
-        
+
         {/* ICP Profile Selector - Only if profiles exist */}
         {Object.keys(icpProfiles).length > 0 && (
           <div className="flex space-x-1 mb-4 bg-gray-700 rounded-lg p-1">
@@ -629,62 +624,60 @@ function ICPConfiguration({
               <button
                 key={key}
                 onClick={() => setSelectedICP(key)}
-                className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${
-                  selectedICP === key
-                    ? 'text-white bg-gray-600'
-                    : 'text-gray-300 hover:text-white'
-                }`}
+                className={`flex-1 py-2 px-4 text-sm font-medium rounded-md transition-colors ${selectedICP === key
+                  ? 'text-white bg-gray-600'
+                  : 'text-gray-300 hover:text-white'
+                  }`}
               >
                 {profile?.name || profile?.icp_name || 'Unnamed Profile'}
               </button>
             ))}
           </div>
         )}
-        
+
         {/* Category Navigation - Always Visible (Box Design) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
-              {icpCategories.map((category) => {
-                const IconComponent = category.icon;
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => setActiveCategory(category.id)}
-                    className={`p-3 rounded-lg text-left transition-all ${
-                      activeCategory === category.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center mb-2">
-                      <IconComponent size={16} className="mr-2" />
-                      <span className="text-sm font-medium">{category.label}</span>
-                    </div>
-                    <p className="text-xs opacity-80">{category.description}</p>
-                  </button>
-                );
-              })}
-            </div>
-            
-            {/* No Profiles Message - Only if no profiles */}
-            {Object.keys(icpProfiles).length === 0 && (
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
-                <div className="text-center">
-                  <Target size={32} className="mx-auto text-gray-500 mb-2" />
-                  <h3 className="text-lg font-medium text-gray-300 mb-2">No ICP Profiles Created Yet</h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Create your first ICP profile to define your ideal customers. Use the categories below to see the fields you'll be able to configure once you create a profile.
-                  </p>
-                  <button 
-                    onClick={handleCreateICP}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-                  >
-                    <Plus className="mr-1 inline" size={16} />
-                    Create Your First ICP Profile
-                  </button>
+          {icpCategories.map((category) => {
+            const IconComponent = category.icon;
+            return (
+              <button
+                key={category.id}
+                onClick={() => setActiveCategory(category.id)}
+                className={`p-3 rounded-lg text-left transition-all ${activeCategory === category.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                  }`}
+              >
+                <div className="flex items-center mb-2">
+                  <IconComponent size={16} className="mr-2" />
+                  <span className="text-sm font-medium">{category.label}</span>
                 </div>
-              </div>
-            )}
+                <p className="text-xs opacity-80">{category.description}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* No Profiles Message - Only if no profiles */}
+        {Object.keys(icpProfiles).length === 0 && (
+          <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
+            <div className="text-center">
+              <Target size={32} className="mx-auto text-gray-500 mb-2" />
+              <h3 className="text-lg font-medium text-gray-300 mb-2">No ICP Profiles Created Yet</h3>
+              <p className="text-gray-400 text-sm mb-4">
+                Create your first ICP profile to define your ideal customers. Use the categories below to see the fields you'll be able to configure once you create a profile.
+              </p>
+              <button
+                onClick={handleCreateICP}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+              >
+                <Plus className="mr-1 inline" size={16} />
+                Create Your First ICP Profile
+              </button>
+            </div>
           </div>
+        )}
+      </div>
 
       {/* Category Content */}
       <div className="space-y-6">
@@ -692,732 +685,732 @@ function ICPConfiguration({
         {(currentICP || Object.keys(icpProfiles).length === 0) && (
           <>
             {activeCategory === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* ICP Performance Card */}
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-3 flex items-center">
-                  <BarChart className="mr-2" size={16} />
-                  Performance Metrics
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Response Rate:</span>
-                    <span className="text-green-400 font-medium">8.5% ↗️</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* ICP Performance Card */}
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-3 flex items-center">
+                    <BarChart className="mr-2" size={16} />
+                    Performance Metrics
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Response Rate:</span>
+                      <span className="text-green-400 font-medium">8.5% ↗️</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Meeting Rate:</span>
+                      <span className="text-blue-400 font-medium">3.2% ↗️</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Conversion:</span>
+                      <span className="text-purple-400 font-medium">12% ↗️</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">ROI Score:</span>
+                      <span className="text-yellow-400 font-medium">⭐⭐⭐⭐⭐</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Meeting Rate:</span>
-                    <span className="text-blue-400 font-medium">3.2% ↗️</span>
+                </div>
+
+                {/* Market Size Card */}
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-3 flex items-center">
+                    <Target className="mr-2" size={16} />
+                    Market Opportunity
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">TAM:</span>
+                      <span className="text-white">~45,000 companies</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">SAM:</span>
+                      <span className="text-white">~12,000 companies</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Confidence:</span>
+                      <span className="text-green-400">92%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Last Updated:</span>
+                      <span className="text-gray-400">2 days ago</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Conversion:</span>
-                    <span className="text-purple-400 font-medium">12% ↗️</span>
+                </div>
+
+              </div>
+            )}
+
+            {activeCategory === 'target_profile' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Company Demographics */}
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Building2 className="mr-2" size={16} />
+                    Company Demographics
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Employee Count</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['50-100', '100-500', '500-1000', '1000+'].map(range => (
+                          <span key={range} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                            {range}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Revenue Range</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['$10M-$50M', '$50M-$100M'].map(range => (
+                          <span key={range} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                            {range}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Growth Stage</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['Series A', 'Series B', 'Growth'].map(stage => (
+                          <span key={stage} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
+                            {stage}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">ROI Score:</span>
-                    <span className="text-yellow-400 font-medium">⭐⭐⭐⭐⭐</span>
+                </div>
+
+                {/* Geographic Focus */}
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Globe className="mr-2" size={16} />
+                    Geographic Focus
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Primary Markets</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['United States', 'Canada'].map(market => (
+                          <span key={market} className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
+                            {market}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Regional Preferences</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['East Coast', 'West Coast', 'Major Metro'].map(region => (
+                          <span key={region} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                            {region}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Expansion Markets</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['United Kingdom', 'Australia'].map(market => (
+                          <span key={market} className="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs">
+                            {market}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Industry Segmentation */}
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Briefcase className="mr-2" size={16} />
+                    Industry & Market Segmentation
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Primary Industries</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['SaaS', 'FinTech', 'HealthTech'].map(industry => (
+                          <span key={industry} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
+                            {industry}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Secondary Industries</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['MarTech', 'EdTech', 'PropTech'].map(industry => (
+                          <span key={industry} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                            {industry}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Technology Requirements */}
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Cpu className="mr-2" size={16} />
+                    Technology & Infrastructure
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Required Tech Stack</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['Salesforce', 'HubSpot', 'AWS'].map(tech => (
+                          <span key={tech} className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Preferred Platforms</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['Azure', 'React', 'API-First'].map(tech => (
+                          <span key={tech} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Security Requirements</label>
+                      <div className="flex flex-wrap gap-2">
+                        {['SOC2', 'GDPR', 'API Security'].map(req => (
+                          <span key={req} className="bg-red-600 text-white px-3 py-1 rounded-full text-xs">
+                            {req}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Market Size Card */}
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-3 flex items-center">
-                  <Target className="mr-2" size={16} />
-                  Market Opportunity
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">TAM:</span>
-                    <span className="text-white">~45,000 companies</span>
+            {/* DECISION MAKERS Category */}
+            {activeCategory === 'decision_makers' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Users className="mr-2" size={16} />
+                    Executive Level
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Identified Roles</label>
+                      <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
+                        {currentICP?.decision_makers?.identified_roles?.length > 0 ?
+                          currentICP.decision_makers.identified_roles.join(', ') :
+                          'e.g., CEO, CTO, Head of Sales, VP Marketing, Operations Director...'
+                        }
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Authority Level</label>
+                      <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
+                        {currentICP?.decision_makers?.authority_level?.length > 0 ?
+                          currentICP.decision_makers.authority_level.join(', ') :
+                          'e.g., Final Decision Maker, Budget Approver, Technical Evaluator, Influencer...'
+                        }
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">SAM:</span>
-                    <span className="text-white">~12,000 companies</span>
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <UserCheck className="mr-2" size={16} />
+                    Primary Contact
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Contact Information</label>
+                      <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800 space-y-1">
+                        <div>Name: {currentICP?.decision_makers?.primary_contact?.name || 'e.g., John Smith'}</div>
+                        <div>Company: {currentICP?.decision_makers?.primary_contact?.company || 'e.g., TechCorp Inc.'}</div>
+                        <div>Engagement: {currentICP?.decision_makers?.primary_contact?.engagement_level || 'e.g., High interest, active evaluator'}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Confidence:</span>
-                    <span className="text-green-400">92%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Last Updated:</span>
-                    <span className="text-gray-400">2 days ago</span>
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Users className="mr-2" size={16} />
+                    Stakeholder Subcategories
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Executive Level</h4>
+                      <div className="text-gray-400 text-sm">
+                        Authority: {currentICP?.decision_makers?.subcategories?.executive_level?.authority || 'Unknown'}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Operational Level</h4>
+                      <div className="text-gray-400 text-sm">
+                        Influence: {currentICP?.decision_makers?.subcategories?.operational_level?.influence || 'Unknown'}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Technical Stakeholders</h4>
+                      <div className="text-gray-400 text-sm">
+                        Involvement: {currentICP?.decision_makers?.subcategories?.technical_stakeholders?.involvement || 'Unknown'}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Purchasing Authority</h4>
+                      <div className="text-gray-400 text-sm">
+                        Process: {currentICP?.decision_makers?.subcategories?.purchasing_authority?.approval_process || 'Unknown'}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+            )}
 
-            </div>
-          )}
-
-          {activeCategory === 'target_profile' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Company Demographics */}
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Building2 className="mr-2" size={16} />
-                  Company Demographics
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Employee Count</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['50-100', '100-500', '500-1000', '1000+'].map(range => (
-                        <span key={range} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
-                          {range}
-                        </span>
-                      ))}
+            {/* PAIN POINTS & SIGNALS Category */}
+            {activeCategory === 'pain_points' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <AlertCircle className="mr-2" size={16} />
+                    Current Challenges
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Operational Challenges</label>
+                      <div className="text-gray-400 text-sm max-h-32 overflow-y-auto border border-gray-600 rounded p-2 bg-gray-800">
+                        {currentICP?.pain_points?.operational_challenges?.length > 0 ?
+                          currentICP.pain_points.operational_challenges.map((challenge: string, i: number) => (
+                            <div key={i} className="mb-1">• {challenge}</div>
+                          )) :
+                          <div className="space-y-1">
+                            <div>• Manual processes eating up team time</div>
+                            <div>• Difficulty scaling current systems</div>
+                            <div>• Integration challenges between tools</div>
+                            <div>• Data silos preventing insights</div>
+                            <div>• Compliance and security concerns</div>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Growth Pressures</label>
+                      <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
+                        {currentICP?.pain_points?.growth_pressures?.length > 0 ?
+                          currentICP.pain_points.growth_pressures.join(', ') :
+                          'e.g., Need to expand market share, Pressure to reduce costs, Requirements for faster time-to-market, Board demands for digital transformation'
+                        }
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Revenue Range</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['$10M-$50M', '$50M-$100M'].map(range => (
-                        <span key={range} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
-                          {range}
-                        </span>
-                      ))}
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <TrendingUp className="mr-2" size={16} />
+                    Buying Signals
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Detected Signals</label>
+                      <div className="text-gray-400 text-sm">
+                        {currentICP?.pain_points?.buying_signals?.length > 0 ?
+                          currentICP.pain_points.buying_signals.join(', ') :
+                          'No buying signals detected yet'
+                        }
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Urgency Indicators</label>
+                      <div className="text-gray-400 text-sm">
+                        {currentICP?.pain_points?.urgency_indicators?.length > 0 ?
+                          currentICP.pain_points.urgency_indicators.join(', ') :
+                          'No urgency indicators identified'
+                        }
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Growth Stage</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['Series A', 'Series B', 'Growth'].map(stage => (
-                        <span key={stage} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <AlertCircle className="mr-2" size={16} />
+                    Pain Points Subcategories
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Current Challenges</h4>
+                      <div className="text-gray-400 text-sm space-y-1">
+                        <div>Operational: {currentICP?.pain_points?.subcategories?.current_challenges?.operational?.length || 0}</div>
+                        <div>Technical: {currentICP?.pain_points?.subcategories?.current_challenges?.technical?.length || 0}</div>
+                        <div>Business: {currentICP?.pain_points?.subcategories?.current_challenges?.business?.length || 0}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Buying Indicators</h4>
+                      <div className="text-gray-400 text-sm space-y-1">
+                        <div>Budget: {currentICP?.pain_points?.subcategories?.buying_indicators?.budget ? '✓' : '✗'}</div>
+                        <div>Timeline: {currentICP?.pain_points?.subcategories?.buying_indicators?.timeline ? '✓' : '✗'}</div>
+                        <div>Authority: {currentICP?.pain_points?.subcategories?.buying_indicators?.authority ? '✓' : '✗'}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Competitive Pressures</h4>
+                      <div className="text-gray-400 text-sm">
+                        Urgency: {currentICP?.pain_points?.subcategories?.competitive_pressures?.urgency || 'Unknown'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* BUYING PROCESS Category */}
+            {activeCategory === 'buying_process' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <GitBranch className="mr-2" size={16} />
+                    Evaluation Stages
+                  </h3>
+                  <div className="space-y-3">
+                    {currentICP?.buying_process?.evaluation_stages?.length > 0 ?
+                      currentICP.buying_process.evaluation_stages.map((stage: string, i: number) => (
+                        <div key={i} className="flex items-center text-gray-300">
+                          <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs mr-3">
+                            {i + 1}
+                          </div>
                           {stage}
-                        </span>
-                      ))}
+                        </div>
+                      )) :
+                      <div className="text-gray-400 text-sm">No evaluation stages identified yet</div>
+                    }
+                  </div>
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Clock className="mr-2" size={16} />
+                    Timeline & Stakeholders
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Timeline Indicators</label>
+                      <div className="text-gray-400 text-sm">
+                        {currentICP?.buying_process?.timeline?.length > 0 ?
+                          currentICP.buying_process.timeline.join(', ') :
+                          'No timeline indicators identified'
+                        }
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-gray-300 text-sm font-medium block mb-1">Stakeholder Involvement</label>
+                      <div className="text-gray-400 text-sm">
+                        {currentICP?.buying_process?.stakeholder_involvement?.length > 0 ?
+                          currentICP.buying_process.stakeholder_involvement.join(', ') :
+                          'No stakeholder involvement mapped'
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <GitBranch className="mr-2" size={16} />
+                    Buying Process Subcategories
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Evaluation Framework</h4>
+                      <div className="text-gray-400 text-sm">
+                        Stages: {currentICP?.buying_process?.subcategories?.evaluation_framework?.stages?.length || 0}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Approval Workflow</h4>
+                      <div className="text-gray-400 text-sm">
+                        Steps: {currentICP?.buying_process?.subcategories?.approval_workflow?.steps?.length || 0}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Vendor Evaluation</h4>
+                      <div className="text-gray-400 text-sm">
+                        Process: {currentICP?.buying_process?.subcategories?.vendor_evaluation?.process || 'Unknown'}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Implementation Planning</h4>
+                      <div className="text-gray-400 text-sm">
+                        Timeline: {currentICP?.buying_process?.subcategories?.implementation_planning?.timeline || 'Unknown'}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Geographic Focus */}
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Globe className="mr-2" size={16} />
-                  Geographic Focus
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Primary Markets</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['United States', 'Canada'].map(market => (
-                        <span key={market} className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
-                          {market}
-                        </span>
-                      ))}
-                    </div>
+            {/* MESSAGING STRATEGY Category */}
+            {activeCategory === 'messaging' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <MessageSquare className="mr-2" size={16} />
+                    Value Propositions
+                  </h3>
+                  <div className="space-y-2">
+                    {currentICP?.messaging?.value_propositions?.length > 0 ?
+                      currentICP.messaging.value_propositions.map((prop: string, i: number) => (
+                        <div key={i} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
+                          {prop}
+                        </div>
+                      )) :
+                      <div className="border border-gray-600 rounded p-2 bg-gray-800 space-y-1">
+                        <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Save 40% on operational costs</div>
+                        <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Reduce time-to-market by 60%</div>
+                        <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Enterprise-grade security & compliance</div>
+                        <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Seamless integration with existing tools</div>
+                      </div>
+                    }
                   </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Regional Preferences</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['East Coast', 'West Coast', 'Major Metro'].map(region => (
-                        <span key={region} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
-                          {region}
-                        </span>
-                      ))}
-                    </div>
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <MessageCircle className="mr-2" size={16} />
+                    Communication Preferences
+                  </h3>
+                  <div className="space-y-2">
+                    {currentICP?.messaging?.communication_preferences?.length > 0 ?
+                      currentICP.messaging.communication_preferences.map((pref: string, i: number) => (
+                        <div key={i} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
+                          {pref}
+                        </div>
+                      )) :
+                      <div className="text-gray-400 text-sm">No communication preferences identified</div>
+                    }
                   </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Expansion Markets</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['United Kingdom', 'Australia'].map(market => (
-                        <span key={market} className="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs">
-                          {market}
-                        </span>
-                      ))}
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <TrendingUp className="mr-2" size={16} />
+                    Competitive Mentions
+                  </h3>
+                  <div className="space-y-2">
+                    {currentICP?.messaging?.competitive_mentions?.length > 0 ?
+                      currentICP.messaging.competitive_mentions.map((mention: string, i: number) => (
+                        <div key={i} className="text-gray-300 text-sm p-2 bg-gray-600 rounded">
+                          {mention}
+                        </div>
+                      )) :
+                      <div className="text-gray-400 text-sm">No competitive mentions identified</div>
+                    }
+                  </div>
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <MessageSquare className="mr-2" size={16} />
+                    Messaging Subcategories
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Communication Style</h4>
+                      <div className="text-gray-400 text-sm">
+                        Preference: {currentICP?.messaging?.subcategories?.communication_style?.preference || 'Unknown'}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Channel Preferences</h4>
+                      <div className="text-gray-400 text-sm space-y-1">
+                        <div>Email: {currentICP?.messaging?.subcategories?.channel_preferences?.email || 'Unknown'}</div>
+                        <div>LinkedIn: {currentICP?.messaging?.subcategories?.channel_preferences?.linkedin || 'Unknown'}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Industry Segmentation */}
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Briefcase className="mr-2" size={16} />
-                  Industry & Market Segmentation
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Primary Industries</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['SaaS', 'FinTech', 'HealthTech'].map(industry => (
-                        <span key={industry} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
-                          {industry}
-                        </span>
-                      ))}
-                    </div>
+            {/* SUCCESS METRICS Category */}
+            {activeCategory === 'success_metrics' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <BarChart className="mr-2" size={16} />
+                    Relevant KPIs
+                  </h3>
+                  <div className="space-y-2">
+                    {currentICP?.success_metrics?.relevant_kpis?.length > 0 ?
+                      currentICP.success_metrics.relevant_kpis.map((kpi: string, i: number) => (
+                        <div key={i} className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
+                          {kpi}
+                        </div>
+                      )) :
+                      <div className="text-gray-400 text-sm">No KPIs identified yet</div>
+                    }
                   </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Secondary Industries</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['MarTech', 'EdTech', 'PropTech'].map(industry => (
-                        <span key={industry} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
-                          {industry}
-                        </span>
-                      ))}
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Trophy className="mr-2" size={16} />
+                    Performance Benchmarks
+                  </h3>
+                  <div className="space-y-2">
+                    {currentICP?.success_metrics?.performance_benchmarks?.length > 0 ?
+                      currentICP.success_metrics.performance_benchmarks.map((benchmark: string, i: number) => (
+                        <div key={i} className="text-gray-300 text-sm">
+                          • {benchmark}
+                        </div>
+                      )) :
+                      <div className="text-gray-400 text-sm">No benchmarks identified yet</div>
+                    }
+                  </div>
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Clock className="mr-2" size={16} />
+                    Success Timeline & ROI
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Success Timeline</h4>
+                      <div className="text-gray-400 text-sm">
+                        {currentICP?.success_metrics?.success_timeline?.length > 0 ?
+                          currentICP.success_metrics.success_timeline.join(', ') :
+                          'No timeline defined'
+                        }
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">ROI Expectations</h4>
+                      <div className="text-gray-400 text-sm">
+                        {currentICP?.success_metrics?.roi_expectations || 'Unknown'}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Technology Requirements */}
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Cpu className="mr-2" size={16} />
-                  Technology & Infrastructure
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Required Tech Stack</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['Salesforce', 'HubSpot', 'AWS'].map(tech => (
-                        <span key={tech} className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
+            {/* ADVANCED CLASSIFICATION Category */}
+            {activeCategory === 'advanced' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Cpu className="mr-2" size={16} />
+                    Technology Adoption
+                  </h3>
+                  <div className="space-y-2">
+                    {currentICP?.advanced?.technology_adoption?.length > 0 ?
+                      currentICP.advanced.technology_adoption.map((adoption: string, i: number) => (
+                        <div key={i} className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs">
+                          {adoption}
+                        </div>
+                      )) :
+                      <div className="text-gray-400 text-sm">No technology adoption patterns identified</div>
+                    }
                   </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Preferred Platforms</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['Azure', 'React', 'API-First'].map(tech => (
-                        <span key={tech} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Security Requirements</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['SOC2', 'GDPR', 'API Security'].map(req => (
-                        <span key={req} className="bg-red-600 text-white px-3 py-1 rounded-full text-xs">
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Shield className="mr-2" size={16} />
+                    Compliance Requirements
+                  </h3>
+                  <div className="space-y-2">
+                    {currentICP?.advanced?.compliance_requirements?.length > 0 ?
+                      currentICP.advanced.compliance_requirements.map((req: string, i: number) => (
+                        <div key={i} className="bg-red-600 text-white px-3 py-1 rounded-full text-xs">
                           {req}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* DECISION MAKERS Category */}
-          {activeCategory === 'decision_makers' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Users className="mr-2" size={16} />
-                  Executive Level
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Identified Roles</label>
-                    <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
-                      {currentICP?.decision_makers?.identified_roles?.length > 0 ? 
-                        currentICP.decision_makers.identified_roles.join(', ') : 
-                        'e.g., CEO, CTO, Head of Sales, VP Marketing, Operations Director...'
-                      }
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Authority Level</label>
-                    <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
-                      {currentICP?.decision_makers?.authority_level?.length > 0 ? 
-                        currentICP.decision_makers.authority_level.join(', ') : 
-                        'e.g., Final Decision Maker, Budget Approver, Technical Evaluator, Influencer...'
-                      }
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <UserCheck className="mr-2" size={16} />
-                  Primary Contact
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Contact Information</label>
-                    <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800 space-y-1">
-                      <div>Name: {currentICP?.decision_makers?.primary_contact?.name || 'e.g., John Smith'}</div>
-                      <div>Company: {currentICP?.decision_makers?.primary_contact?.company || 'e.g., TechCorp Inc.'}</div>
-                      <div>Engagement: {currentICP?.decision_makers?.primary_contact?.engagement_level || 'e.g., High interest, active evaluator'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Users className="mr-2" size={16} />
-                  Stakeholder Subcategories
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Executive Level</h4>
-                    <div className="text-gray-400 text-sm">
-                      Authority: {currentICP?.decision_makers?.subcategories?.executive_level?.authority || 'Unknown'}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Operational Level</h4>
-                    <div className="text-gray-400 text-sm">
-                      Influence: {currentICP?.decision_makers?.subcategories?.operational_level?.influence || 'Unknown'}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Technical Stakeholders</h4>
-                    <div className="text-gray-400 text-sm">
-                      Involvement: {currentICP?.decision_makers?.subcategories?.technical_stakeholders?.involvement || 'Unknown'}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Purchasing Authority</h4>
-                    <div className="text-gray-400 text-sm">
-                      Process: {currentICP?.decision_makers?.subcategories?.purchasing_authority?.approval_process || 'Unknown'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* PAIN POINTS & SIGNALS Category */}
-          {activeCategory === 'pain_points' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <AlertCircle className="mr-2" size={16} />
-                  Current Challenges
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Operational Challenges</label>
-                    <div className="text-gray-400 text-sm max-h-32 overflow-y-auto border border-gray-600 rounded p-2 bg-gray-800">
-                      {currentICP?.pain_points?.operational_challenges?.length > 0 ? 
-                        currentICP.pain_points.operational_challenges.map((challenge: string, i: number) => (
-                          <div key={i} className="mb-1">• {challenge}</div>
-                        )) : 
-                        <div className="space-y-1">
-                          <div>• Manual processes eating up team time</div>
-                          <div>• Difficulty scaling current systems</div>
-                          <div>• Integration challenges between tools</div>
-                          <div>• Data silos preventing insights</div>
-                          <div>• Compliance and security concerns</div>
                         </div>
-                      }
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Growth Pressures</label>
-                    <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
-                      {currentICP?.pain_points?.growth_pressures?.length > 0 ? 
-                        currentICP.pain_points.growth_pressures.join(', ') : 
-                        'e.g., Need to expand market share, Pressure to reduce costs, Requirements for faster time-to-market, Board demands for digital transformation'
-                      }
-                    </div>
+                      )) :
+                      <div className="text-gray-400 text-sm">No compliance requirements identified</div>
+                    }
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <TrendingUp className="mr-2" size={16} />
-                  Buying Signals
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Detected Signals</label>
-                    <div className="text-gray-400 text-sm">
-                      {currentICP?.pain_points?.buying_signals?.length > 0 ? 
-                        currentICP.pain_points.buying_signals.join(', ') : 
-                        'No buying signals detected yet'
-                      }
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Urgency Indicators</label>
-                    <div className="text-gray-400 text-sm">
-                      {currentICP?.pain_points?.urgency_indicators?.length > 0 ? 
-                        currentICP.pain_points.urgency_indicators.join(', ') : 
-                        'No urgency indicators identified'
-                      }
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <AlertCircle className="mr-2" size={16} />
-                  Pain Points Subcategories
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Current Challenges</h4>
-                    <div className="text-gray-400 text-sm space-y-1">
-                      <div>Operational: {currentICP?.pain_points?.subcategories?.current_challenges?.operational?.length || 0}</div>
-                      <div>Technical: {currentICP?.pain_points?.subcategories?.current_challenges?.technical?.length || 0}</div>
-                      <div>Business: {currentICP?.pain_points?.subcategories?.current_challenges?.business?.length || 0}</div>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Buying Indicators</h4>
-                    <div className="text-gray-400 text-sm space-y-1">
-                      <div>Budget: {currentICP?.pain_points?.subcategories?.buying_indicators?.budget ? '✓' : '✗'}</div>
-                      <div>Timeline: {currentICP?.pain_points?.subcategories?.buying_indicators?.timeline ? '✓' : '✗'}</div>
-                      <div>Authority: {currentICP?.pain_points?.subcategories?.buying_indicators?.authority ? '✓' : '✗'}</div>
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Competitive Pressures</h4>
-                    <div className="text-gray-400 text-sm">
-                      Urgency: {currentICP?.pain_points?.subcategories?.competitive_pressures?.urgency || 'Unknown'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* BUYING PROCESS Category */}
-          {activeCategory === 'buying_process' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <GitBranch className="mr-2" size={16} />
-                  Evaluation Stages
-                </h3>
-                <div className="space-y-3">
-                  {currentICP?.buying_process?.evaluation_stages?.length > 0 ? 
-                    currentICP.buying_process.evaluation_stages.map((stage: string, i: number) => (
-                      <div key={i} className="flex items-center text-gray-300">
-                        <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs mr-3">
-                          {i + 1}
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <TrendingUp className="mr-2" size={16} />
+                    Market Trends
+                  </h3>
+                  <div className="space-y-2">
+                    {currentICP?.advanced?.market_trends?.length > 0 ?
+                      currentICP.advanced.market_trends.map((trend: string, i: number) => (
+                        <div key={i} className="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs">
+                          {trend}
                         </div>
-                        {stage}
+                      )) :
+                      <div className="text-gray-400 text-sm">No market trends identified</div>
+                    }
+                  </div>
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Users className="mr-2" size={16} />
+                    Company Culture
+                  </h3>
+                  <div className="space-y-2">
+                    {currentICP?.advanced?.company_culture?.length > 0 ?
+                      currentICP.advanced.company_culture.map((culture: string, i: number) => (
+                        <div key={i} className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs">
+                          {culture}
+                        </div>
+                      )) :
+                      <div className="text-gray-400 text-sm">No company culture insights identified</div>
+                    }
+                  </div>
+                </div>
+
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                  <h3 className="text-white font-medium mb-4 flex items-center">
+                    <Settings className="mr-2" size={16} />
+                    Advanced Classification Subcategories
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Tech Maturity</h4>
+                      <div className="text-gray-400 text-sm">
+                        Stage: {currentICP?.advanced?.subcategories?.tech_maturity?.adoption_stage || 'Unknown'}
                       </div>
-                    )) : 
-                    <div className="text-gray-400 text-sm">No evaluation stages identified yet</div>
-                  }
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Clock className="mr-2" size={16} />
-                  Timeline & Stakeholders
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Timeline Indicators</label>
-                    <div className="text-gray-400 text-sm">
-                      {currentICP?.buying_process?.timeline?.length > 0 ? 
-                        currentICP.buying_process.timeline.join(', ') : 
-                        'No timeline indicators identified'
-                      }
                     </div>
-                  </div>
-                  <div>
-                    <label className="text-gray-300 text-sm font-medium block mb-1">Stakeholder Involvement</label>
-                    <div className="text-gray-400 text-sm">
-                      {currentICP?.buying_process?.stakeholder_involvement?.length > 0 ? 
-                        currentICP.buying_process.stakeholder_involvement.join(', ') : 
-                        'No stakeholder involvement mapped'
-                      }
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <GitBranch className="mr-2" size={16} />
-                  Buying Process Subcategories
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Evaluation Framework</h4>
-                    <div className="text-gray-400 text-sm">
-                      Stages: {currentICP?.buying_process?.subcategories?.evaluation_framework?.stages?.length || 0}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Approval Workflow</h4>
-                    <div className="text-gray-400 text-sm">
-                      Steps: {currentICP?.buying_process?.subcategories?.approval_workflow?.steps?.length || 0}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Vendor Evaluation</h4>
-                    <div className="text-gray-400 text-sm">
-                      Process: {currentICP?.buying_process?.subcategories?.vendor_evaluation?.process || 'Unknown'}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Implementation Planning</h4>
-                    <div className="text-gray-400 text-sm">
-                      Timeline: {currentICP?.buying_process?.subcategories?.implementation_planning?.timeline || 'Unknown'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* MESSAGING STRATEGY Category */}
-          {activeCategory === 'messaging' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <MessageSquare className="mr-2" size={16} />
-                  Value Propositions
-                </h3>
-                <div className="space-y-2">
-                  {currentICP?.messaging?.value_propositions?.length > 0 ? 
-                    currentICP.messaging.value_propositions.map((prop: string, i: number) => (
-                      <div key={i} className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">
-                        {prop}
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Innovation Readiness</h4>
+                      <div className="text-gray-400 text-sm">
+                        {currentICP?.advanced?.innovation_readiness || 'Unknown'}
                       </div>
-                    )) : 
-                    <div className="border border-gray-600 rounded p-2 bg-gray-800 space-y-1">
-                      <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Save 40% on operational costs</div>
-                      <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Reduce time-to-market by 60%</div>
-                      <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Enterprise-grade security & compliance</div>
-                      <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs">Seamless integration with existing tools</div>
                     </div>
-                  }
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <MessageCircle className="mr-2" size={16} />
-                  Communication Preferences
-                </h3>
-                <div className="space-y-2">
-                  {currentICP?.messaging?.communication_preferences?.length > 0 ? 
-                    currentICP.messaging.communication_preferences.map((pref: string, i: number) => (
-                      <div key={i} className="bg-gray-600 text-white px-3 py-1 rounded-full text-xs">
-                        {pref}
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Market Positioning</h4>
+                      <div className="text-gray-400 text-sm">
+                        Landscape: {currentICP?.advanced?.subcategories?.market_positioning?.competitive_landscape || 'Unknown'}
                       </div>
-                    )) : 
-                    <div className="text-gray-400 text-sm">No communication preferences identified</div>
-                  }
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <TrendingUp className="mr-2" size={16} />
-                  Competitive Mentions
-                </h3>
-                <div className="space-y-2">
-                  {currentICP?.messaging?.competitive_mentions?.length > 0 ? 
-                    currentICP.messaging.competitive_mentions.map((mention: string, i: number) => (
-                      <div key={i} className="text-gray-300 text-sm p-2 bg-gray-600 rounded">
-                        {mention}
-                      </div>
-                    )) : 
-                    <div className="text-gray-400 text-sm">No competitive mentions identified</div>
-                  }
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <MessageSquare className="mr-2" size={16} />
-                  Messaging Subcategories
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Communication Style</h4>
-                    <div className="text-gray-400 text-sm">
-                      Preference: {currentICP?.messaging?.subcategories?.communication_style?.preference || 'Unknown'}
                     </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Channel Preferences</h4>
-                    <div className="text-gray-400 text-sm space-y-1">
-                      <div>Email: {currentICP?.messaging?.subcategories?.channel_preferences?.email || 'Unknown'}</div>
-                      <div>LinkedIn: {currentICP?.messaging?.subcategories?.channel_preferences?.linkedin || 'Unknown'}</div>
+                    <div>
+                      <h4 className="text-gray-300 font-medium mb-2">Organizational Culture</h4>
+                      <div className="text-gray-400 text-sm">
+                        Style: {currentICP?.advanced?.subcategories?.organizational_culture?.decision_style || 'Unknown'}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* SUCCESS METRICS Category */}
-          {activeCategory === 'success_metrics' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <BarChart className="mr-2" size={16} />
-                  Relevant KPIs
-                </h3>
-                <div className="space-y-2">
-                  {currentICP?.success_metrics?.relevant_kpis?.length > 0 ? 
-                    currentICP.success_metrics.relevant_kpis.map((kpi: string, i: number) => (
-                      <div key={i} className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
-                        {kpi}
-                      </div>
-                    )) : 
-                    <div className="text-gray-400 text-sm">No KPIs identified yet</div>
-                  }
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Trophy className="mr-2" size={16} />
-                  Performance Benchmarks
-                </h3>
-                <div className="space-y-2">
-                  {currentICP?.success_metrics?.performance_benchmarks?.length > 0 ? 
-                    currentICP.success_metrics.performance_benchmarks.map((benchmark: string, i: number) => (
-                      <div key={i} className="text-gray-300 text-sm">
-                        • {benchmark}
-                      </div>
-                    )) : 
-                    <div className="text-gray-400 text-sm">No benchmarks identified yet</div>
-                  }
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Clock className="mr-2" size={16} />
-                  Success Timeline & ROI
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Success Timeline</h4>
-                    <div className="text-gray-400 text-sm">
-                      {currentICP?.success_metrics?.success_timeline?.length > 0 ? 
-                        currentICP.success_metrics.success_timeline.join(', ') : 
-                        'No timeline defined'
-                      }
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">ROI Expectations</h4>
-                    <div className="text-gray-400 text-sm">
-                      {currentICP?.success_metrics?.roi_expectations || 'Unknown'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ADVANCED CLASSIFICATION Category */}
-          {activeCategory === 'advanced' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Cpu className="mr-2" size={16} />
-                  Technology Adoption
-                </h3>
-                <div className="space-y-2">
-                  {currentICP?.advanced?.technology_adoption?.length > 0 ? 
-                    currentICP.advanced.technology_adoption.map((adoption: string, i: number) => (
-                      <div key={i} className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs">
-                        {adoption}
-                      </div>
-                    )) : 
-                    <div className="text-gray-400 text-sm">No technology adoption patterns identified</div>
-                  }
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Shield className="mr-2" size={16} />
-                  Compliance Requirements
-                </h3>
-                <div className="space-y-2">
-                  {currentICP?.advanced?.compliance_requirements?.length > 0 ? 
-                    currentICP.advanced.compliance_requirements.map((req: string, i: number) => (
-                      <div key={i} className="bg-red-600 text-white px-3 py-1 rounded-full text-xs">
-                        {req}
-                      </div>
-                    )) : 
-                    <div className="text-gray-400 text-sm">No compliance requirements identified</div>
-                  }
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <TrendingUp className="mr-2" size={16} />
-                  Market Trends
-                </h3>
-                <div className="space-y-2">
-                  {currentICP?.advanced?.market_trends?.length > 0 ? 
-                    currentICP.advanced.market_trends.map((trend: string, i: number) => (
-                      <div key={i} className="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs">
-                        {trend}
-                      </div>
-                    )) : 
-                    <div className="text-gray-400 text-sm">No market trends identified</div>
-                  }
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Users className="mr-2" size={16} />
-                  Company Culture
-                </h3>
-                <div className="space-y-2">
-                  {currentICP?.advanced?.company_culture?.length > 0 ? 
-                    currentICP.advanced.company_culture.map((culture: string, i: number) => (
-                      <div key={i} className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs">
-                        {culture}
-                      </div>
-                    )) : 
-                    <div className="text-gray-400 text-sm">No company culture insights identified</div>
-                  }
-                </div>
-              </div>
-
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
-                <h3 className="text-white font-medium mb-4 flex items-center">
-                  <Settings className="mr-2" size={16} />
-                  Advanced Classification Subcategories
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Tech Maturity</h4>
-                    <div className="text-gray-400 text-sm">
-                      Stage: {currentICP?.advanced?.subcategories?.tech_maturity?.adoption_stage || 'Unknown'}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Innovation Readiness</h4>
-                    <div className="text-gray-400 text-sm">
-                      {currentICP?.advanced?.innovation_readiness || 'Unknown'}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Market Positioning</h4>
-                    <div className="text-gray-400 text-sm">
-                      Landscape: {currentICP?.advanced?.subcategories?.market_positioning?.competitive_landscape || 'Unknown'}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-gray-300 font-medium mb-2">Organizational Culture</h4>
-                    <div className="text-gray-400 text-sm">
-                      Style: {currentICP?.advanced?.subcategories?.organizational_culture?.decision_style || 'Unknown'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+            )}
           </>
         )}
       </div>
@@ -1433,7 +1426,7 @@ function VectorTest() {
 
   const run = async () => {
     if (!q.trim()) return;
-    
+
     setIsLoading(true);
     try {
       // TODO: Implement actual vector search API call
@@ -1469,41 +1462,41 @@ function VectorTest() {
             {isLoading ? 'Searching...' : 'Search'}
           </button>
         </div>
-      <div className="space-y-2 mt-3 max-h-72 overflow-auto">
-        {isLoading ? (
-          <div className="text-center py-8">
-            <div className="text-gray-400">Searching knowledge base...</div>
-          </div>
-        ) : results.length > 0 ? (
-          results.map((r, i) => (
-            <div key={i} className="p-3 bg-gray-700 border border-gray-600 rounded">
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-800 text-white text-[10px]">
-                  {(r.score * 100).toFixed(0)}
-                </span>
-                <span>score</span>
-              </div>
-              <div className="text-sm mt-1 text-gray-300">{r.text}</div>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {r.labels.map(l => (
-                  <span key={l} className="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-200">
-                    {l}
-                  </span>
-                ))}
-              </div>
+        <div className="space-y-2 mt-3 max-h-72 overflow-auto">
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="text-gray-400">Searching knowledge base...</div>
             </div>
-          ))
-        ) : q && !isLoading ? (
-          <div className="text-center py-8">
-            <div className="text-gray-400 mb-2">No results found</div>
-            <div className="text-gray-500 text-sm">Try uploading relevant documents to the knowledge base</div>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="text-gray-400 text-sm">Enter a question to search the knowledge base</div>
-          </div>
-        )}
-      </div>
+          ) : results.length > 0 ? (
+            results.map((r, i) => (
+              <div key={i} className="p-3 bg-gray-700 border border-gray-600 rounded">
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-800 text-white text-[10px]">
+                    {(r.score * 100).toFixed(0)}
+                  </span>
+                  <span>score</span>
+                </div>
+                <div className="text-sm mt-1 text-gray-300">{r.text}</div>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {r.labels.map(l => (
+                    <span key={l} className="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-200">
+                      {l}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : q && !isLoading ? (
+            <div className="text-center py-8">
+              <div className="text-gray-400 mb-2">No results found</div>
+              <div className="text-gray-500 text-sm">Try uploading relevant documents to the knowledge base</div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-gray-400 text-sm">Enter a question to search the knowledge base</div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1522,69 +1515,69 @@ function DocumentsTable() {
       </div>
       <div>
         {documents.length > 0 ? (
-        <table className="w-full text-sm">
-          <thead className="bg-gray-750 text-gray-400">
-            <tr>
-              <th className="text-left px-4 py-2">File Name</th>
-              <th className="text-left px-4 py-2">Status</th>
-              <th className="text-left px-4 py-2">Uploaded</th>
-              <th className="text-left px-4 py-2">Labels</th>
-              <th className="text-right px-4 py-2">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {documents.map((d) => (
-              <tr key={d.name} className="border-t border-gray-700">
-                <td className="px-4 py-2 text-gray-300">{d.name}</td>
-                <td className="px-4 py-2">
-                  {d.status === 'Ready' && (
-                    <span className="inline-flex items-center gap-1 text-green-400">
-                      <span className="w-2 h-2 rounded-full bg-green-500" />Ready
-                    </span>
-                  )}
-                  {d.status === 'Processing' && (
-                    <span className="inline-flex items-center gap-1 text-yellow-400">
-                      <span className="w-2 h-2 rounded-full bg-yellow-500" />Processing
-                    </span>
-                  )}
-                  {d.status === 'Error' && (
-                    <span className="inline-flex items-center gap-1 text-red-400">
-                      <span className="w-2 h-2 rounded-full bg-red-500" />Error
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-2 text-gray-400">{d.uploaded}</td>
-                <td className="px-4 py-2">
-                  <div className="flex gap-2 flex-wrap">
-                    {d.labels.length ? (
-                      d.labels.map(l => (
-                        <span key={l} className="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-200">
-                          {l}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-gray-500">—</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-2 text-right">
-                  <button className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors">
-                    View Chunks
-                  </button>
-                </td>
+          <table className="w-full text-sm">
+            <thead className="bg-gray-750 text-gray-400">
+              <tr>
+                <th className="text-left px-4 py-2">File Name</th>
+                <th className="text-left px-4 py-2">Status</th>
+                <th className="text-left px-4 py-2">Uploaded</th>
+                <th className="text-left px-4 py-2">Labels</th>
+                <th className="text-right px-4 py-2">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <div className="text-center py-12">
-          <FileText size={48} className="mx-auto text-gray-500 mb-4" />
-          <h3 className="text-lg font-medium text-gray-300 mb-2">No Documents Uploaded</h3>
-          <p className="text-gray-400 text-sm max-w-md mx-auto">
-            Upload your first document to start building your knowledge base. Supported formats: PDF, TXT, MD, PNG, JPG, GIF, WEBP (max 25MB)
-          </p>
-        </div>
-      )}
+            </thead>
+            <tbody>
+              {documents.map((d) => (
+                <tr key={d.name} className="border-t border-gray-700">
+                  <td className="px-4 py-2 text-gray-300">{d.name}</td>
+                  <td className="px-4 py-2">
+                    {d.status === 'Ready' && (
+                      <span className="inline-flex items-center gap-1 text-green-400">
+                        <span className="w-2 h-2 rounded-full bg-green-500" />Ready
+                      </span>
+                    )}
+                    {d.status === 'Processing' && (
+                      <span className="inline-flex items-center gap-1 text-yellow-400">
+                        <span className="w-2 h-2 rounded-full bg-yellow-500" />Processing
+                      </span>
+                    )}
+                    {d.status === 'Error' && (
+                      <span className="inline-flex items-center gap-1 text-red-400">
+                        <span className="w-2 h-2 rounded-full bg-red-500" />Error
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-gray-400">{d.uploaded}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {d.labels.length ? (
+                        d.labels.map(l => (
+                          <span key={l} className="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-200">
+                            {l}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-gray-500">—</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <button className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors">
+                      View Chunks
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="text-center py-12">
+            <FileText size={48} className="mx-auto text-gray-500 mb-4" />
+            <h3 className="text-lg font-medium text-gray-300 mb-2">No Documents Uploaded</h3>
+            <p className="text-gray-400 text-sm max-w-md mx-auto">
+              Upload your first document to start building your knowledge base. Supported formats: PDF, TXT, MD, PNG, JPG, GIF, WEBP (max 25MB)
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1610,28 +1603,28 @@ function ChunkDrawer() {
       </div>
       {open && (
         <div className="p-6">
-        <div className="p-4 space-y-3 max-h-72 overflow-auto">
-          {chunks.length > 0 ? (
-            chunks.map((c, i) => (
-              <div key={i} className="p-3 bg-gray-700 border border-gray-600 rounded">
-                <div className="text-sm text-gray-300">{c.text}</div>
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  {c.labels.map(l => (
-                    <span key={l} className="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-200">
-                      {l}
-                    </span>
-                  ))}
-                  <span className="ml-auto text-xs text-gray-400">conf: {Math.round(c.confidence * 100)}%</span>
+          <div className="p-4 space-y-3 max-h-72 overflow-auto">
+            {chunks.length > 0 ? (
+              chunks.map((c, i) => (
+                <div key={i} className="p-3 bg-gray-700 border border-gray-600 rounded">
+                  <div className="text-sm text-gray-300">{c.text}</div>
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {c.labels.map(l => (
+                      <span key={l} className="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-200">
+                        {l}
+                      </span>
+                    ))}
+                    <span className="ml-auto text-xs text-gray-400">conf: {Math.round(c.confidence * 100)}%</span>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-gray-400 mb-2">No chunks available</div>
+                <div className="text-gray-500 text-sm">Upload and process documents to see text chunks</div>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-8">
-              <div className="text-gray-400 mb-2">No chunks available</div>
-              <div className="text-gray-500 text-sm">Upload and process documents to see text chunks</div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -1921,7 +1914,7 @@ const KnowledgeBase: React.FC = () => {
     loadProducts();
     loadCompetitors();
     loadPersonas();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadIcpProfiles, loadProducts, loadCompetitors, loadPersonas]);
 
   // Reload documents when selected ICP changes
@@ -2216,12 +2209,11 @@ const KnowledgeBase: React.FC = () => {
                       <p className="text-[11px] text-gray-400 font-medium mb-2">💬 SAM's Feedback:</p>
                       <div className="space-y-1">
                         {docFeedback.map((feedback: any, idx: number) => (
-                          <p key={idx} className={`text-xs ${
-                            feedback.type === 'critical' ? 'text-red-300' :
+                          <p key={idx} className={`text-xs ${feedback.type === 'critical' ? 'text-red-300' :
                             feedback.type === 'warning' ? 'text-yellow-300' :
-                            feedback.type === 'suggestion' ? 'text-blue-300' :
-                            'text-green-300'
-                          }`}>
+                              feedback.type === 'suggestion' ? 'text-blue-300' :
+                                'text-green-300'
+                            }`}>
                             • {feedback.message}
                           </p>
                         ))}
@@ -2380,1685 +2372,1683 @@ const KnowledgeBase: React.FC = () => {
         {/* Header */}
         {/* Main Content */}
         <div>
-        {activeSection === 'overview' && (
-          <div className="space-y-6">
-            {/* ICP Selector - Multi-ICP Support */}
-            {Object.keys(icpProfiles).length > 1 && (
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Target className="text-purple-400" size={20} />
-                    <span className="text-white font-medium">View Knowledge Base for:</span>
+          {activeSection === 'overview' && (
+            <div className="space-y-6">
+              {/* ICP Selector - Multi-ICP Support */}
+              {Object.keys(icpProfiles).length > 1 && (
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Target className="text-purple-400" size={20} />
+                      <span className="text-white font-medium">View Knowledge Base for:</span>
+                    </div>
+                    <select
+                      value={selectedIcpId || ''}
+                      onChange={(e) => setSelectedIcpId(e.target.value || null)}
+                      className="bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">All ICPs (Global + Specific)</option>
+                      {Object.values(icpProfiles).map((icp) => (
+                        <option key={icp.id} value={icp.id}>
+                          {icp.name || icp.icp_name || 'Unnamed ICP'}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <select
-                    value={selectedIcpId || ''}
-                    onChange={(e) => setSelectedIcpId(e.target.value || null)}
-                    className="bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">All ICPs (Global + Specific)</option>
-                    {Object.values(icpProfiles).map((icp) => (
-                      <option key={icp.id} value={icp.id}>
-                        {icp.name || icp.icp_name || 'Unnamed ICP'}
-                      </option>
-                    ))}
-                  </select>
+                  <p className="text-gray-400 text-xs mt-2">
+                    {selectedIcpId
+                      ? `Showing content specific to this ICP plus global content`
+                      : `Showing all knowledge base content across all ICPs`}
+                  </p>
                 </div>
-                <p className="text-gray-400 text-xs mt-2">
-                  {selectedIcpId
-                    ? `Showing content specific to this ICP plus global content`
-                    : `Showing all knowledge base content across all ICPs`}
-                </p>
-              </div>
-            )}
+              )}
 
-            {/* Campaign Readiness Banner */}
-            {!isKnowledgeLoading && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`rounded-lg p-5 flex items-start gap-4 ${
-                  knowledgeCompletion >= 50
+              {/* Campaign Readiness Banner */}
+              {!isKnowledgeLoading && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`rounded-lg p-5 flex items-start gap-4 ${knowledgeCompletion >= 50
                     ? 'bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/40'
                     : 'bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40'
-                }`}
-              >
-                <div className="flex-shrink-0">
-                  {knowledgeCompletion >= 50 ? (
-                    <CheckCircle className="text-green-400" size={28} />
-                  ) : (
-                    <AlertTriangle className="text-yellow-400" size={28} />
-                  )}
-                </div>
-                <div className="flex-1">
-                  {knowledgeCompletion >= 50 ? (
-                    <>
-                      <h3 className="text-green-400 font-semibold text-lg mb-1">
-                        {knowledgeCompletion >= 75
-                          ? 'Complete Essential Set - Full Campaigns Ready!'
-                          : 'Ready to Create Test Campaigns'}
-                      </h3>
-                      <p className="text-gray-300 text-sm">
-                        Your Knowledge Base is at {knowledgeCompletion}%. SAM can now create {knowledgeCompletion >= 75 ? 'fully optimized' : 'testing'} campaigns.
-                        {knowledgeCompletion < 75 && <span className="text-yellow-300"> Complete all 4 essential docs (ICP, Product, Messaging, Pricing) for 75% and full optimization.</span>}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-yellow-400 font-semibold text-lg mb-1">
-                        {knowledgeCompletion >= 25 ? 'Almost Ready' : 'Getting Started'} - {50 - knowledgeCompletion}% to Test Campaigns
-                      </h3>
-                      <p className="text-gray-300 text-sm mb-3">
-                        Currently at <span className="font-bold text-white">{knowledgeCompletion}%</span>.
-                        Reach <span className="font-bold text-white">50%</span> to unlock testing campaigns and A/B tests.
-                        Without core knowledge, SAM can't personalize outreach or handle objections effectively.
-                      </p>
-                      <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="h-2 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full transition-all duration-500"
-                          style={{ width: `${(knowledgeCompletion / 50) * 100}%` }}
-                        ></div>
+                    }`}
+                >
+                  <div className="flex-shrink-0">
+                    {knowledgeCompletion >= 50 ? (
+                      <CheckCircle className="text-green-400" size={28} />
+                    ) : (
+                      <AlertTriangle className="text-yellow-400" size={28} />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    {knowledgeCompletion >= 50 ? (
+                      <>
+                        <h3 className="text-green-400 font-semibold text-lg mb-1">
+                          {knowledgeCompletion >= 75
+                            ? 'Complete Essential Set - Full Campaigns Ready!'
+                            : 'Ready to Create Test Campaigns'}
+                        </h3>
+                        <p className="text-gray-300 text-sm">
+                          Your Knowledge Base is at {knowledgeCompletion}%. SAM can now create {knowledgeCompletion >= 75 ? 'fully optimized' : 'testing'} campaigns.
+                          {knowledgeCompletion < 75 && <span className="text-yellow-300"> Complete all 4 essential docs (ICP, Product, Messaging, Pricing) for 75% and full optimization.</span>}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="text-yellow-400 font-semibold text-lg mb-1">
+                          {knowledgeCompletion >= 25 ? 'Almost Ready' : 'Getting Started'} - {50 - knowledgeCompletion}% to Test Campaigns
+                        </h3>
+                        <p className="text-gray-300 text-sm mb-3">
+                          Currently at <span className="font-bold text-white">{knowledgeCompletion}%</span>.
+                          Reach <span className="font-bold text-white">50%</span> to unlock testing campaigns and A/B tests.
+                          Without core knowledge, SAM can't personalize outreach or handle objections effectively.
+                        </p>
+                        <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="h-2 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full transition-all duration-500"
+                            style={{ width: `${(knowledgeCompletion / 50) * 100}%` }}
+                          ></div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* KB Completeness and Health - First Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* KB Completeness Meter */}
+                <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white text-lg font-semibold">Knowledgebase Completeness</span>
+                    <span className="text-white text-2xl font-bold">{completionDisplay}</span>
+                  </div>
+
+                  {/* Temperature-style completion bar */}
+                  <div className="relative mb-6">
+                    <div className="w-full bg-gray-600 rounded-full h-4 overflow-hidden">
+                      <div
+                        className="h-4 rounded-full transition-all duration-1000 ease-out"
+                        style={{
+                          width: completionWidth,
+                          background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 50%, #F59E0B 75%, #EF4444 100%)'
+                        }}
+                      ></div>
+                    </div>
+
+                    {/* Temperature markers */}
+                    <div className="absolute -bottom-5 w-full flex justify-between text-xs text-gray-400">
+                      <span>0%</span>
+                      <span>25%</span>
+                      <span>50%</span>
+                      <span>75%</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
+                        <span className="text-gray-300">Basic</span>
                       </div>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {/* KB Completeness and Health - First Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* KB Completeness Meter */}
-              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white text-lg font-semibold">Knowledgebase Completeness</span>
-                  <span className="text-white text-2xl font-bold">{completionDisplay}</span>
-                </div>
-
-                {/* Temperature-style completion bar */}
-                <div className="relative mb-6">
-                  <div className="w-full bg-gray-600 rounded-full h-4 overflow-hidden">
-                    <div
-                      className="h-4 rounded-full transition-all duration-1000 ease-out"
-                      style={{
-                        width: completionWidth,
-                        background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 50%, #F59E0B 75%, #EF4444 100%)'
-                      }}
-                    ></div>
-                  </div>
-
-                  {/* Temperature markers */}
-                  <div className="absolute -bottom-5 w-full flex justify-between text-xs text-gray-400">
-                    <span>0%</span>
-                    <span>25%</span>
-                    <span>50%</span>
-                    <span>75%</span>
-                    <span>100%</span>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex items-center justify-between text-xs">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
-                      <span className="text-gray-300">Basic</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                      <span className="text-gray-300">Good</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
-                      <span className="text-gray-300">Excellent</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
-                      <span className="text-gray-300">Expert</span>
-                    </div>
-                  </div>
-                </div>
-
-                {!isKnowledgeLoading && (
-                  <div className="text-xs text-gray-400 mt-3 space-y-1">
-                    <p className="font-medium text-gray-300">Score Breakdown:</p>
-                    <p>• <span className="text-yellow-400 font-semibold">Essential Set: {Math.round(criticalScore)}/75%</span> (1 doc each: ICP, Product, Messaging, Pricing)</p>
-                    <p>• <span className="text-blue-400">Bonus Content: {Math.round(importantScore + supportingScore)}/25%</span> (Objections, Case Studies, etc.)</p>
-                    {icpBonus > 0 && <p className="text-green-400">• Extra ICPs: +{icpBonus}%</p>}
-                  </div>
-                )}
-
-                {!isKnowledgeLoading && (
-                  <details className="mt-4 text-xs text-gray-400 group">
-                    <summary className="cursor-pointer font-bold text-base px-4 py-3 rounded-lg transition-all list-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg hover:shadow-xl">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          {knowledgeCompletion === 0
-                            ? '📊 How to reach 100% (Perfect Score)'
-                            : `🎯 Your Action Plan to ${knowledgeCompletion >= 100 ? 'Perfect' : 'Improve Your'} Score`}
-                        </span>
-                        <span className="text-xs opacity-75 group-open:rotate-180 transition-transform">▼</span>
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                        <span className="text-gray-300">Good</span>
                       </div>
-                    </summary>
-                    <div className="mt-3 space-y-3 pl-4 border-l-2 border-gray-700">
-                      {knowledgeCompletion === 0 ? (
-                        // General guidance for completely empty KB
-                        <>
-                          <div className="bg-gradient-to-r from-yellow-900/20 to-yellow-800/10 border border-yellow-600/30 rounded-lg p-4 -ml-4 pl-6 mb-3">
-                            <p className="font-bold text-yellow-400 mb-2">🎯 ONE Complete Set = 75%</p>
-                            <p className="text-gray-300 text-sm mb-2">Upload these 4 essential documents to unlock full campaigns:</p>
-                            <ul className="ml-3 space-y-1 text-gray-300">
-                              <li>✓ 1 ICP Profile → <span className="text-white font-semibold">18.75%</span></li>
-                              <li>✓ 1 Product/Service Doc → <span className="text-white font-semibold">18.75%</span></li>
-                              <li>✓ 1 Messaging Template → <span className="text-white font-semibold">18.75%</span></li>
-                              <li>✓ 1 Pricing Document → <span className="text-white font-semibold">18.75%</span></li>
-                            </ul>
-                            <p className="text-yellow-300 font-semibold mt-2">= 75% Total</p>
-                          </div>
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
+                        <span className="text-gray-300">Excellent</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
+                        <span className="text-gray-300">Expert</span>
+                      </div>
+                    </div>
+                  </div>
 
-                          <div>
-                            <p className="font-medium text-blue-400 mb-1">Bonus Content (25% to reach 100%):</p>
-                            <p className="text-gray-400 text-xs mb-2">Everything else is bonus to maximize SAM's effectiveness:</p>
-                            <ul className="ml-3 space-y-0.5 text-gray-400 text-xs">
-                              <li>• Objections, Case Studies, Competitor Intel → 5% each</li>
-                              <li>• Company, Buying Process, Personas, Compliance, Tone → 2% each</li>
-                              <li>• Extra ICPs → +2% bonus each (max +4%)</li>
-                              <li>• Additional messaging variants → Better A/B testing</li>
-                            </ul>
-                          </div>
+                  {!isKnowledgeLoading && (
+                    <div className="text-xs text-gray-400 mt-3 space-y-1">
+                      <p className="font-medium text-gray-300">Score Breakdown:</p>
+                      <p>• <span className="text-yellow-400 font-semibold">Essential Set: {Math.round(criticalScore)}/75%</span> (1 doc each: ICP, Product, Messaging, Pricing)</p>
+                      <p>• <span className="text-blue-400">Bonus Content: {Math.round(importantScore + supportingScore)}/25%</span> (Objections, Case Studies, etc.)</p>
+                      {icpBonus > 0 && <p className="text-green-400">• Extra ICPs: +{icpBonus}%</p>}
+                    </div>
+                  )}
 
-                          <div className="pt-3 bg-green-900/20 -ml-4 pl-4 pr-2 py-3 rounded border border-green-700/30 mt-3">
-                            <p className="font-medium text-green-400">💡 Quick Path to 75%:</p>
-                            <p className="text-gray-300 mt-1 text-sm">Just upload 4 documents (ICP, Product, Messaging, Pricing) and you're ready to launch!</p>
-                          </div>
-                        </>
-                      ) : (
-                        // Dynamic personalized recommendations
-                        <>
-                          {(() => {
-                            const recommendations = generateRecommendations();
-                            const incomplete = recommendations.filter(r => !r.isComplete);
-                            const complete = recommendations.filter(r => r.isComplete);
+                  {!isKnowledgeLoading && (
+                    <details className="mt-4 text-xs text-gray-400 group">
+                      <summary className="cursor-pointer font-bold text-base px-4 py-3 rounded-lg transition-all list-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg hover:shadow-xl">
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            {knowledgeCompletion === 0
+                              ? '📊 How to reach 100% (Perfect Score)'
+                              : `🎯 Your Action Plan to ${knowledgeCompletion >= 100 ? 'Perfect' : 'Improve Your'} Score`}
+                          </span>
+                          <span className="text-xs opacity-75 group-open:rotate-180 transition-transform">▼</span>
+                        </div>
+                      </summary>
+                      <div className="mt-3 space-y-3 pl-4 border-l-2 border-gray-700">
+                        {knowledgeCompletion === 0 ? (
+                          // General guidance for completely empty KB
+                          <>
+                            <div className="bg-gradient-to-r from-yellow-900/20 to-yellow-800/10 border border-yellow-600/30 rounded-lg p-4 -ml-4 pl-6 mb-3">
+                              <p className="font-bold text-yellow-400 mb-2">🎯 ONE Complete Set = 75%</p>
+                              <p className="text-gray-300 text-sm mb-2">Upload these 4 essential documents to unlock full campaigns:</p>
+                              <ul className="ml-3 space-y-1 text-gray-300">
+                                <li>✓ 1 ICP Profile → <span className="text-white font-semibold">18.75%</span></li>
+                                <li>✓ 1 Product/Service Doc → <span className="text-white font-semibold">18.75%</span></li>
+                                <li>✓ 1 Messaging Template → <span className="text-white font-semibold">18.75%</span></li>
+                                <li>✓ 1 Pricing Document → <span className="text-white font-semibold">18.75%</span></li>
+                              </ul>
+                              <p className="text-yellow-300 font-semibold mt-2">= 75% Total</p>
+                            </div>
 
-                            return (
-                              <>
-                                {knowledgeCompletion >= 100 ? (
-                                  <div className="pt-2 bg-green-900/20 -ml-4 pl-4 pr-2 py-2 rounded border border-green-700">
-                                    <p className="font-medium text-green-400">🎉 Perfect Score Achieved!</p>
-                                    <p className="text-gray-400 mt-1">Your knowledge base is fully optimized. SAM has everything needed for maximum effectiveness.</p>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div>
-                                      <p className="font-medium text-gray-300 mb-1">Priority Actions (by impact):</p>
-                                      <p className="text-gray-400 text-xs">Fill these gaps to improve SAM's knowledge:</p>
+                            <div>
+                              <p className="font-medium text-blue-400 mb-1">Bonus Content (25% to reach 100%):</p>
+                              <p className="text-gray-400 text-xs mb-2">Everything else is bonus to maximize SAM's effectiveness:</p>
+                              <ul className="ml-3 space-y-0.5 text-gray-400 text-xs">
+                                <li>• Objections, Case Studies, Competitor Intel → 5% each</li>
+                                <li>• Company, Buying Process, Personas, Compliance, Tone → 2% each</li>
+                                <li>• Extra ICPs → +2% bonus each (max +4%)</li>
+                                <li>• Additional messaging variants → Better A/B testing</li>
+                              </ul>
+                            </div>
+
+                            <div className="pt-3 bg-green-900/20 -ml-4 pl-4 pr-2 py-3 rounded border border-green-700/30 mt-3">
+                              <p className="font-medium text-green-400">💡 Quick Path to 75%:</p>
+                              <p className="text-gray-300 mt-1 text-sm">Just upload 4 documents (ICP, Product, Messaging, Pricing) and you're ready to launch!</p>
+                            </div>
+                          </>
+                        ) : (
+                          // Dynamic personalized recommendations
+                          <>
+                            {(() => {
+                              const recommendations = generateRecommendations();
+                              const incomplete = recommendations.filter(r => !r.isComplete);
+                              const complete = recommendations.filter(r => r.isComplete);
+
+                              return (
+                                <>
+                                  {knowledgeCompletion >= 100 ? (
+                                    <div className="pt-2 bg-green-900/20 -ml-4 pl-4 pr-2 py-2 rounded border border-green-700">
+                                      <p className="font-medium text-green-400">🎉 Perfect Score Achieved!</p>
+                                      <p className="text-gray-400 mt-1">Your knowledge base is fully optimized. SAM has everything needed for maximum effectiveness.</p>
                                     </div>
+                                  ) : (
+                                    <>
+                                      <div>
+                                        <p className="font-medium text-gray-300 mb-1">Priority Actions (by impact):</p>
+                                        <p className="text-gray-400 text-xs">Fill these gaps to improve SAM's knowledge:</p>
+                                      </div>
 
-                                    <div className="space-y-3">
-                                      {incomplete.slice(0, 6).map(rec => {
-                                        const categoryColor = rec.category === 'critical' ? 'text-yellow-400' :
-                                                             rec.category === 'important' ? 'text-orange-400' : 'text-blue-400';
-                                        const icon = rec.currentScore === 0 ? '❌' : '⚠️';
+                                      <div className="space-y-3">
+                                        {incomplete.slice(0, 6).map(rec => {
+                                          const categoryColor = rec.category === 'critical' ? 'text-yellow-400' :
+                                            rec.category === 'important' ? 'text-orange-400' : 'text-blue-400';
+                                          const icon = rec.currentScore === 0 ? '❌' : '⚠️';
 
-                                        return (
-                                          <div key={rec.id} className="flex items-start justify-between gap-2 pb-2 border-b border-gray-700/50 last:border-0">
-                                            <div className="flex-1">
-                                              <p className={`font-medium ${categoryColor}`}>
-                                                {icon} {rec.label}
-                                              </p>
-                                              <p className="text-gray-400 text-xs mt-0.5">
-                                                {rec.currentCount > 0
-                                                  ? `Has ${rec.currentCount}, add ${rec.docsNeeded} more → ${rec.nextMilestone}%`
-                                                  : `Add ${rec.docsNeeded} document${rec.docsNeeded > 1 ? 's' : ''} to start`}
-                                              </p>
-                                              <p className="text-blue-300 text-xs mt-1 italic">
-                                                📞 {rec.samImpact}
-                                              </p>
+                                          return (
+                                            <div key={rec.id} className="flex items-start justify-between gap-2 pb-2 border-b border-gray-700/50 last:border-0">
+                                              <div className="flex-1">
+                                                <p className={`font-medium ${categoryColor}`}>
+                                                  {icon} {rec.label}
+                                                </p>
+                                                <p className="text-gray-400 text-xs mt-0.5">
+                                                  {rec.currentCount > 0
+                                                    ? `Has ${rec.currentCount}, add ${rec.docsNeeded} more → ${rec.nextMilestone}%`
+                                                    : `Add ${rec.docsNeeded} document${rec.docsNeeded > 1 ? 's' : ''} to start`}
+                                                </p>
+                                                <p className="text-blue-300 text-xs mt-1 italic">
+                                                  📞 {rec.samImpact}
+                                                </p>
+                                              </div>
+                                              <div className="text-right ml-2 flex-shrink-0">
+                                                <p className="text-green-400 font-medium">+{rec.impactPercent}%</p>
+                                                <p className="text-gray-500 text-xs">impact</p>
+                                              </div>
                                             </div>
-                                            <div className="text-right ml-2 flex-shrink-0">
-                                              <p className="text-green-400 font-medium">+{rec.impactPercent}%</p>
-                                              <p className="text-gray-500 text-xs">impact</p>
+                                          );
+                                        })}
+                                      </div>
+
+                                      {incomplete.length > 6 && (
+                                        <p className="text-gray-500 text-xs italic">
+                                          +{incomplete.length - 6} more sections to optimize
+                                        </p>
+                                      )}
+
+                                      {complete.length > 0 && (
+                                        <div className="pt-2 border-t border-gray-700">
+                                          <p className="font-medium text-green-400 text-xs">
+                                            ✅ Completed: {complete.map(c => c.label).join(', ')}
+                                          </p>
+                                        </div>
+                                      )}
+
+                                      <div className="pt-2 border-t border-gray-700">
+                                        <p className="font-medium text-gray-300 text-xs mb-2">How to Fill Knowledge Gaps:</p>
+                                        <div className="space-y-1.5 text-xs text-gray-400">
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-green-400">💬</span>
+                                            <div>
+                                              <span className="text-gray-300 font-medium">Complete SAM's Interview:</span> Answer targeted questions to fill specific sections quickly
                                             </div>
                                           </div>
-                                        );
-                                      })}
-                                    </div>
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-blue-400">📄</span>
+                                            <div>
+                                              <span className="text-gray-300 font-medium">Upload Documents:</span> Upload your existing sales collateral, playbooks, and guides
+                                            </div>
+                                          </div>
+                                          <div className="flex items-start gap-2 opacity-60">
+                                            <span className="text-purple-400">✅</span>
+                                            <div>
+                                              <span className="text-gray-300 font-medium">Website Content:</span> Already extracted during onboarding
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
 
-                                    {incomplete.length > 6 && (
-                                      <p className="text-gray-500 text-xs italic">
-                                        +{incomplete.length - 6} more sections to optimize
-                                      </p>
-                                    )}
-
-                                    {complete.length > 0 && (
-                                      <div className="pt-2 border-t border-gray-700">
-                                        <p className="font-medium text-green-400 text-xs">
-                                          ✅ Completed: {complete.map(c => c.label).join(', ')}
+                                      <div className="pt-2 bg-gray-750 -ml-4 pl-4 pr-2 py-2 rounded">
+                                        <p className="font-medium text-green-400">💡 Quick Win:</p>
+                                        <p className="text-gray-400 mt-1">
+                                          {incomplete.length > 0 && incomplete[0].impactPercent >= 6
+                                            ? `Focus on ${incomplete[0].label} first for the biggest impact (+${incomplete[0].impactPercent}%).`
+                                            : 'Focus on critical sections (Products, ICP, Messaging, Pricing) for maximum impact.'}
                                         </p>
                                       </div>
-                                    )}
-
-                                    <div className="pt-2 border-t border-gray-700">
-                                      <p className="font-medium text-gray-300 text-xs mb-2">How to Fill Knowledge Gaps:</p>
-                                      <div className="space-y-1.5 text-xs text-gray-400">
-                                        <div className="flex items-start gap-2">
-                                          <span className="text-green-400">💬</span>
-                                          <div>
-                                            <span className="text-gray-300 font-medium">Complete SAM's Interview:</span> Answer targeted questions to fill specific sections quickly
-                                          </div>
-                                        </div>
-                                        <div className="flex items-start gap-2">
-                                          <span className="text-blue-400">📄</span>
-                                          <div>
-                                            <span className="text-gray-300 font-medium">Upload Documents:</span> Upload your existing sales collateral, playbooks, and guides
-                                          </div>
-                                        </div>
-                                        <div className="flex items-start gap-2 opacity-60">
-                                          <span className="text-purple-400">✅</span>
-                                          <div>
-                                            <span className="text-gray-300 font-medium">Website Content:</span> Already extracted during onboarding
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <div className="pt-2 bg-gray-750 -ml-4 pl-4 pr-2 py-2 rounded">
-                                      <p className="font-medium text-green-400">💡 Quick Win:</p>
-                                      <p className="text-gray-400 mt-1">
-                                        {incomplete.length > 0 && incomplete[0].impactPercent >= 6
-                                          ? `Focus on ${incomplete[0].label} first for the biggest impact (+${incomplete[0].impactPercent}%).`
-                                          : 'Focus on critical sections (Products, ICP, Messaging, Pricing) for maximum impact.'}
-                                      </p>
-                                    </div>
-                                  </>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </>
-                      )}
-                    </div>
-                  </details>
-                )}
-
-                {isKnowledgeLoading && (
-                  <p className="text-xs text-gray-400 mt-2">
-                    Calculating coverage based on critical sales enablement content...
-                  </p>
-                )}
-              </div>
-
-              {/* KB Health */}
-              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                <h3 className="text-white text-lg font-semibold mb-4">Knowledgebase Health</h3>
-                <div className="space-y-4">
-                  {healthMetrics.map((metric) => (
-                    <div key={metric.label}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-300 text-sm font-medium">{metric.label}</p>
-                          <p className="text-gray-500 text-xs">{metric.description}</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-24 bg-gray-700 rounded-full h-2 overflow-hidden">
-                            <div
-                              className={`${getHealthColor(metric.value)} h-2 rounded-full transition-all duration-500`}
-                              style={{ width: metric.value === null ? '0%' : `${metric.value}%` }}
-                            ></div>
-                          </div>
-                          <span className={`text-xs ${getHealthTextColor(metric.value)}`}>
-                            {metric.value === null ? '—' : `${metric.value}%`}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions & Navigation */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {sections.slice(1).filter(s => s.id !== 'analytics').map((section) => {
-                  const IconComponent = section.icon;
-                  return (
-                    <button
-                      key={section.id}
-                      onClick={() => setActiveSection(section.id)}
-                      className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-left transition-all hover:bg-purple-600 hover:border-purple-500 group cursor-pointer"
-                    >
-                      <div className="flex items-center mb-2">
-                        <IconComponent className="text-blue-400 mr-2 group-hover:scale-110 transition-transform" size={18} />
-                        <span className="text-white text-sm font-medium">{section.label}</span>
-                      </div>
-                      <p className="text-gray-300 text-xs">
-                        {getQuickActionDescription(section.id)}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Stats Row - Total Documents, ICP Profiles, KB Completion, SAM Insights */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Total Documents */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 text-sm">Total Documents</p>
-                    <p className="text-white text-2xl font-bold">
-                      {documentsLoading ? '—' : documents.length}
-                    </p>
-                  </div>
-                  <FileText className="text-blue-400" size={24} />
-                </div>
-                <p className="text-green-400 text-xs mt-2">
-                  {documentsLoading ? 'Loading documents…' : documentsError ? documentsError : `${documents.length} assets ready for RAG`}
-                </p>
-              </div>
-
-              {/* ICP Profiles */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 text-sm">ICP Profiles</p>
-                    <p className="text-white text-2xl font-bold">
-                      {icpCount === null ? '—' : icpCount}
-                    </p>
-                  </div>
-                  <Target className="text-purple-400" size={24} />
-                </div>
-                <p className="text-blue-400 text-xs mt-2">
-                  {icpCount === null ? 'Loading ICPs…' : icpCount > 0 ? 'Primary profile seeded for demo' : 'Add an ICP to unlock tailored outreach'}
-                </p>
-              </div>
-
-              {/* KB Completion Summary */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 text-sm">KB Completion</p>
-                    <p className="text-white text-2xl font-bold">{completionDisplay}</p>
-                  </div>
-                  <Activity className="text-green-400" size={24} />
-                </div>
-                <p className="text-green-400 text-xs mt-2">
-                  {!isKnowledgeLoading ? `${Math.round(criticalScore)}% Critical coverage` : 'Calculating...'}
-                </p>
-              </div>
-
-              {/* SAM Insights */}
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 text-sm">SAM Insights</p>
-                    <p className="text-white text-2xl font-bold">156</p>
-                  </div>
-                  <Brain className="text-orange-400" size={24} />
-                </div>
-                <p className="text-green-400 text-xs mt-2">+23 today</p>
-              </div>
-            </div>
-
-            {/* Recent SAM Insights from Conversations */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white text-lg font-semibold flex items-center">
-                  <Brain className="mr-2 text-orange-400" size={20} />
-                  Recent SAM Insights
-                </h3>
-                <button className="text-blue-400 hover:text-blue-300 text-sm">View All</button>
-              </div>
-              <div className="space-y-3">
-                {documentsLoading ? (
-                  <div className="text-center py-8 text-gray-400 text-sm">Loading insights…</div>
-                ) : documentsError ? (
-                  <div className="text-center py-8 text-red-400 text-sm">{documentsError}</div>
-                ) : latestDocuments.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 text-sm">
-                    Upload knowledge assets so Sam can surface insights from your content library.
-                  </div>
-                ) : (
-                  latestDocuments.map((doc) => (
-                    <div key={`insight-${doc.id}`} className="bg-gray-700 rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-white text-sm font-medium">{doc.title}</p>
-                          {doc.summary && (
-                            <p className="text-gray-300 text-xs mt-1">{doc.summary}</p>
-                          )}
-                        </div>
-                        <span className="text-blue-400 text-xs bg-blue-400/10 px-2 py-1 rounded">
-                          {getSectionLabel(doc.category || 'documents')}
-                        </span>
-                      </div>
-                      <div className="mt-2 flex items-center text-gray-400 text-xs">
-                        <Clock size={12} className="mr-1" />
-                        {doc.updatedAt ? formatRelativeTime(doc.updatedAt) : 'Just now'}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Latest Knowledge Assets */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white text-lg font-semibold flex items-center">
-                  <FileText className="mr-2 text-blue-400" size={20} />
-                  Latest Knowledge Base Assets
-                </h3>
-                <button
-                  onClick={() => loadDocuments(selectedIcpId)}
-                  className="text-blue-400 hover:text-blue-300 text-sm"
-                >
-                  Refresh
-                </button>
-              </div>
-
-              {documentsLoading ? (
-                <div className="text-gray-400 text-sm">Loading documents…</div>
-              ) : documentsError ? (
-                <div className="text-red-400 text-sm">{documentsError}</div>
-              ) : latestDocuments.length === 0 ? (
-                <div className="text-gray-400 text-sm">
-                  No documents uploaded yet. Drop your pitch deck, pricing sheet, or objection handlers to power SAM.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {latestDocuments.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="bg-gray-700 border border-gray-600 rounded-lg p-4 hover:bg-gray-650 hover:border-purple-500 transition-all cursor-pointer"
-                      onClick={() => {
-                        console.log('[KB] Document clicked:', doc);
-                        // TODO: Implement document detail view or actions
-                        alert(`Document: ${doc.title}\n\nCategory: ${doc.category}\n\nSummary: ${doc.summary || 'No summary'}\n\nTags: ${doc.tags?.join(', ') || 'None'}`);
-                      }}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <p className="text-white text-sm font-semibold">{doc.title}</p>
-                          <p className="text-gray-400 text-xs">Category: {doc.category}</p>
-                        </div>
-                        <div className="flex items-center gap-2 ml-2">
-                          <span className="text-xs text-gray-300">
-                            {doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : ''}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent card click when deleting
-                              deleteDocument(doc.id);
-                            }}
-                            className="text-gray-400 hover:text-red-400 transition-colors p-1"
-                            title="Delete document"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-gray-300 text-xs mb-3 line-clamp-3">{doc.summary || 'No summary available.'}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {(doc.tags || []).slice(0, 4).map((tag: string) => (
-                          <span key={tag} className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-0.5 rounded-full">
-                            {tag}
-                          </span>
-                        ))}
-                        {doc.tags && doc.tags.length > 4 && (
-                          <span className="text-[11px] text-gray-400">+{doc.tags.length - 4} more</span>
+                                    </>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </>
                         )}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+                    </details>
+                  )}
 
-        {activeSection === 'analytics' && (
-          <div>
-            <button
-              onClick={() => setActiveSection('overview')}
-              className="mb-6 text-blue-400 hover:text-blue-300 flex items-center text-sm"
-            >
-              <ArrowLeft className="mr-2" size={16} />
-              Back to Overview
-            </button>
-            <KnowledgeBaseAnalytics />
-          </div>
-        )}
-
-        {activeSection === 'icp' && (
-          <>
-            {Object.keys(icpProfiles).length === 0 ? (
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
-                <Target size={48} className="mx-auto text-gray-500 mb-4" />
-                <h3 className="text-xl font-medium text-white mb-2">No ICP Profiles Yet</h3>
-                <p className="text-gray-400 mb-6">Create your first Ideal Customer Profile to get started</p>
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
-                >
-                  <Plus className="inline mr-2" size={18} />
-                  Go to Overview to Create ICP
-                </button>
-              </div>
-            ) : (
-              <ICPConfigEditable
-                profile={Object.values(icpProfiles)[0]}
-                onUpdate={async (updates) => {
-                  const icpId = Object.keys(icpProfiles)[0];
-                  const response = await fetch(`/api/knowledge-base/icps/${icpId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updates)
-                  });
-                  if (response.ok) {
-                    await loadIcpProfiles();
-                  }
-                }}
-                onBack={() => setActiveSection('overview')}
-              />
-            )}
-          </>
-        )}
-        
-        {activeSection === 'products' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <div className="flex items-center gap-3">
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <Package className="mr-2" size={24} />
-                    Products & Services
-                  </h2>
-                  {kbFeedback?.sectionFeedback?.products && (
-                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                      kbFeedback.sectionFeedback.products.status === 'critical' ? 'bg-red-500/20 text-red-300 border border-red-500/40' :
-                      kbFeedback.sectionFeedback.products.status === 'needs-attention' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40' :
-                      kbFeedback.sectionFeedback.products.status === 'good' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
-                      'bg-green-500/20 text-green-300 border border-green-500/40'
-                    }`}>
-                      {kbFeedback.sectionFeedback.products.message}
-                    </span>
+                  {isKnowledgeLoading && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      Calculating coverage based on critical sales enablement content...
+                    </p>
                   )}
                 </div>
-                {kbFeedback?.sectionFeedback?.products?.suggestion && (
-                  <p className="text-sm text-gray-400 mt-2">
-                    💬 SAM: {kbFeedback.sectionFeedback.products.suggestion}
-                  </p>
-                )}
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="products" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                <p className="text-sm text-gray-400 mt-3">
-                  📄 Product sheets, service descriptions, feature specs, pricing guides, demo scripts
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                {renderDocumentList(
-                  'products',
-                  <FileText size={48} className="text-gray-500" />,
-                  'No product documents uploaded',
-                  'Upload product sheets, feature specs, and pricing guides to get started'
-                )}
-              </div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-white">Structured Product Library</h3>
-                <button
-                  onClick={handleQuickAddProduct}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
-                >
-                  <Plus className="mr-1" size={14} />
-                  Add Product
-                </button>
-              </div>
-              {products.length === 0 ? (
-                <p className="text-gray-400 text-sm">
-                  No structured products captured yet. Add your offerings so SAM can reference positioning, benefits, and feature highlights in conversations.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {products.map((product) => (
-                    <div key={product.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-white font-medium text-sm">{product.name}</p>
-                          {product.description && (
-                            <p className="text-gray-400 text-xs mt-1">{product.description}</p>
-                          )}
-                        </div>
-                        <span className="text-[11px] text-gray-500">
-                          {formatRelativeTime(product.updated_at || product.created_at || '')}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {product.category && (
-                          <span className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-0.5 rounded-full">
-                            {product.category}
-                          </span>
-                        )}
-                        {(product.features ?? []).slice(0, 3).map((feature) => (
-                          <span key={feature} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
-                            {feature}
-                          </span>
-                        ))}
-                        {(product.use_cases ?? []).slice(0, 2).map((useCase) => (
-                          <span key={useCase} className="text-[11px] bg-purple-500/10 text-purple-200 px-2 py-0.5 rounded-full">
-                            {useCase}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'competition' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <TrendingUp className="mr-2" size={24} />
-                  Competition Analysis
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="competition" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                <p className="text-sm text-gray-400 mt-3">
-                  🎯 Competitor analysis, battlecards, win/loss reports, market research, SWOT analysis
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                {renderDocumentList(
-                  'competition',
-                  <TrendingUp size={48} className="text-gray-500" />,
-                  'No competitive analysis documents uploaded',
-                  'Upload battlecards, market research, and win/loss reports'
-                )}
-              </div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-white">Competitive Intelligence</h3>
-                <button
-                  onClick={handleQuickAddCompetitor}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
-                >
-                  <Plus className="mr-1" size={14} />
-                  Add Competitor
-                </button>
-              </div>
-              {competitors.length === 0 ? (
-                <p className="text-gray-400 text-sm">
-                  Capture competitor positioning, strengths, and weaknesses to give SAM fast access to battlecard insights during conversations.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {competitors.map((competitor) => (
-                    <div key={competitor.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-white font-medium text-sm">{competitor.name}</p>
-                          {competitor.website && (
-                            <a
-                              href={competitor.website}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-400 text-xs hover:underline"
-                            >
-                              {competitor.website}
-                            </a>
-                          )}
-                          {competitor.description && (
-                            <p className="text-gray-400 text-xs mt-1">{competitor.description}</p>
-                          )}
-                        </div>
-                        <span className="text-[11px] text-gray-500">
-                          {formatRelativeTime(competitor.updated_at || competitor.created_at || '')}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {(competitor.strengths ?? []).slice(0, 3).map((item) => (
-                          <span key={item} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
-                            {item}
-                          </span>
-                        ))}
-                        {(competitor.weaknesses ?? []).slice(0, 2).map((item) => (
-                          <span key={item} className="text-[11px] bg-red-500/10 text-red-200 px-2 py-0.5 rounded-full">
-                            {item}
-                          </span>
-                        ))}
-                        {competitor.pricing_model && (
-                          <span className="text-[11px] bg-yellow-500/10 text-yellow-200 px-2 py-0.5 rounded-full">
-                            {competitor.pricing_model}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'messaging' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <MessageSquare className="mr-2" size={24} />
-                  Proven Messaging Templates
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="messaging" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                <p className="text-sm text-gray-400 mt-3">
-                  💬 Email templates, LinkedIn messages, objection handlers, value propositions, case studies
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Current Templates</h3>
-                {renderDocumentList(
-                  'messaging',
-                  <MessageSquare size={48} className="text-gray-500" />,
-                  'No messaging templates uploaded',
-                  'Upload email templates, LinkedIn sequences, and objection handlers'
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'tone' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <Mic className="mr-2" size={24} />
-                  Tone of Voice Documents
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="tone-of-voice" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                <p className="text-sm text-gray-400 mt-3">
-                  🎭 Brand voice guidelines, writing style guides, communication frameworks, persona-based messaging
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Current Guidelines</h3>
-                {renderDocumentList(
-                  'tone-of-voice',
-                  <Mic size={48} className="text-gray-500" />,
-                  'No tone of voice guidelines uploaded',
-                  'Upload brand voice guides and communication frameworks'
-                )}
-              </div>
-            </div>
-
-            {/* Email & Publication Analysis Section */}
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-6">
-              <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-                <Mail className="mr-2" size={20} />
-                Email & Publication Analysis
-              </h3>
-              <p className="text-gray-300 text-sm mb-6">
-                Upload your past emails or published content to help SAM learn your authentic writing style and communication patterns.
-              </p>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="text-white font-medium mb-3">Upload Content</h4>
-                  <DocumentUpload section="sender-emails" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                  <p className="text-xs text-gray-400 mt-2">
-                    📧 Email exports (.txt, .eml), blog posts, LinkedIn articles, newsletters, published content
-                  </p>
-                </div>
-                
-                <div className="space-y-3">
-                  <h4 className="text-white font-medium mb-3">Analyzed Content</h4>
-                  {renderDocumentList(
-                    'sender-emails',
-                    <Mail size={48} className="text-gray-500" />,
-                    'No content analyzed yet',
-                    'Upload email exports or published content to analyze your writing style'
-                  )}
-                </div>
-              </div>
-
-              {/* Style Analysis Results */}
-              <div className="mt-6 bg-gray-600 border border-gray-500 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3 flex items-center">
-                  <TrendingUp className="mr-2" size={16} />
-                  Writing Style Analysis
-                </h4>
-                <div className="text-center py-8">
-                  <div className="text-gray-400 mb-2">No style analysis available</div>
-                  <div className="text-gray-500 text-sm">Upload and analyze content to see your writing patterns and tone</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'company' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <Briefcase className="mr-2" size={24} />
-                  Company Information & Brand Guidelines
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="company-info" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                <p className="text-sm text-gray-400 mt-3">
-                  🏢 Company overview, team bios, achievements, partnerships, brand guidelines
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                {renderDocumentList(
-                  'company-info',
-                  <Briefcase size={48} className="text-gray-500" />,
-                  'No company documents uploaded',
-                  'Upload company overview, team profiles, and brand guidelines'
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'success' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <Trophy className="mr-2" size={24} />
-                  Customer Success Stories & Case Studies
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="success-stories" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                <p className="text-sm text-gray-400 mt-3">
-                  🏆 Case studies, customer testimonials, reference stories, ROI data, success metrics
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Current Stories</h3>
-                {renderDocumentList(
-                  'success-stories',
-                  <Trophy size={48} className="text-gray-500" />,
-                  'No success stories uploaded',
-                  'Upload case studies, testimonials, and customer success stories'
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'buying' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <GitBranch className="mr-2" size={24} />
-                  Buying Process & Decision Framework
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="buying-process" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                <p className="text-sm text-gray-400 mt-3">
-                  🔄 Buying journey maps, decision criteria, approval processes, stakeholder analysis, procurement guides
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Current Frameworks</h3>
-                {renderDocumentList(
-                  'buying-process',
-                  <GitBranch size={48} className="text-gray-500" />,
-                  'No buying process documents uploaded',
-                  'Upload buying journey maps, decision frameworks, and procurement guides'
-                )}
-                
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-4">
-                  <h4 className="text-white font-medium mb-3">Decision Framework Summary</h4>
-                  <div className="text-center py-4">
-                    <div className="text-gray-400 text-sm">No decision framework data available</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'compliance' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <Shield className="mr-2" size={24} />
-                  Compliance & Restrictions
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="compliance" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                <p className="text-sm text-gray-400 mt-3">
-                  🛡️ Industry regulations, compliance guidelines, approved/restricted phrases, HITL checkpoints
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Compliance Rules</h3>
-                {renderDocumentList(
-                  'compliance',
-                  <Shield size={48} className="text-gray-500" />,
-                  'No compliance documents uploaded',
-                  'Upload industry regulations and compliance guidelines'
-                )}
-              </div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-              <h4 className="text-white font-medium mb-3">Human-in-the-Loop Checkpoints</h4>
-              <div className="text-center py-4">
-                <div className="text-gray-400 text-sm">No checkpoints configured</div>
-                <div className="text-gray-500 text-xs mt-1">Define triggers that require human review before sending</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'personas' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <UserCheck className="mr-2" size={24} />
-                  Personas & Roles
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="personas" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                <p className="text-sm text-gray-400 mt-3">
-                  👥 Role profiles, pain points, motivations, communication preferences, decision-making patterns
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Persona Library</h3>
-                {renderDocumentList(
-                  'personas',
-                  <UserCheck size={48} className="text-gray-500" />,
-                  'No personas uploaded',
-                  'Upload persona sheets with role insights, pains, and motivations'
-                )}
-              </div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-white">Structured Personas</h3>
-                <button
-                  onClick={handleQuickAddPersona}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
-                >
-                  <Plus className="mr-1" size={14} />
-                  Add Persona
-                </button>
-              </div>
-              {personas.length === 0 ? (
-                <p className="text-gray-400 text-sm">
-                  Capture structured personas so SAM can tailor messaging, objections, and success stories to the contacts you work with most.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {personas.map((persona) => {
-                    const icp = persona.icp_id ? icpProfiles[persona.icp_id] : undefined;
-                    return (
-                      <div key={persona.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
-                        <div className="flex items-start justify-between">
+                {/* KB Health */}
+                <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                  <h3 className="text-white text-lg font-semibold mb-4">Knowledgebase Health</h3>
+                  <div className="space-y-4">
+                    {healthMetrics.map((metric) => (
+                      <div key={metric.label}>
+                        <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-white font-medium text-sm">{persona.name}</p>
-                            <p className="text-gray-400 text-xs">
-                              {persona.job_title || 'Role not specified'}
-                              {persona.department ? ` • ${persona.department}` : ''}
-                            </p>
-                            {icp && (
-                              <p className="text-gray-500 text-[11px] mt-1">Aligned ICP: {icp.name || icp.icp_name || icp.id}</p>
-                            )}
+                            <p className="text-gray-300 text-sm font-medium">{metric.label}</p>
+                            <p className="text-gray-500 text-xs">{metric.description}</p>
                           </div>
-                          <span className="text-[11px] text-gray-500">
-                            {formatRelativeTime(persona.updated_at || persona.created_at || '')}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {(persona.pain_points ?? []).slice(0, 3).map((item) => (
-                            <span key={item} className="text-[11px] bg-red-500/10 text-red-200 px-2 py-0.5 rounded-full">
-                              Pain: {item}
+                          <div className="flex items-center space-x-2">
+                            <div className="w-24 bg-gray-700 rounded-full h-2 overflow-hidden">
+                              <div
+                                className={`${getHealthColor(metric.value)} h-2 rounded-full transition-all duration-500`}
+                                style={{ width: metric.value === null ? '0%' : `${metric.value}%` }}
+                              ></div>
+                            </div>
+                            <span className={`text-xs ${getHealthTextColor(metric.value)}`}>
+                              {metric.value === null ? '—' : `${metric.value}%`}
                             </span>
-                          ))}
-                          {(persona.goals ?? []).slice(0, 2).map((item) => (
-                            <span key={item} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
-                              Goal: {item}
-                            </span>
-                          ))}
+                          </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Actions & Navigation */}
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {sections.slice(1).filter(s => s.id !== 'analytics').map((section) => {
+                    const IconComponent = section.icon;
+                    return (
+                      <button
+                        key={section.id}
+                        onClick={() => setActiveSection(section.id)}
+                        className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-left transition-all hover:bg-purple-600 hover:border-purple-500 group cursor-pointer"
+                      >
+                        <div className="flex items-center mb-2">
+                          <IconComponent className="text-blue-400 mr-2 group-hover:scale-110 transition-transform" size={18} />
+                          <span className="text-white text-sm font-medium">{section.label}</span>
+                        </div>
+                        <p className="text-gray-300 text-xs">
+                          {getQuickActionDescription(section.id)}
+                        </p>
+                      </button>
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Stats Row - Total Documents, ICP Profiles, KB Completion, SAM Insights */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Total Documents */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Total Documents</p>
+                      <p className="text-white text-2xl font-bold">
+                        {documentsLoading ? '—' : documents.length}
+                      </p>
+                    </div>
+                    <FileText className="text-blue-400" size={24} />
+                  </div>
+                  <p className="text-green-400 text-xs mt-2">
+                    {documentsLoading ? 'Loading documents…' : documentsError ? documentsError : `${documents.length} assets ready for RAG`}
+                  </p>
+                </div>
+
+                {/* ICP Profiles */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">ICP Profiles</p>
+                      <p className="text-white text-2xl font-bold">
+                        {icpCount === null ? '—' : icpCount}
+                      </p>
+                    </div>
+                    <Target className="text-purple-400" size={24} />
+                  </div>
+                  <p className="text-blue-400 text-xs mt-2">
+                    {icpCount === null ? 'Loading ICPs…' : icpCount > 0 ? 'Primary profile seeded for demo' : 'Add an ICP to unlock tailored outreach'}
+                  </p>
+                </div>
+
+                {/* KB Completion Summary */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">KB Completion</p>
+                      <p className="text-white text-2xl font-bold">{completionDisplay}</p>
+                    </div>
+                    <Activity className="text-green-400" size={24} />
+                  </div>
+                  <p className="text-green-400 text-xs mt-2">
+                    {!isKnowledgeLoading ? `${Math.round(criticalScore)}% Critical coverage` : 'Calculating...'}
+                  </p>
+                </div>
+
+                {/* SAM Insights */}
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">SAM Insights</p>
+                      <p className="text-white text-2xl font-bold">156</p>
+                    </div>
+                    <Brain className="text-orange-400" size={24} />
+                  </div>
+                  <p className="text-green-400 text-xs mt-2">+23 today</p>
+                </div>
+              </div>
+
+              {/* Recent SAM Insights from Conversations */}
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-white text-lg font-semibold flex items-center">
+                    <Brain className="mr-2 text-orange-400" size={20} />
+                    Recent SAM Insights
+                  </h3>
+                  <button className="text-blue-400 hover:text-blue-300 text-sm">View All</button>
+                </div>
+                <div className="space-y-3">
+                  {documentsLoading ? (
+                    <div className="text-center py-8 text-gray-400 text-sm">Loading insights…</div>
+                  ) : documentsError ? (
+                    <div className="text-center py-8 text-red-400 text-sm">{documentsError}</div>
+                  ) : latestDocuments.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      Upload knowledge assets so Sam can surface insights from your content library.
+                    </div>
+                  ) : (
+                    latestDocuments.map((doc) => (
+                      <div key={`insight-${doc.id}`} className="bg-gray-700 rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-white text-sm font-medium">{doc.title}</p>
+                            {doc.summary && (
+                              <p className="text-gray-300 text-xs mt-1">{doc.summary}</p>
+                            )}
+                          </div>
+                          <span className="text-blue-400 text-xs bg-blue-400/10 px-2 py-1 rounded">
+                            {getSectionLabel(doc.category || 'documents')}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center text-gray-400 text-xs">
+                          <Clock size={12} className="mr-1" />
+                          {doc.updatedAt ? formatRelativeTime(doc.updatedAt) : 'Just now'}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Latest Knowledge Assets */}
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-white text-lg font-semibold flex items-center">
+                    <FileText className="mr-2 text-blue-400" size={20} />
+                    Latest Knowledge Base Assets
+                  </h3>
+                  <button
+                    onClick={() => loadDocuments(selectedIcpId)}
+                    className="text-blue-400 hover:text-blue-300 text-sm"
+                  >
+                    Refresh
+                  </button>
+                </div>
+
+                {documentsLoading ? (
+                  <div className="text-gray-400 text-sm">Loading documents…</div>
+                ) : documentsError ? (
+                  <div className="text-red-400 text-sm">{documentsError}</div>
+                ) : latestDocuments.length === 0 ? (
+                  <div className="text-gray-400 text-sm">
+                    No documents uploaded yet. Drop your pitch deck, pricing sheet, or objection handlers to power SAM.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {latestDocuments.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="bg-gray-700 border border-gray-600 rounded-lg p-4 hover:bg-gray-650 hover:border-purple-500 transition-all cursor-pointer"
+                        onClick={() => {
+                          console.log('[KB] Document clicked:', doc);
+                          // TODO: Implement document detail view or actions
+                          alert(`Document: ${doc.title}\n\nCategory: ${doc.category}\n\nSummary: ${doc.summary || 'No summary'}\n\nTags: ${doc.tags?.join(', ') || 'None'}`);
+                        }}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <p className="text-white text-sm font-semibold">{doc.title}</p>
+                            <p className="text-gray-400 text-xs">Category: {doc.category}</p>
+                          </div>
+                          <div className="flex items-center gap-2 ml-2">
+                            <span className="text-xs text-gray-300">
+                              {doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : ''}
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent card click when deleting
+                                deleteDocument(doc.id);
+                              }}
+                              className="text-gray-400 hover:text-red-400 transition-colors p-1"
+                              title="Delete document"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-gray-300 text-xs mb-3 line-clamp-3">{doc.summary || 'No summary available.'}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(doc.tags || []).slice(0, 4).map((tag: string) => (
+                            <span key={tag} className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-0.5 rounded-full">
+                              {tag}
+                            </span>
+                          ))}
+                          {doc.tags && doc.tags.length > 4 && (
+                            <span className="text-[11px] text-gray-400">+{doc.tags.length - 4} more</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'analytics' && (
+            <div>
+              <button
+                onClick={() => setActiveSection('overview')}
+                className="mb-6 text-blue-400 hover:text-blue-300 flex items-center text-sm"
+              >
+                <ArrowLeft className="mr-2" size={16} />
+                Back to Overview
+              </button>
+              <KnowledgeBaseAnalytics />
+            </div>
+          )}
+
+          {activeSection === 'icp' && (
+            <>
+              {Object.keys(icpProfiles).length === 0 ? (
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
+                  <Target size={48} className="mx-auto text-gray-500 mb-4" />
+                  <h3 className="text-xl font-medium text-white mb-2">No ICP Profiles Yet</h3>
+                  <p className="text-gray-400 mb-6">Create your first Ideal Customer Profile to get started</p>
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                  >
+                    <Plus className="inline mr-2" size={18} />
+                    Go to Overview to Create ICP
+                  </button>
+                </div>
+              ) : (
+                <ICPConfigEditable
+                  profile={Object.values(icpProfiles)[0]}
+                  onUpdate={async (updates) => {
+                    const icpId = Object.keys(icpProfiles)[0];
+                    const response = await fetch(`/api/knowledge-base/icps/${icpId}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(updates)
+                    });
+                    if (response.ok) {
+                      await loadIcpProfiles();
+                    }
+                  }}
+                  onBack={() => setActiveSection('overview')}
+                />
               )}
-            </div>
+            </>
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-2">Leadership Roles</h4>
-                <div className="space-y-1 text-sm text-gray-300">
-                  <div>• Founder/Co-Founder</div>
-                  <div>• CEO/C-Suite</div>
-                  <div>• VP Sales/Revenue</div>
-                  <div>• Head of Growth</div>
-                </div>
-              </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-2">Operational Roles</h4>
-                <div className="space-y-1 text-sm text-gray-300">
-                  <div>• Sales Manager</div>
-                  <div>• SDR/BDR Lead</div>
-                  <div>• Marketing Director</div>
-                  <div>• Operations Manager</div>
-                </div>
-              </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-2">Service Providers</h4>
-                <div className="space-y-1 text-sm text-gray-300">
-                  <div>• Agency Owner</div>
-                  <div>• Consultant</div>
-                  <div>• Recruiter</div>
-                  <div>• Financial Advisor</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'objections' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <MessageCircle className="mr-2" size={24} />
-                  Objections & Responses
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="objections" onComplete={loadDocuments} />
-                <p className="text-sm text-gray-400 mt-3">
-                  💬 Common objections, proven rebuttals, redirect strategies, conversation frameworks
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Objection Handlers</h3>
-                {renderDocumentList(
-                  'objections',
-                  <MessageCircle size={48} className="text-gray-500" />,
-                  'No objection handling scripts uploaded',
-                  'Upload common objections and proven rebuttals'
-                )}
-              </div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-              <h4 className="text-white font-medium mb-3 flex items-center">
-                <TrendingUp className="mr-2" size={16} />
-                Objection Analysis
-              </h4>
-              <div className="text-center py-4">
-                <div className="text-gray-400 text-sm">No objection data available</div>
-                <div className="text-gray-500 text-xs mt-1">Upload objection handling documents to see category analysis</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'pricing' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <DollarSign className="mr-2" size={24} />
-                  Pricing & Packages
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="pricing" onComplete={loadDocuments} />
-                <p className="text-sm text-gray-400 mt-3">
-                  💰 Pricing tiers, package details, ROI calculators, cost justification materials
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Pricing Materials</h3>
-                {renderDocumentList(
-                  'pricing',
-                  <DollarSign size={48} className="text-gray-500" />,
-                  'No pricing documents uploaded',
-                  'Upload pricing tiers, ROI calculators, and cost justification materials'
-                )}
-              </div>
-            </div>
-
-            <div className="text-center py-8 mb-6">
-              <div className="text-gray-400 mb-2">No pricing packages configured</div>
-              <div className="text-gray-500 text-sm">Upload pricing documentation to display package information</div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-              <h4 className="text-white font-medium mb-3">ROI Analysis</h4>
-              <div className="text-center py-4">
-                <div className="text-gray-400 text-sm">No ROI data available</div>
-                <div className="text-gray-500 text-xs mt-1">Upload cost comparison documents to display ROI analysis</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-
-        {activeSection === 'metrics' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <BarChart className="mr-2" size={24} />
-                  Success Metrics
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="metrics" onComplete={loadDocuments} />
-                <p className="text-sm text-gray-400 mt-3">
-                  📊 Success benchmarks, industry improvements, ROI studies, timeline examples
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">Success Studies</h3>
-                {renderDocumentList(
-                  'metrics',
-                  <BarChart size={48} className="text-gray-500" />,
-                  'No success metrics uploaded',
-                  'Upload benchmark reports, ROI studies, and timeline examples'
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
-                <div className="text-3xl font-bold text-green-400 mb-2">35%</div>
-                <div className="text-white font-medium">Avg. Lead Engagement Increase</div>
-                <div className="text-gray-400 text-sm">First 30 days</div>
-              </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
-                <div className="text-3xl font-bold text-blue-400 mb-2">50%</div>
-                <div className="text-white font-medium">Faster Outreach Cycle</div>
-                <div className="text-gray-400 text-sm">vs Manual SDRs</div>
-              </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
-                <div className="text-3xl font-bold text-purple-400 mb-2">10x</div>
-                <div className="text-white font-medium">ROI Within 3 Months</div>
-                <div className="text-gray-400 text-sm">Typical customer</div>
-              </div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
-              <h4 className="text-white font-medium mb-3">Success Timeline</h4>
-              <div className="space-y-4">
+          {activeSection === 'products' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
-                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4">30</div>
-                  <div>
-                    <div className="text-white font-medium">Days 1-30: Foundation</div>
-                    <div className="text-gray-400 text-sm">Setup, training, initial campaigns • 15-25% improvement</div>
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <Package className="mr-2" size={24} />
+                      Products & Services
+                    </h2>
+                    {kbFeedback?.sectionFeedback?.products && (
+                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${kbFeedback.sectionFeedback.products.status === 'critical' ? 'bg-red-500/20 text-red-300 border border-red-500/40' :
+                        kbFeedback.sectionFeedback.products.status === 'needs-attention' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40' :
+                          kbFeedback.sectionFeedback.products.status === 'good' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
+                            'bg-green-500/20 text-green-300 border border-green-500/40'
+                        }`}>
+                        {kbFeedback.sectionFeedback.products.message}
+                      </span>
+                    )}
                   </div>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mr-4">60</div>
-                  <div>
-                    <div className="text-white font-medium">Days 31-60: Optimization</div>
-                    <div className="text-gray-400 text-sm">AI learning, message refinement • 35-45% improvement</div>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold mr-4">90</div>
-                  <div>
-                    <div className="text-white font-medium">Days 61-90: Scale</div>
-                    <div className="text-gray-400 text-sm">Full automation, team expansion • 50%+ improvement</div>
-                  </div>
+                  {kbFeedback?.sectionFeedback?.products?.suggestion && (
+                    <p className="text-sm text-gray-400 mt-2">
+                      💬 SAM: {kbFeedback.sectionFeedback.products.suggestion}
+                    </p>
+                  )}
                 </div>
               </div>
-            </div>
 
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-              <h4 className="text-white font-medium mb-3">Benchmarks by Industry</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">SaaS/Tech:</span>
-                    <span className="text-green-400">45% response improvement</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Professional Services:</span>
-                    <span className="text-green-400">38% response improvement</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Financial Services:</span>
-                    <span className="text-green-400">32% response improvement</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Healthcare:</span>
-                    <span className="text-green-400">29% response improvement</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Manufacturing:</span>
-                    <span className="text-green-400">34% response improvement</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Real Estate:</span>
-                    <span className="text-green-400">41% response improvement</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'setup' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <Settings className="mr-2" size={24} />
-                  CRM Settings & Integration
-                </h2>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                <DocumentUpload section="crm-setup" onComplete={loadDocuments} />
-                <p className="text-sm text-gray-400 mt-3">
-                  ⚙️ CRM integration guides, field mapping templates, automation workflows, sync protocols
-                </p>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-white mb-4">CRM Configuration</h3>
-                <div className="space-y-2">
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">Salesforce Integration Guide.pdf</div>
-                    <div className="text-gray-400 text-xs">Field mapping, lead routing • API configuration</div>
-                  </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">HubSpot Sync Configuration.pdf</div>
-                    <div className="text-gray-400 text-xs">Contact properties, deal stages • Workflow automation</div>
-                  </div>
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
-                    <div className="text-white text-sm font-medium">Pipedrive Setup Template.pdf</div>
-                    <div className="text-gray-400 text-xs">Pipeline configuration, activity tracking • Custom fields</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3 flex items-center">
-                  <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
-                  Salesforce
-                </h4>
-                <div className="space-y-2 text-sm text-gray-300">
-                  <div>• Lead → Contact conversion</div>
-                  <div>• Opportunity creation rules</div>
-                  <div>• Activity logging</div>
-                  <div>• Custom field sync</div>
-                </div>
-              </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3 flex items-center">
-                  <div className="w-3 h-3 bg-orange-500 rounded mr-2"></div>
-                  HubSpot
-                </h4>
-                <div className="space-y-2 text-sm text-gray-300">
-                  <div>• Contact property mapping</div>
-                  <div>• Deal stage automation</div>
-                  <div>• Email engagement tracking</div>
-                  <div>• Workflow triggers</div>
-                </div>
-              </div>
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3 flex items-center">
-                  <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
-                  Pipedrive
-                </h4>
-                <div className="space-y-2 text-sm text-gray-300">
-                  <div>• Person/Organization sync</div>
-                  <div>• Deal creation automation</div>
-                  <div>• Activity scheduling</div>
-                  <div>• Pipeline management</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
-              <h4 className="text-white font-medium mb-3">Field Mapping Examples</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
-                  <div className="text-gray-300 mb-2 font-medium">Standard Contact Fields</div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">SAM Field:</span>
-                      <span className="text-white">CRM Field:</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">contact_name</span>
-                      <span className="text-white">→ First/Last Name</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">company_name</span>
-                      <span className="text-white">→ Account/Company</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">job_title</span>
-                      <span className="text-white">→ Title</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">email_address</span>
-                      <span className="text-white">→ Email</span>
-                    </div>
-                  </div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="products" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    📄 Product sheets, service descriptions, feature specs, pricing guides, demo scripts
+                  </p>
                 </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
+                  {renderDocumentList(
+                    'products',
+                    <FileText size={48} className="text-gray-500" />,
+                    'No product documents uploaded',
+                    'Upload product sheets, feature specs, and pricing guides to get started'
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-white">Structured Product Library</h3>
+                  <button
+                    onClick={handleQuickAddProduct}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
+                  >
+                    <Plus className="mr-1" size={14} />
+                    Add Product
+                  </button>
+                </div>
+                {products.length === 0 ? (
+                  <p className="text-gray-400 text-sm">
+                    No structured products captured yet. Add your offerings so SAM can reference positioning, benefits, and feature highlights in conversations.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {products.map((product) => (
+                      <div key={product.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-white font-medium text-sm">{product.name}</p>
+                            {product.description && (
+                              <p className="text-gray-400 text-xs mt-1">{product.description}</p>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-gray-500">
+                            {formatRelativeTime(product.updated_at || product.created_at || '')}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {product.category && (
+                            <span className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-0.5 rounded-full">
+                              {product.category}
+                            </span>
+                          )}
+                          {(product.features ?? []).slice(0, 3).map((feature) => (
+                            <span key={feature} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
+                              {feature}
+                            </span>
+                          ))}
+                          {(product.use_cases ?? []).slice(0, 2).map((useCase) => (
+                            <span key={useCase} className="text-[11px] bg-purple-500/10 text-purple-200 px-2 py-0.5 rounded-full">
+                              {useCase}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'competition' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <TrendingUp className="mr-2" size={24} />
+                    Competition Analysis
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
-                  <div className="text-gray-300 mb-2 font-medium">SAM Specific Fields</div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">sam_campaign_id</span>
-                      <span className="text-white">→ Custom Field</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">last_outreach_date</span>
-                      <span className="text-white">→ Last Activity</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">response_status</span>
-                      <span className="text-white">→ Lead Status</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">engagement_score</span>
-                      <span className="text-white">→ Lead Score</span>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="competition" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    🎯 Competitor analysis, battlecards, win/loss reports, market research, SWOT analysis
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
+                  {renderDocumentList(
+                    'competition',
+                    <TrendingUp size={48} className="text-gray-500" />,
+                    'No competitive analysis documents uploaded',
+                    'Upload battlecards, market research, and win/loss reports'
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-white">Competitive Intelligence</h3>
+                  <button
+                    onClick={handleQuickAddCompetitor}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
+                  >
+                    <Plus className="mr-1" size={14} />
+                    Add Competitor
+                  </button>
+                </div>
+                {competitors.length === 0 ? (
+                  <p className="text-gray-400 text-sm">
+                    Capture competitor positioning, strengths, and weaknesses to give SAM fast access to battlecard insights during conversations.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {competitors.map((competitor) => (
+                      <div key={competitor.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-white font-medium text-sm">{competitor.name}</p>
+                            {competitor.website && (
+                              <a
+                                href={competitor.website}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-blue-400 text-xs hover:underline"
+                              >
+                                {competitor.website}
+                              </a>
+                            )}
+                            {competitor.description && (
+                              <p className="text-gray-400 text-xs mt-1">{competitor.description}</p>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-gray-500">
+                            {formatRelativeTime(competitor.updated_at || competitor.created_at || '')}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {(competitor.strengths ?? []).slice(0, 3).map((item) => (
+                            <span key={item} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
+                              {item}
+                            </span>
+                          ))}
+                          {(competitor.weaknesses ?? []).slice(0, 2).map((item) => (
+                            <span key={item} className="text-[11px] bg-red-500/10 text-red-200 px-2 py-0.5 rounded-full">
+                              {item}
+                            </span>
+                          ))}
+                          {competitor.pricing_model && (
+                            <span className="text-[11px] bg-yellow-500/10 text-yellow-200 px-2 py-0.5 rounded-full">
+                              {competitor.pricing_model}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'messaging' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <MessageSquare className="mr-2" size={24} />
+                    Proven Messaging Templates
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="messaging" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    💬 Email templates, LinkedIn messages, objection handlers, value propositions, case studies
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Current Templates</h3>
+                  {renderDocumentList(
+                    'messaging',
+                    <MessageSquare size={48} className="text-gray-500" />,
+                    'No messaging templates uploaded',
+                    'Upload email templates, LinkedIn sequences, and objection handlers'
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'tone' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <Mic className="mr-2" size={24} />
+                    Tone of Voice Documents
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="tone-of-voice" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    🎭 Brand voice guidelines, writing style guides, communication frameworks, persona-based messaging
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Current Guidelines</h3>
+                  {renderDocumentList(
+                    'tone-of-voice',
+                    <Mic size={48} className="text-gray-500" />,
+                    'No tone of voice guidelines uploaded',
+                    'Upload brand voice guides and communication frameworks'
+                  )}
+                </div>
+              </div>
+
+              {/* Email & Publication Analysis Section */}
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-6">
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+                  <Mail className="mr-2" size={20} />
+                  Email & Publication Analysis
+                </h3>
+                <p className="text-gray-300 text-sm mb-6">
+                  Upload your past emails or published content to help SAM learn your authentic writing style and communication patterns.
+                </p>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="text-white font-medium mb-3">Upload Content</h4>
+                    <DocumentUpload section="sender-emails" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                    <p className="text-xs text-gray-400 mt-2">
+                      📧 Email exports (.txt, .eml), blog posts, LinkedIn articles, newsletters, published content
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="text-white font-medium mb-3">Analyzed Content</h4>
+                    {renderDocumentList(
+                      'sender-emails',
+                      <Mail size={48} className="text-gray-500" />,
+                      'No content analyzed yet',
+                      'Upload email exports or published content to analyze your writing style'
+                    )}
+                  </div>
+                </div>
+
+                {/* Style Analysis Results */}
+                <div className="mt-6 bg-gray-600 border border-gray-500 rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3 flex items-center">
+                    <TrendingUp className="mr-2" size={16} />
+                    Writing Style Analysis
+                  </h4>
+                  <div className="text-center py-8">
+                    <div className="text-gray-400 mb-2">No style analysis available</div>
+                    <div className="text-gray-500 text-sm">Upload and analyze content to see your writing patterns and tone</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'company' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <Briefcase className="mr-2" size={24} />
+                    Company Information & Brand Guidelines
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="company-info" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    🏢 Company overview, team bios, achievements, partnerships, brand guidelines
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
+                  {renderDocumentList(
+                    'company-info',
+                    <Briefcase size={48} className="text-gray-500" />,
+                    'No company documents uploaded',
+                    'Upload company overview, team profiles, and brand guidelines'
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'success' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <Trophy className="mr-2" size={24} />
+                    Customer Success Stories & Case Studies
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="success-stories" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    🏆 Case studies, customer testimonials, reference stories, ROI data, success metrics
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Current Stories</h3>
+                  {renderDocumentList(
+                    'success-stories',
+                    <Trophy size={48} className="text-gray-500" />,
+                    'No success stories uploaded',
+                    'Upload case studies, testimonials, and customer success stories'
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'buying' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <GitBranch className="mr-2" size={24} />
+                    Buying Process & Decision Framework
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="buying-process" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    🔄 Buying journey maps, decision criteria, approval processes, stakeholder analysis, procurement guides
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Current Frameworks</h3>
+                  {renderDocumentList(
+                    'buying-process',
+                    <GitBranch size={48} className="text-gray-500" />,
+                    'No buying process documents uploaded',
+                    'Upload buying journey maps, decision frameworks, and procurement guides'
+                  )}
+
+                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-4">
+                    <h4 className="text-white font-medium mb-3">Decision Framework Summary</h4>
+                    <div className="text-center py-4">
+                      <div className="text-gray-400 text-sm">No decision framework data available</div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
-            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-              <h4 className="text-white font-medium mb-3">Automation Rules Configuration</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
-                    <span className="text-gray-300">Auto-create leads from SAM campaigns</span>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
-                    <span className="text-gray-300">Sync response status updates</span>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    <span className="text-gray-300">Create tasks for follow-ups</span>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    <span className="text-gray-300">Update lead scores based on engagement</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    <span className="text-gray-300">Trigger workflows on replies</span>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    <span className="text-gray-300">Assign leads to sales reps</span>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    <span className="text-gray-300">Create opportunities for qualified leads</span>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
-                    <span className="text-gray-300">Send notifications to team members</span>
-                  </div>
+          {activeSection === 'compliance' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <Shield className="mr-2" size={24} />
+                    Compliance & Restrictions
+                  </h2>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
 
-        {activeSection === 'sam_onboarding' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <Bot className="mr-2" size={24} />
-                  SAM Onboarding Experience
-                </h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="compliance" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    🛡️ Industry regulations, compliance guidelines, approved/restricted phrases, HITL checkpoints
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Compliance Rules</h3>
+                  {renderDocumentList(
+                    'compliance',
+                    <Shield size={48} className="text-gray-500" />,
+                    'No compliance documents uploaded',
+                    'Upload industry regulations and compliance guidelines'
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3">Human-in-the-Loop Checkpoints</h4>
+                <div className="text-center py-4">
+                  <div className="text-gray-400 text-sm">No checkpoints configured</div>
+                  <div className="text-gray-500 text-xs mt-1">Define triggers that require human review before sending</div>
+                </div>
               </div>
             </div>
-            <p className="text-gray-400 mb-6">Interactive conversational onboarding to collect company data and build your knowledge base</p>
-            <SAMOnboarding onComplete={(data) => console.log('Onboarding completed:', data)} />
-          </div>
-        )}
+          )}
 
-        {activeSection === 'documents' && (
-          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setActiveSection('overview')}
-                  className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to Knowledgebase"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-2xl font-semibold text-white flex items-center">
-                  <FileText className="mr-2" size={24} />
-                  Document Management
-                </h2>
+          {activeSection === 'personas' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <UserCheck className="mr-2" size={24} />
+                    Personas & Roles
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="personas" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    👥 Role profiles, pain points, motivations, communication preferences, decision-making patterns
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Persona Library</h3>
+                  {renderDocumentList(
+                    'personas',
+                    <UserCheck size={48} className="text-gray-500" />,
+                    'No personas uploaded',
+                    'Upload persona sheets with role insights, pains, and motivations'
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-white">Structured Personas</h3>
+                  <button
+                    onClick={handleQuickAddPersona}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
+                  >
+                    <Plus className="mr-1" size={14} />
+                    Add Persona
+                  </button>
+                </div>
+                {personas.length === 0 ? (
+                  <p className="text-gray-400 text-sm">
+                    Capture structured personas so SAM can tailor messaging, objections, and success stories to the contacts you work with most.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {personas.map((persona) => {
+                      const icp = persona.icp_id ? icpProfiles[persona.icp_id] : undefined;
+                      return (
+                        <div key={persona.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="text-white font-medium text-sm">{persona.name}</p>
+                              <p className="text-gray-400 text-xs">
+                                {persona.job_title || 'Role not specified'}
+                                {persona.department ? ` • ${persona.department}` : ''}
+                              </p>
+                              {icp && (
+                                <p className="text-gray-500 text-[11px] mt-1">Aligned ICP: {icp.name || icp.icp_name || icp.id}</p>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-gray-500">
+                              {formatRelativeTime(persona.updated_at || persona.created_at || '')}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {(persona.pain_points ?? []).slice(0, 3).map((item) => (
+                              <span key={item} className="text-[11px] bg-red-500/10 text-red-200 px-2 py-0.5 rounded-full">
+                                Pain: {item}
+                              </span>
+                            ))}
+                            {(persona.goals ?? []).slice(0, 2).map((item) => (
+                              <span key={item} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
+                                Goal: {item}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-2">Leadership Roles</h4>
+                  <div className="space-y-1 text-sm text-gray-300">
+                    <div>• Founder/Co-Founder</div>
+                    <div>• CEO/C-Suite</div>
+                    <div>• VP Sales/Revenue</div>
+                    <div>• Head of Growth</div>
+                  </div>
+                </div>
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-2">Operational Roles</h4>
+                  <div className="space-y-1 text-sm text-gray-300">
+                    <div>• Sales Manager</div>
+                    <div>• SDR/BDR Lead</div>
+                    <div>• Marketing Director</div>
+                    <div>• Operations Manager</div>
+                  </div>
+                </div>
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-2">Service Providers</h4>
+                  <div className="space-y-1 text-sm text-gray-300">
+                    <div>• Agency Owner</div>
+                    <div>• Consultant</div>
+                    <div>• Recruiter</div>
+                    <div>• Financial Advisor</div>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <DocumentUpload section="general" onComplete={loadDocuments} />
-              <VectorTest />
-            </div>
+          )}
 
-            <div className="mb-6">
-              <DocumentsTable />
+          {activeSection === 'objections' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <MessageCircle className="mr-2" size={24} />
+                    Objections & Responses
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="objections" onComplete={loadDocuments} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    💬 Common objections, proven rebuttals, redirect strategies, conversation frameworks
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Objection Handlers</h3>
+                  {renderDocumentList(
+                    'objections',
+                    <MessageCircle size={48} className="text-gray-500" />,
+                    'No objection handling scripts uploaded',
+                    'Upload common objections and proven rebuttals'
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3 flex items-center">
+                  <TrendingUp className="mr-2" size={16} />
+                  Objection Analysis
+                </h4>
+                <div className="text-center py-4">
+                  <div className="text-gray-400 text-sm">No objection data available</div>
+                  <div className="text-gray-500 text-xs mt-1">Upload objection handling documents to see category analysis</div>
+                </div>
+              </div>
             </div>
-            
-            <ChunkDrawer />
-          </div>
-        )}
-      </div>
+          )}
+
+          {activeSection === 'pricing' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <DollarSign className="mr-2" size={24} />
+                    Pricing & Packages
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="pricing" onComplete={loadDocuments} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    💰 Pricing tiers, package details, ROI calculators, cost justification materials
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Pricing Materials</h3>
+                  {renderDocumentList(
+                    'pricing',
+                    <DollarSign size={48} className="text-gray-500" />,
+                    'No pricing documents uploaded',
+                    'Upload pricing tiers, ROI calculators, and cost justification materials'
+                  )}
+                </div>
+              </div>
+
+              <div className="text-center py-8 mb-6">
+                <div className="text-gray-400 mb-2">No pricing packages configured</div>
+                <div className="text-gray-500 text-sm">Upload pricing documentation to display package information</div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3">ROI Analysis</h4>
+                <div className="text-center py-4">
+                  <div className="text-gray-400 text-sm">No ROI data available</div>
+                  <div className="text-gray-500 text-xs mt-1">Upload cost comparison documents to display ROI analysis</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
+          {activeSection === 'metrics' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <BarChart className="mr-2" size={24} />
+                    Success Metrics
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="metrics" onComplete={loadDocuments} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    📊 Success benchmarks, industry improvements, ROI studies, timeline examples
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">Success Studies</h3>
+                  {renderDocumentList(
+                    'metrics',
+                    <BarChart size={48} className="text-gray-500" />,
+                    'No success metrics uploaded',
+                    'Upload benchmark reports, ROI studies, and timeline examples'
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-green-400 mb-2">35%</div>
+                  <div className="text-white font-medium">Avg. Lead Engagement Increase</div>
+                  <div className="text-gray-400 text-sm">First 30 days</div>
+                </div>
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-blue-400 mb-2">50%</div>
+                  <div className="text-white font-medium">Faster Outreach Cycle</div>
+                  <div className="text-gray-400 text-sm">vs Manual SDRs</div>
+                </div>
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-purple-400 mb-2">10x</div>
+                  <div className="text-white font-medium">ROI Within 3 Months</div>
+                  <div className="text-gray-400 text-sm">Typical customer</div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
+                <h4 className="text-white font-medium mb-3">Success Timeline</h4>
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4">30</div>
+                    <div>
+                      <div className="text-white font-medium">Days 1-30: Foundation</div>
+                      <div className="text-gray-400 text-sm">Setup, training, initial campaigns • 15-25% improvement</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mr-4">60</div>
+                    <div>
+                      <div className="text-white font-medium">Days 31-60: Optimization</div>
+                      <div className="text-gray-400 text-sm">AI learning, message refinement • 35-45% improvement</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold mr-4">90</div>
+                    <div>
+                      <div className="text-white font-medium">Days 61-90: Scale</div>
+                      <div className="text-gray-400 text-sm">Full automation, team expansion • 50%+ improvement</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3">Benchmarks by Industry</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">SaaS/Tech:</span>
+                      <span className="text-green-400">45% response improvement</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Professional Services:</span>
+                      <span className="text-green-400">38% response improvement</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Financial Services:</span>
+                      <span className="text-green-400">32% response improvement</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Healthcare:</span>
+                      <span className="text-green-400">29% response improvement</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Manufacturing:</span>
+                      <span className="text-green-400">34% response improvement</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Real Estate:</span>
+                      <span className="text-green-400">41% response improvement</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'setup' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <Settings className="mr-2" size={24} />
+                    CRM Settings & Integration
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                  <DocumentUpload section="crm-setup" onComplete={loadDocuments} />
+                  <p className="text-sm text-gray-400 mt-3">
+                    ⚙️ CRM integration guides, field mapping templates, automation workflows, sync protocols
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white mb-4">CRM Configuration</h3>
+                  <div className="space-y-2">
+                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                      <div className="text-white text-sm font-medium">Salesforce Integration Guide.pdf</div>
+                      <div className="text-gray-400 text-xs">Field mapping, lead routing • API configuration</div>
+                    </div>
+                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                      <div className="text-white text-sm font-medium">HubSpot Sync Configuration.pdf</div>
+                      <div className="text-gray-400 text-xs">Contact properties, deal stages • Workflow automation</div>
+                    </div>
+                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                      <div className="text-white text-sm font-medium">Pipedrive Setup Template.pdf</div>
+                      <div className="text-gray-400 text-xs">Pipeline configuration, activity tracking • Custom fields</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3 flex items-center">
+                    <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+                    Salesforce
+                  </h4>
+                  <div className="space-y-2 text-sm text-gray-300">
+                    <div>• Lead → Contact conversion</div>
+                    <div>• Opportunity creation rules</div>
+                    <div>• Activity logging</div>
+                    <div>• Custom field sync</div>
+                  </div>
+                </div>
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3 flex items-center">
+                    <div className="w-3 h-3 bg-orange-500 rounded mr-2"></div>
+                    HubSpot
+                  </h4>
+                  <div className="space-y-2 text-sm text-gray-300">
+                    <div>• Contact property mapping</div>
+                    <div>• Deal stage automation</div>
+                    <div>• Email engagement tracking</div>
+                    <div>• Workflow triggers</div>
+                  </div>
+                </div>
+                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3 flex items-center">
+                    <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+                    Pipedrive
+                  </h4>
+                  <div className="space-y-2 text-sm text-gray-300">
+                    <div>• Person/Organization sync</div>
+                    <div>• Deal creation automation</div>
+                    <div>• Activity scheduling</div>
+                    <div>• Pipeline management</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
+                <h4 className="text-white font-medium mb-3">Field Mapping Examples</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-gray-300 mb-2 font-medium">Standard Contact Fields</div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">SAM Field:</span>
+                        <span className="text-white">CRM Field:</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">contact_name</span>
+                        <span className="text-white">→ First/Last Name</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">company_name</span>
+                        <span className="text-white">→ Account/Company</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">job_title</span>
+                        <span className="text-white">→ Title</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">email_address</span>
+                        <span className="text-white">→ Email</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-gray-300 mb-2 font-medium">SAM Specific Fields</div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">sam_campaign_id</span>
+                        <span className="text-white">→ Custom Field</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">last_outreach_date</span>
+                        <span className="text-white">→ Last Activity</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">response_status</span>
+                        <span className="text-white">→ Lead Status</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">engagement_score</span>
+                        <span className="text-white">→ Lead Score</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <h4 className="text-white font-medium mb-3">Automation Rules Configuration</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <input type="checkbox" className="mr-2" defaultChecked />
+                      <span className="text-gray-300">Auto-create leads from SAM campaigns</span>
+                    </div>
+                    <div className="flex items-center">
+                      <input type="checkbox" className="mr-2" defaultChecked />
+                      <span className="text-gray-300">Sync response status updates</span>
+                    </div>
+                    <div className="flex items-center">
+                      <input type="checkbox" className="mr-2" />
+                      <span className="text-gray-300">Create tasks for follow-ups</span>
+                    </div>
+                    <div className="flex items-center">
+                      <input type="checkbox" className="mr-2" />
+                      <span className="text-gray-300">Update lead scores based on engagement</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <input type="checkbox" className="mr-2" />
+                      <span className="text-gray-300">Trigger workflows on replies</span>
+                    </div>
+                    <div className="flex items-center">
+                      <input type="checkbox" className="mr-2" />
+                      <span className="text-gray-300">Assign leads to sales reps</span>
+                    </div>
+                    <div className="flex items-center">
+                      <input type="checkbox" className="mr-2" />
+                      <span className="text-gray-300">Create opportunities for qualified leads</span>
+                    </div>
+                    <div className="flex items-center">
+                      <input type="checkbox" className="mr-2" />
+                      <span className="text-gray-300">Send notifications to team members</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'sam_onboarding' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <Bot className="mr-2" size={24} />
+                    SAM Onboarding Experience
+                  </h2>
+                </div>
+              </div>
+              <p className="text-gray-400 mb-6">Interactive conversational onboarding to collect company data and build your knowledge base</p>
+              <SAMOnboarding onComplete={(data) => console.log('Onboarding completed:', data)} />
+            </div>
+          )}
+
+          {activeSection === 'documents' && (
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveSection('overview')}
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Back to Knowledgebase"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <h2 className="text-2xl font-semibold text-white flex items-center">
+                    <FileText className="mr-2" size={24} />
+                    Document Management
+                  </h2>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <DocumentUpload section="general" onComplete={loadDocuments} />
+                <VectorTest />
+              </div>
+
+              <div className="mb-6">
+                <DocumentsTable />
+              </div>
+
+              <ChunkDrawer />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
