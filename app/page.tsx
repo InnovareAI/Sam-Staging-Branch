@@ -23,49 +23,17 @@ import ReachInboxModal from '@/app/components/ReachInboxModal';
 import BlacklistModal from '@/app/components/BlacklistModal';
 import { WorkspaceSettingsModal } from '@/app/components/WorkspaceSettingsModal';
 import { CRMIntegrationModal } from '@/app/components/CRMIntegrationModal';
+import KnowledgeBase from '@/app/components/KnowledgeBase';
+import Analytics from '@/app/components/Analytics';
+import AuditTrail from '@/app/components/AuditTrail';
+import DataCollectionHub from '@/components/DataCollectionHub';
+import CampaignHub from '@/app/components/CampaignHub';
+import AIConfiguration from '@/app/components/AIConfiguration';
 import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import CommentApprovalWorkflow from '@/app/components/CommentApprovalWorkflow';
 import { ManageSubscriptionModal } from '@/app/components/ManageSubscriptionModal';
 import { IntegrationsToolsModal } from '@/app/components/IntegrationsToolsModal';
 import CalendarIntegrationModal from '@/app/components/CalendarIntegrationModal';
-import dynamic from 'next/dynamic';
-
-// Lazy-loaded tab components for performance (code-splitting)
-const LoadingSkeleton = () => (
-  <div className="flex items-center justify-center h-full min-h-[400px]">
-    <div className="w-10 h-10 border-4 border-brand-primary/20 border-t-brand-primary rounded-full animate-spin" />
-  </div>
-);
-
-const KnowledgeLayout = dynamic(() => import('@/app/components/knowledge/KnowledgeLayout').then(mod => ({ default: mod.KnowledgeLayout })), {
-  loading: () => <LoadingSkeleton />,
-  ssr: false
-});
-
-const Analytics = dynamic(() => import('@/app/components/Analytics'), {
-  loading: () => <LoadingSkeleton />,
-  ssr: false
-});
-
-const AuditTrail = dynamic(() => import('@/app/components/AuditTrail'), {
-  loading: () => <LoadingSkeleton />,
-  ssr: false
-});
-
-const DataCollectionHub = dynamic(() => import('@/components/DataCollectionHub'), {
-  loading: () => <LoadingSkeleton />,
-  ssr: false
-});
-
-const CampaignHub = dynamic(() => import('@/app/components/CampaignHub'), {
-  loading: () => <LoadingSkeleton />,
-  ssr: false
-});
-
-const AIConfiguration = dynamic(() => import('@/app/components/AIConfiguration'), {
-  loading: () => <LoadingSkeleton />,
-  ssr: false
-});
 // SuperAdminPage removed - no cross-workspace data access allowed
 import {
   Activity,
@@ -3226,7 +3194,7 @@ export default function Page() {
           {activeMenuItem === 'ai-config' ? (
             <AIConfiguration workspaceId={selectedWorkspaceId} workspaceName={currentWorkspace?.name} />
           ) : activeMenuItem === 'knowledge' ? (
-            <KnowledgeLayout workspaceId={selectedWorkspaceId || undefined} userId={user?.id} />
+            <KnowledgeBase />
           ) : activeMenuItem === 'data-approval' ? (
             /* Data Approval - Unified via DataCollectionHub */
             <DataCollectionHub
