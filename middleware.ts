@@ -65,22 +65,42 @@ export async function middleware(request: NextRequest) {
 
     if (request.nextUrl.pathname === '/chat' || !hasTabParam) {
       try {
+        // First check for cached workspace ID in cookie (fast path)
+        const cachedWorkspaceId = request.cookies.get('lastWorkspaceId')?.value;
+
+        if (cachedWorkspaceId) {
+          // Use cached workspace ID - instant rewrite
+          const chatUrl = new URL(`/workspace/${cachedWorkspaceId}/chat`, request.url);
+          console.log(`[Middleware] Fast rewriting to cached workspace: ${chatUrl.pathname}`);
+          return NextResponse.rewrite(chatUrl);
+        }
+
+        // Slow path: authenticate and query DB
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (!authError && user) {
-          // Get user's personal workspace
+          // Get user's first workspace (removed workspace_type filter for speed)
           const { data: workspace } = await supabase
             .from('workspaces')
             .select('id')
             .eq('owner_id', user.id)
-            .eq('workspace_type', 'personal')
+            .limit(1)
             .single();
 
           if (workspace) {
             // Rewrite to workspace chat (URL stays as "/" or "/chat")
             const chatUrl = new URL(`/workspace/${workspace.id}/chat`, request.url);
             console.log(`[Middleware] Rewriting ${request.nextUrl.pathname} to ${chatUrl.pathname} for user ${user.email}`);
-            return NextResponse.rewrite(chatUrl);
+
+            // Cache the workspace ID for next time
+            const rewriteResponse = NextResponse.rewrite(chatUrl);
+            rewriteResponse.cookies.set('lastWorkspaceId', workspace.id, {
+              httpOnly: false,
+              secure: true,
+              sameSite: 'lax',
+              maxAge: 60 * 60 * 24 * 30 // 30 days
+            });
+            return rewriteResponse;
           }
         }
         // If not authenticated or no workspace, fall through to show dashboard/login
