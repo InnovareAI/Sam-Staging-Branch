@@ -179,7 +179,8 @@ export default function WorkspaceLayout({
   }
 
   // Determine if this is a full-screen route (hides global sidebar)
-  const isFullScreenRoute = FULL_SCREEN_ROUTES.some(route => pathname?.includes(route));
+  // Also check for root path since middleware rewrites / to /workspace/{id}/chat
+  const isFullScreenRoute = FULL_SCREEN_ROUTES.some(route => pathname?.includes(route)) || pathname === '/';
 
   // Determine active menu item based on current path
   const activeMenuItem = menuItems.find(item =>
