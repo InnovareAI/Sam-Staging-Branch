@@ -3195,7 +3195,7 @@ export default function Page() {
           {activeMenuItem === 'ai-config' ? (
             <AIConfiguration workspaceId={selectedWorkspaceId} workspaceName={currentWorkspace?.name} />
           ) : activeMenuItem === 'knowledge' ? (
-            <KnowledgeLayout workspaceId={selectedWorkspaceId || undefined} />
+            <KnowledgeLayout workspaceId={selectedWorkspaceId || undefined} userId={user?.id} />
           ) : activeMenuItem === 'data-approval' ? (
             /* Data Approval - Unified via DataCollectionHub */
             <DataCollectionHub
