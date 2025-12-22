@@ -397,26 +397,8 @@ export default function Page() {
     }
   }, [selectedWorkspaceId, workspaces, workspacesLoading]);
 
-  // Redirect to workspace chat page on initial load (main URL redirect)
-  useEffect(() => {
-    const wsId = currentWorkspace?.id || selectedWorkspaceId;
-    // Only redirect if:
-    // 1. We have a workspace ID
-    // 2. User is loaded
-    // 3. No specific tab is requested in URL (e.g., /?tab=settings)
-    // 4. We're on the root path without explicit tab param
-    if (wsId && isLoaded && typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const hasTabParam = urlParams.has('tab') || urlParams.has('section');
-      const isRootPath = window.location.pathname === '/';
-
-      // If user lands on root without tab param, redirect to workspace chat
-      if (isRootPath && !hasTabParam) {
-        console.log('🚀 [REDIRECT] Landing page → Workspace Chat:', `/workspace/${wsId}/chat`);
-        window.location.href = `/workspace/${wsId}/chat`;
-      }
-    }
-  }, [currentWorkspace?.id, selectedWorkspaceId, isLoaded]);
+  // NOTE: Redirect to workspace chat is now handled by middleware (edge rewrite)
+  // This provides instant navigation without any flash
 
   // LinkedIn connection state
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
@@ -3001,26 +2983,7 @@ export default function Page() {
     );
   }
 
-  // Show loading while redirecting to workspace chat (prevents old UI flash)
-  const wsId = currentWorkspace?.id || selectedWorkspaceId;
-  if (typeof window !== 'undefined') {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasTabParam = urlParams.has('tab') || urlParams.has('section');
-    const isRootPath = window.location.pathname === '/';
-
-    // If we're going to redirect, show loading instead of old UI
-    if (wsId && isRootPath && !hasTabParam) {
-      return (
-        <div className="flex h-screen bg-gray-900 items-center justify-center">
-          <div className="text-center">
-            <div className="w-10 h-10 border-4 border-pink-500/20 border-t-pink-500 rounded-full animate-spin mx-auto mb-4" />
-            <div className="text-white text-lg font-medium">Redirecting to chat...</div>
-          </div>
-        </div>
-      );
-    }
-  }
-
+  // NOTE: Root URL rewrite to chat is handled by middleware at the edge
 
   const filteredWorkspaces = workspaces.filter((workspace) => {
     // Show all workspaces - each user has their own workspace/tenant

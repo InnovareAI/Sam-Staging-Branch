@@ -56,33 +56,38 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // CLEAN URL REWRITE: Serve chat at /chat (Dec 21, 2025)
-  // Rewrite "/chat" to "/workspace/[id]/chat" for authenticated users
-  // Browser shows clean URL (app.meet-sam.com/chat) while serving workspace-specific content
-  if (request.nextUrl.pathname === '/chat') {
-    try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+  // CLEAN URL REWRITE: Serve chat at / and /chat (Dec 22, 2025)
+  // Rewrite "/" and "/chat" to "/workspace/[id]/chat" for authenticated users
+  // Browser shows clean URL while serving workspace-specific content
+  if (request.nextUrl.pathname === '/chat' || request.nextUrl.pathname === '/') {
+    // Only rewrite root if there's no tab param (legacy navigation)
+    const hasTabParam = request.nextUrl.searchParams.has('tab') || request.nextUrl.searchParams.has('section');
 
-      if (!authError && user) {
-        // Get user's personal workspace
-        const { data: workspace } = await supabase
-          .from('workspaces')
-          .select('id')
-          .eq('owner_id', user.id)
-          .eq('workspace_type', 'personal')
-          .single();
+    if (request.nextUrl.pathname === '/chat' || !hasTabParam) {
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-        if (workspace) {
-          // Rewrite to workspace chat (URL stays as "/" or "/chat")
-          const chatUrl = new URL(`/workspace/${workspace.id}/chat`, request.url);
-          console.log(`[Middleware] Rewriting ${request.nextUrl.pathname} to ${chatUrl.pathname} for user ${user.email}`);
-          return NextResponse.rewrite(chatUrl);
+        if (!authError && user) {
+          // Get user's personal workspace
+          const { data: workspace } = await supabase
+            .from('workspaces')
+            .select('id')
+            .eq('owner_id', user.id)
+            .eq('workspace_type', 'personal')
+            .single();
+
+          if (workspace) {
+            // Rewrite to workspace chat (URL stays as "/" or "/chat")
+            const chatUrl = new URL(`/workspace/${workspace.id}/chat`, request.url);
+            console.log(`[Middleware] Rewriting ${request.nextUrl.pathname} to ${chatUrl.pathname} for user ${user.email}`);
+            return NextResponse.rewrite(chatUrl);
+          }
         }
+        // If not authenticated or no workspace, fall through to show dashboard/login
+      } catch (error) {
+        console.error('[Middleware] Error in URL rewrite:', error);
+        // Fall through to default behavior
       }
-      // If not authenticated or no workspace, fall through to show dashboard/login
-    } catch (error) {
-      console.error('[Middleware] Error in URL rewrite:', error);
-      // Fall through to default behavior
     }
   }
 
