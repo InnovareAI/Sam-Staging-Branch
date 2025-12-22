@@ -28,8 +28,8 @@ const menuItems = [
     label: 'Agent',
     description: 'Collaborate with Sam in real time',
     icon: MessageCircle,
-    path: '/?tab=chat',
-    isLegacy: true
+    path: '/chat',
+    isLegacy: false
   },
   {
     id: 'knowledge',
@@ -76,24 +76,24 @@ const menuItems = [
     label: 'Settings & Profile',
     description: 'Configure integrations, channels, and account',
     icon: Settings,
-    path: '/?tab=settings',
-    isLegacy: true
+    path: '/settings',
+    isLegacy: false
   },
   {
     id: 'workspace',
     label: 'Workspace',
     description: 'Organize teams, tenants, and invitations',
     icon: Building2,
-    path: '/?tab=workspace',
-    isLegacy: true
+    path: '/workspace-settings',
+    isLegacy: false
   },
   {
     id: 'ai-config',
     label: 'AI Configuration',
     description: 'Configure AI agents, models, and automation',
     icon: Brain,
-    path: '/?tab=ai-config',
-    isLegacy: true
+    path: '/ai-config',
+    isLegacy: false
   }
 ];
 
