@@ -376,14 +376,14 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                                     <XCircle className="mr-2 h-4 w-4" />
                                     Reject ({table.getFilteredSelectedRowModel().rows.length})
                                 </Button>
-                                {meta.onAddToCampaign && (
+                                {onAddToCampaign && (
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         className="ml-2 text-blue-600 border-blue-200 hover:bg-blue-50"
                                         onClick={() => {
                                             const ids = table.getFilteredSelectedRowModel().rows.map(r => r.original.id);
-                                            meta.onAddToCampaign?.(ids);
+                                            onAddToCampaign(ids);
                                             // Don't clear selection immediately, let modal handle success
                                         }}
                                     >
