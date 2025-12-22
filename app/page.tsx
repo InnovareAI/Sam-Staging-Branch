@@ -397,6 +397,27 @@ export default function Page() {
     }
   }, [selectedWorkspaceId, workspaces, workspacesLoading]);
 
+  // Redirect to workspace chat page on initial load (main URL redirect)
+  useEffect(() => {
+    const wsId = currentWorkspace?.id || selectedWorkspaceId;
+    // Only redirect if:
+    // 1. We have a workspace ID
+    // 2. User is loaded
+    // 3. No specific tab is requested in URL (e.g., /?tab=settings)
+    // 4. We're on the root path without explicit tab param
+    if (wsId && isLoaded && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasTabParam = urlParams.has('tab') || urlParams.has('section');
+      const isRootPath = window.location.pathname === '/';
+
+      // If user lands on root without tab param, redirect to workspace chat
+      if (isRootPath && !hasTabParam) {
+        console.log('🚀 [REDIRECT] Landing page → Workspace Chat:', `/workspace/${wsId}/chat`);
+        window.location.href = `/workspace/${wsId}/chat`;
+      }
+    }
+  }, [currentWorkspace?.id, selectedWorkspaceId, isLoaded]);
+
   // LinkedIn connection state
   const [hasLinkedInConnection, setHasLinkedInConnection] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
