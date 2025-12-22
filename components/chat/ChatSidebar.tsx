@@ -2,81 +2,74 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { MessageCircle, Brain, CheckSquare, Megaphone, MessageSquare, BarChart3, Settings, LogOut, User, Database, Linkedin, Mail } from 'lucide-react';
+import { MessageCircle, Brain, CheckSquare, Megaphone, MessageSquare, BarChart3, Settings, LogOut, User, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { createClient } from '@/app/lib/supabase';
 
+// Menu items from app/page.tsx
 const menuItems = [
     {
         id: 'chat',
-        label: 'Chat',
-        description: 'Talk to Sam AI',
+        label: 'Agent',
+        description: 'Collaborate with Sam in real time',
         icon: MessageCircle,
         path: '/chat',
         isActive: true
     },
     {
-        id: 'campaign',
-        label: 'Campaigns',
-        description: 'Multi-channel outreach',
-        icon: Megaphone,
-        path: '/campaign-hub'
-    },
-    {
-        id: 'data-approval',
-        label: 'Prospect Database',
-        description: 'Manage prospect data',
-        icon: Database,
-        path: '/data-approval'
-    },
-    {
         id: 'knowledge',
-        label: 'Knowledge Base',
-        description: 'Training assets',
+        label: 'Knowledgebase',
+        description: 'Curate training assets and product intel',
         icon: Brain,
         path: '/knowledge'
     },
     {
+        id: 'data-approval',
+        label: 'Prospect Database',
+        description: 'Review, approve and manage prospect data',
+        icon: CheckSquare,
+        path: '/data-approval'
+    },
+    {
+        id: 'campaign',
+        label: 'Campaigns',
+        description: 'Plan multi-channel outreach with Sam',
+        icon: Megaphone,
+        path: '/campaign-hub'
+    },
+    {
         id: 'commenting-agent',
         label: 'Commenting Agent',
-        description: 'LinkedIn engagement',
+        description: 'Automated LinkedIn engagement and commenting',
         icon: MessageSquare,
-        path: '/commenting-agent',
-        badge: 'NEW'
+        path: '/commenting-agent'
     },
     {
         id: 'analytics',
         label: 'Analytics',
-        description: 'Performance metrics',
+        description: 'Monitor performance and coverage metrics',
         icon: BarChart3,
         path: '/analytics'
     },
     {
         id: 'settings',
-        label: 'Settings',
-        description: 'Integrations & config',
+        label: 'Settings & Profile',
+        description: 'Configure integrations, channels, preferences',
         icon: Settings,
         path: '/settings'
-    }
-];
-
-const integrationItems = [
-    {
-        id: 'linkedin',
-        label: 'LinkedIn',
-        icon: Linkedin,
-        path: '/linkedin-integration'
     },
     {
-        id: 'email',
-        label: 'Email',
-        icon: Mail,
-        path: '/settings'
+        id: 'workspace',
+        label: 'Workspace',
+        description: 'Organize teams, tenants, and invitations',
+        icon: Building2,
+        path: '/workspace-settings'
     },
     {
         id: 'ai-config',
         label: 'AI Configuration',
+        description: 'Configure AI agents, models, and automation',
         icon: Brain,
         path: '/ai-config'
     }
@@ -107,13 +100,8 @@ export function ChatSidebar() {
     };
 
     const handleNavClick = (item: typeof menuItems[0]) => {
-        if (item.isActive) return; // Already on this page
-
-        if (item.isLegacy) {
-            window.location.href = item.path;
-        } else if (item.path.startsWith('/')) {
-            window.location.href = `/workspace/${workspaceId}${item.path}`;
-        }
+        if ('isActive' in item && item.isActive) return; // Already on this page
+        window.location.href = `/workspace/${workspaceId}${item.path}`;
     };
 
     return (
@@ -140,7 +128,6 @@ export function ChatSidebar() {
             <div className="flex-1 overflow-y-auto py-4">
                 <nav className="space-y-2 px-4">
                     {menuItems.map((item) => {
-                        // In ChatSidebar, 'chat' is always the active context visually if we are here
                         const isActive = item.id === 'chat';
                         const IconComponent = item.icon;
 
@@ -168,9 +155,16 @@ export function ChatSidebar() {
                                         <IconComponent size={18} />
                                     </span>
                                     <div className="flex-1">
-                                        <p className="text-sm font-semibold leading-tight text-foreground group-hover:text-white">
-                                            {item.label}
-                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-semibold leading-tight text-foreground group-hover:text-white">
+                                                {item.label}
+                                            </p>
+                                            {'badge' in item && item.badge && (
+                                                <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-primary/20 text-primary rounded">
+                                                    {item.badge}
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="mt-1 text-xs leading-snug text-muted-foreground group-hover:text-muted-foreground/90">
                                             {item.description}
                                         </p>

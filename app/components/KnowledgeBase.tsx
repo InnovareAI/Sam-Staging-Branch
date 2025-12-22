@@ -306,11 +306,11 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
   };
 
   return (
-    <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border-gray-700 backdrop-blur-sm">
+    <Card className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 border backdrop-blur-sm">
       <CardContent className="p-5">
         {/* Upload Mode Toggle - using shadcn Tabs */}
         <Tabs value={uploadMode} onValueChange={(v) => setUploadMode(v as 'file' | 'url')} className="mb-4">
-          <TabsList className="grid w-full grid-cols-2 bg-gray-800/50">
+          <TabsList className="grid w-full grid-cols-2 bg-muted/50">
             <TabsTrigger value="file" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-700">
               <Upload size={16} className="mr-2" />
               File Upload
@@ -347,7 +347,7 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com/document-or-page"
-              className="bg-gray-800/80 text-gray-200 h-11 border-gray-700 placeholder:text-gray-500 focus-visible:ring-purple-500"
+              className="bg-muted text-gray-200 h-11 border placeholder:text-gray-500 focus-visible:ring-purple-500"
             />
             <p className="text-xs text-gray-400 mt-3">
               Web pages, Google Docs, presentations, PDFs, articles
@@ -358,7 +358,7 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
         {/* Upload Status and Actions */}
         {(file || url) && (
           <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+            <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3 border border/50">
               <span className="text-sm text-gray-300 truncate mr-3">
                 {file ? file.name : url}
               </span>
@@ -382,7 +382,7 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
             {(status !== 'idle' && status !== 'error') && (
               <Progress
                 value={progress}
-                className="h-2.5 bg-gray-800 [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-purple-600"
+                className="h-2.5 bg-card [&>div]:bg-gradient-to-r [&>div]:from-purple-500 [&>div]:to-purple-600"
               />
             )}
 
@@ -419,7 +419,7 @@ function DocumentUpload({ section, onComplete, icpId }: { section: string; onCom
                       </span>
                     ))}
                     {aiTags.length > 4 && (
-                      <span className="text-xs text-gray-400 bg-gray-800 px-3 py-1.5 rounded-full">+{aiTags.length - 4} more</span>
+                      <span className="text-xs text-gray-400 bg-card px-3 py-1.5 rounded-full">+{aiTags.length - 4} more</span>
                     )}
                   </div>
                 )}
@@ -537,13 +537,13 @@ function ICPConfiguration({
   ];
 
   return (
-    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+    <div className="bg-card rounded-xl p-6 border shadow">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           {onBack && (
             <button
               onClick={onBack}
-              className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+              className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
               title="Back to Knowledgebase"
             >
               <ArrowLeft size={20} />
@@ -572,7 +572,7 @@ function ICPConfiguration({
       {/* Create ICP Form Modal */}
       {/* Create ICP Form Modal */}
       <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
-        <DialogContent className="sm:max-w-[425px] bg-gray-800 border-gray-700 text-white">
+        <DialogContent className="sm:max-w-[425px] bg-card border text-white">
           <DialogHeader>
             <DialogTitle>Create New ICP Profile</DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -583,7 +583,7 @@ function ICPConfiguration({
             <Input
               type="text"
               placeholder="Enter ICP profile name..."
-              className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
+              className="bg-muted border text-white placeholder:text-gray-400"
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                   handleCreateICPSubmit(e.currentTarget.value.trim());
@@ -627,7 +627,7 @@ function ICPConfiguration({
 
         {/* ICP Profile Selector - Only if profiles exist */}
         {Object.keys(icpProfiles).length > 0 && (
-          <div className="flex space-x-1 mb-4 bg-gray-700 rounded-lg p-1">
+          <div className="flex space-x-1 mb-4 bg-muted rounded-lg p-1">
             {Object.entries(icpProfiles).map(([key, profile]) => (
               <button
                 key={key}
@@ -653,7 +653,7 @@ function ICPConfiguration({
                 onClick={() => setActiveCategory(category.id)}
                 className={`p-3 rounded-lg text-left transition-all ${activeCategory === category.id
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                  : 'bg-muted text-gray-300 hover:bg-gray-600 hover:text-white'
                   }`}
               >
                 <div className="flex items-center mb-2">
@@ -668,7 +668,7 @@ function ICPConfiguration({
 
         {/* No Profiles Message - Only if no profiles */}
         {Object.keys(icpProfiles).length === 0 && (
-          <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
+          <div className="bg-muted border border rounded-lg p-4 mb-6">
             <div className="text-center">
               <Target size={32} className="mx-auto text-gray-500 mb-2" />
               <h3 className="text-lg font-medium text-gray-300 mb-2">No ICP Profiles Created Yet</h3>
@@ -695,7 +695,7 @@ function ICPConfiguration({
             {activeCategory === 'overview' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* ICP Performance Card */}
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-3 flex items-center">
                     <BarChart className="mr-2" size={16} />
                     Performance Metrics
@@ -721,7 +721,7 @@ function ICPConfiguration({
                 </div>
 
                 {/* Market Size Card */}
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-3 flex items-center">
                     <Target className="mr-2" size={16} />
                     Market Opportunity
@@ -752,7 +752,7 @@ function ICPConfiguration({
             {activeCategory === 'target_profile' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Company Demographics */}
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Building2 className="mr-2" size={16} />
                     Company Demographics
@@ -792,7 +792,7 @@ function ICPConfiguration({
                 </div>
 
                 {/* Geographic Focus */}
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Globe className="mr-2" size={16} />
                     Geographic Focus
@@ -832,7 +832,7 @@ function ICPConfiguration({
                 </div>
 
                 {/* Industry Segmentation */}
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Briefcase className="mr-2" size={16} />
                     Industry & Market Segmentation
@@ -862,7 +862,7 @@ function ICPConfiguration({
                 </div>
 
                 {/* Technology Requirements */}
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Cpu className="mr-2" size={16} />
                     Technology & Infrastructure
@@ -906,7 +906,7 @@ function ICPConfiguration({
             {/* DECISION MAKERS Category */}
             {activeCategory === 'decision_makers' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Users className="mr-2" size={16} />
                     Executive Level
@@ -914,7 +914,7 @@ function ICPConfiguration({
                   <div className="space-y-3">
                     <div>
                       <label className="text-gray-300 text-sm font-medium block mb-1">Identified Roles</label>
-                      <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
+                      <div className="text-gray-400 text-sm border rounded p-2 bg-muted">
                         {currentICP?.decision_makers?.identified_roles?.length > 0 ?
                           currentICP.decision_makers.identified_roles.join(', ') :
                           'e.g., CEO, CTO, Head of Sales, VP Marketing, Operations Director...'
@@ -923,7 +923,7 @@ function ICPConfiguration({
                     </div>
                     <div>
                       <label className="text-gray-300 text-sm font-medium block mb-1">Authority Level</label>
-                      <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
+                      <div className="text-gray-400 text-sm border rounded p-2 bg-muted">
                         {currentICP?.decision_makers?.authority_level?.length > 0 ?
                           currentICP.decision_makers.authority_level.join(', ') :
                           'e.g., Final Decision Maker, Budget Approver, Technical Evaluator, Influencer...'
@@ -933,7 +933,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <UserCheck className="mr-2" size={16} />
                     Primary Contact
@@ -941,7 +941,7 @@ function ICPConfiguration({
                   <div className="space-y-3">
                     <div>
                       <label className="text-gray-300 text-sm font-medium block mb-1">Contact Information</label>
-                      <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800 space-y-1">
+                      <div className="text-gray-400 text-sm border rounded p-2 bg-muted space-y-1">
                         <div>Name: {currentICP?.decision_makers?.primary_contact?.name || 'e.g., John Smith'}</div>
                         <div>Company: {currentICP?.decision_makers?.primary_contact?.company || 'e.g., TechCorp Inc.'}</div>
                         <div>Engagement: {currentICP?.decision_makers?.primary_contact?.engagement_level || 'e.g., High interest, active evaluator'}</div>
@@ -950,7 +950,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <div className="bg-muted border border rounded-lg p-4 lg:col-span-2">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Users className="mr-2" size={16} />
                     Stakeholder Subcategories
@@ -988,7 +988,7 @@ function ICPConfiguration({
             {/* PAIN POINTS & SIGNALS Category */}
             {activeCategory === 'pain_points' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <AlertCircle className="mr-2" size={16} />
                     Current Challenges
@@ -996,7 +996,7 @@ function ICPConfiguration({
                   <div className="space-y-3">
                     <div>
                       <label className="text-gray-300 text-sm font-medium block mb-1">Operational Challenges</label>
-                      <div className="text-gray-400 text-sm max-h-32 overflow-y-auto border border-gray-600 rounded p-2 bg-gray-800">
+                      <div className="text-gray-400 text-sm max-h-32 overflow-y-auto border rounded p-2 bg-muted">
                         {currentICP?.pain_points?.operational_challenges?.length > 0 ?
                           currentICP.pain_points.operational_challenges.map((challenge: string, i: number) => (
                             <div key={i} className="mb-1">• {challenge}</div>
@@ -1013,7 +1013,7 @@ function ICPConfiguration({
                     </div>
                     <div>
                       <label className="text-gray-300 text-sm font-medium block mb-1">Growth Pressures</label>
-                      <div className="text-gray-400 text-sm border border-gray-600 rounded p-2 bg-gray-800">
+                      <div className="text-gray-400 text-sm border rounded p-2 bg-muted">
                         {currentICP?.pain_points?.growth_pressures?.length > 0 ?
                           currentICP.pain_points.growth_pressures.join(', ') :
                           'e.g., Need to expand market share, Pressure to reduce costs, Requirements for faster time-to-market, Board demands for digital transformation'
@@ -1023,7 +1023,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <TrendingUp className="mr-2" size={16} />
                     Buying Signals
@@ -1050,7 +1050,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <div className="bg-muted border border rounded-lg p-4 lg:col-span-2">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <AlertCircle className="mr-2" size={16} />
                     Pain Points Subcategories
@@ -1086,7 +1086,7 @@ function ICPConfiguration({
             {/* BUYING PROCESS Category */}
             {activeCategory === 'buying_process' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <GitBranch className="mr-2" size={16} />
                     Evaluation Stages
@@ -1106,7 +1106,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Clock className="mr-2" size={16} />
                     Timeline & Stakeholders
@@ -1133,7 +1133,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <div className="bg-muted border border rounded-lg p-4 lg:col-span-2">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <GitBranch className="mr-2" size={16} />
                     Buying Process Subcategories
@@ -1171,7 +1171,7 @@ function ICPConfiguration({
             {/* MESSAGING STRATEGY Category */}
             {activeCategory === 'messaging' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <MessageSquare className="mr-2" size={16} />
                     Value Propositions
@@ -1183,7 +1183,7 @@ function ICPConfiguration({
                           {prop}
                         </Badge>
                       )) :
-                      <div className="border border-gray-600 rounded p-2 bg-gray-800 space-y-1">
+                      <div className="border rounded p-2 bg-muted space-y-1">
                         <Badge className="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-xs text-white">Save 40% on operational costs</Badge>
                         <Badge className="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-xs text-white">Reduce time-to-market by 60%</Badge>
                         <Badge className="bg-blue-600 hover:bg-blue-700 px-3 py-1 text-xs text-white">Enterprise-grade security & compliance</Badge>
@@ -1193,7 +1193,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <MessageCircle className="mr-2" size={16} />
                     Communication Preferences
@@ -1210,7 +1210,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <div className="bg-muted border border rounded-lg p-4 lg:col-span-2">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <TrendingUp className="mr-2" size={16} />
                     Competitive Mentions
@@ -1227,7 +1227,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <div className="bg-muted border border rounded-lg p-4 lg:col-span-2">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <MessageSquare className="mr-2" size={16} />
                     Messaging Subcategories
@@ -1254,7 +1254,7 @@ function ICPConfiguration({
             {/* SUCCESS METRICS Category */}
             {activeCategory === 'success_metrics' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <BarChart className="mr-2" size={16} />
                     Relevant KPIs
@@ -1271,7 +1271,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Trophy className="mr-2" size={16} />
                     Performance Benchmarks
@@ -1288,7 +1288,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <div className="bg-muted border border rounded-lg p-4 lg:col-span-2">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Clock className="mr-2" size={16} />
                     Success Timeline & ROI
@@ -1317,7 +1317,7 @@ function ICPConfiguration({
             {/* ADVANCED CLASSIFICATION Category */}
             {activeCategory === 'advanced' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Cpu className="mr-2" size={16} />
                     Technology Adoption
@@ -1334,7 +1334,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Shield className="mr-2" size={16} />
                     Compliance Requirements
@@ -1351,7 +1351,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <TrendingUp className="mr-2" size={16} />
                     Market Trends
@@ -1368,7 +1368,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Users className="mr-2" size={16} />
                     Company Culture
@@ -1385,7 +1385,7 @@ function ICPConfiguration({
                   </div>
                 </div>
 
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 lg:col-span-2">
+                <div className="bg-muted border border rounded-lg p-4 lg:col-span-2">
                   <h3 className="text-white font-medium mb-4 flex items-center">
                     <Settings className="mr-2" size={16} />
                     Advanced Classification Subcategories
@@ -1449,14 +1449,14 @@ function VectorTest() {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700">
-      <div className="p-6 border-b border-gray-700">
+    <div className="bg-card rounded-lg border shadow">
+      <div className="p-6 border-b border">
         <h3 className="text-lg font-semibold text-white">Test Knowledgebase Retrieval</h3>
       </div>
       <div className="p-6">
         <div className="flex gap-2">
           <input
-            className="bg-gray-700 border border-gray-600 px-3 py-2 rounded text-white placeholder-gray-400 w-full focus:border-purple-500 focus:outline-none"
+            className="bg-muted border border px-3 py-2 rounded text-white placeholder-gray-400 w-full focus:border-purple-500 focus:outline-none"
             placeholder="Ask a question…"
             value={q}
             onChange={e => setQ(e.target.value)}
@@ -1477,9 +1477,9 @@ function VectorTest() {
             </div>
           ) : results.length > 0 ? (
             results.map((r, i) => (
-              <div key={i} className="p-3 bg-gray-700 border border-gray-600 rounded">
+              <div key={i} className="p-3 bg-muted border border rounded">
                 <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-800 text-white text-[10px]">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-card text-white text-[10px]">
                     {(r.score * 100).toFixed(0)}
                   </span>
                   <span>score</span>
@@ -1517,8 +1517,8 @@ function DocumentsTable() {
   const [documents] = useState<Doc[]>([]);
 
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700">
-      <div className="p-6 border-b border-gray-700">
+    <div className="bg-card rounded-lg border shadow">
+      <div className="p-6 border-b border">
         <h3 className="text-lg font-semibold text-white">Documents</h3>
       </div>
       <div>
@@ -1535,7 +1535,7 @@ function DocumentsTable() {
             </thead>
             <tbody>
               {documents.map((d) => (
-                <tr key={d.name} className="border-t border-gray-700">
+                <tr key={d.name} className="border-t border">
                   <td className="px-4 py-2 text-gray-300">{d.name}</td>
                   <td className="px-4 py-2">
                     {d.status === 'Ready' && (
@@ -1569,7 +1569,7 @@ function DocumentsTable() {
                     </div>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <button className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors">
+                    <button className="px-3 py-1 bg-muted hover:bg-gray-600 text-gray-300 rounded transition-colors">
                       View Chunks
                     </button>
                   </td>
@@ -1599,11 +1599,11 @@ function ChunkDrawer() {
   const [chunks] = useState<Chunk[]>([]);
 
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700">
-      <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+    <div className="bg-card rounded-lg border shadow">
+      <div className="p-6 border-b border flex items-center justify-between">
         <h3 className="text-lg font-semibold text-white">Document Chunks</h3>
         <button
-          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+          className="px-3 py-1 bg-muted hover:bg-gray-600 text-gray-300 rounded transition-colors"
           onClick={() => setOpen(!open)}
         >
           {open ? 'Close' : 'Open'}
@@ -1614,7 +1614,7 @@ function ChunkDrawer() {
           <div className="p-4 space-y-3 max-h-72 overflow-auto">
             {chunks.length > 0 ? (
               chunks.map((c, i) => (
-                <div key={i} className="p-3 bg-gray-700 border border-gray-600 rounded">
+                <div key={i} className="p-3 bg-muted border border rounded">
                   <div className="text-sm text-gray-300">{c.text}</div>
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {c.labels.map(l => (
@@ -2188,7 +2188,7 @@ const KnowledgeBase: React.FC = () => {
           const hasSuccess = docFeedback.some((f: any) => f.type === 'success');
 
           return (
-            <div key={doc.id} className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+            <div key={doc.id} className="bg-muted border border rounded-lg p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -2213,7 +2213,7 @@ const KnowledgeBase: React.FC = () => {
 
                   {/* SAM's Feedback */}
                   {docFeedback.length > 0 && (
-                    <div className="mt-3 p-3 bg-gray-800/50 rounded border border-gray-600">
+                    <div className="mt-3 p-3 bg-muted/50 rounded border border">
                       <p className="text-[11px] text-gray-400 font-medium mb-2">💬 SAM's Feedback:</p>
                       <div className="space-y-1">
                         {docFeedback.map((feedback: any, idx: number) => (
@@ -2375,7 +2375,7 @@ const KnowledgeBase: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-[1400px] mx-auto">
         {/* Header */}
         {/* Main Content */}
@@ -2384,7 +2384,7 @@ const KnowledgeBase: React.FC = () => {
             <div className="space-y-6">
               {/* ICP Selector - Multi-ICP Support */}
               {Object.keys(icpProfiles).length > 1 && (
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="bg-card border shadow rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Target className="text-purple-400" size={20} />
@@ -2393,7 +2393,7 @@ const KnowledgeBase: React.FC = () => {
                     <select
                       value={selectedIcpId || ''}
                       onChange={(e) => setSelectedIcpId(e.target.value || null)}
-                      className="bg-gray-700 border border-gray-600 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="bg-muted border border text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
                       <option value="">All ICPs (Global + Specific)</option>
                       {Object.values(icpProfiles).map((icp) => (
@@ -2416,7 +2416,7 @@ const KnowledgeBase: React.FC = () => {
               {/* KB Completeness and Health - First Row */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* KB Completeness Meter */}
-                <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <div className="bg-card rounded-xl p-6 border shadow">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-white text-lg font-semibold">Knowledgebase Completeness</span>
                     <span className="text-white text-2xl font-bold">{completionDisplay}</span>
@@ -2486,7 +2486,7 @@ const KnowledgeBase: React.FC = () => {
                           <span className="text-xs opacity-75 group-open:rotate-180 transition-transform">▼</span>
                         </div>
                       </summary>
-                      <div className="mt-3 space-y-3 pl-4 border-l-2 border-gray-700">
+                      <div className="mt-3 space-y-3 pl-4 border-l-2 border">
                         {knowledgeCompletion === 0 ? (
                           // General guidance for completely empty KB
                           <>
@@ -2547,7 +2547,7 @@ const KnowledgeBase: React.FC = () => {
                                           const icon = rec.currentScore === 0 ? '❌' : '⚠️';
 
                                           return (
-                                            <div key={rec.id} className="flex items-start justify-between gap-2 pb-2 border-b border-gray-700/50 last:border-0">
+                                            <div key={rec.id} className="flex items-start justify-between gap-2 pb-2 border-b border/50 last:border-0">
                                               <div className="flex-1">
                                                 <p className={`font-medium ${categoryColor}`}>
                                                   {icon} {rec.label}
@@ -2577,14 +2577,14 @@ const KnowledgeBase: React.FC = () => {
                                       )}
 
                                       {complete.length > 0 && (
-                                        <div className="pt-2 border-t border-gray-700">
+                                        <div className="pt-2 border-t border">
                                           <p className="font-medium text-green-400 text-xs">
                                             ✅ Completed: {complete.map(c => c.label).join(', ')}
                                           </p>
                                         </div>
                                       )}
 
-                                      <div className="pt-2 border-t border-gray-700">
+                                      <div className="pt-2 border-t border">
                                         <p className="font-medium text-gray-300 text-xs mb-2">How to Fill Knowledge Gaps:</p>
                                         <div className="space-y-1.5 text-xs text-gray-400">
                                           <div className="flex items-start gap-2">
@@ -2635,7 +2635,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
 
                 {/* KB Health */}
-                <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <div className="bg-card rounded-xl p-6 border shadow">
                   <h3 className="text-white text-lg font-semibold mb-4">Knowledgebase Health</h3>
                   <div className="space-y-4">
                     {healthMetrics.map((metric) => (
@@ -2646,7 +2646,7 @@ const KnowledgeBase: React.FC = () => {
                             <p className="text-gray-500 text-xs">{metric.description}</p>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <div className="w-24 bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div className="w-24 bg-muted rounded-full h-2 overflow-hidden">
                               <div
                                 className={`${getHealthColor(metric.value)} h-2 rounded-full transition-all duration-500`}
                                 style={{ width: metric.value === null ? '0%' : `${metric.value}%` }}
@@ -2664,7 +2664,7 @@ const KnowledgeBase: React.FC = () => {
               </div>
 
               {/* Quick Actions & Navigation */}
-              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="bg-card rounded-xl p-6 border shadow">
                 <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {sections.slice(1).filter(s => s.id !== 'analytics').map((section) => {
@@ -2673,7 +2673,7 @@ const KnowledgeBase: React.FC = () => {
                       <button
                         key={section.id}
                         onClick={() => setActiveSection(section.id)}
-                        className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-left transition-all hover:bg-purple-600 hover:border-purple-500 group cursor-pointer"
+                        className="bg-muted border border rounded-lg p-4 text-left transition-all hover:bg-purple-600 hover:border-purple-500 group cursor-pointer"
                       >
                         <div className="flex items-center mb-2">
                           <IconComponent className="text-blue-400 mr-2 group-hover:scale-110 transition-transform" size={18} />
@@ -2691,7 +2691,7 @@ const KnowledgeBase: React.FC = () => {
               {/* Stats Row - Total Documents, ICP Profiles, KB Completion, SAM Insights */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Total Documents */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="bg-card border shadow rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-400 text-sm">Total Documents</p>
@@ -2707,7 +2707,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
 
                 {/* ICP Profiles */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="bg-card border shadow rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-400 text-sm">ICP Profiles</p>
@@ -2723,7 +2723,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
 
                 {/* KB Completion Summary */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="bg-card border shadow rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-400 text-sm">KB Completion</p>
@@ -2737,7 +2737,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
 
                 {/* SAM Insights */}
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="bg-card border shadow rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-400 text-sm">SAM Insights</p>
@@ -2750,7 +2750,7 @@ const KnowledgeBase: React.FC = () => {
               </div>
 
               {/* Recent SAM Insights from Conversations */}
-              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="bg-card rounded-xl p-6 border shadow">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-white text-lg font-semibold flex items-center">
                     <Brain className="mr-2 text-orange-400" size={20} />
@@ -2769,7 +2769,7 @@ const KnowledgeBase: React.FC = () => {
                     </div>
                   ) : (
                     latestDocuments.map((doc) => (
-                      <div key={`insight-${doc.id}`} className="bg-gray-700 rounded-lg p-4">
+                      <div key={`insight-${doc.id}`} className="bg-muted rounded-lg p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <p className="text-white text-sm font-medium">{doc.title}</p>
@@ -2792,7 +2792,7 @@ const KnowledgeBase: React.FC = () => {
               </div>
 
               {/* Latest Knowledge Assets */}
-              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <div className="bg-card rounded-xl p-6 border shadow">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-white text-lg font-semibold flex items-center">
                     <FileText className="mr-2 text-blue-400" size={20} />
@@ -2819,7 +2819,7 @@ const KnowledgeBase: React.FC = () => {
                     {latestDocuments.map((doc) => (
                       <div
                         key={doc.id}
-                        className="bg-gray-700 border border-gray-600 rounded-lg p-4 hover:bg-gray-650 hover:border-purple-500 transition-all cursor-pointer"
+                        className="bg-muted border border rounded-lg p-4 hover:bg-gray-650 hover:border-purple-500 transition-all cursor-pointer"
                         onClick={() => {
                           console.log('[KB] Document clicked:', doc);
                           // TODO: Implement document detail view or actions
@@ -2882,7 +2882,7 @@ const KnowledgeBase: React.FC = () => {
           {activeSection === 'icp' && (
             <>
               {Object.keys(icpProfiles).length === 0 ? (
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
+                <div className="bg-card border shadow rounded-lg p-12 text-center">
                   <Target size={48} className="mx-auto text-gray-500 mb-4" />
                   <h3 className="text-xl font-medium text-white mb-2">No ICP Profiles Yet</h3>
                   <p className="text-gray-400 mb-6">Create your first Ideal Customer Profile to get started</p>
@@ -2915,12 +2915,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'products' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -2968,7 +2968,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
+              <div className="bg-muted border border rounded-lg p-4 mt-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-white">Structured Product Library</h3>
                   <button
@@ -2986,7 +2986,7 @@ const KnowledgeBase: React.FC = () => {
                 ) : (
                   <div className="space-y-3">
                     {products.map((product) => (
-                      <div key={product.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
+                      <div key={product.id} className="border rounded-lg p-3 bg-card">
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="text-white font-medium text-sm">{product.name}</p>
@@ -3024,12 +3024,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'competition' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3061,7 +3061,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
+              <div className="bg-muted border border rounded-lg p-4 mt-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-white">Competitive Intelligence</h3>
                   <button
@@ -3079,7 +3079,7 @@ const KnowledgeBase: React.FC = () => {
                 ) : (
                   <div className="space-y-3">
                     {competitors.map((competitor) => (
-                      <div key={competitor.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
+                      <div key={competitor.id} className="border rounded-lg p-3 bg-card">
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="text-white font-medium text-sm">{competitor.name}</p>
@@ -3127,12 +3127,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'messaging' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3167,12 +3167,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'tone' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3205,7 +3205,7 @@ const KnowledgeBase: React.FC = () => {
               </div>
 
               {/* Email & Publication Analysis Section */}
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-6">
+              <div className="bg-muted border border rounded-lg p-6">
                 <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
                   <Mail className="mr-2" size={20} />
                   Email & Publication Analysis
@@ -3250,12 +3250,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'company' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3290,12 +3290,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'success' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3330,12 +3330,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'buying' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3365,7 +3365,7 @@ const KnowledgeBase: React.FC = () => {
                     'Upload buying journey maps, decision frameworks, and procurement guides'
                   )}
 
-                  <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-4">
+                  <div className="bg-muted border border rounded-lg p-4 mt-4">
                     <h4 className="text-white font-medium mb-3">Decision Framework Summary</h4>
                     <div className="text-center py-4">
                       <div className="text-gray-400 text-sm">No decision framework data available</div>
@@ -3377,12 +3377,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'compliance' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3414,7 +3414,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-muted border border rounded-lg p-4">
                 <h4 className="text-white font-medium mb-3">Human-in-the-Loop Checkpoints</h4>
                 <div className="text-center py-4">
                   <div className="text-gray-400 text-sm">No checkpoints configured</div>
@@ -3425,12 +3425,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'personas' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3462,7 +3462,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mt-6">
+              <div className="bg-muted border border rounded-lg p-4 mt-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium text-white">Structured Personas</h3>
                   <button
@@ -3482,7 +3482,7 @@ const KnowledgeBase: React.FC = () => {
                     {personas.map((persona) => {
                       const icp = persona.icp_id ? icpProfiles[persona.icp_id] : undefined;
                       return (
-                        <div key={persona.id} className="border border-gray-600 rounded-lg p-3 bg-gray-800">
+                        <div key={persona.id} className="border rounded-lg p-3 bg-card">
                           <div className="flex items-start justify-between">
                             <div>
                               <p className="text-white font-medium text-sm">{persona.name}</p>
@@ -3518,7 +3518,7 @@ const KnowledgeBase: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h4 className="text-white font-medium mb-2">Leadership Roles</h4>
                   <div className="space-y-1 text-sm text-gray-300">
                     <div>• Founder/Co-Founder</div>
@@ -3527,7 +3527,7 @@ const KnowledgeBase: React.FC = () => {
                     <div>• Head of Growth</div>
                   </div>
                 </div>
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h4 className="text-white font-medium mb-2">Operational Roles</h4>
                   <div className="space-y-1 text-sm text-gray-300">
                     <div>• Sales Manager</div>
@@ -3536,7 +3536,7 @@ const KnowledgeBase: React.FC = () => {
                     <div>• Operations Manager</div>
                   </div>
                 </div>
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h4 className="text-white font-medium mb-2">Service Providers</h4>
                   <div className="space-y-1 text-sm text-gray-300">
                     <div>• Agency Owner</div>
@@ -3550,12 +3550,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'objections' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3587,7 +3587,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-muted border border rounded-lg p-4">
                 <h4 className="text-white font-medium mb-3 flex items-center">
                   <TrendingUp className="mr-2" size={16} />
                   Objection Analysis
@@ -3601,12 +3601,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'pricing' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3643,7 +3643,7 @@ const KnowledgeBase: React.FC = () => {
                 <div className="text-gray-500 text-sm">Upload pricing documentation to display package information</div>
               </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-muted border border rounded-lg p-4">
                 <h4 className="text-white font-medium mb-3">ROI Analysis</h4>
                 <div className="text-center py-4">
                   <div className="text-gray-400 text-sm">No ROI data available</div>
@@ -3655,12 +3655,12 @@ const KnowledgeBase: React.FC = () => {
 
 
           {activeSection === 'metrics' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3693,24 +3693,24 @@ const KnowledgeBase: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
+                <div className="bg-muted border border rounded-lg p-4 text-center">
                   <div className="text-3xl font-bold text-green-400 mb-2">35%</div>
                   <div className="text-white font-medium">Avg. Lead Engagement Increase</div>
                   <div className="text-gray-400 text-sm">First 30 days</div>
                 </div>
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
+                <div className="bg-muted border border rounded-lg p-4 text-center">
                   <div className="text-3xl font-bold text-blue-400 mb-2">50%</div>
                   <div className="text-white font-medium">Faster Outreach Cycle</div>
                   <div className="text-gray-400 text-sm">vs Manual SDRs</div>
                 </div>
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 text-center">
+                <div className="bg-muted border border rounded-lg p-4 text-center">
                   <div className="text-3xl font-bold text-purple-400 mb-2">10x</div>
                   <div className="text-white font-medium">ROI Within 3 Months</div>
                   <div className="text-gray-400 text-sm">Typical customer</div>
                 </div>
               </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
+              <div className="bg-muted border border rounded-lg p-4 mb-6">
                 <h4 className="text-white font-medium mb-3">Success Timeline</h4>
                 <div className="space-y-4">
                   <div className="flex items-center">
@@ -3737,7 +3737,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-muted border border rounded-lg p-4">
                 <h4 className="text-white font-medium mb-3">Benchmarks by Industry</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div className="space-y-2">
@@ -3774,12 +3774,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'setup' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3803,15 +3803,15 @@ const KnowledgeBase: React.FC = () => {
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium text-white mb-4">CRM Configuration</h3>
                   <div className="space-y-2">
-                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                    <div className="bg-muted border border rounded-lg p-3">
                       <div className="text-white text-sm font-medium">Salesforce Integration Guide.pdf</div>
                       <div className="text-gray-400 text-xs">Field mapping, lead routing • API configuration</div>
                     </div>
-                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                    <div className="bg-muted border border rounded-lg p-3">
                       <div className="text-white text-sm font-medium">HubSpot Sync Configuration.pdf</div>
                       <div className="text-gray-400 text-xs">Contact properties, deal stages • Workflow automation</div>
                     </div>
-                    <div className="bg-gray-700 border border-gray-600 rounded-lg p-3">
+                    <div className="bg-muted border border rounded-lg p-3">
                       <div className="text-white text-sm font-medium">Pipedrive Setup Template.pdf</div>
                       <div className="text-gray-400 text-xs">Pipeline configuration, activity tracking • Custom fields</div>
                     </div>
@@ -3820,7 +3820,7 @@ const KnowledgeBase: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h4 className="text-white font-medium mb-3 flex items-center">
                     <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
                     Salesforce
@@ -3832,7 +3832,7 @@ const KnowledgeBase: React.FC = () => {
                     <div>• Custom field sync</div>
                   </div>
                 </div>
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h4 className="text-white font-medium mb-3 flex items-center">
                     <div className="w-3 h-3 bg-orange-500 rounded mr-2"></div>
                     HubSpot
@@ -3844,7 +3844,7 @@ const KnowledgeBase: React.FC = () => {
                     <div>• Workflow triggers</div>
                   </div>
                 </div>
-                <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+                <div className="bg-muted border border rounded-lg p-4">
                   <h4 className="text-white font-medium mb-3 flex items-center">
                     <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
                     Pipedrive
@@ -3858,7 +3858,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
+              <div className="bg-muted border border rounded-lg p-4 mb-6">
                 <h4 className="text-white font-medium mb-3">Field Mapping Examples</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
@@ -3910,7 +3910,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <div className="bg-muted border border rounded-lg p-4">
                 <h4 className="text-white font-medium mb-3">Automation Rules Configuration</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div className="space-y-2">
@@ -3955,12 +3955,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'sam_onboarding' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />
@@ -3977,12 +3977,12 @@ const KnowledgeBase: React.FC = () => {
           )}
 
           {activeSection === 'documents' && (
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div className="bg-card rounded-xl p-6 border shadow">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <button
                     onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
                     title="Back to Knowledgebase"
                   >
                     <ArrowLeft size={20} />

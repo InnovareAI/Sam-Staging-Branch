@@ -78,7 +78,10 @@ export async function middleware(request: NextRequest) {
           // Use cached workspace ID - instant rewrite
           const chatUrl = new URL(`/workspace/${cachedWorkspaceId}/chat`, request.url);
           console.log(`[Middleware] Fast rewriting to cached workspace: ${chatUrl.pathname}`);
-          return NextResponse.rewrite(chatUrl);
+          const rewriteResponse = NextResponse.rewrite(chatUrl, {
+            request: { headers: requestHeaders }
+          });
+          return rewriteResponse;
         }
 
         // Slow path: authenticate and query DB
@@ -99,7 +102,9 @@ export async function middleware(request: NextRequest) {
             console.log(`[Middleware] Rewriting ${request.nextUrl.pathname} to ${chatUrl.pathname} for user ${user.email}`);
 
             // Cache the workspace ID for next time
-            const rewriteResponse = NextResponse.rewrite(chatUrl);
+            const rewriteResponse = NextResponse.rewrite(chatUrl, {
+              request: { headers: requestHeaders }
+            });
             rewriteResponse.cookies.set('lastWorkspaceId', workspace.id, {
               httpOnly: false,
               secure: true,

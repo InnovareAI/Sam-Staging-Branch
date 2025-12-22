@@ -15,20 +15,13 @@ export default async function WorkspaceLayout({
   const supabase = await createServerSupabaseClient();
 
   // Detect if we're on the chat route - it has its own sidebar
-  // Check multiple sources since rewrites change the pathname
   const headersList = await headers();
   const xPathname = headersList.get('x-pathname') || '';
-  const xInvokePath = headersList.get('x-invoke-path') || '';
-  const referer = headersList.get('referer') || '';
-  const xUrl = headersList.get('x-url') || '';
 
-  // Chat route check: path ends with /chat (works for both /chat and /workspace/{id}/chat)
-  const isChatRoute = xPathname.endsWith('/chat') ||
-    xInvokePath.endsWith('/chat') ||
-    referer.endsWith('/chat') ||
-    xUrl.includes('/chat');
+  // Chat route check: /chat or / (root)
+  const isChatRoute = xPathname === '/chat' || xPathname === '/';
 
-  // Server-side auth check - instant, no loading spinner
+  // Server-side auth check
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -47,7 +40,7 @@ export default async function WorkspaceLayout({
     redirect('/');
   }
 
-  // Chat route uses its own AdaptiveLayout with ChatSidebar - skip AppSidebar
+  // Chat route uses its own layout with ChatSidebar
   if (isChatRoute) {
     return <>{children}</>;
   }
@@ -85,4 +78,3 @@ export default async function WorkspaceLayout({
     </SidebarProvider>
   );
 }
-
