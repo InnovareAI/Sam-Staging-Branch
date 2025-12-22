@@ -258,26 +258,7 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
 
     return (
         <div className="space-y-6 p-6">
-            <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Prospect Database</h1>
-                        <p className="text-muted-foreground">
-                            Manage and review your AI-researched prospects.
-                        </p>
-                    </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
-                            className="flex items-center gap-2 px-4 py-2 text-sm rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
-                        >
-                            <Upload className="w-4 h-4" />
-                            Import Prospects
-                        </button>
-                    </div>
-                </div>
-            </div>
-
+            {/* Stats Section */}
             <ProspectStats
                 total={stats.total}
                 approved={stats.approved}
@@ -285,7 +266,20 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                 pending={stats.pending}
             />
 
+            {/* Prospects Table Section */}
             <div className="mt-6">
+                {/* Action Bar */}
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold">Prospects</h2>
+                    <button
+                        onClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+                    >
+                        <Upload className="w-4 h-4" />
+                        Import Prospects
+                    </button>
+                </div>
+
                 {isLoading && prospects.length === 0 ? (
                     <ProspectTableSkeleton />
                 ) : (

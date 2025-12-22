@@ -248,11 +248,7 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Prospects</CardTitle>
-                <CardDescription>Manage your identified prospects.</CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
                 <div className="mb-4 flex items-center gap-2">
                     <Input
                         placeholder="Filter by company..."
