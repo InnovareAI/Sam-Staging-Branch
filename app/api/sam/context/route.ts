@@ -69,15 +69,22 @@ export async function GET(request: Request) {
             kbCompleteness,
             icps,
             products,
-            competitors,
-            documents
+            competitors
         ] = await Promise.all([
             supabaseKnowledge.checkKBCompleteness(workspaceId),
             supabaseKnowledge.getICPs({ workspaceId }),
             supabaseKnowledge.getProducts({ workspaceId }),
-            supabaseKnowledge.getCompetitors({ workspaceId }),
-            supabaseKnowledge.getDocuments({ workspaceId, limit: 5 })
+            supabaseKnowledge.getCompetitors({ workspaceId })
         ]);
+
+        // Fetch documents from knowledge_base table (same source as KB page)
+        const { data: kbDocuments } = await supabase
+            .from('knowledge_base')
+            .select('id, category, title, tags, updated_at')
+            .eq('workspace_id', workspaceId)
+            .eq('is_active', true)
+            .order('updated_at', { ascending: false })
+            .limit(5);
 
         // 4. Fetch Real Campaign Stats
         const { data: campaigns } = await supabase
@@ -139,10 +146,11 @@ export async function GET(request: Request) {
                     name: c.name,
                     strengths: c.strengths
                 })),
-                documents: documents.map(d => ({
+                documents: (kbDocuments || []).map(d => ({
                     id: d.id,
-                    name: d.filename,
-                    date: d.created_at
+                    name: d.title,
+                    category: d.category,
+                    date: d.updated_at
                 }))
             },
             strategy: {
