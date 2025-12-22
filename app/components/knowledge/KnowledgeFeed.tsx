@@ -25,7 +25,10 @@ export function KnowledgeFeed({ workspaceId }: { workspaceId?: string }) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!workspaceId) return;
+        if (!workspaceId) {
+            setIsLoading(false);
+            return;
+        }
 
         const fetchData = async () => {
             setIsLoading(true);

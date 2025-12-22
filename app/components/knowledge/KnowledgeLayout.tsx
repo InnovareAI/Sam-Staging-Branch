@@ -6,7 +6,6 @@ import { KnowledgeFeed } from './KnowledgeFeed';
 import { ICPConfiguration } from './ICPConfiguration';
 import { DocumentUpload } from './DocumentUpload';
 import { cn } from '@/lib/utils';
-import { useSamContext } from '../chat/SamContextProvider'; // Assuming context is available or passing props
 
 // Mock components for Products/Competitors for now
 const ProductsView = () => (
