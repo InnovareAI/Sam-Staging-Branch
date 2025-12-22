@@ -313,7 +313,7 @@ export function ChatInterface() {
 
                     {/* Welcome State if no messages */}
                     {messages.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-4 opacity-50">
+                        <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-4">
                             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent overflow-hidden">
                                 <img
                                     src="/SAM.jpg"
@@ -322,9 +322,9 @@ export function ChatInterface() {
                                     style={{ objectPosition: 'center 30%' }}
                                 />
                             </div>
-                            <h3 className="text-2xl font-medium">Meet Sam — Your Orchestration Agent</h3>
-                            <p className="text-lg text-muted-foreground font-medium">What do you want to tackle today?</p>
-                            <p className="max-w-sm text-base text-muted-foreground">
+                            <h3 className="text-2xl font-medium text-white">Meet Sam — Your Orchestration Agent</h3>
+                            <p className="text-lg text-white font-medium">What do you want to tackle today?</p>
+                            <p className="max-w-sm text-base text-gray-300">
                                 Ready to help with prospect research, campaign management, or strategic analysis.
                             </p>
                         </div>
