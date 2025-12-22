@@ -3195,1090 +3195,1089 @@ export default function Page() {
           {activeMenuItem === 'ai-config' ? (
             <AIConfiguration workspaceId={selectedWorkspaceId} workspaceName={currentWorkspace?.name} />
           ) : activeMenuItem === 'knowledge' ? (
-            {/* <KnowledgeBase /> */ }
-            < KnowledgeLayout workspaceId={selectedWorkspaceId || undefined} />
+            <KnowledgeLayout workspaceId={selectedWorkspaceId || undefined} />
           ) : activeMenuItem === 'data-approval' ? (
-          /* Data Approval - Unified via DataCollectionHub */
-          <DataCollectionHub
-            userSession={session}
-            workspaceId={currentWorkspace?.id || null}
-            workspacesLoading={workspacesLoading}
-            userVerified={userVerified}
-            onDataCollected={(data, source) => {
-              // Handle data collected from DataCollectionHub
-              console.log('Data collected:', data, 'Source:', source);
-            }}
-            onApprovalComplete={(approvedData, campaignType, draftId) => {
-              // CRITICAL FIX (Dec 7): Force state commit before navigation + pass draftId
-              // flushSync prevents race condition where campaignType is undefined
-              console.log('Approved prospects:', approvedData.length, 'Campaign type:', campaignType, 'Draft ID:', draftId);
-              flushSync(() => {
-                setPendingCampaignProspects(approvedData);
-                setPendingCampaignType(campaignType);
-                setPendingDraftId(draftId);
-              });
-              // State is now committed - safe to navigate
-              setActiveMenuItem('campaign');
-            }}
-            initialUploadedData={uploadedProspects}
-          />
+            /* Data Approval - Unified via DataCollectionHub */
+            <DataCollectionHub
+              userSession={session}
+              workspaceId={currentWorkspace?.id || null}
+              workspacesLoading={workspacesLoading}
+              userVerified={userVerified}
+              onDataCollected={(data, source) => {
+                // Handle data collected from DataCollectionHub
+                console.log('Data collected:', data, 'Source:', source);
+              }}
+              onApprovalComplete={(approvedData, campaignType, draftId) => {
+                // CRITICAL FIX (Dec 7): Force state commit before navigation + pass draftId
+                // flushSync prevents race condition where campaignType is undefined
+                console.log('Approved prospects:', approvedData.length, 'Campaign type:', campaignType, 'Draft ID:', draftId);
+                flushSync(() => {
+                  setPendingCampaignProspects(approvedData);
+                  setPendingCampaignType(campaignType);
+                  setPendingDraftId(draftId);
+                });
+                // State is now committed - safe to navigate
+                setActiveMenuItem('campaign');
+              }}
+              initialUploadedData={uploadedProspects}
+            />
           ) : activeMenuItem === 'campaign' ? (
-          <div className="flex-1 flex flex-col">
-            {/* Conditional View */}
-            <div className="flex-1 overflow-y-auto">
-              {showCampaignApprovalView ? (
-                <DataCollectionHub
-                  userSession={session}
-                  workspaceId={currentWorkspace?.id || null}
-                  workspacesLoading={workspacesLoading}
-                  onDataCollected={(data, source) => {
-                    console.log('Data collected:', data, 'Source:', source);
-                  }}
-                  onApprovalComplete={(approvedData, campaignType) => {
-                    // Store approved prospects and switch to campaign creation view
-                    // Dec 8 FIX: MUST reset pendingDraftId to prevent loading old draft with all session prospects
-                    console.log('Approved prospects:', approvedData, 'Campaign type:', campaignType);
-                    setPendingCampaignProspects(approvedData);
-                    setPendingCampaignType(campaignType);
-                    setPendingDraftId(undefined); // CRITICAL: Clear stale draft ID to prevent data leakage
-                    setShowCampaignApprovalView(false); // Switch to campaign hub after approval
-                  }}
-                  initialUploadedData={uploadedProspects}
-                />
-              ) : (
-                <CampaignHub
-                  workspaceId={currentWorkspace?.id || null}
-                  initialProspects={pendingCampaignProspects}
-                  initialCampaignType={pendingCampaignType}
-                  initialDraftId={pendingDraftId}
-                  onCampaignCreated={() => {
-                    setPendingCampaignProspects(null);
-                    setPendingCampaignType(undefined);
-                    setPendingDraftId(undefined);
-                  }}
-                />
-              )}
+            <div className="flex-1 flex flex-col">
+              {/* Conditional View */}
+              <div className="flex-1 overflow-y-auto">
+                {showCampaignApprovalView ? (
+                  <DataCollectionHub
+                    userSession={session}
+                    workspaceId={currentWorkspace?.id || null}
+                    workspacesLoading={workspacesLoading}
+                    onDataCollected={(data, source) => {
+                      console.log('Data collected:', data, 'Source:', source);
+                    }}
+                    onApprovalComplete={(approvedData, campaignType) => {
+                      // Store approved prospects and switch to campaign creation view
+                      // Dec 8 FIX: MUST reset pendingDraftId to prevent loading old draft with all session prospects
+                      console.log('Approved prospects:', approvedData, 'Campaign type:', campaignType);
+                      setPendingCampaignProspects(approvedData);
+                      setPendingCampaignType(campaignType);
+                      setPendingDraftId(undefined); // CRITICAL: Clear stale draft ID to prevent data leakage
+                      setShowCampaignApprovalView(false); // Switch to campaign hub after approval
+                    }}
+                    initialUploadedData={uploadedProspects}
+                  />
+                ) : (
+                  <CampaignHub
+                    workspaceId={currentWorkspace?.id || null}
+                    initialProspects={pendingCampaignProspects}
+                    initialCampaignType={pendingCampaignType}
+                    initialDraftId={pendingDraftId}
+                    onCampaignCreated={() => {
+                      setPendingCampaignProspects(null);
+                      setPendingCampaignType(undefined);
+                      setPendingDraftId(undefined);
+                    }}
+                  />
+                )}
+              </div>
             </div>
-          </div>
           ) : activeMenuItem === 'commenting-agent' ? (
-          commentingAgentView === 'approve' && selectedWorkspaceId ? (
-          <CommentApprovalWorkflow
-            workspaceId={selectedWorkspaceId}
-            onBack={() => setCommentingAgentView('dashboard')}
-          />
-          ) : commentingAgentView === 'profiles' ? (
-          <div className="min-h-screen bg-gray-900 p-6">
-            <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-              <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
-            </button>
-            <div className="max-w-4xl">
-              <h1 className="text-2xl font-bold text-white mb-2">Personal Profiles</h1>
-              <p className="text-gray-400 mb-6">Monitor specific LinkedIn user profiles for new posts and auto-generate comments.</p>
-              <div className="space-y-4">
-                {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('PROFILE:'))).map((campaign) => (
-                  <div key={campaign.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-white font-medium">{campaign.name || 'Profile Campaign'}</h3>
-                      <span className={`px-3 py-1 rounded-full text-xs ${campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'}`}>
-                        {campaign.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {campaign.hashtags?.filter((h: string) => h.startsWith('PROFILE:')).map((h: string, i: number) => (
-                        <span key={i} className="px-2 py-1 bg-pink-600/20 text-pink-400 rounded text-sm">{h.replace('PROFILE:', '')}</span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('PROFILE:'))).length === 0 && (
-                  <div className="text-center py-12 text-gray-500">
-                    <p>No profile monitors yet.</p>
-                    <button onClick={() => setShowCommentingCampaignModal(true)} className="mt-4 px-4 py-2 bg-pink-600 text-white rounded-lg">Add Profile Monitor</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          ) : commentingAgentView === 'companies' ? (
-          <div className="min-h-screen bg-gray-900 p-6">
-            <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-              <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
-            </button>
-            <div className="max-w-4xl">
-              <h1 className="text-2xl font-bold text-white mb-2">Company Pages</h1>
-              <p className="text-gray-400 mb-6">Monitor LinkedIn company pages for updates and engage with their content.</p>
-              <div className="space-y-4">
-                {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('COMPANY:'))).map((campaign) => (
-                  <div key={campaign.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-white font-medium">{campaign.name || 'Company Campaign'}</h3>
-                      <span className={`px-3 py-1 rounded-full text-xs ${campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'}`}>
-                        {campaign.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {campaign.hashtags?.filter((h: string) => h.startsWith('COMPANY:')).map((h: string, i: number) => (
-                        <span key={i} className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm flex items-center gap-1"><Building2 size={14} />{h.replace('COMPANY:', '')}</span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('COMPANY:'))).length === 0 && (
-                  <div className="text-center py-12 text-gray-500">
-                    <p>No company monitors yet.</p>
-                    <button onClick={() => setShowCommentingCampaignModal(true)} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">Add Company Monitor</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          ) : commentingAgentView === 'hashtags' ? (
-          <div className="min-h-screen bg-gray-900 p-6">
-            <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-              <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
-            </button>
-            <div className="max-w-4xl">
-              <h1 className="text-2xl font-bold text-white mb-2">Hashtags & Keywords</h1>
-              <p className="text-gray-400 mb-6">Discover posts by topic or keyword and join relevant conversations.</p>
-              <div className="space-y-4">
-                {commentingCampaigns.filter(c => c.keywords?.length > 0 || c.hashtags?.some((h: string) => h.startsWith('HASHTAG:') || h.startsWith('#'))).map((campaign) => (
-                  <div key={campaign.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-white font-medium">{campaign.name || 'Hashtag Campaign'}</h3>
-                      <span className={`px-3 py-1 rounded-full text-xs ${campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'}`}>
-                        {campaign.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {campaign.hashtags?.filter((h: string) => h.startsWith('HASHTAG:') || h.startsWith('#')).map((h: string, i: number) => (
-                        <span key={i} className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-sm">#{h.replace('HASHTAG:', '').replace('#', '')}</span>
-                      ))}
-                      {campaign.keywords?.map((k: string, i: number) => (
-                        <span key={`kw-${i}`} className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-sm">{k}</span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                {commentingCampaigns.filter(c => c.keywords?.length > 0 || c.hashtags?.some((h: string) => h.startsWith('HASHTAG:') || h.startsWith('#'))).length === 0 && (
-                  <div className="text-center py-12 text-gray-500">
-                    <p>No hashtag monitors yet.</p>
-                    <button onClick={() => setShowCommentingCampaignModal(true)} className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg">Add Hashtag Monitor</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          ) : commentingAgentView === 'my-profile' ? (
-          <div className="min-h-screen bg-gray-900 p-6">
-            <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-              <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
-            </button>
-            <div className="max-w-4xl">
-              <h1 className="text-2xl font-bold text-white mb-2">My Profile</h1>
-              <p className="text-gray-400 mb-6">Monitor your own posts and auto-reply to comments from your audience.</p>
-              <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
-                <UserCircle2 size={48} className="text-green-500 mx-auto mb-4" />
-                <p className="text-white font-medium mb-2">Setup My Content Monitoring</p>
-                <p className="text-gray-400 text-sm mb-4">Configure monitoring for your LinkedIn profile, company pages, and posts with lead capture options.</p>
-                <button
-                  onClick={() => {
-                    setMyContentMode(true);
-                    setShowCommentingCampaignModal(true);
-                  }}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  Setup My Content
+            commentingAgentView === 'approve' && selectedWorkspaceId ? (
+              <CommentApprovalWorkflow
+                workspaceId={selectedWorkspaceId}
+                onBack={() => setCommentingAgentView('dashboard')}
+              />
+            ) : commentingAgentView === 'profiles' ? (
+              <div className="min-h-screen bg-gray-900 p-6">
+                <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                  <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
                 </button>
-              </div>
-            </div>
-          </div>
-          ) : (
-          <div className="min-h-screen bg-gray-900">
-            <div className="w-full space-y-6">
-              {/* Header */}
-              <div className="flex items-center justify-end">
-                <button
-                  onClick={() => setShowCommentingCampaignModal(true)}
-                  className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                >
-                  <Plus size={20} />
-                  Add Monitor
-                </button>
-              </div>
-
-              {/* Stats Overview */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center">
-                      <Target size={16} className="text-white" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-white">{commentingCampaigns.filter(c => c.status === 'active').length}</p>
-                      <p className="text-xs text-gray-400">Active Monitors</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">{commentingCampaigns.length} total</p>
-                </div>
-
-                <div
-                  onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/approve`)}
-                  className="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-amber-500 transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center">
-                      <Clock size={16} className="text-white" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-white">{pendingCommentsLoading ? '...' : pendingComments.length}</p>
-                      <p className="text-xs text-gray-400 group-hover:text-amber-400 transition-colors">Pending Approval</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">Awaiting review</p>
-                </div>
-
-                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                      <CheckCircle size={16} className="text-white" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-white">0</p>
-                      <p className="text-xs text-gray-400">Posted Today</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">0 / 30 daily limit</p>
-                </div>
-
-                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                      <BarChart3 size={16} className="text-white" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-white">--%</p>
-                      <p className="text-xs text-gray-400">Engagement Rate</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">Average</p>
-                </div>
-              </div>
-
-              {/* Main Navigation Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-
-                {/* Card 1: Personal Profiles */}
-                <div
-                  onClick={() => setCommentingAgentView('profiles')}
-                  className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-pink-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 bg-pink-600/20 rounded-xl flex items-center justify-center group-hover:bg-pink-600/30 transition-colors">
-                      <Target size={24} className="text-pink-500" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-400">
-                        {commentingCampaigns.filter(c => c.status === 'active' && c.hashtags?.some(h => h.startsWith('PROFILE:'))).length} Active
-                      </span>
-                      <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-pink-400 transition-colors">Personal Profiles</h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Monitor and engage with specific LinkedIn user profiles. Build relationships with influencers and leads.
-                  </p>
-                  <button className="text-pink-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                    View Campaigns <ArrowRight size={16} />
-                  </button>
-                </div>
-
-                {/* Card 2: Company Pages */}
-                <div
-                  onClick={() => setCommentingAgentView('companies')}
-                  className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-blue-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
-                      <Building2 size={24} className="text-blue-500" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-400">
-                        {commentingCampaigns.filter(c => c.status === 'active' && c.hashtags?.some(h => h.startsWith('COMPANY:'))).length} Active
-                      </span>
-                      <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Company Pages</h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Track competitors or partners. Engage with company updates to increase brand visibility.
-                  </p>
-                  <button className="text-blue-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                    View Companies <ArrowRight size={16} />
-                  </button>
-                </div>
-
-                {/* Card 3: Hashtags */}
-                <div
-                  onClick={() => setCommentingAgentView('hashtags')}
-                  className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center group-hover:bg-purple-600/30 transition-colors">
-                      <Hash size={24} className="text-purple-500" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-400">
-                        {commentingCampaigns.filter(c => c.status === 'active' && (c.keywords?.length > 0 || c.hashtags?.some(h => h.startsWith('#') || h.startsWith('HASHTAG:')))).length} Active
-                      </span>
-                      <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Hashtags</h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Discover posts by topic or keyword (e.g. #SaaS, #AI). Find trends and join relevant conversations.
-                  </p>
-                  <button className="text-purple-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                    View Hashtags <ArrowRight size={16} />
-                  </button>
-                </div>
-
-                {/* Card 4: My Profile */}
-                <div
-                  onClick={() => setCommentingAgentView('my-profile')}
-                  className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-green-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 bg-green-600/20 rounded-xl flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
-                      <UserCircle2 size={24} className="text-green-500" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-400">
-                        View
-                      </span>
-                      <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">My Profile</h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Auto-reply to comments on your own posts. Engage with your audience and capture leads.
-                  </p>
-                  <button className="text-green-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                    Manage My Posts <ArrowRight size={16} />
-                  </button>
-                </div>
-
-              </div>
-            </div>
-          </div>
-          )
-          ) : activeMenuItem === 'analytics' ? (
-          <Analytics workspaceId={currentWorkspace?.id || null} />
-          ) : activeMenuItem === 'audit' ? (
-          <AuditTrail />
-          ) : activeMenuItem === 'settings' ? (
-          <div className="min-h-screen">
-            <div className="w-full">
-              {/* Main Settings Tiles */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                {/* LinkedIn Integration */}
-                <SimpleTileCard
-                  title="LinkedIn Settings"
-                  description="Configure LinkedIn account connections, automation settings, and personalization preferences for outreach campaigns."
-                  icon={LinkedinIcon}
-                  color="blue"
-                  onClick={() => setShowLinkedInSettingsModal(true)}
-                />
-
-                {/* Email Integration */}
-                <SimpleTileCard
-                  title="Email Integration"
-                  description="Connect Google, Microsoft, or SMTP email accounts for automated campaigns and prospect outreach."
-                  icon={Mail}
-                  color="green"
-                  onClick={() => setShowEmailIntegrationModal(true)}
-                />
-
-                {/* ReachInbox Integration */}
-                <SimpleTileCard
-                  title="ReachInbox"
-                  description="Configure ReachInbox API integration for email campaigns. Push leads to existing ReachInbox campaigns."
-                  icon={Send}
-                  color="pink"
-                  onClick={() => setShowReachInboxModal(true)}
-                />
-
-                {/* User Profile & Country */}
-                <SimpleTileCard
-                  title="User Profile"
-                  description="Manage your account details, profile country for proxy assignment, and personal preferences."
-                  icon={User}
-                  color="blue"
-                  onClick={() => setShowUserProfileModal(true)}
-                />
-
-                {/* BrightData Proxy Country (Advanced) */}
-                <SimpleTileCard
-                  title="LinkedIn Proxy Management"
-                  description="Advanced proxy configuration for LinkedIn accounts. Manually override automatic proxy assignment per account."
-                  icon={Globe}
-                  color="purple"
-                  onClick={() => setShowProxyCountryModal(true)}
-                />
-
-                {/* Blacklists */}
-                <SimpleTileCard
-                  title="Blacklists"
-                  description="Block companies, people, or profiles from outreach. Upload CSV or manage individual entries."
-                  icon={Ban}
-                  color="red"
-                  onClick={() => setShowBlacklistModal(true)}
-                />
-
-                {/* Calendar Integration */}
-                <SimpleTileCard
-                  title="Calendar"
-                  description="Connect Google Calendar, Outlook, Calendly, or Cal.com for meeting scheduling and availability."
-                  icon={Calendar}
-                  color="blue"
-                  onClick={() => setShowCalendarIntegrationModal(true)}
-                />
-
-              </div>
-            </div>
-          </div>
-          ) : activeMenuItem === 'workspace' ? (
-          <div className="min-h-screen">
-            <div className="w-full">
-              {/* Main Workspace Tiles */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                {/* Team Management */}
-                <SimpleTileCard
-                  title="Team Management"
-                  description="Invite team members, manage roles and permissions, and configure workspace access for your organization."
-                  icon={Users}
-                  color="blue"
-                  onClick={() => {
-                    console.log('Team Management clicked, workspaces:', workspaces.length);
-                    console.log('Setting showTeamManagementModal to true');
-                    setShowTeamManagementModal(true);
-                  }}
-                />
-
-                {/* Manage Subscription - Only for credit card customers */}
-                {(() => {
-                  // Find target workspace
-                  const targetWorkspace = isSuperAdmin
-                    ? workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0]
-                    : workspaces.find(ws =>
-                      ws.owner_id === user?.id ||
-                      ws.workspace_members?.some((member: any) => member.user_id === user?.id)
-                    );
-
-                  // Check if direct billing (3cubed customer)
-                  const isDirectBilling = targetWorkspace?.organization_id && targetWorkspace?.slug?.includes('3cubed');
-
-                  // Only show for credit card customers
-                  if (isDirectBilling) {
-                    return null;
-                  }
-
-                  return (
-                    <SimpleTileCard
-                      title="Manage Subscription"
-                      description="View your subscription details, update payment methods, and access billing history. Manage your plan and invoices."
-                      icon={CreditCard}
-                      color="green"
-                      onClick={() => setShowManageSubscriptionModal(true)}
-                    />
-                  );
-                })()}
-
-                {/* Workspace Settings */}
-                <SimpleTileCard
-                  title="Workspace Settings"
-                  description="Configure workspace name, branding, and general settings. Customize your workspace preferences and appearance."
-                  icon={Settings}
-                  color="blue"
-                  onClick={() => setShowWorkspaceSettingsModal(true)}
-                />
-
-                {/* CRM Integration */}
-                <SimpleTileCard
-                  title="CRM Integration"
-                  description="Connect Salesforce, HubSpot, Pipedrive, and other CRMs. Configure field mapping and sync settings for seamless data flow."
-                  icon={Database}
-                  color="cyan"
-                  onClick={() => setShowCrmIntegrationModal(true)}
-                />
-
-                {/* Integrations & Tools */}
-                <SimpleTileCard
-                  title="Integrations & Tools"
-                  description="Manage LinkedIn Premium connections, email providers, and third-party tool integrations for your outreach stack."
-                  icon={Zap}
-                  color="yellow"
-                  onClick={() => setShowIntegrationsToolsModal(true)}
-                />
-
-                {/* Security & Compliance */}
-                <SimpleTileCard
-                  title="Security & Compliance"
-                  description="Configure security settings, compliance requirements, audit logs, and data protection policies for your workspace."
-                  icon={Shield}
-                  color="pink"
-                  onClick={() => setShowSecurityComplianceModal(true)}
-                />
-
-                {/* Analytics & Reporting */}
-                <SimpleTileCard
-                  title="Analytics & Reporting"
-                  description="Access workspace-level analytics, performance metrics, and custom reporting features for team productivity insights."
-                  icon={BarChart3}
-                  color="indigo"
-                  onClick={() => setShowAnalyticsReportingModal(true)}
-                />
-
-              </div>
-
-            </div>
-          </div>
-          ) : activeMenuItem === 'admin' ? (
-          /* WORKSPACE ADMIN PAGE */
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold text-white flex items-center">
-                  <Shield className="mr-3 text-primary" size={36} />
-                  Workspace Administration
-                </h1>
-                <button
-                  onClick={() => setActiveMenuItem('chat')}
-                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
-                >
-                  ← Back to Chat
-                </button>
-              </div>
-
-              {/* Workspace Management */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">My Workspace</h2>
-
-                {workspacesLoading ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-400">Loading workspace information...</div>
-                  </div>
-                ) : workspaces.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-700 rounded-lg">
-                    <Shield className="mx-auto mb-4 text-gray-600" size={48} />
-                    <p className="text-gray-400">No workspace access available</p>
-                    <p className="text-gray-500 text-sm">Contact your administrator for workspace access</p>
-                  </div>
-                ) : (
+                <div className="max-w-4xl">
+                  <h1 className="text-2xl font-bold text-white mb-2">Personal Profiles</h1>
+                  <p className="text-gray-400 mb-6">Monitor specific LinkedIn user profiles for new posts and auto-generate comments.</p>
                   <div className="space-y-4">
-                    {workspaces.filter(workspace => workspace.owner_id === user?.id ||
-                      workspace.workspace_members?.some((member: any) => member.user_id === user?.id && member.role === 'admin')).map((workspace) => (
-                        <div key={workspace.id} className="bg-gray-700 rounded-lg p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div>
-                              <div className="flex items-center space-x-2 mb-2">
-                                <h3 className="text-white font-semibold text-lg">{workspace.name}</h3>
-                                {workspace.slug && (
-                                  <span className={`text-xs px-2 py-1 rounded ${workspace.slug === 'innovareai'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-green-600 text-white'
-                                    }`}>
-                                    {workspace.slug}
-                                  </span>
-                                )}
-                                {workspace.owner_id === user?.id && (
-                                  <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded">Owner</span>
-                                )}
-                              </div>
-                              <p className="text-gray-400 text-sm">
-                                Created {new Date(workspace.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-gray-400">
-                                {workspace.workspace_members?.length || 0} members
-                              </span>
-                              {/* Only super admins can invite members */}
-                              {isSuperAdmin && (
-                                <button
-                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-1 transition-colors"
-                                  onClick={() => {
-                                    setInviteWorkspaceId(workspace.id);
-                                    setShowInviteUser(true);
-                                  }}
-                                >
-                                  <UserPlus size={16} />
-                                  <span>Invite Member</span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Workspace Members List */}
-                          {workspace.workspace_members && workspace.workspace_members.length > 0 ? (
-                            <div className="mt-4">
-                              <h4 className="text-white font-medium mb-3">Team Members</h4>
-                              <div className="space-y-2">
-                                {workspace.workspace_members.map((member: any, idx: number) => (
-                                  <div key={idx} className="flex items-center justify-between bg-gray-600 px-4 py-2 rounded-lg">
-                                    <div className="flex items-center space-x-3">
-                                      <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                                        <span className="text-white text-sm font-medium">
-                                          {member.users?.email ? member.users.email.charAt(0).toUpperCase() : 'U'}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <p className="text-white font-medium">
-                                          {member.users?.email || `User ${member.user_id.slice(0, 8)}`}
-                                        </p>
-                                        <p className="text-gray-400 text-sm">
-                                          Joined {new Date(member.joined_at).toLocaleDateString()}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <span className={`text-xs px-2 py-1 rounded ${member.role === 'owner' ? 'bg-purple-600 text-white' :
-                                        member.role === 'admin' ? 'bg-blue-600 text-white' :
-                                          'bg-gray-500 text-white'
-                                        }`}>
-                                        {member.role}
-                                      </span>
-                                      {workspace.owner_id === user?.id && member.role !== 'owner' && (
-                                        <button
-                                          className="text-red-400 hover:text-red-300 text-sm"
-                                          onClick={() => {
-                                            if (confirm('Remove this member from the workspace?')) {
-                                              // TODO: Implement member removal
-                                              showNotification('error', 'Member removal functionality will be implemented');
-                                            }
-                                          }}
-                                        >
-                                          Remove
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="mt-4 text-gray-500 text-sm bg-gray-600 rounded-lg p-4 text-center">
-                              No team members yet - invite your first coworker!
-                            </div>
-                          )}
-
-                          {/* Workspace Settings */}
-                          {workspace.owner_id === user?.id && (
-                            <div className="mt-6 pt-4 border-t border-gray-600">
-                              <h4 className="text-white font-medium mb-3">Workspace Settings</h4>
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-gray-300">Workspace Name</p>
-                                  <p className="text-gray-400 text-sm">Change the display name of this workspace</p>
-                                </div>
-                                <button className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm transition-colors">
-                                  Edit Name
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                    {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('PROFILE:'))).map((campaign) => (
+                      <div key={campaign.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-white font-medium">{campaign.name || 'Profile Campaign'}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs ${campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'}`}>
+                            {campaign.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
                         </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          ) : activeMenuItem === 'profile' ? (
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold text-white flex items-center">
-                  <User className="mr-3" size={36} />
-                  User Profile
-                </h1>
-                <button
-                  onClick={() => setActiveMenuItem('chat')}
-                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
-                >
-                  ← Back to Chat
-                </button>
-              </div>
-
-              {/* User Profile Section */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">Profile Information</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={user?.email || ''}
-                      disabled
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
-                    />
-                    <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>
-                      <input
-                        type="text"
-                        value={user?.user_metadata?.first_name || ''}
-                        readOnly
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                        placeholder="Enter first name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
-                      <input
-                        type="text"
-                        value={user?.user_metadata?.last_name || ''}
-                        readOnly
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-                        placeholder="Enter last name"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Account Created</label>
-                    <input
-                      type="text"
-                      value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-                      disabled
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
-                    />
-                  </div>
-
-                  {/* Profile Country for Proxy Configuration */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">🌍 Profile Country</label>
-                    <select
-                      value={profileCountry}
-                      onChange={async (e) => {
-                        const newCountry = e.target.value;
-                        setProfileCountry(newCountry);
-                        setProfileCountryLoading(true);
-
-                        try {
-                          const response = await fetch('/api/profile/update-country', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ country: newCountry })
-                          });
-
-                          if (response.ok) {
-                            showNotification('success', 'Profile country updated! This will be used for LinkedIn proxy assignment.');
-                          } else {
-                            const data = await response.json();
-                            showNotification('error', data.error || 'Failed to update country');
-                          }
-                        } catch (error) {
-                          showNotification('error', 'Network error updating country');
-                        } finally {
-                          setProfileCountryLoading(false);
-                        }
-                      }}
-                      disabled={profileCountryLoading}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    >
-                      <option value="">Select your country...</option>
-                      <option value="us">🇺🇸 United States</option>
-                      <option value="gb">🇬🇧 United Kingdom</option>
-                      <option value="ca">🇨🇦 Canada</option>
-                      <option value="de">🇩🇪 Germany</option>
-                      <option value="fr">🇫🇷 France</option>
-                      <option value="au">🇦🇺 Australia</option>
-                      <option value="nl">🇳🇱 Netherlands</option>
-                      <option value="br">🇧🇷 Brazil</option>
-                      <option value="es">🇪🇸 Spain</option>
-                      <option value="it">🇮🇹 Italy</option>
-                      <option value="jp">🇯🇵 Japan</option>
-                      <option value="sg">🇸🇬 Singapore</option>
-                      <option value="in">🇮🇳 India</option>
-                      <option value="at">🇦🇹 Austria</option>
-                      <option value="ch">🇨🇭 Switzerland</option>
-                      <option value="ar">🇦🇷 Argentina</option>
-                      <option value="be">🇧🇪 Belgium</option>
-                      <option value="bg">🇧🇬 Bulgaria</option>
-                      <option value="hr">🇭🇷 Croatia</option>
-                      <option value="cy">🇨🇾 Cyprus</option>
-                      <option value="cz">🇨🇿 Czech Republic</option>
-                      <option value="dk">🇩🇰 Denmark</option>
-                      <option value="hk">🇭🇰 Hong Kong</option>
-                      <option value="mx">🇲🇽 Mexico</option>
-                      <option value="no">🇳🇴 Norway</option>
-                      <option value="pl">🇵🇱 Poland</option>
-                      <option value="pt">🇵🇹 Portugal</option>
-                      <option value="ro">🇷🇴 Romania</option>
-                      <option value="za">🇿🇦 South Africa</option>
-                      <option value="se">🇸🇪 Sweden</option>
-                      <option value="tr">🇹🇷 Turkey</option>
-                      <option value="ua">🇺🇦 Ukraine</option>
-                      <option value="ae">🇦🇪 UAE</option>
-                    </select>
-                    <p className="text-gray-400 text-xs mt-1">
-                      {profileCountryLoading ? '⏳ Updating...' : '📍 This country will be used for LinkedIn proxy assignment'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-
-              {/* App Settings */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">App Settings</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white font-medium">Clear Chat History</h3>
-                      <p className="text-gray-400 text-sm">Remove all conversation history from this device</p>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        if (confirm('Clear all conversation history? This cannot be undone.')) {
-                          await resetConversation();
-                          setActiveMenuItem('chat');
-                          showNotification('success', 'Chat history cleared successfully');
-                        }
-                      }}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-                    >
-                      Clear History
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white font-medium">Change Password</h3>
-                      <p className="text-gray-400 text-sm">Update your account password</p>
-                    </div>
-                    <button
-                      onClick={() => setShowPasswordChange(true)}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
-                    >
-                      Change Password
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Account Actions */}
-              <div className="bg-gray-800 rounded-lg p-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">Account Actions</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white font-medium">Sign Out</h3>
-                      <p className="text-gray-400 text-sm">Sign out of your SAM AI account</p>
-                    </div>
-                    <button
-                      onClick={handleLogout}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-                    >
-                      <LogOut size={16} />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          ) : activeMenuItem === 'superadmin' ? (
-          /* SUPER ADMIN PAGE */
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold text-white flex items-center">
-                  <Shield className="mr-3 text-purple-500" size={36} />
-                  Super Admin
-                </h1>
-                <button
-                  onClick={() => setActiveMenuItem('chat')}
-                  className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
-                >
-                  ← Back to Chat
-                </button>
-              </div>
-
-              {/* Super Admin Controls */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">System Overview</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="text-3xl font-bold text-white">{workspaces.length}</div>
-                    <div className="text-gray-400 text-sm">Total Workspaces</div>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="text-3xl font-bold text-green-400">Active</div>
-                    <div className="text-gray-400 text-sm">System Status</div>
-                  </div>
-                  <div className="bg-gray-700 rounded-lg p-4">
-                    <div className="text-3xl font-bold text-purple-400">v2.0</div>
-                    <div className="text-gray-400 text-sm">Platform Version</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* All Workspaces */}
-              <div className="bg-gray-800 rounded-lg p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-white mb-6">All Workspaces</h2>
-                {workspacesLoading ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-400">Loading workspaces...</div>
-                  </div>
-                ) : workspaces.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-700 rounded-lg">
-                    <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
-                    <p className="text-gray-400">No workspaces found</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {workspaces.map((workspace) => (
-                      <div key={workspace.id} className="bg-gray-700 rounded-lg p-4 flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h3 className="text-white font-medium">{workspace.name}</h3>
-                            {workspace.slug && (
-                              <span className={`text-xs px-2 py-1 rounded ${workspace.slug === 'innovareai'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-green-600 text-white'
-                                }`}>
-                                {workspace.slug}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-gray-400 text-sm">
-                            {workspace.workspace_members?.length || 0} {(workspace.workspace_members?.length || 0) === 1 ? 'member' : 'members'} · Created {new Date(workspace.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="text-gray-400 text-sm">
-                          ID: {workspace.id.slice(0, 8)}...
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {campaign.hashtags?.filter((h: string) => h.startsWith('PROFILE:')).map((h: string, i: number) => (
+                            <span key={i} className="px-2 py-1 bg-pink-600/20 text-pink-400 rounded text-sm">{h.replace('PROFILE:', '')}</span>
+                          ))}
                         </div>
                       </div>
                     ))}
+                    {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('PROFILE:'))).length === 0 && (
+                      <div className="text-center py-12 text-gray-500">
+                        <p>No profile monitors yet.</p>
+                        <button onClick={() => setShowCommentingCampaignModal(true)} className="mt-4 px-4 py-2 bg-pink-600 text-white rounded-lg">Add Profile Monitor</button>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
-
-              {/* Admin Actions - Only visible to super admins */}
-              {isSuperAdmin && (
-                <div className="bg-gray-800 rounded-lg p-6">
-                  <h2 className="text-2xl font-semibold text-white mb-6">Admin Actions</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ) : commentingAgentView === 'companies' ? (
+              <div className="min-h-screen bg-gray-900 p-6">
+                <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                  <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
+                </button>
+                <div className="max-w-4xl">
+                  <h1 className="text-2xl font-bold text-white mb-2">Company Pages</h1>
+                  <p className="text-gray-400 mb-6">Monitor LinkedIn company pages for updates and engage with their content.</p>
+                  <div className="space-y-4">
+                    {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('COMPANY:'))).map((campaign) => (
+                      <div key={campaign.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-white font-medium">{campaign.name || 'Company Campaign'}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs ${campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'}`}>
+                            {campaign.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {campaign.hashtags?.filter((h: string) => h.startsWith('COMPANY:')).map((h: string, i: number) => (
+                            <span key={i} className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm flex items-center gap-1"><Building2 size={14} />{h.replace('COMPANY:', '')}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('COMPANY:'))).length === 0 && (
+                      <div className="text-center py-12 text-gray-500">
+                        <p>No company monitors yet.</p>
+                        <button onClick={() => setShowCommentingCampaignModal(true)} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">Add Company Monitor</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : commentingAgentView === 'hashtags' ? (
+              <div className="min-h-screen bg-gray-900 p-6">
+                <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                  <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
+                </button>
+                <div className="max-w-4xl">
+                  <h1 className="text-2xl font-bold text-white mb-2">Hashtags & Keywords</h1>
+                  <p className="text-gray-400 mb-6">Discover posts by topic or keyword and join relevant conversations.</p>
+                  <div className="space-y-4">
+                    {commentingCampaigns.filter(c => c.keywords?.length > 0 || c.hashtags?.some((h: string) => h.startsWith('HASHTAG:') || h.startsWith('#'))).map((campaign) => (
+                      <div key={campaign.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-white font-medium">{campaign.name || 'Hashtag Campaign'}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs ${campaign.status === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-gray-600/20 text-gray-400'}`}>
+                            {campaign.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {campaign.hashtags?.filter((h: string) => h.startsWith('HASHTAG:') || h.startsWith('#')).map((h: string, i: number) => (
+                            <span key={i} className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-sm">#{h.replace('HASHTAG:', '').replace('#', '')}</span>
+                          ))}
+                          {campaign.keywords?.map((k: string, i: number) => (
+                            <span key={`kw-${i}`} className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-sm">{k}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {commentingCampaigns.filter(c => c.keywords?.length > 0 || c.hashtags?.some((h: string) => h.startsWith('HASHTAG:') || h.startsWith('#'))).length === 0 && (
+                      <div className="text-center py-12 text-gray-500">
+                        <p>No hashtag monitors yet.</p>
+                        <button onClick={() => setShowCommentingCampaignModal(true)} className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg">Add Hashtag Monitor</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : commentingAgentView === 'my-profile' ? (
+              <div className="min-h-screen bg-gray-900 p-6">
+                <button onClick={() => setCommentingAgentView('dashboard')} className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                  <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
+                </button>
+                <div className="max-w-4xl">
+                  <h1 className="text-2xl font-bold text-white mb-2">My Profile</h1>
+                  <p className="text-gray-400 mb-6">Monitor your own posts and auto-reply to comments from your audience.</p>
+                  <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
+                    <UserCircle2 size={48} className="text-green-500 mx-auto mb-4" />
+                    <p className="text-white font-medium mb-2">Setup My Content Monitoring</p>
+                    <p className="text-gray-400 text-sm mb-4">Configure monitoring for your LinkedIn profile, company pages, and posts with lead capture options.</p>
                     <button
                       onClick={() => {
-                        setShowCreateWorkspace(true);
+                        setMyContentMode(true);
+                        setShowCommentingCampaignModal(true);
                       }}
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                      className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
                     >
-                      <Plus size={20} />
-                      <span>Create Workspace</span>
-                    </button>
-                    <button
-                      onClick={() => setShowInviteUser(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
-                    >
-                      <UserPlus size={20} />
-                      <span>Invite User</span>
+                      Setup My Content
                     </button>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-          ) : showStarterScreen ? (
-          /* STARTER SCREEN */
-          <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
-            <div className="mb-12">
-              <img
-                src="/SAM.jpg"
-                alt="Sam AI"
-                className="w-48 h-48 rounded-full object-cover shadow-lg"
-                style={{ objectPosition: 'center 30%' }}
-              />
-            </div>
+              </div>
+            ) : (
+              <div className="min-h-screen bg-gray-900">
+                <div className="w-full space-y-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-end">
+                    <button
+                      onClick={() => setShowCommentingCampaignModal(true)}
+                      className="px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                    >
+                      <Plus size={20} />
+                      Add Monitor
+                    </button>
+                  </div>
 
-            <div className="text-center">
-              <h2 className="text-white text-2xl font-medium">
-                What do you want to get done today?
-              </h2>
-            </div>
-          </div>
-          ) : (
-          /* CHAT MESSAGES */
-          <div
-            ref={messagesContainerRef}
-            className="space-y-4"
-          >
-            {/* Sam is thinking indicator */}
-            {isSending && (
-              <div className="flex justify-start">
-                <div className="max-w-[70%]">
-                  <div className="flex items-start space-x-3 min-w-0">
-                    <img
-                      src="/SAM.jpg"
-                      alt="Sam AI"
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
-                      style={{ objectPosition: 'center 30%' }}
-                    />
-                    <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl overflow-hidden min-w-0 flex-1">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                        <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                        <span className="text-sm text-gray-300 ml-2">Sam is thinking...</span>
+                  {/* Stats Overview */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center">
+                          <Target size={16} className="text-white" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-white">{commentingCampaigns.filter(c => c.status === 'active').length}</p>
+                          <p className="text-xs text-gray-400">Active Monitors</p>
+                        </div>
                       </div>
+                      <p className="text-xs text-gray-500">{commentingCampaigns.length} total</p>
+                    </div>
+
+                    <div
+                      onClick={() => router.push(`/workspace/${currentWorkspace?.id}/commenting-agent/approve`)}
+                      className="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-amber-500 transition-all"
+                    >
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center">
+                          <Clock size={16} className="text-white" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-white">{pendingCommentsLoading ? '...' : pendingComments.length}</p>
+                          <p className="text-xs text-gray-400 group-hover:text-amber-400 transition-colors">Pending Approval</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500">Awaiting review</p>
+                    </div>
+
+                    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                          <CheckCircle size={16} className="text-white" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-white">0</p>
+                          <p className="text-xs text-gray-400">Posted Today</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500">0 / 30 daily limit</p>
+                    </div>
+
+                    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                          <BarChart3 size={16} className="text-white" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-white">--%</p>
+                          <p className="text-xs text-gray-400">Engagement Rate</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500">Average</p>
+                    </div>
+                  </div>
+
+                  {/* Main Navigation Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+                    {/* Card 1: Personal Profiles */}
+                    <div
+                      onClick={() => setCommentingAgentView('profiles')}
+                      className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-pink-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-pink-600/20 rounded-xl flex items-center justify-center group-hover:bg-pink-600/30 transition-colors">
+                          <Target size={24} className="text-pink-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-400">
+                            {commentingCampaigns.filter(c => c.status === 'active' && c.hashtags?.some(h => h.startsWith('PROFILE:'))).length} Active
+                          </span>
+                          <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-pink-400 transition-colors">Personal Profiles</h3>
+                      <p className="text-gray-400 text-sm mb-4">
+                        Monitor and engage with specific LinkedIn user profiles. Build relationships with influencers and leads.
+                      </p>
+                      <button className="text-pink-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                        View Campaigns <ArrowRight size={16} />
+                      </button>
+                    </div>
+
+                    {/* Card 2: Company Pages */}
+                    <div
+                      onClick={() => setCommentingAgentView('companies')}
+                      className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-blue-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
+                          <Building2 size={24} className="text-blue-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-400">
+                            {commentingCampaigns.filter(c => c.status === 'active' && c.hashtags?.some(h => h.startsWith('COMPANY:'))).length} Active
+                          </span>
+                          <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Company Pages</h3>
+                      <p className="text-gray-400 text-sm mb-4">
+                        Track competitors or partners. Engage with company updates to increase brand visibility.
+                      </p>
+                      <button className="text-blue-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                        View Companies <ArrowRight size={16} />
+                      </button>
+                    </div>
+
+                    {/* Card 3: Hashtags */}
+                    <div
+                      onClick={() => setCommentingAgentView('hashtags')}
+                      className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center group-hover:bg-purple-600/30 transition-colors">
+                          <Hash size={24} className="text-purple-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-400">
+                            {commentingCampaigns.filter(c => c.status === 'active' && (c.keywords?.length > 0 || c.hashtags?.some(h => h.startsWith('#') || h.startsWith('HASHTAG:')))).length} Active
+                          </span>
+                          <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Hashtags</h3>
+                      <p className="text-gray-400 text-sm mb-4">
+                        Discover posts by topic or keyword (e.g. #SaaS, #AI). Find trends and join relevant conversations.
+                      </p>
+                      <button className="text-purple-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                        View Hashtags <ArrowRight size={16} />
+                      </button>
+                    </div>
+
+                    {/* Card 4: My Profile */}
+                    <div
+                      onClick={() => setCommentingAgentView('my-profile')}
+                      className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-green-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 bg-green-600/20 rounded-xl flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
+                          <UserCircle2 size={24} className="text-green-500" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-400">
+                            View
+                          </span>
+                          <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">My Profile</h3>
+                      <p className="text-gray-400 text-sm mb-4">
+                        Auto-reply to comments on your own posts. Engage with your audience and capture leads.
+                      </p>
+                      <button className="text-green-400 text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                        Manage My Posts <ArrowRight size={16} />
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            )
+          ) : activeMenuItem === 'analytics' ? (
+            <Analytics workspaceId={currentWorkspace?.id || null} />
+          ) : activeMenuItem === 'audit' ? (
+            <AuditTrail />
+          ) : activeMenuItem === 'settings' ? (
+            <div className="min-h-screen">
+              <div className="w-full">
+                {/* Main Settings Tiles */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                  {/* LinkedIn Integration */}
+                  <SimpleTileCard
+                    title="LinkedIn Settings"
+                    description="Configure LinkedIn account connections, automation settings, and personalization preferences for outreach campaigns."
+                    icon={LinkedinIcon}
+                    color="blue"
+                    onClick={() => setShowLinkedInSettingsModal(true)}
+                  />
+
+                  {/* Email Integration */}
+                  <SimpleTileCard
+                    title="Email Integration"
+                    description="Connect Google, Microsoft, or SMTP email accounts for automated campaigns and prospect outreach."
+                    icon={Mail}
+                    color="green"
+                    onClick={() => setShowEmailIntegrationModal(true)}
+                  />
+
+                  {/* ReachInbox Integration */}
+                  <SimpleTileCard
+                    title="ReachInbox"
+                    description="Configure ReachInbox API integration for email campaigns. Push leads to existing ReachInbox campaigns."
+                    icon={Send}
+                    color="pink"
+                    onClick={() => setShowReachInboxModal(true)}
+                  />
+
+                  {/* User Profile & Country */}
+                  <SimpleTileCard
+                    title="User Profile"
+                    description="Manage your account details, profile country for proxy assignment, and personal preferences."
+                    icon={User}
+                    color="blue"
+                    onClick={() => setShowUserProfileModal(true)}
+                  />
+
+                  {/* BrightData Proxy Country (Advanced) */}
+                  <SimpleTileCard
+                    title="LinkedIn Proxy Management"
+                    description="Advanced proxy configuration for LinkedIn accounts. Manually override automatic proxy assignment per account."
+                    icon={Globe}
+                    color="purple"
+                    onClick={() => setShowProxyCountryModal(true)}
+                  />
+
+                  {/* Blacklists */}
+                  <SimpleTileCard
+                    title="Blacklists"
+                    description="Block companies, people, or profiles from outreach. Upload CSV or manage individual entries."
+                    icon={Ban}
+                    color="red"
+                    onClick={() => setShowBlacklistModal(true)}
+                  />
+
+                  {/* Calendar Integration */}
+                  <SimpleTileCard
+                    title="Calendar"
+                    description="Connect Google Calendar, Outlook, Calendly, or Cal.com for meeting scheduling and availability."
+                    icon={Calendar}
+                    color="blue"
+                    onClick={() => setShowCalendarIntegrationModal(true)}
+                  />
+
+                </div>
+              </div>
+            </div>
+          ) : activeMenuItem === 'workspace' ? (
+            <div className="min-h-screen">
+              <div className="w-full">
+                {/* Main Workspace Tiles */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                  {/* Team Management */}
+                  <SimpleTileCard
+                    title="Team Management"
+                    description="Invite team members, manage roles and permissions, and configure workspace access for your organization."
+                    icon={Users}
+                    color="blue"
+                    onClick={() => {
+                      console.log('Team Management clicked, workspaces:', workspaces.length);
+                      console.log('Setting showTeamManagementModal to true');
+                      setShowTeamManagementModal(true);
+                    }}
+                  />
+
+                  {/* Manage Subscription - Only for credit card customers */}
+                  {(() => {
+                    // Find target workspace
+                    const targetWorkspace = isSuperAdmin
+                      ? workspaces.find(ws => ws.name === 'InnovareAI Workspace') || workspaces[0]
+                      : workspaces.find(ws =>
+                        ws.owner_id === user?.id ||
+                        ws.workspace_members?.some((member: any) => member.user_id === user?.id)
+                      );
+
+                    // Check if direct billing (3cubed customer)
+                    const isDirectBilling = targetWorkspace?.organization_id && targetWorkspace?.slug?.includes('3cubed');
+
+                    // Only show for credit card customers
+                    if (isDirectBilling) {
+                      return null;
+                    }
+
+                    return (
+                      <SimpleTileCard
+                        title="Manage Subscription"
+                        description="View your subscription details, update payment methods, and access billing history. Manage your plan and invoices."
+                        icon={CreditCard}
+                        color="green"
+                        onClick={() => setShowManageSubscriptionModal(true)}
+                      />
+                    );
+                  })()}
+
+                  {/* Workspace Settings */}
+                  <SimpleTileCard
+                    title="Workspace Settings"
+                    description="Configure workspace name, branding, and general settings. Customize your workspace preferences and appearance."
+                    icon={Settings}
+                    color="blue"
+                    onClick={() => setShowWorkspaceSettingsModal(true)}
+                  />
+
+                  {/* CRM Integration */}
+                  <SimpleTileCard
+                    title="CRM Integration"
+                    description="Connect Salesforce, HubSpot, Pipedrive, and other CRMs. Configure field mapping and sync settings for seamless data flow."
+                    icon={Database}
+                    color="cyan"
+                    onClick={() => setShowCrmIntegrationModal(true)}
+                  />
+
+                  {/* Integrations & Tools */}
+                  <SimpleTileCard
+                    title="Integrations & Tools"
+                    description="Manage LinkedIn Premium connections, email providers, and third-party tool integrations for your outreach stack."
+                    icon={Zap}
+                    color="yellow"
+                    onClick={() => setShowIntegrationsToolsModal(true)}
+                  />
+
+                  {/* Security & Compliance */}
+                  <SimpleTileCard
+                    title="Security & Compliance"
+                    description="Configure security settings, compliance requirements, audit logs, and data protection policies for your workspace."
+                    icon={Shield}
+                    color="pink"
+                    onClick={() => setShowSecurityComplianceModal(true)}
+                  />
+
+                  {/* Analytics & Reporting */}
+                  <SimpleTileCard
+                    title="Analytics & Reporting"
+                    description="Access workspace-level analytics, performance metrics, and custom reporting features for team productivity insights."
+                    icon={BarChart3}
+                    color="indigo"
+                    onClick={() => setShowAnalyticsReportingModal(true)}
+                  />
+
+                </div>
+
+              </div>
+            </div>
+          ) : activeMenuItem === 'admin' ? (
+            /* WORKSPACE ADMIN PAGE */
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                  <h1 className="text-3xl font-bold text-white flex items-center">
+                    <Shield className="mr-3 text-primary" size={36} />
+                    Workspace Administration
+                  </h1>
+                  <button
+                    onClick={() => setActiveMenuItem('chat')}
+                    className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                  >
+                    ← Back to Chat
+                  </button>
+                </div>
+
+                {/* Workspace Management */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">My Workspace</h2>
+
+                  {workspacesLoading ? (
+                    <div className="text-center py-8">
+                      <div className="text-gray-400">Loading workspace information...</div>
+                    </div>
+                  ) : workspaces.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-700 rounded-lg">
+                      <Shield className="mx-auto mb-4 text-gray-600" size={48} />
+                      <p className="text-gray-400">No workspace access available</p>
+                      <p className="text-gray-500 text-sm">Contact your administrator for workspace access</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {workspaces.filter(workspace => workspace.owner_id === user?.id ||
+                        workspace.workspace_members?.some((member: any) => member.user_id === user?.id && member.role === 'admin')).map((workspace) => (
+                          <div key={workspace.id} className="bg-gray-700 rounded-lg p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <h3 className="text-white font-semibold text-lg">{workspace.name}</h3>
+                                  {workspace.slug && (
+                                    <span className={`text-xs px-2 py-1 rounded ${workspace.slug === 'innovareai'
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-green-600 text-white'
+                                      }`}>
+                                      {workspace.slug}
+                                    </span>
+                                  )}
+                                  {workspace.owner_id === user?.id && (
+                                    <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded">Owner</span>
+                                  )}
+                                </div>
+                                <p className="text-gray-400 text-sm">
+                                  Created {new Date(workspace.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-gray-400">
+                                  {workspace.workspace_members?.length || 0} members
+                                </span>
+                                {/* Only super admins can invite members */}
+                                {isSuperAdmin && (
+                                  <button
+                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm flex items-center space-x-1 transition-colors"
+                                    onClick={() => {
+                                      setInviteWorkspaceId(workspace.id);
+                                      setShowInviteUser(true);
+                                    }}
+                                  >
+                                    <UserPlus size={16} />
+                                    <span>Invite Member</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Workspace Members List */}
+                            {workspace.workspace_members && workspace.workspace_members.length > 0 ? (
+                              <div className="mt-4">
+                                <h4 className="text-white font-medium mb-3">Team Members</h4>
+                                <div className="space-y-2">
+                                  {workspace.workspace_members.map((member: any, idx: number) => (
+                                    <div key={idx} className="flex items-center justify-between bg-gray-600 px-4 py-2 rounded-lg">
+                                      <div className="flex items-center space-x-3">
+                                        <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                                          <span className="text-white text-sm font-medium">
+                                            {member.users?.email ? member.users.email.charAt(0).toUpperCase() : 'U'}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <p className="text-white font-medium">
+                                            {member.users?.email || `User ${member.user_id.slice(0, 8)}`}
+                                          </p>
+                                          <p className="text-gray-400 text-sm">
+                                            Joined {new Date(member.joined_at).toLocaleDateString()}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <span className={`text-xs px-2 py-1 rounded ${member.role === 'owner' ? 'bg-purple-600 text-white' :
+                                          member.role === 'admin' ? 'bg-blue-600 text-white' :
+                                            'bg-gray-500 text-white'
+                                          }`}>
+                                          {member.role}
+                                        </span>
+                                        {workspace.owner_id === user?.id && member.role !== 'owner' && (
+                                          <button
+                                            className="text-red-400 hover:text-red-300 text-sm"
+                                            onClick={() => {
+                                              if (confirm('Remove this member from the workspace?')) {
+                                                // TODO: Implement member removal
+                                                showNotification('error', 'Member removal functionality will be implemented');
+                                              }
+                                            }}
+                                          >
+                                            Remove
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mt-4 text-gray-500 text-sm bg-gray-600 rounded-lg p-4 text-center">
+                                No team members yet - invite your first coworker!
+                              </div>
+                            )}
+
+                            {/* Workspace Settings */}
+                            {workspace.owner_id === user?.id && (
+                              <div className="mt-6 pt-4 border-t border-gray-600">
+                                <h4 className="text-white font-medium mb-3">Workspace Settings</h4>
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-gray-300">Workspace Name</p>
+                                    <p className="text-gray-400 text-sm">Change the display name of this workspace</p>
+                                  </div>
+                                  <button className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm transition-colors">
+                                    Edit Name
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : activeMenuItem === 'profile' ? (
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                  <h1 className="text-3xl font-bold text-white flex items-center">
+                    <User className="mr-3" size={36} />
+                    User Profile
+                  </h1>
+                  <button
+                    onClick={() => setActiveMenuItem('chat')}
+                    className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                  >
+                    ← Back to Chat
+                  </button>
+                </div>
+
+                {/* User Profile Section */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">Profile Information</h2>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={user?.email || ''}
+                        disabled
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
+                      />
+                      <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">First Name</label>
+                        <input
+                          type="text"
+                          value={user?.user_metadata?.first_name || ''}
+                          readOnly
+                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                          placeholder="Enter first name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
+                        <input
+                          type="text"
+                          value={user?.user_metadata?.last_name || ''}
+                          readOnly
+                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                          placeholder="Enter last name"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Account Created</label>
+                      <input
+                        type="text"
+                        value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                        disabled
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white opacity-50"
+                      />
+                    </div>
+
+                    {/* Profile Country for Proxy Configuration */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">🌍 Profile Country</label>
+                      <select
+                        value={profileCountry}
+                        onChange={async (e) => {
+                          const newCountry = e.target.value;
+                          setProfileCountry(newCountry);
+                          setProfileCountryLoading(true);
+
+                          try {
+                            const response = await fetch('/api/profile/update-country', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ country: newCountry })
+                            });
+
+                            if (response.ok) {
+                              showNotification('success', 'Profile country updated! This will be used for LinkedIn proxy assignment.');
+                            } else {
+                              const data = await response.json();
+                              showNotification('error', data.error || 'Failed to update country');
+                            }
+                          } catch (error) {
+                            showNotification('error', 'Network error updating country');
+                          } finally {
+                            setProfileCountryLoading(false);
+                          }
+                        }}
+                        disabled={profileCountryLoading}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="">Select your country...</option>
+                        <option value="us">🇺🇸 United States</option>
+                        <option value="gb">🇬🇧 United Kingdom</option>
+                        <option value="ca">🇨🇦 Canada</option>
+                        <option value="de">🇩🇪 Germany</option>
+                        <option value="fr">🇫🇷 France</option>
+                        <option value="au">🇦🇺 Australia</option>
+                        <option value="nl">🇳🇱 Netherlands</option>
+                        <option value="br">🇧🇷 Brazil</option>
+                        <option value="es">🇪🇸 Spain</option>
+                        <option value="it">🇮🇹 Italy</option>
+                        <option value="jp">🇯🇵 Japan</option>
+                        <option value="sg">🇸🇬 Singapore</option>
+                        <option value="in">🇮🇳 India</option>
+                        <option value="at">🇦🇹 Austria</option>
+                        <option value="ch">🇨🇭 Switzerland</option>
+                        <option value="ar">🇦🇷 Argentina</option>
+                        <option value="be">🇧🇪 Belgium</option>
+                        <option value="bg">🇧🇬 Bulgaria</option>
+                        <option value="hr">🇭🇷 Croatia</option>
+                        <option value="cy">🇨🇾 Cyprus</option>
+                        <option value="cz">🇨🇿 Czech Republic</option>
+                        <option value="dk">🇩🇰 Denmark</option>
+                        <option value="hk">🇭🇰 Hong Kong</option>
+                        <option value="mx">🇲🇽 Mexico</option>
+                        <option value="no">🇳🇴 Norway</option>
+                        <option value="pl">🇵🇱 Poland</option>
+                        <option value="pt">🇵🇹 Portugal</option>
+                        <option value="ro">🇷🇴 Romania</option>
+                        <option value="za">🇿🇦 South Africa</option>
+                        <option value="se">🇸🇪 Sweden</option>
+                        <option value="tr">🇹🇷 Turkey</option>
+                        <option value="ua">🇺🇦 Ukraine</option>
+                        <option value="ae">🇦🇪 UAE</option>
+                      </select>
+                      <p className="text-gray-400 text-xs mt-1">
+                        {profileCountryLoading ? '⏳ Updating...' : '📍 This country will be used for LinkedIn proxy assignment'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+
+                {/* App Settings */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">App Settings</h2>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-white font-medium">Clear Chat History</h3>
+                        <p className="text-gray-400 text-sm">Remove all conversation history from this device</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (confirm('Clear all conversation history? This cannot be undone.')) {
+                            await resetConversation();
+                            setActiveMenuItem('chat');
+                            showNotification('success', 'Chat history cleared successfully');
+                          }
+                        }}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Clear History
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-white font-medium">Change Password</h3>
+                        <p className="text-gray-400 text-sm">Update your account password</p>
+                      </div>
+                      <button
+                        onClick={() => setShowPasswordChange(true)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Change Password
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Account Actions */}
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">Account Actions</h2>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-white font-medium">Sign Out</h3>
+                        <p className="text-gray-400 text-sm">Sign out of your SAM AI account</p>
+                      </div>
+                      <button
+                        onClick={handleLogout}
+                        className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      >
+                        <LogOut size={16} />
+                        <span>Sign Out</span>
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
-            {messages.map((message, index) => {
-              // Only animate the last (newest) assistant message
-              const isNewestAssistantMessage = index === messages.length - 1 && message.role === 'assistant' && !isSending;
+            </div>
+          ) : activeMenuItem === 'superadmin' ? (
+            /* SUPER ADMIN PAGE */
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                  <h1 className="text-3xl font-bold text-white flex items-center">
+                    <Shield className="mr-3 text-purple-500" size={36} />
+                    Super Admin
+                  </h1>
+                  <button
+                    onClick={() => setActiveMenuItem('chat')}
+                    className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition-colors text-white"
+                  >
+                    ← Back to Chat
+                  </button>
+                </div>
 
-              return (
-                <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
-                    {message.role === 'assistant' && (
-                      <div className="flex items-start space-x-3 min-w-0">
-                        <img
-                          src="/SAM.jpg"
-                          alt="Sam AI"
-                          className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
-                          style={{ objectPosition: 'center 30%' }}
-                        />
-                        <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl break-words overflow-hidden min-w-0 flex-1">
-                          <AnimatedMessage
-                            content={message.display_content ?? message.content}
-                            animate={isNewestAssistantMessage}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    {message.role === 'user' && (
-                      <>
-                        <div className="flex items-center justify-end space-x-2 mb-1">
-                          <span className="text-gray-400 text-sm font-medium">You</span>
-                        </div>
-                        <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl break-words overflow-hidden">
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.display_content ?? message.content}</p>
-                        </div>
-                      </>
-                    )}
+                {/* Super Admin Controls */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">System Overview</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <div className="text-3xl font-bold text-white">{workspaces.length}</div>
+                      <div className="text-gray-400 text-sm">Total Workspaces</div>
+                    </div>
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <div className="text-3xl font-bold text-green-400">Active</div>
+                      <div className="text-gray-400 text-sm">System Status</div>
+                    </div>
+                    <div className="bg-gray-700 rounded-lg p-4">
+                      <div className="text-3xl font-bold text-purple-400">v2.0</div>
+                      <div className="text-gray-400 text-sm">Platform Version</div>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* All Workspaces */}
+                <div className="bg-gray-800 rounded-lg p-6 mb-6">
+                  <h2 className="text-2xl font-semibold text-white mb-6">All Workspaces</h2>
+                  {workspacesLoading ? (
+                    <div className="text-center py-8">
+                      <div className="text-gray-400">Loading workspaces...</div>
+                    </div>
+                  ) : workspaces.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-700 rounded-lg">
+                      <Building2 className="mx-auto mb-4 text-gray-600" size={48} />
+                      <p className="text-gray-400">No workspaces found</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {workspaces.map((workspace) => (
+                        <div key={workspace.id} className="bg-gray-700 rounded-lg p-4 flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="text-white font-medium">{workspace.name}</h3>
+                              {workspace.slug && (
+                                <span className={`text-xs px-2 py-1 rounded ${workspace.slug === 'innovareai'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-green-600 text-white'
+                                  }`}>
+                                  {workspace.slug}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-400 text-sm">
+                              {workspace.workspace_members?.length || 0} {(workspace.workspace_members?.length || 0) === 1 ? 'member' : 'members'} · Created {new Date(workspace.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-gray-400 text-sm">
+                            ID: {workspace.id.slice(0, 8)}...
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Admin Actions - Only visible to super admins */}
+                {isSuperAdmin && (
+                  <div className="bg-gray-800 rounded-lg p-6">
+                    <h2 className="text-2xl font-semibold text-white mb-6">Admin Actions</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <button
+                        onClick={() => {
+                          setShowCreateWorkspace(true);
+                        }}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <Plus size={20} />
+                        <span>Create Workspace</span>
+                      </button>
+                      <button
+                        onClick={() => setShowInviteUser(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <UserPlus size={20} />
+                        <span>Invite User</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : showStarterScreen ? (
+            /* STARTER SCREEN */
+            <div className="flex-1 flex flex-col items-center justify-end pb-32 p-6">
+              <div className="mb-12">
+                <img
+                  src="/SAM.jpg"
+                  alt="Sam AI"
+                  className="w-48 h-48 rounded-full object-cover shadow-lg"
+                  style={{ objectPosition: 'center 30%' }}
+                />
+              </div>
+
+              <div className="text-center">
+                <h2 className="text-white text-2xl font-medium">
+                  What do you want to get done today?
+                </h2>
+              </div>
+            </div>
+          ) : (
+            /* CHAT MESSAGES */
+            <div
+              ref={messagesContainerRef}
+              className="space-y-4"
+            >
+              {/* Sam is thinking indicator */}
+              {isSending && (
+                <div className="flex justify-start">
+                  <div className="max-w-[70%]">
+                    <div className="flex items-start space-x-3 min-w-0">
+                      <img
+                        src="/SAM.jpg"
+                        alt="Sam AI"
+                        className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
+                        style={{ objectPosition: 'center 30%' }}
+                      />
+                      <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl overflow-hidden min-w-0 flex-1">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                          <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                          <span className="text-sm text-gray-300 ml-2">Sam is thinking...</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {messages.map((message, index) => {
+                // Only animate the last (newest) assistant message
+                const isNewestAssistantMessage = index === messages.length - 1 && message.role === 'assistant' && !isSending;
+
+                return (
+                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[70%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
+                      {message.role === 'assistant' && (
+                        <div className="flex items-start space-x-3 min-w-0">
+                          <img
+                            src="/SAM.jpg"
+                            alt="Sam AI"
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-1"
+                            style={{ objectPosition: 'center 30%' }}
+                          />
+                          <div className="bg-gray-700 text-white px-4 py-3 rounded-2xl break-words overflow-hidden min-w-0 flex-1">
+                            <AnimatedMessage
+                              content={message.display_content ?? message.content}
+                              animate={isNewestAssistantMessage}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {message.role === 'user' && (
+                        <>
+                          <div className="flex items-center justify-end space-x-2 mb-1">
+                            <span className="text-gray-400 text-sm font-medium">You</span>
+                          </div>
+                          <div className="bg-gray-800 text-white px-4 py-3 rounded-2xl break-words overflow-hidden">
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.display_content ?? message.content}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 
