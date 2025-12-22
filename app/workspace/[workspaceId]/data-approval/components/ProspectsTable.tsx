@@ -162,34 +162,54 @@ export const columns: ColumnDef<ProspectData>[] = [
             };
 
             return (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => navigator.clipboard.writeText(prospect.email)}>
-                            Copy Email
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => meta.onViewDetails?.(prospect)} className="cursor-pointer">
-                            View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => meta.onApprove?.([prospect.id])} className="text-green-600 focus:text-green-700 cursor-pointer">
-                            <CheckCircle className="mr-2 h-4 w-4" /> Approve
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => meta.onReject?.([prospect.id])} className="text-red-600 focus:text-red-700 cursor-pointer">
-                            <XCircle className="mr-2 h-4 w-4" /> Reject
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => meta.onDelete?.(prospect.id)} className="text-red-600 focus:text-red-700 cursor-pointer">
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        onClick={() => meta.onViewDetails?.(prospect)}
+                        title="View Details"
+                    >
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        onClick={() => meta.onApprove?.([prospect.id])}
+                        disabled={prospect.approvalStatus === 'approved'}
+                        title="Approve"
+                    >
+                        <CheckCircle className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => meta.onReject?.([prospect.id])}
+                        disabled={prospect.approvalStatus === 'rejected'}
+                        title="Reject"
+                    >
+                        <XCircle className="h-4 w-4" />
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(prospect.email)}>
+                                Copy Email
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => meta.onDelete?.(prospect.id)} className="text-red-600 focus:text-red-700 cursor-pointer">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             );
         }
     }
