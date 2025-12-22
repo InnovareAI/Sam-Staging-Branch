@@ -52,8 +52,8 @@ const menuItems = [
     label: 'Campaigns',
     description: 'Plan multi-channel outreach with Sam',
     icon: Megaphone,
-    path: '/?tab=campaign',
-    isLegacy: true
+    path: '/campaign-hub',
+    isLegacy: false
   },
   {
     id: 'commenting-agent',

@@ -1576,12 +1576,19 @@ export default function Page() {
   // Redirect to new workspace layout (with updated sidebar)
   useEffect(() => {
     const wsId = currentWorkspace?.id || selectedWorkspaceId;
-    if ((activeMenuItem === 'chat' || activeMenuItem === 'commenting-agent') && isLoaded && wsId) {
-      const target = activeMenuItem === 'chat' ? 'chat' : 'commenting-agent';
-      console.log(`🔄 Redirecting to new ${target} architecture:`, `/workspace/${wsId}/${target}`);
+    const newArchitectureTabs = ['chat', 'commenting-agent', 'campaign'];
+    if (newArchitectureTabs.includes(activeMenuItem) && isLoaded && wsId) {
+      const targetMap: Record<string, string> = {
+        'chat': 'chat',
+        'commenting-agent': 'commenting-agent',
+        'campaign': 'campaign-hub'
+      };
+      const target = targetMap[activeMenuItem];
+      console.log(`🔄 Redirecting to new ${activeMenuItem} architecture:`, `/workspace/${wsId}/${target}`);
       window.location.href = `/workspace/${wsId}/${target}`;
     }
   }, [activeMenuItem, isLoaded, currentWorkspace?.id, selectedWorkspaceId]);
+
 
   const menuItems = [
     {
