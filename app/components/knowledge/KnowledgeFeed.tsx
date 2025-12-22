@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Brain, FileText, Target, Clock, MessageSquare, ArrowRight, Sparkles } from 'lucide-react';
+import { Brain, FileText, Target, Clock, MessageSquare, ArrowRight, Sparkles, Package, Users, Upload } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 type MemoryItem = {
