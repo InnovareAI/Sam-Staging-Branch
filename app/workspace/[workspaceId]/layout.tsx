@@ -36,8 +36,8 @@ const menuItems = [
     label: 'Knowledgebase',
     description: 'Curate training assets and product intel',
     icon: Brain,
-    path: '/?tab=knowledge',
-    isLegacy: true
+    path: '/knowledge',
+    isLegacy: false
   },
   {
     id: 'data-approval',
