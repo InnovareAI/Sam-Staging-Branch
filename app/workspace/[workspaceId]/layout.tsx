@@ -191,12 +191,6 @@ export default function WorkspaceLayout({
 
   // Handle navigation
   const handleMenuClick = (item: any) => {
-    if (item.id === 'commenting-agent') {
-      // [NEW] Redirect to the new Adaptive Chat Interface
-      window.location.href = `/workspace/${workspaceId}/chat`;
-      return;
-    }
-
     if (item.isLegacy) {
       // Redirect to legacy app with tab param
       window.location.href = `/?tab=${item.id}`;
