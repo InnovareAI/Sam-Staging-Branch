@@ -195,8 +195,8 @@ export default function WorkspaceLayout({
       // Redirect to legacy app with tab param
       window.location.href = `/?tab=${item.id}`;
     } else {
-      // Modern navigation
-      router.push(`/workspace/${workspaceId}/${item.id}`);
+      // Modern navigation - use item.path for correct route
+      router.push(`/workspace/${workspaceId}${item.path}`);
     }
   };
 
