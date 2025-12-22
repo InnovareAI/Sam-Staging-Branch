@@ -38,83 +38,81 @@ export function ContextPanel() {
 
     return (
         <div className="flex flex-col h-full bg-surface-muted/30">
-            {/* Tabs Header */}
-            <div className="px-4 pt-4 border-b border-border/40">
+            {/* Tabs Header - h-12 to match main header */}
+            <div className="h-12 px-4 border-b border-border/40 flex items-center justify-center gap-3">
                 <TooltipProvider delayDuration={200}>
-                    <div className="w-full flex justify-center gap-3 mb-4">
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    onClick={() => setActiveTab('history')}
-                                    className={cn(
-                                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                                        activeTab === 'history'
-                                            ? "bg-[#06B6D4]/25 text-[#22D3EE] ring-2 ring-[#06B6D4]/40"
-                                            : "bg-[#06B6D4]/10 text-[#22D3EE]/60 hover:bg-[#06B6D4]/20 hover:text-[#22D3EE]"
-                                    )}
-                                >
-                                    <Search size={18} />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                <p>Search History</p>
-                            </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    onClick={() => setActiveTab('knowledge')}
-                                    className={cn(
-                                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                                        activeTab === 'knowledge'
-                                            ? "bg-[#8B5CF6]/25 text-[#A78BFA] ring-2 ring-[#8B5CF6]/40"
-                                            : "bg-[#8B5CF6]/10 text-[#A78BFA]/60 hover:bg-[#8B5CF6]/20 hover:text-[#A78BFA]"
-                                    )}
-                                >
-                                    <BookOpen size={18} />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                <p>Knowledge</p>
-                            </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    onClick={() => setActiveTab('stats')}
-                                    className={cn(
-                                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                                        activeTab === 'stats'
-                                            ? "bg-[#EC4899]/25 text-[#F472B6] ring-2 ring-[#EC4899]/40"
-                                            : "bg-[#EC4899]/10 text-[#F472B6]/60 hover:bg-[#EC4899]/20 hover:text-[#F472B6]"
-                                    )}
-                                >
-                                    <BarChart3 size={18} />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                <p>Stats</p>
-                            </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    onClick={() => setActiveTab('strategy')}
-                                    className={cn(
-                                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                                        activeTab === 'strategy'
-                                            ? "bg-[#F59E0B]/25 text-[#FBBF24] ring-2 ring-[#F59E0B]/40"
-                                            : "bg-[#F59E0B]/10 text-[#FBBF24]/60 hover:bg-[#F59E0B]/20 hover:text-[#FBBF24]"
-                                    )}
-                                >
-                                    <Lightbulb size={18} />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                <p>Strategy</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </div>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={() => setActiveTab('history')}
+                                className={cn(
+                                    "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                                    activeTab === 'history'
+                                        ? "bg-[#06B6D4]/25 text-[#22D3EE] ring-2 ring-[#06B6D4]/40"
+                                        : "bg-[#06B6D4]/10 text-[#22D3EE]/60 hover:bg-[#06B6D4]/20 hover:text-[#22D3EE]"
+                                )}
+                            >
+                                <Search size={18} />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                            <p>Search History</p>
+                        </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={() => setActiveTab('knowledge')}
+                                className={cn(
+                                    "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                                    activeTab === 'knowledge'
+                                        ? "bg-[#8B5CF6]/25 text-[#A78BFA] ring-2 ring-[#8B5CF6]/40"
+                                        : "bg-[#8B5CF6]/10 text-[#A78BFA]/60 hover:bg-[#8B5CF6]/20 hover:text-[#A78BFA]"
+                                )}
+                            >
+                                <BookOpen size={18} />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                            <p>Knowledge</p>
+                        </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={() => setActiveTab('stats')}
+                                className={cn(
+                                    "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                                    activeTab === 'stats'
+                                        ? "bg-[#EC4899]/25 text-[#F472B6] ring-2 ring-[#EC4899]/40"
+                                        : "bg-[#EC4899]/10 text-[#F472B6]/60 hover:bg-[#EC4899]/20 hover:text-[#F472B6]"
+                                )}
+                            >
+                                <BarChart3 size={18} />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                            <p>Stats</p>
+                        </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={() => setActiveTab('strategy')}
+                                className={cn(
+                                    "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                                    activeTab === 'strategy'
+                                        ? "bg-[#F59E0B]/25 text-[#FBBF24] ring-2 ring-[#F59E0B]/40"
+                                        : "bg-[#F59E0B]/10 text-[#FBBF24]/60 hover:bg-[#F59E0B]/20 hover:text-[#FBBF24]"
+                                )}
+                            >
+                                <Lightbulb size={18} />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                            <p>Strategy</p>
+                        </TooltipContent>
+                    </Tooltip>
                 </TooltipProvider>
             </div>
 
@@ -380,7 +378,7 @@ export function ContextPanel() {
                         </div>
                     )}
                 </div>
-            </ScrollArea>
+            </ScrollArea >
 
             {onboardingState && (
                 <div className="p-4 border-t border-border/40 bg-surface-muted/50">
@@ -403,8 +401,9 @@ export function ContextPanel() {
                         </p>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }
 
