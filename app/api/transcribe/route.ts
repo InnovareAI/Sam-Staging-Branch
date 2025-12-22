@@ -16,11 +16,14 @@ export async function POST(request: NextRequest) {
         const audioFile = formData.get('audio') as File;
 
         if (!audioFile) {
+            console.error('[Transcribe API] No audio file received in formData');
             return NextResponse.json(
                 { error: 'No audio file provided' },
                 { status: 400 }
             );
         }
+
+        console.log(`[Transcribe API] Received file: ${audioFile.name}, size: ${audioFile.size}, type: ${audioFile.type}`);
 
         // Convert to the format Whisper expects
         const transcription = await openai.audio.transcriptions.create({
@@ -30,12 +33,17 @@ export async function POST(request: NextRequest) {
             response_format: 'text',
         });
 
+        console.log(`[Transcribe API] Success. Length: ${transcription.length}`);
+
         return NextResponse.json({
             text: transcription,
             success: true
         });
-    } catch (error) {
-        console.error('Transcription error:', error);
+    } catch (error: any) {
+        console.error('[Transcribe API] Critical Error:', error);
+        if (error?.response) {
+            console.error('[Transcribe API] OpenAI Response:', error.response.data);
+        }
         return NextResponse.json(
             { error: 'Failed to transcribe audio', details: error instanceof Error ? error.message : 'Unknown error' },
             { status: 500 }

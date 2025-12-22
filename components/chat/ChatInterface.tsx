@@ -41,19 +41,33 @@ export function ChatInterface() {
     const toggleRecording = async () => {
         if (isRecording) {
             // Stop recording
-            mediaRecorderRef.current?.stop();
-            setIsRecording(false);
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+                setIsRecording(false);
+            }
         } else {
             // Start recording
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+                // Detect supported mimeType
+                let mimeType = 'audio/webm';
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    mimeType = 'audio/webm;codecs=opus';
+                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                    mimeType = 'audio/mp4'; // Safari
+                }
+
+                console.log(`[Voice] Starting recording with mimeType: ${mimeType}`);
+
+                const mediaRecorder = new MediaRecorder(stream, { mimeType });
                 mediaRecorderRef.current = mediaRecorder;
                 audioChunksRef.current = [];
 
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
                         audioChunksRef.current.push(event.data);
+                        console.log(`[Voice] Data chunk received: ${event.data.size} bytes`);
                     }
                 };
 
@@ -62,8 +76,15 @@ export function ChatInterface() {
                     stream.getTracks().forEach(track => track.stop());
 
                     // Create audio blob and transcribe
-                    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                    await transcribeAudio(audioBlob);
+                    const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+                    console.log(`[Voice] Recording stopped. Final blob size: ${audioBlob.size} bytes, type: ${audioBlob.type}`);
+
+                    if (audioBlob.size > 0) {
+                        await transcribeAudio(audioBlob, mimeType);
+                    } else {
+                        console.warn('[Voice] Audio blob is empty, skipping transcription');
+                        setIsRecording(false);
+                    }
                 };
 
                 mediaRecorder.start();
@@ -71,27 +92,38 @@ export function ChatInterface() {
             } catch (error) {
                 console.error('Error accessing microphone:', error);
                 alert('Could not access microphone. Please check permissions.');
+                setIsRecording(false);
             }
         }
     };
 
     // Transcribe audio using Whisper API
-    const transcribeAudio = async (audioBlob: Blob) => {
+    const transcribeAudio = async (audioBlob: Blob, mimeType: string) => {
         setIsTranscribing(true);
         try {
             const formData = new FormData();
-            formData.append('audio', audioBlob, 'recording.webm');
+            // Append file with correct extension based on mimeType
+            const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+            formData.append('audio', audioBlob, `recording.${extension}`);
+
+            console.log(`[Voice] Sending to API...`);
 
             const response = await fetch('/api/transcribe', {
                 method: 'POST',
                 body: formData,
             });
 
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API Error: ${response.status} - ${errorText}`);
+            }
+
             const data = await response.json();
             if (data.success && data.text) {
+                console.log(`[Voice] Transcription success: "${data.text}"`);
                 setInput(prev => prev + (prev ? ' ' : '') + data.text);
             } else {
-                console.error('Transcription failed:', data.error);
+                console.error('Transcription failed result:', data);
             }
         } catch (error) {
             console.error('Error transcribing audio:', error);
