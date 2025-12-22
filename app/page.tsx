@@ -3001,6 +3001,26 @@ export default function Page() {
     );
   }
 
+  // Show loading while redirecting to workspace chat (prevents old UI flash)
+  const wsId = currentWorkspace?.id || selectedWorkspaceId;
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasTabParam = urlParams.has('tab') || urlParams.has('section');
+    const isRootPath = window.location.pathname === '/';
+
+    // If we're going to redirect, show loading instead of old UI
+    if (wsId && isRootPath && !hasTabParam) {
+      return (
+        <div className="flex h-screen bg-gray-900 items-center justify-center">
+          <div className="text-center">
+            <div className="w-10 h-10 border-4 border-pink-500/20 border-t-pink-500 rounded-full animate-spin mx-auto mb-4" />
+            <div className="text-white text-lg font-medium">Redirecting to chat...</div>
+          </div>
+        </div>
+      );
+    }
+  }
+
 
   const filteredWorkspaces = workspaces.filter((workspace) => {
     // Show all workspaces - each user has their own workspace/tenant
