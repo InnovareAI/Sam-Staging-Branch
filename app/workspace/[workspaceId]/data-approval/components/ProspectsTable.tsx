@@ -200,10 +200,6 @@ export const columns: ColumnDef<ProspectData>[] = [
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(prospect.email)}>
-                                Copy Email
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => meta.onDelete?.(prospect.id)} className="text-red-600 focus:text-red-700 cursor-pointer">
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
