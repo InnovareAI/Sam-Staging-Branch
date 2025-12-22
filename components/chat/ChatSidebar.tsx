@@ -101,8 +101,8 @@ export function ChatSidebar() {
 
     return (
         <div className="flex flex-col h-full bg-surface-muted/70 backdrop-blur border-r border-border/60">
-            {/* Sidebar Header */}
-            <div className="border-b border-border/60 px-6 py-6">
+            {/* Sidebar Header - h-16 to match main header */}
+            <div className="h-16 border-b border-border/60 px-6 flex items-center">
                 <div className="flex items-center gap-3">
                     <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent">
                         <img
