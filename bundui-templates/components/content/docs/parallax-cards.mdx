@@ -1,0 +1,49 @@
+---
+title: Parallax Cards
+description: Parallax scrolling effect using overlapping cards.
+---
+
+<ComponentCodePreview name="parallax-cards" iframe={true}/>
+
+## Installation
+
+<ComponentInstallation name="parallax-card-effect" deps={"npm install motion clsx tailwind-merge "}/>
+
+## Usage
+
+<CodeRenderer name="parallax-cards"/>
+
+## Props
+
+<TypeTable
+  type={{
+    id: {
+      type: 'number',
+      description: 'A unique identifier used to position and calculate the parallax effect for each card.',
+    },
+    className: {
+      type: 'string',
+      default: 'undefined',
+      description: 'Optional CSS class for additional styling of the card container.',
+    },
+    progress: {
+      type: 'MotionValue<number>',
+      description: 'A Framer Motion value representing the scroll or animation progress used to drive transformations.',
+    },
+    range: {
+      type: 'number[]',
+      description: 'An array defining the input range for the parallax animation transformation.',
+    },
+    targetScale: {
+      type: 'number',
+      description: 'The scale value that the card will animate toward when the progress reaches the end of the range.',
+    },
+    children: {
+      type: 'ReactNode',
+      default: 'undefined',
+      description: 'The content to be rendered inside the parallax card.',
+    },
+  }}
+/>
+
+

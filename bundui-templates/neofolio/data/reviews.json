@@ -1,0 +1,30 @@
+[
+  {
+    "id": 4,
+    "body": "The attention to detail and expertise in design systems are unmatched. Our SaaS product now feels more polished than ever.",
+    "name": "Robert Brown",
+    "company": "InnovateX",
+    "avatar": "https://i.pravatar.cc/150?img=30"
+  },
+  {
+    "id": 5,
+    "body": "Their frontend development work is outstanding. They understood our requirements perfectly and delivered beyond expectations.",
+    "name": "Emily Davis",
+    "company": "NextGen Tech",
+    "avatar": "https://i.pravatar.cc/150?img=3"
+  },
+  {
+    "id": 6,
+    "body": "The tools and systems they provided have made a huge impact on our design and development process. Exceptional work!",
+    "name": "Michael Wilson",
+    "company": "GlobalSoft",
+    "avatar": "https://i.pravatar.cc/150?img=4"
+  },
+  {
+    "id": 7,
+    "body": "Their dedication to creating user-centered designs is evident in every aspect of their work. Truly a pleasure to work with.",
+    "name": "Sarah Martinez",
+    "company": "Bright Ideas Co.",
+    "avatar": "https://i.pravatar.cc/150?img=10"
+  }
+]

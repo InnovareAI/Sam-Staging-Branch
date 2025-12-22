@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "title": "The Future of JavaScript: What's New in ES2025?",
+    "slug": "future-of-javascript-es2025",
+    "date": "August 2, 2024",
+    "content": "<p>JavaScript remains one of the most popular languages in modern web development. The <strong>ES2025</strong> update introduces exciting features such as <code>pattern matching</code>, better <em>asynchronous handling</em>, and more.</p><h3>Why is it important?</h3><p>These updates improve developer productivity and make JavaScript code more maintainable.</p><h4>What's Next?</h4><p>Stay tuned for even more features that will shape the future of JavaScript.</p>",
+    "image": "https://images.unsplash.com/photo-1432821596592-e2c18b78144f?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "author": "John Doe"
+  },
+  {
+    "id": 2,
+    "title": "How AI is Transforming Software Development",
+    "slug": "ai-transforming-software-development",
+    "date": "August 5, 2024",
+    "content": "<p>Artificial Intelligence (AI) is no longer a buzzword; it's becoming a critical tool in software development.</p><h3>Automating the Mundane</h3><p>AI tools help automate repetitive tasks like testing and bug fixing.</p><h4>The Human Touch</h4><p>While AI is powerful, developers still play a crucial role in creative problem-solving.</p>",
+    "image": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "author": "Jane Smith"
+  },
+  {
+    "id": 3,
+    "title": "Top 5 Programming Languages for 2024",
+    "slug": "top-programming-languages-2024",
+    "date": "August 10, 2024",
+    "content": "<p>The tech landscape is evolving rapidly, and so are programming languages.</p><h3>1. Python</h3><p>Still a favorite for data science and machine learning.</p><h3>2. Rust</h3><p>Known for its performance and memory safety.</p><h4>What's Your Pick?</h4><p>Each language has its strengths, so choose based on your project's needs.</p>",
+    "image": "https://images.unsplash.com/photo-1501959915551-4e8d30928317?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "author": "Alice Johnson"
+  },
+  {
+    "id": 4,
+    "title": "Web3: What Developers Need to Know",
+    "slug": "web3-developers-guide",
+    "date": "August 15, 2024",
+    "content": "<p>Web3 is the next evolution of the internet, focusing on decentralization.</p><h3>Understanding Blockchain</h3><p>Blockchain technology forms the backbone of Web3 applications.</p><h4>Challenges</h4><p>Despite its potential, Web3 still faces scalability and adoption hurdles.</p>",
+    "image": "https://images.unsplash.com/photo-1506790144-fe3c68e4247d?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "author": "Michael Lee"
+  },
+  {
+    "id": 5,
+    "title": "10 Tips for Writing Clean Code",
+    "slug": "writing-clean-code-tips",
+    "date": "August 20, 2024",
+    "content": "<p>Writing clean code is an essential skill for any developer.</p><h3>Keep It Simple</h3><p>Avoid overcomplicating your code with unnecessary logic.</p><h4>Use Meaningful Names</h4><p>Descriptive variable and function names make your code easier to understand.</p>",
+    "image": "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "author": "Emily Carter"
+  },
+  {
+    "id": 6,
+    "title": "The Rise of Edge Computing in 2024",
+    "slug": "rise-of-edge-computing",
+    "date": "August 25, 2024",
+    "content": "<p>Edge computing is transforming how we process data, bringing computation closer to the source.</p><h3>Faster Processing</h3><p>By reducing latency, edge computing enhances real-time applications.</p><h4>Applications</h4><p>From IoT to autonomous vehicles, the possibilities are endless.</p>",
+    "image": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "author": "Robert Brown"
+  },
+  {
+    "id": 7,
+    "title": "Understanding DevOps: A Beginner's Guide",
+    "slug": "devops-beginners-guide",
+    "date": "August 30, 2024",
+    "content": "<p>DevOps bridges the gap between development and operations teams.</p><h3>Continuous Integration</h3><p>Automating builds and tests ensures higher code quality.</p><h4>Collaboration</h4><p>DevOps fosters better communication across teams.</p>",
+    "image": "https://images.unsplash.com/photo-1506787497326-c2736dde1bef?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "author": "Sophia Green"
+  }
+]

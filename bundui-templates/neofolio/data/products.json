@@ -1,0 +1,87 @@
+[
+  {
+    "id": 1,
+    "title": "Website Pack",
+    "slug": "website-pack",
+    "price": 49.99,
+    "description": "A collection of modern and responsive website templates for any project.",
+    "content": "<p>Build stunning websites quickly with this <strong>modern template pack</strong>. Perfect for agencies, freelancers, and businesses.</p><h3>What's Included:</h3><ul><li>10+ responsive templates</li><li>HTML, CSS, and JS files</li><li>Easy customization</li></ul>",
+    "images": [
+      "https://cdn.dribbble.com/userupload/16785431/file/original-54c804cca9d4aa1d2ad926b1dce2d356.png?resize=1048x768&vertical=center",
+      "https://cdn.dribbble.com/userupload/16785431/file/original-54c804cca9d4aa1d2ad926b1dce2d356.png?resize=1048x768&vertical=center"
+    ],
+    "preview_url": "#",
+    "date": "2023 - 2024",
+    "client": "Tech Agency",
+    "services": "Web Design, Development"
+  },
+  {
+    "id": 2,
+    "title": "UI Kit",
+    "slug": "ui-kit",
+    "price": 79.99,
+    "description": "A comprehensive Figma UI kit tailored for dashboard designs.",
+    "content": "<p>Create stunning dashboards with this <strong>Figma UI kit</strong>. Designed for data visualization and admin panels.</p><h3>Features:</h3><ul><li>50+ customizable components</li><li>Light and dark modes</li><li>Pixel-perfect design</li></ul>",
+    "images": ["https://cdn.dribbble.com/userupload/18298672/file/original-2c70035103c4e4c60f0d3d2935d155b7.png?resize=1048x768&vertical=center"],
+    "preview_url": "#",
+    "date": "2024 - 2025",
+    "client": "Startup Inc.",
+    "services": "Design System, Product Design"
+  },
+  {
+    "id": 3,
+    "title": "SEO Plugin",
+    "slug": "seo-plugin",
+    "price": 29.99,
+    "description": "A powerful WordPress plugin to improve your website's SEO rankings.",
+    "content": "<p>Optimize your WordPress site with this <strong>SEO plugin</strong>. Perfect for boosting your search engine visibility.</p><h3>Key Features:</h3><ul><li>Keyword analysis</li><li>XML sitemap generation</li><li>Meta tag optimization</li></ul>",
+    "images": ["https://cdn.dribbble.com/userupload/42744400/file/original-50c6bf66346d21886b86ec1894baaf31.png?resize=1048x768&vertical=center"],
+    "preview_url": "#",
+    "date": "2022 - 2023",
+    "client": "E-commerce Co.",
+    "services": "SEO Optimization, Development"
+  },
+  {
+    "id": 4,
+    "title": "E-comm Template",
+    "slug": "ecomm-template",
+    "price": 59.99,
+    "description": "A professionally designed Figma template for e-commerce platforms.",
+    "content": "<p>Design beautiful online stores with this <strong>e-commerce Figma template</strong>. Suitable for any industry.</p><h3>Highlights:</h3><ul><li>Product pages and checkout flow</li><li>Mobile and desktop views</li><li>Fully editable components</li></ul>",
+    "images": ["https://cdn.dribbble.com/userupload/16744900/file/original-ad9211cf96afb46888638e4f8063241c.png?resize=1048x768&vertical=center"],
+
+    "preview_url": "#",
+    "date": "2023 - 2024",
+    "client": "Retail Startup",
+    "services": "UX/UI Design, E-commerce Design"
+  },
+  {
+    "id": 5,
+    "title": "Dev Tools",
+    "slug": "dev-tools",
+    "price": 39.99,
+    "description": "A set of useful add-ons for enhancing your development workflow.",
+    "content": "<p>Boost your productivity with this <strong>add-on pack</strong> for developers. Includes tools for debugging and testing.</p><h3>Includes:</h3><ul><li>Code snippet manager</li><li>Real-time debugging tools</li><li>Browser extensions</li></ul>",
+    "images": ["https://cdn.dribbble.com/userupload/16493100/file/original-30190d3400e1c6dad5a7db9460f3f0db.png?resize=1048x768&vertical=center"],
+    "preview_url": "#",
+    "date": "2020 - 2021",
+    "client": "Freelance Devs",
+    "services": "Debugging, Tools"
+  },
+  {
+    "id": 6,
+    "title": "Icon Set",
+    "slug": "icon-set",
+    "price": 19.99,
+    "description": "A collection of custom icons for modern web and mobile applications.",
+    "content": "<p>Enhance your designs with this <strong>custom icon set</strong>. Perfect for web and app development.</p><h3>Details:</h3><ul><li>500+ unique icons</li><li>SVG, PNG, and AI formats</li><li>Scalable and editable</li></ul>",
+    "images": [
+      "https://cdn.dribbble.com/userupload/31715773/file/original-fea36c2dbe1b311e3633ed7d8e779777.png?resize=1048x768&vertical=center",
+      "https://cdn.dribbble.com/userupload/31715773/file/original-fea36c2dbe1b311e3633ed7d8e779777.png?resize=1048x768&vertical=center"
+    ],
+    "preview_url": "#",
+    "date": "2024 - 2025",
+    "client": "Mobile App Studio",
+    "services": "Graphic Design, Iconography"
+  }
+]

@@ -1,0 +1,57 @@
+[
+  {
+    "id": 1,
+    "title": "Modern E-commerce Platform",
+    "slug": "modern-ecommerce-platform",
+    "content": "<p>This is a full-featured e-commerce platform built with the latest technologies for high performance and scalability. It includes an intuitive admin dashboard, product management, and customer engagement features.</p><h3>Key Features:</h3><ul><li>Customizable product pages</li><li>Integrated payment gateway</li><li>Responsive design</li></ul>",
+    "cover_image": "https://images.unsplash.com/photo-1583932692953-fa66ea3246ea?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "preview_url": "#",
+    "date": "2024 - 2025",
+    "client": "Retail Co.",
+    "services": "Web Development, E-commerce Design"
+  },
+  {
+    "id": 2,
+    "title": "AI-Powered Analytics Dashboard",
+    "slug": "ai-analytics-dashboard",
+    "content": "<p>This analytics dashboard leverages AI to provide real-time insights into business performance. It includes various data visualization tools to help businesses make data-driven decisions.</p><h3>Key Features:</h3><ul><li>Real-time data analysis</li><li>Customizable reports</li><li>Interactive charts and graphs</li></ul>",
+    "cover_image": "https://images.unsplash.com/photo-1712903911043-1f9226c43c8d?q=80&w=3862&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "preview_url": "#",
+    "date": "2023 - 2024",
+    "client": "Tech Innovations",
+    "services": "AI Integration, Dashboard Design"
+  },
+  {
+    "id": 3,
+    "title": "Mobile Banking App",
+    "slug": "mobile-banking-app",
+    "content": "<p>A secure and user-friendly mobile banking application that allows users to manage their finances with ease. Includes features like transaction history, bill payments, and money transfers.</p><h3>Key Features:</h3><ul><li>Secure login with biometrics</li><li>Instant money transfers</li><li>Bill payment integration</li></ul>",
+    "cover_image": "https://images.unsplash.com/photo-1511732351157-1865efcb7b7b?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "preview_url": "#",
+    "date": "2023 - 2025",
+    "client": "Fintech Corp.",
+    "services": "Mobile App Development, UX/UI Design"
+  },
+  {
+    "id": 4,
+    "title": "Real Estate Management System",
+    "slug": "real-estate-management-system",
+    "content": "<p>This real estate management system helps property owners and agents manage their listings, clients, and transactions efficiently. It includes an integrated CRM system and reporting tools.</p><h3>Key Features:</h3><ul><li>Property listing management</li><li>Client relationship management</li><li>Automated reporting</li></ul>",
+    "cover_image": "https://plus.unsplash.com/premium_photo-1661763066898-6aac7f3758ab?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "preview_url": "#",
+    "date": "2022 - 2023",
+    "client": "Property Hub",
+    "services": "Web Development, CRM Integration"
+  },
+  {
+    "id": 5,
+    "title": "Online Learning Platform",
+    "slug": "online-learning-platform",
+    "content": "<p>This online learning platform allows instructors to create and manage courses, while students can enroll, track progress, and receive certifications. It includes interactive quizzes and video lectures.</p><h3>Key Features:</h3><ul><li>Course creation and management</li><li>Student progress tracking</li><li>Interactive quizzes and exams</li></ul>",
+    "cover_image": "https://images.unsplash.com/photo-1583508915901-b5f84c1dcde1?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "preview_url": "https://example.com/projects/online-learning-platform",
+    "date": "2023 - 2024",
+    "client": "EduTech Ltd.",
+    "services": "E-learning Platform Development, UX/UI Design"
+  }
+]
