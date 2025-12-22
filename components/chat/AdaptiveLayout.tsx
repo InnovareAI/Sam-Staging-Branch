@@ -39,8 +39,8 @@ export function AdaptiveLayout({
 
             {/* 2. Main Chat Area */}
             <main className="flex-1 flex flex-col min-w-0 bg-background relative">
-                {/* Minimal Header */}
-                <header className="h-12 border-b border-border/40 flex items-center justify-between px-4 bg-background/80 backdrop-blur z-10">
+                {/* Minimal Header - h-16 to align border with side panels */}
+                <header className="h-16 border-b border-border/40 flex items-center justify-between px-4 bg-background/80 backdrop-blur z-10">
                     <div className="flex items-center gap-3">
                         {/* Toggle Sidebar */}
                         <Button
