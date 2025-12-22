@@ -117,11 +117,44 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
     const queryClient = useQueryClient();
     const router = useRouter();
 
-    const { data: prospects = [], isLoading, refetch } = useQuery({
+    const LOCAL_STORAGE_KEY = `sam_prospect_data_${workspaceId}`;
+
+    // Initialize from LocalStorage if available to show data immediately
+    useEffect(() => {
+        try {
+            const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                // Restore Date objects
+                const restored = parsed.map((p: any) => ({
+                    ...p,
+                    createdAt: new Date(p.createdAt)
+                }));
+                // Only set if query cache is empty to avoid overwriting fresh data
+                if (!queryClient.getQueryData(['prospect-hub-data', workspaceId])) {
+                    queryClient.setQueryData(['prospect-hub-data', workspaceId], restored);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load prospects from cache', e);
+        }
+    }, [workspaceId, queryClient]);
+
+    const { data: prospects = [], isLoading, refetch, isFetching } = useQuery({
         queryKey: ['prospect-hub-data', workspaceId],
-        queryFn: () => fetchApprovalSessions(workspaceId),
+        queryFn: async () => {
+            const data = await fetchApprovalSessions(workspaceId);
+            // Cache successful fetch
+            try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+            } catch (e) {
+                console.error('Failed to cache prospects', e);
+            }
+            return data;
+        },
         enabled: !!workspaceId,
-        staleTime: 10000,
+        staleTime: 5 * 60 * 1000, // 5 minutes cache
+        refetchOnWindowFocus: false // Prevent annoying refetches
     });
 
     const [stats, setStats] = useState({ total: 0, approved: 0, rejected: 0, pending: 0 });
@@ -252,18 +285,27 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
             />
 
             <div className="mt-6">
-                {isLoading ? (
-                    <div className="flex items-center justify-center h-64 border rounded-lg bg-gray-50/50">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                {isLoading && prospects.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 border rounded-lg bg-gray-50/50">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                        <p className="text-muted-foreground animate-pulse">Loading prospects from database...</p>
                     </div>
                 ) : (
-                    <ProspectsTable
-                        data={prospects}
-                        onApprove={handleApprove}
-                        onReject={handleReject}
-                        onDelete={handleDelete}
-                        onViewDetails={handleViewDetails}
-                    />
+                    <>
+                        {isFetching && (
+                            <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
+                                Updating data in background...
+                            </div>
+                        )}
+                        <ProspectsTable
+                            data={prospects}
+                            onApprove={handleApprove}
+                            onReject={handleReject}
+                            onDelete={handleDelete}
+                            onViewDetails={handleViewDetails}
+                        />
+                    </>
                 )}
             </div>
 
