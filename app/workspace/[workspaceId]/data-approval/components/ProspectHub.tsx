@@ -7,6 +7,7 @@ import { ProspectStats } from './ProspectStats';
 import { ProspectsTable } from './ProspectsTable';
 import { ProspectData } from './types';
 import { Star } from 'lucide-react';
+import { ProspectDetailsSheet } from './ProspectDetailsSheet';
 
 interface ProspectHubProps {
     workspaceId: string;
@@ -43,51 +44,52 @@ async function fetchApprovalSessions(workspaceId?: string): Promise<ProspectData
 
         // Limit to recent sessions for performance
         const recentSessions = data.sessions.slice(0, 10);
-        const allProspects: ProspectData[] = [];
 
-        for (const session of recentSessions) {
-            const prospectsResponse = await fetch(
+        // Optimize: Fetch prospects for all sessions in parallel
+        const prospectPromises = recentSessions.map(async (session: any) => {
+            const response = await fetch(
                 `/api/prospect-approval/prospects?session_id=${session.id}&page=1&limit=1000&status=all`
             );
+            if (!response.ok) return [];
 
-            if (!prospectsResponse.ok) continue;
-            const prospectsData = await prospectsResponse.json();
+            const prospectsData = await response.json();
+            if (!prospectsData.success || !prospectsData.prospects) return [];
 
-            if (prospectsData.success && prospectsData.prospects) {
-                const mappedProspects = prospectsData.prospects
-                    .filter((p: any) => p.approval_status !== 'transferred_to_campaign')
-                    .map((p: any) => {
-                        const prospect: ProspectData = {
-                            id: p.prospect_id,
-                            name: p.name,
-                            title: p.title || '',
-                            company: p.company?.name || '',
-                            industry: p.company?.industry || '',
-                            location: p.location || '',
-                            email: p.contact?.email || '',
-                            linkedinUrl: p.contact?.linkedin_url || '',
-                            phone: p.contact?.phone || '',
-                            connectionDegree: p.connection_degree ? `${p.connection_degree}${p.connection_degree === 1 ? 'st' : p.connection_degree === 2 ? 'nd' : 'rd'}` : undefined,
-                            source: p.source || 'linkedin',
-                            enrichmentScore: p.enrichment_score || 0,
-                            confidence: (p.enrichment_score || 80) / 100,
-                            approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
-                            campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,
-                            campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',
-                            sessionId: session.id,
-                            uploaded: false,
-                            qualityScore: 0,
-                            createdAt: p.created_at ? new Date(p.created_at) : session.created_at ? new Date(session.created_at) : new Date(),
-                            researchedBy: session.user_email || session.user_name || 'Unknown',
-                            researchedByInitials: session.user_initials || 'U',
-                            linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
-                        };
-                        prospect.qualityScore = calculateQualityScore(prospect);
-                        return prospect;
-                    });
-                allProspects.push(...mappedProspects);
-            }
-        }
+            return prospectsData.prospects
+                .filter((p: any) => p.approval_status !== 'transferred_to_campaign')
+                .map((p: any) => {
+                    const prospect: ProspectData = {
+                        id: p.prospect_id,
+                        name: p.name,
+                        title: p.title || '',
+                        company: p.company?.name || '',
+                        industry: p.company?.industry || '',
+                        location: p.location || '',
+                        email: p.contact?.email || '',
+                        linkedinUrl: p.contact?.linkedin_url || '',
+                        phone: p.contact?.phone || '',
+                        connectionDegree: p.connection_degree ? `${p.connection_degree}${p.connection_degree === 1 ? 'st' : p.connection_degree === 2 ? 'nd' : 'rd'}` : undefined,
+                        source: p.source || 'linkedin',
+                        enrichmentScore: p.enrichment_score || 0,
+                        confidence: (p.enrichment_score || 80) / 100,
+                        approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
+                        campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,
+                        campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',
+                        sessionId: session.id,
+                        uploaded: false,
+                        qualityScore: 0,
+                        createdAt: p.created_at ? new Date(p.created_at) : session.created_at ? new Date(session.created_at) : new Date(),
+                        researchedBy: session.user_email || session.user_name || 'Unknown',
+                        researchedByInitials: session.user_initials || 'U',
+                        linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
+                    };
+                    prospect.qualityScore = calculateQualityScore(prospect);
+                    return prospect;
+                });
+        });
+
+        const results = await Promise.all(prospectPromises);
+        const allProspects = results.flat();
 
         // Sort by newest
         return allProspects.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -97,11 +99,25 @@ async function fetchApprovalSessions(workspaceId?: string): Promise<ProspectData
         return [];
     }
 }
+import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
+import ImportProspectsModal from '@/components/ImportProspectsModal';
+import ConfirmModal from '@/components/ConfirmModal';
+import { useRouter } from 'next/navigation';
+import { CheckSquare, Upload, Trash2, CheckCircle, XCircle } from 'lucide-react';
+
+interface ProspectHubProps {
+    workspaceId: string;
+}
+
+// ... calculateQualityScore ... (keep existing)
+
+// ... fetchApprovalSessions ... (keep existing)
 
 export default function ProspectHub({ workspaceId }: ProspectHubProps) {
     const queryClient = useQueryClient();
+    const router = useRouter();
 
-    const { data: prospects = [], isLoading } = useQuery({
+    const { data: prospects = [], isLoading, refetch } = useQuery({
         queryKey: ['prospect-hub-data', workspaceId],
         queryFn: () => fetchApprovalSessions(workspaceId),
         enabled: !!workspaceId,
@@ -109,6 +125,15 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
     });
 
     const [stats, setStats] = useState({ total: 0, approved: 0, rejected: 0, pending: 0 });
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importInitialTab, setImportInitialTab] = useState('file');
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+        type: 'warning' as 'warning' | 'danger' | 'info'
+    });
 
     useEffect(() => {
         if (prospects) {
@@ -121,38 +146,102 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
         }
     }, [prospects]);
 
-    // Real-time subscription
-    useEffect(() => {
-        if (!workspaceId) return;
+    // Real-time subscription (keep existing)
 
-        const channel = supabase
-            .channel('prospect_approval_hub_changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'prospect_approval_sessions', filter: `workspace_id=eq.${workspaceId}` },
-                () => queryClient.invalidateQueries(['prospect-hub-data']))
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'prospect_approval_data', filter: `workspace_id=eq.${workspaceId}` },
-                () => queryClient.invalidateQueries(['prospect-hub-data']))
-            .subscribe();
+    const handleDataCollected = (newProspects: ProspectData[], source: string) => {
+        toastSuccess(`Imported ${newProspects.length} prospects from ${source}`);
+        refetch();
+        setShowImportModal(false);
+    };
 
-        return () => { channel.unsubscribe(); };
-    }, [workspaceId, queryClient]);
+    const updateProspectStatus = async (id: string, status: 'approved' | 'rejected' | 'pending') => {
+        const prospect = prospects.find(p => p.id === id);
+        if (!prospect?.sessionId) return;
+
+        try {
+            await fetch('/api/prospect-approval/decisions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: prospect.sessionId,
+                    prospect_id: id,
+                    decision: status
+                })
+            });
+
+            // Optimistic update handled by invalidation or manual cache update
+            queryClient.setQueryData(['prospect-hub-data', workspaceId], (old: ProspectData[] | undefined) => {
+                if (!old) return [];
+                return old.map(p => p.id === id ? { ...p, approvalStatus: status } : p);
+            });
+
+            if (status === 'approved') toastSuccess('Prospect approved');
+            else if (status === 'rejected') toastSuccess('Prospect rejected');
+        } catch (error) {
+            console.error('Error updating prospect:', error);
+            toastError('Failed to update status');
+        }
+    };
 
     const handleApprove = (ids: string[]) => {
-        console.log('Approve ids:', ids);
-        // TODO: Implement approve logic
+        ids.forEach(id => updateProspectStatus(id, 'approved'));
     };
 
     const handleReject = (ids: string[]) => {
-        console.log('Reject ids:', ids);
-        // TODO: Implement reject logic
+        ids.forEach(id => updateProspectStatus(id, 'rejected'));
+    };
+
+    const handleDelete = async (id: string) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Prospect',
+            message: 'Are you sure you want to permanently delete this prospect?',
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    await fetch(`/api/prospect-approval/delete?prospect_id=${id}`, { method: 'DELETE' });
+                    toastSuccess('Prospect deleted');
+                    refetch();
+                } catch (error) {
+                    toastError('Failed to delete prospect');
+                }
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            }
+        });
+    };
+
+    // ... inside component ...
+
+    // ... inside component ...
+
+    const [selectedProspect, setSelectedProspect] = useState<ProspectData | null>(null);
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+    const handleViewDetails = (prospect: ProspectData) => {
+        setSelectedProspect(prospect);
+        setIsSheetOpen(true);
     };
 
     return (
         <div className="space-y-6 p-6">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight">Prospect Database</h1>
-                <p className="text-muted-foreground">
-                    Manage and review your AI-researched prospects.
-                </p>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Prospect Database</h1>
+                        <p className="text-muted-foreground">
+                            Manage and review your AI-researched prospects.
+                        </p>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
+                            className="flex items-center gap-2 px-4 py-2 text-sm rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+                        >
+                            <Upload className="w-4 h-4" />
+                            Import Prospects
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <ProspectStats
@@ -172,9 +261,37 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                         data={prospects}
                         onApprove={handleApprove}
                         onReject={handleReject}
+                        onDelete={handleDelete}
+                        onViewDetails={handleViewDetails}
                     />
                 )}
             </div>
+
+            {/* Modals */}
+            {showImportModal && (
+                <ImportProspectsModal
+                    isOpen={showImportModal}
+                    onClose={() => setShowImportModal(false)}
+                    onDataCollected={handleDataCollected}
+                    workspaceId={workspaceId}
+                    initialTab={importInitialTab}
+                />
+            )}
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                type={confirmModal.type}
+            />
+
+            <ProspectDetailsSheet
+                prospect={selectedProspect}
+                open={isSheetOpen}
+                onOpenChange={setIsSheetOpen}
+            />
         </div>
     );
 }

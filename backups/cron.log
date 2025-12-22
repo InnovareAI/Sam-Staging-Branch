@@ -11978,3 +11978,73 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+warning: adding embedded git repository: bundui-templates/components
+hint: You've added another git repository inside your current repository.
+hint: Clones of the outer repository will not contain the contents of
+hint: the embedded repository and will not know how to obtain it.
+hint: If you meant to add a submodule, use:
+hint:
+hint: 	git submodule add <url> bundui-templates/components
+hint:
+hint: If you added this path by mistake, you can remove it from the
+hint: index with:
+hint:
+hint: 	git rm --cached bundui-templates/components
+hint:
+hint: See "git help submodule" for more information.
+hint: Disable this message with "git config set advice.addEmbeddedRepo false"
+warning: adding embedded git repository: bundui-templates/cosmic
+warning: adding embedded git repository: bundui-templates/ecommerce-starter-kit
+warning: adding embedded git repository: bundui-templates/neofolio
+warning: adding embedded git repository: bundui-templates/shadcn-admin-dashboard-free
+warning: adding embedded git repository: bundui-templates/shadcn-ui-kit-dashboard
+warning: adding embedded git repository: bundui-templates/soho-nextjs
+warning: adding embedded git repository: bundui-templates/waitly
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 09eec9b4] 🔄 Auto-backup: auto-backup-20251222_180000
+ Committer: Thorsten Linz <tvonlinz@MacBook-Pro-2.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 15 files changed, 680 insertions(+), 66 deletions(-)
+ create mode 100644 app/workspace/[workspaceId]/data-approval/components/ProspectHub.tsx
+ create mode 100644 app/workspace/[workspaceId]/data-approval/components/ProspectStats.tsx
+ create mode 100644 app/workspace/[workspaceId]/data-approval/components/ProspectsTable.tsx
+ create mode 100644 app/workspace/[workspaceId]/data-approval/components/types.ts
+ create mode 160000 bundui-templates/components
+ create mode 160000 bundui-templates/cosmic
+ create mode 160000 bundui-templates/ecommerce-starter-kit
+ create mode 160000 bundui-templates/neofolio
+ create mode 160000 bundui-templates/shadcn-admin-dashboard-free
+ create mode 160000 bundui-templates/shadcn-ui-kit-dashboard
+ create mode 160000 bundui-templates/soho-nextjs
+ create mode 160000 bundui-templates/waitly
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251222_180000[0m
+[0;32m📅 Timestamp: Mon Dec 22 18:00:00 CET 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+

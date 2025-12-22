@@ -21,10 +21,12 @@ export type ProspectData = {
     source: string;
     enrichmentScore: number;
     confidence: number;
-    approvalStatus: 'pending' | 'approved' | 'rejected';
     campaignName?: string;
-    campaignTag?: string;
+    campaignTag?: string; // Search Name
     sessionId?: string;
+    linkedinCampaignType?: string;
+    approvalStatus: 'pending' | 'approved' | 'rejected';
+    draftMessage?: string;
     uploaded: boolean;
     qualityScore: number;
     createdAt: Date;

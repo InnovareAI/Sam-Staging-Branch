@@ -36,13 +36,15 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronsUpDown, MoreHorizontal, Star, Linkedin, Mail } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, MoreHorizontal, Star, Linkedin, Mail, CheckCircle, XCircle, Trash2 } from "lucide-react";
 import { ProspectData } from "./types";
 
 interface ProspectsTableProps {
     data: ProspectData[];
     onApprove: (ids: string[]) => void;
     onReject: (ids: string[]) => void;
+    onDelete: (id: string) => void;
+    onViewDetails: (prospect: ProspectData) => void;
 }
 
 export const columns: ColumnDef<ProspectData>[] = [
@@ -96,6 +98,11 @@ export const columns: ColumnDef<ProspectData>[] = [
         cell: ({ row }) => <div className="font-medium">{row.getValue("company")}</div>
     },
     {
+        accessorKey: "campaignTag",
+        header: "Search Name",
+        cell: ({ row }) => <div className="text-sm text-gray-400">{row.getValue("campaignTag") || '-'}</div>
+    },
+    {
         accessorKey: "qualityScore",
         header: "Quality",
         cell: ({ row }) => {
@@ -103,6 +110,7 @@ export const columns: ColumnDef<ProspectData>[] = [
             let colorClass = "text-gray-500";
             if (score >= 80) colorClass = "text-green-500";
             else if (score >= 50) colorClass = "text-yellow-500";
+            else if (score < 50) colorClass = "text-red-500";
 
             return (
                 <div className="flex items-center gap-1">
@@ -118,9 +126,11 @@ export const columns: ColumnDef<ProspectData>[] = [
         cell: ({ row }) => {
             const status = row.original.approvalStatus;
             return (
-                <Badge variant={status === 'approved' ? 'default' : status === 'rejected' ? 'destructive' : 'secondary'}>
-                    {status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                    <Badge variant={status === 'approved' ? 'default' : status === 'rejected' ? 'destructive' : 'secondary'}>
+                        {status}
+                    </Badge>
+                </div>
             );
         }
     },
@@ -140,8 +150,16 @@ export const columns: ColumnDef<ProspectData>[] = [
     {
         id: "actions",
         enableHiding: false,
-        cell: ({ row }) => {
+        cell: ({ table, row }) => {
             const prospect = row.original;
+            // @ts-ignore - meta injected via useReactTable
+            // @ts-ignore - meta injected via useReactTable
+            const meta = table.options.meta as {
+                onApprove?: (ids: string[]) => void;
+                onReject?: (ids: string[]) => void;
+                onDelete?: (id: string) => void;
+                onViewDetails?: (prospect: ProspectData) => void;
+            };
 
             return (
                 <DropdownMenu>
@@ -157,9 +175,19 @@ export const columns: ColumnDef<ProspectData>[] = [
                             Copy Email
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem className="text-green-600">Approve</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">Reject</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => meta.onViewDetails?.(prospect)} className="cursor-pointer">
+                            View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => meta.onApprove?.([prospect.id])} className="text-green-600 focus:text-green-700 cursor-pointer">
+                            <CheckCircle className="mr-2 h-4 w-4" /> Approve
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => meta.onReject?.([prospect.id])} className="text-red-600 focus:text-red-700 cursor-pointer">
+                            <XCircle className="mr-2 h-4 w-4" /> Reject
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => meta.onDelete?.(prospect.id)} className="text-red-600 focus:text-red-700 cursor-pointer">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             );
@@ -167,7 +195,7 @@ export const columns: ColumnDef<ProspectData>[] = [
     }
 ];
 
-export function ProspectsTable({ data, onApprove, onReject }: ProspectsTableProps) {
+export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDetails }: ProspectsTableProps) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -184,6 +212,12 @@ export function ProspectsTable({ data, onApprove, onReject }: ProspectsTableProp
         getFilteredRowModel: getFilteredRowModel(),
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
+        meta: {
+            onApprove,
+            onReject,
+            onDelete,
+            onViewDetails
+        },
         state: {
             sorting,
             columnFilters,
