@@ -1573,15 +1573,15 @@ export default function Page() {
     }
   }, [activeMenuItem]);
 
-  // NEW: Force redirect to new workspace chat architecture if on chat/agent tabs
-  useEffect(() => {
-    const wsId = currentWorkspace?.id || selectedWorkspaceId;
-    if ((activeMenuItem === 'chat' || activeMenuItem === 'commenting-agent') && isLoaded && wsId) {
-      const target = activeMenuItem === 'chat' ? 'chat' : 'commenting-agent';
-      console.log(`🔄 Redirecting to new ${target} architecture:`, `/workspace/${wsId}/${target}`);
-      window.location.href = `/workspace/${wsId}/${target}`;
-    }
-  }, [activeMenuItem, isLoaded, currentWorkspace?.id, selectedWorkspaceId]);
+  // DISABLED: Old redirect to workspace chat architecture - keeping chat in main dashboard
+  // useEffect(() => {
+  //   const wsId = currentWorkspace?.id || selectedWorkspaceId;
+  //   if ((activeMenuItem === 'chat' || activeMenuItem === 'commenting-agent') && isLoaded && wsId) {
+  //     const target = activeMenuItem === 'chat' ? 'chat' : 'commenting-agent';
+  //     console.log(`🔄 Redirecting to new ${target} architecture:`, `/workspace/${wsId}/${target}`);
+  //     window.location.href = `/workspace/${wsId}/${target}`;
+  //   }
+  // }, [activeMenuItem, isLoaded, currentWorkspace?.id, selectedWorkspaceId]);
 
   const menuItems = [
     {
