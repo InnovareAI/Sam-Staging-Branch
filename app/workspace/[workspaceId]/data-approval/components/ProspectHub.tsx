@@ -8,6 +8,7 @@ import { ProspectsTable } from './ProspectsTable';
 import { ProspectData } from './types';
 import { Star } from 'lucide-react';
 import { ProspectDetailsSheet } from './ProspectDetailsSheet';
+import { ProspectTableSkeleton } from './ProspectTableSkeleton';
 
 interface ProspectHubProps {
     workspaceId: string;
@@ -286,10 +287,7 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
 
             <div className="mt-6">
                 {isLoading && prospects.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-64 border rounded-lg bg-gray-50/50">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-                        <p className="text-muted-foreground animate-pulse">Loading prospects from database...</p>
-                    </div>
+                    <ProspectTableSkeleton />
                 ) : (
                     <>
                         {isFetching && (
