@@ -310,7 +310,7 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
             {/* Modals */}
             {showImportModal && (
                 <ImportProspectsModal
-                    isOpen={showImportModal}
+                    open={showImportModal}
                     onClose={() => setShowImportModal(false)}
                     onDataCollected={handleDataCollected}
                     workspaceId={workspaceId}

@@ -36,7 +36,7 @@ export function ProspectStats({ total, approved, rejected, pending }: ProspectSt
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{approved.toLocaleString()}</div>
-                    <Progress value={approvalRate} className="mt-2 h-1.5" indicatorColor="bg-green-500" />
+                    <Progress value={approvalRate} className="mt-2 h-1.5 bg-green-100" />
                     <p className="text-xs text-muted-foreground mt-1">
                         {approvalRate}% approval rate
                     </p>
@@ -49,7 +49,7 @@ export function ProspectStats({ total, approved, rejected, pending }: ProspectSt
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{pending.toLocaleString()}</div>
-                    <Progress value={pendingRate} className="mt-2 h-1.5" indicatorColor="bg-yellow-500" />
+                    <Progress value={pendingRate} className="mt-2 h-1.5 bg-yellow-100" />
                     <p className="text-xs text-muted-foreground mt-1">
                         Needs attention
                     </p>
