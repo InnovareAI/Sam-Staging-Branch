@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { BookOpen, BarChart3, Lightbulb, History, Search, MessageSquare, FileText } from "lucide-react";
+import { BookOpen, BarChart3, Lightbulb, History, Search, MessageSquare, FileText, RefreshCw } from "lucide-react";
 import { useSamContext } from './SamContextProvider';
 import { useSamThreadedChat } from "@/lib/hooks/useSamThreadedChat";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ export function ContextPanel() {
         refreshContext
     } = useSamContext();
 
-    const { threads, currentThread, switchToThread, loadThreads } = useSamThreadedChat();
+    const { threads, currentThread, switchToThread, loadThreads, isLoading } = useSamThreadedChat();
     const [search, setSearch] = useState('');
 
     // Load threads and context on mount
@@ -124,22 +124,36 @@ export function ContextPanel() {
                     {/* History Tab */}
                     {activeTab === 'history' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                            {/* Search */}
-                            <div className="relative">
-                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search conversations..."
-                                    className="pl-9 bg-surface/50 border-border/50 h-9 text-sm"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                />
+                            {/* Search & Refresh */}
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search conversations..."
+                                        className="pl-9 bg-surface/50 border-border/50 h-9 text-sm"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => loadThreads()}
+                                    disabled={isLoading}
+                                    className="h-9 w-9 flex items-center justify-center rounded-md bg-surface/50 border border-border/50 text-muted-foreground hover:bg-surface-highlight hover:text-foreground transition-colors disabled:opacity-50"
+                                    title="Refresh History"
+                                >
+                                    <RefreshCw size={16} className={cn(isLoading && "animate-spin")} />
+                                </button>
                             </div>
 
                             {/* Thread List */}
                             <div className="space-y-2">
-                                {filteredThreads.length === 0 ? (
+                                {isLoading && threads.length === 0 ? (
                                     <div className="text-center py-8 text-muted-foreground/50 text-sm">
-                                        {search ? 'No matching conversations' : 'No conversations yet'}
+                                        Loading conversations...
+                                    </div>
+                                ) : filteredThreads.length === 0 ? (
+                                    <div className="text-center py-8 text-muted-foreground/50 text-sm">
+                                        {search ? 'No matching conversations' : 'No previous conversations found'}
                                     </div>
                                 ) : (
                                     filteredThreads.map((thread) => (
