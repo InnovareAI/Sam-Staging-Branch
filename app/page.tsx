@@ -26,8 +26,8 @@ import { CRMIntegrationModal } from '@/app/components/CRMIntegrationModal';
 import KnowledgeBase from '@/app/components/KnowledgeBase';
 import Analytics from '@/app/components/Analytics';
 import AuditTrail from '@/app/components/AuditTrail';
-import DataCollectionHub from '@/components/DataCollectionHub';
-import CampaignHub from '@/app/components/CampaignHub';
+// import DataCollectionHub from '@/components/DataCollectionHub'; // REMOVED - Legacy
+// import CampaignHub from '@/app/components/CampaignHub'; // REMOVED - Legacy
 import AIConfiguration from '@/app/components/AIConfiguration';
 import CommentingCampaignModal from '@/app/components/CommentingCampaignModal';
 import CommentApprovalWorkflow from '@/app/components/CommentApprovalWorkflow';
@@ -3210,67 +3210,21 @@ export default function Page() {
           ) : activeMenuItem === 'knowledge' ? (
             <KnowledgeBase />
           ) : activeMenuItem === 'data-approval' ? (
-            /* Data Approval - Unified via DataCollectionHub */
-            <DataCollectionHub
-              userSession={session}
-              workspaceId={currentWorkspace?.id || null}
-              workspacesLoading={workspacesLoading}
-              userVerified={userVerified}
-              onDataCollected={(data, source) => {
-                // Handle data collected from DataCollectionHub
-                console.log('Data collected:', data, 'Source:', source);
-              }}
-              onApprovalComplete={(approvedData, campaignType, draftId) => {
-                // CRITICAL FIX (Dec 7): Force state commit before navigation + pass draftId
-                // flushSync prevents race condition where campaignType is undefined
-                console.log('Approved prospects:', approvedData.length, 'Campaign type:', campaignType, 'Draft ID:', draftId);
-                flushSync(() => {
-                  setPendingCampaignProspects(approvedData);
-                  setPendingCampaignType(campaignType);
-                  setPendingDraftId(draftId);
-                });
-                // State is now committed - safe to navigate
-                setActiveMenuItem('campaign');
-              }}
-              initialUploadedData={uploadedProspects}
-            />
-          ) : activeMenuItem === 'campaign' ? (
-            <div className="flex-1 flex flex-col">
-              {/* Conditional View */}
-              <div className="flex-1 overflow-y-auto">
-                {showCampaignApprovalView ? (
-                  <DataCollectionHub
-                    userSession={session}
-                    workspaceId={currentWorkspace?.id || null}
-                    workspacesLoading={workspacesLoading}
-                    onDataCollected={(data, source) => {
-                      console.log('Data collected:', data, 'Source:', source);
-                    }}
-                    onApprovalComplete={(approvedData, campaignType) => {
-                      // Store approved prospects and switch to campaign creation view
-                      // Dec 8 FIX: MUST reset pendingDraftId to prevent loading old draft with all session prospects
-                      console.log('Approved prospects:', approvedData, 'Campaign type:', campaignType);
-                      setPendingCampaignProspects(approvedData);
-                      setPendingCampaignType(campaignType);
-                      setPendingDraftId(undefined); // CRITICAL: Clear stale draft ID to prevent data leakage
-                      setShowCampaignApprovalView(false); // Switch to campaign hub after approval
-                    }}
-                    initialUploadedData={uploadedProspects}
-                  />
-                ) : (
-                  <CampaignHub
-                    workspaceId={currentWorkspace?.id || null}
-                    initialProspects={pendingCampaignProspects}
-                    initialCampaignType={pendingCampaignType}
-                    initialDraftId={pendingDraftId}
-                    onCampaignCreated={() => {
-                      setPendingCampaignProspects(null);
-                      setPendingCampaignType(undefined);
-                      setPendingDraftId(undefined);
-                    }}
-                  />
-                )}
+            /* Data Approval - Legacy View Removed */
+            <div className="flex flex-col items-center justify-center h-full text-center p-8">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
+                <CheckSquare className="w-8 h-8 text-blue-400" />
               </div>
+              <h2 className="text-xl font-semibold text-white mb-2">Redirecting to Prospect Database...</h2>
+              <p className="text-muted-foreground">Please wait while we move you to the new workspace experience.</p>
+            </div>
+          ) : activeMenuItem === 'campaign' ? (
+            <div className="flex-1 flex flex-col items-center justify-center h-full text-center p-8">
+              <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mb-4">
+                <Megaphone className="w-8 h-8 text-purple-400" />
+              </div>
+              <h2 className="text-xl font-semibold text-white mb-2">Redirecting to Campaigns...</h2>
+              <p className="text-muted-foreground">Please wait while we move you to the new workspace experience.</p>
             </div>
           ) : activeMenuItem === 'commenting-agent' ? (
             commentingAgentView === 'approve' && selectedWorkspaceId ? (
