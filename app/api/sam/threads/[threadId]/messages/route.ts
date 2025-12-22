@@ -2510,9 +2510,28 @@ function extractCompanySize(content: string): string | null {
 // Helper function to trigger knowledge extraction
 async function triggerKnowledgeExtraction(threadId: string, messageCount: number) {
   try {
-    // Only extract knowledge every few messages to avoid overprocessing
-    // Or if thread has prospect intelligence or is of specific types
-    if (messageCount % 5 === 0 || messageCount >= 10) {
+    // 🧠 MORE AGGRESSIVE EXTRACTION STRATEGY (Dec 22 2025)
+    // To ensure "persistent memory" feels real, we need to extract facts immediately
+    // when the user shares them, especially early in the conversation.
+
+    // Strategy:
+    // 1. First 5 messages: Extract EVERY message (high entropy period)
+    // 2. Messages 6-20: Extract every 3rd message
+    // 3. Messages 20+: Extract every 5th message (maintenance mode)
+
+    let shouldExtract = false;
+
+    if (messageCount <= 5) {
+      shouldExtract = true; // Always extract early context
+    } else if (messageCount <= 20) {
+      shouldExtract = messageCount % 3 === 0;
+    } else {
+      shouldExtract = messageCount % 5 === 0;
+    }
+
+    if (shouldExtract) {
+      console.log(`🧠 Triggering knowledge extraction for thread ${threadId} (Msg #${messageCount})`);
+
       const extractionResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/api/sam/extract-knowledge`, {
         method: 'POST',
         headers: {
@@ -2526,19 +2545,15 @@ async function triggerKnowledgeExtraction(threadId: string, messageCount: number
       })
 
       if (extractionResponse.ok) {
-        const extractionResult = await extractionResponse.json()
-        console.log(`🧠 Knowledge extracted from thread ${threadId}:`, {
-          personal: extractionResult.extraction_result?.personal_extractions || 0,
-          team: extractionResult.extraction_result?.team_extractions || 0,
-          confidence: extractionResult.extraction_result?.confidence || 0
-        })
+        // Log succcess but don't parse full JSON unless debugging to save resources
+        console.log(`✅ Knowledge extraction initiated`);
       } else {
         console.error('❌ Knowledge extraction API error:', extractionResponse.status)
       }
     }
   } catch (error) {
     console.error('❌ Knowledge extraction trigger error:', error)
-    throw error
+    // Don't throw - fire and forget
   }
 }
 
