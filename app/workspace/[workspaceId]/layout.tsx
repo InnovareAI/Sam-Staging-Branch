@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { createServerSupabaseClient } from '@/app/lib/supabase';
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -12,6 +13,20 @@ export default async function WorkspaceLayout({
 }) {
   const { workspaceId } = await params;
   const supabase = await createServerSupabaseClient();
+
+  // Detect if we're on the chat route - it has its own sidebar
+  // Check multiple sources since rewrites change the pathname
+  const headersList = await headers();
+  const xPathname = headersList.get('x-pathname') || '';
+  const xInvokePath = headersList.get('x-invoke-path') || '';
+  const referer = headersList.get('referer') || '';
+  const xUrl = headersList.get('x-url') || '';
+
+  // Chat route check: path ends with /chat (works for both /chat and /workspace/{id}/chat)
+  const isChatRoute = xPathname.endsWith('/chat') ||
+    xInvokePath.endsWith('/chat') ||
+    referer.endsWith('/chat') ||
+    xUrl.includes('/chat');
 
   // Server-side auth check - instant, no loading spinner
   const { data: { user } } = await supabase.auth.getUser();
@@ -30,6 +45,11 @@ export default async function WorkspaceLayout({
 
   if (!member) {
     redirect('/');
+  }
+
+  // Chat route uses its own AdaptiveLayout with ChatSidebar - skip AppSidebar
+  if (isChatRoute) {
+    return <>{children}</>;
   }
 
   // Get workspace details
@@ -65,3 +85,4 @@ export default async function WorkspaceLayout({
     </SidebarProvider>
   );
 }
+

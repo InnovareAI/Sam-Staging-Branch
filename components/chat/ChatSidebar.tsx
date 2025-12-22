@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { MessageCircle, Brain, CheckSquare, Megaphone, MessageSquare, BarChart3, Settings, LogOut, User } from 'lucide-react';
+import { MessageCircle, Brain, CheckSquare, Megaphone, MessageSquare, BarChart3, Settings, LogOut, User, Database, Linkedin, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { createClient } from '@/app/lib/supabase';
@@ -17,51 +17,68 @@ const menuItems = [
         isActive: true
     },
     {
-        id: 'knowledge',
-        label: 'Knowledgebase',
-        description: 'Training assets',
-        icon: Brain,
-        path: '/?tab=knowledge',
-        isLegacy: true
-    },
-    {
-        id: 'data-approval',
-        label: 'Prospects',
-        description: 'Manage prospect data',
-        icon: CheckSquare,
-        path: '/?tab=data-approval',
-        isLegacy: true
-    },
-    {
         id: 'campaign',
         label: 'Campaigns',
         description: 'Multi-channel outreach',
         icon: Megaphone,
-        path: '/?tab=campaign',
-        isLegacy: true
+        path: '/campaign-hub'
+    },
+    {
+        id: 'data-approval',
+        label: 'Prospect Database',
+        description: 'Manage prospect data',
+        icon: Database,
+        path: '/data-approval'
+    },
+    {
+        id: 'knowledge',
+        label: 'Knowledge Base',
+        description: 'Training assets',
+        icon: Brain,
+        path: '/knowledge'
     },
     {
         id: 'commenting-agent',
-        label: 'Commenting',
+        label: 'Commenting Agent',
         description: 'LinkedIn engagement',
         icon: MessageSquare,
-        path: '/commenting-agent'
+        path: '/commenting-agent',
+        badge: 'NEW'
     },
     {
         id: 'analytics',
         label: 'Analytics',
         description: 'Performance metrics',
         icon: BarChart3,
-        path: '/?tab=analytics',
-        isLegacy: true
+        path: '/analytics'
     },
     {
         id: 'settings',
         label: 'Settings',
         description: 'Integrations & config',
         icon: Settings,
-        path: '/?tab=settings',
-        isLegacy: true
+        path: '/settings'
+    }
+];
+
+const integrationItems = [
+    {
+        id: 'linkedin',
+        label: 'LinkedIn',
+        icon: Linkedin,
+        path: '/linkedin-integration'
+    },
+    {
+        id: 'email',
+        label: 'Email',
+        icon: Mail,
+        path: '/settings'
+    },
+    {
+        id: 'ai-config',
+        label: 'AI Configuration',
+        icon: Brain,
+        path: '/ai-config'
     }
 ];
 

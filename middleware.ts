@@ -8,7 +8,13 @@ import { createServerClient } from '@supabase/ssr';
 const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // Create response with pathname header for route detection in layouts
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-pathname', request.nextUrl.pathname);
+
+  let response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 
   // Skip middleware for API routes - they handle their own auth
   if (request.nextUrl.pathname.startsWith('/api/')) {
