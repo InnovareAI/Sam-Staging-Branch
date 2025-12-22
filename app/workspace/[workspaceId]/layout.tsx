@@ -99,7 +99,7 @@ const menuItems = [
 
 // Routes that should hide the global sidebar and render in full-screen mode
 // These routes have their own internal navigation or are part of the new unified layout
-const FULL_SCREEN_ROUTES = ['/chat', '/knowledge', '/data-approval', '/campaign-hub', '/commenting-agent', '/analytics', '/settings', '/workspace-settings', '/ai-config'];
+const FULL_SCREEN_ROUTES = ['/chat'];
 
 export default function WorkspaceLayout({
   children,
