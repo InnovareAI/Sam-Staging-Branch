@@ -44,8 +44,8 @@ const menuItems = [
     label: 'Prospect Database',
     description: 'Review, approve and manage prospect data',
     icon: CheckSquare,
-    path: '/?tab=data-approval',
-    isLegacy: true
+    path: '/data-approval',
+    isLegacy: false
   },
   {
     id: 'campaign',
