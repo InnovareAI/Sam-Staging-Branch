@@ -68,8 +68,8 @@ const menuItems = [
     label: 'Analytics',
     description: 'Monitor performance and coverage metrics',
     icon: BarChart3,
-    path: '/?tab=analytics',
-    isLegacy: true
+    path: '/analytics',
+    isLegacy: false
   },
   {
     id: 'settings',

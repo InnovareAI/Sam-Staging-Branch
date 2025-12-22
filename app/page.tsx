@@ -1576,13 +1576,14 @@ export default function Page() {
   // Redirect to new workspace layout (with updated sidebar)
   useEffect(() => {
     const wsId = currentWorkspace?.id || selectedWorkspaceId;
-    const newArchitectureTabs = ['chat', 'commenting-agent', 'campaign', 'knowledge'];
+    const newArchitectureTabs = ['chat', 'commenting-agent', 'campaign', 'knowledge', 'analytics'];
     if (newArchitectureTabs.includes(activeMenuItem) && isLoaded && wsId) {
       const targetMap: Record<string, string> = {
         'chat': 'chat',
         'commenting-agent': 'commenting-agent',
         'campaign': 'campaign-hub',
-        'knowledge': 'knowledge'
+        'knowledge': 'knowledge',
+        'analytics': 'analytics'
       };
       const target = targetMap[activeMenuItem];
       console.log(`🔄 Redirecting to new ${activeMenuItem} architecture:`, `/workspace/${wsId}/${target}`);
