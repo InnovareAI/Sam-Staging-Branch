@@ -2411,57 +2411,7 @@ const KnowledgeBase: React.FC = () => {
                 </div>
               )}
 
-              {/* Campaign Readiness Banner */}
-              {!isKnowledgeLoading && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`rounded-lg p-5 flex items-start gap-4 ${knowledgeCompletion >= 50
-                    ? 'bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-500/40'
-                    : 'bg-gradient-to-r from-yellow-900/30 to-orange-800/20 border border-yellow-500/40'
-                    }`}
-                >
-                  <div className="flex-shrink-0">
-                    {knowledgeCompletion >= 50 ? (
-                      <CheckCircle className="text-green-400" size={28} />
-                    ) : (
-                      <AlertTriangle className="text-yellow-400" size={28} />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    {knowledgeCompletion >= 50 ? (
-                      <>
-                        <h3 className="text-green-400 font-semibold text-lg mb-1">
-                          {knowledgeCompletion >= 75
-                            ? 'Complete Essential Set - Full Campaigns Ready!'
-                            : 'Ready to Create Test Campaigns'}
-                        </h3>
-                        <p className="text-gray-300 text-sm">
-                          Your Knowledge Base is at {knowledgeCompletion}%. SAM can now create {knowledgeCompletion >= 75 ? 'fully optimized' : 'testing'} campaigns.
-                          {knowledgeCompletion < 75 && <span className="text-yellow-300"> Complete all 4 essential docs (ICP, Product, Messaging, Pricing) for 75% and full optimization.</span>}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <h3 className="text-yellow-400 font-semibold text-lg mb-1">
-                          {knowledgeCompletion >= 25 ? 'Almost Ready' : 'Getting Started'} - {50 - knowledgeCompletion}% to Test Campaigns
-                        </h3>
-                        <p className="text-gray-300 text-sm mb-3">
-                          Currently at <span className="font-bold text-white">{knowledgeCompletion}%</span>.
-                          Reach <span className="font-bold text-white">50%</span> to unlock testing campaigns and A/B tests.
-                          Without core knowledge, SAM can't personalize outreach or handle objections effectively.
-                        </p>
-                        <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="h-2 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full transition-all duration-500"
-                            style={{ width: `${(knowledgeCompletion / 50) * 100}%` }}
-                          ></div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </motion.div>
-              )}
+
 
               {/* KB Completeness and Health - First Row */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
