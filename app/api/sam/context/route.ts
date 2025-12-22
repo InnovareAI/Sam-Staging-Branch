@@ -6,6 +6,7 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const threadId = searchParams.get('threadId');
+        const workspaceIdParam = searchParams.get('workspaceId');
 
         const supabase = await createSupabaseRouteClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -14,8 +15,8 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // 1. Get Thread and Workspace
-        let workspaceId = null;
+        // 1. Get Thread and Workspace - prioritize explicit workspaceId param
+        let workspaceId = workspaceIdParam;
         let thread = null;
 
         if (threadId) {
@@ -27,7 +28,9 @@ export async function GET(request: Request) {
                 .single();
 
             thread = threadData;
-            workspaceId = threadData?.workspace_id;
+            if (!workspaceId) {
+                workspaceId = threadData?.workspace_id;
+            }
         }
 
         if (!workspaceId) {
@@ -38,6 +41,17 @@ export async function GET(request: Request) {
                 .eq('id', user.id)
                 .single();
             workspaceId = profile?.current_workspace_id;
+        }
+
+        if (!workspaceId) {
+            // Last fallback: get first workspace user is a member of
+            const { data: membership } = await supabase
+                .from('workspace_members')
+                .select('workspace_id')
+                .eq('user_id', user.id)
+                .limit(1)
+                .single();
+            workspaceId = membership?.workspace_id;
         }
 
         if (!workspaceId) {

@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 
 // Types for context data
 export interface LeadIntelligence {
@@ -43,6 +44,9 @@ interface SamContextType {
 const SamContext = createContext<SamContextType | undefined>(undefined);
 
 export function SamContextProvider({ children }: { children: ReactNode }) {
+    const params = useParams();
+    const workspaceId = params.workspaceId as string | undefined;
+
     const [activeTab, setActiveTab] = useState('knowledge');
     const [activeLead, setActiveLead] = useState<LeadIntelligence | null>(null);
 
@@ -61,10 +65,14 @@ export function SamContextProvider({ children }: { children: ReactNode }) {
         setOnboardingState(prev => ({ ...prev, ...data }));
     };
 
-    const refreshContext = async (threadId?: string) => {
+    const refreshContext = useCallback(async (threadId?: string) => {
         try {
             setIsLoadingContext(true);
-            const url = threadId ? `/api/sam/context?threadId=${threadId}` : '/api/sam/context';
+            const params = new URLSearchParams();
+            if (threadId) params.set('threadId', threadId);
+            if (workspaceId) params.set('workspaceId', workspaceId);
+
+            const url = `/api/sam/context${params.toString() ? `?${params.toString()}` : ''}`;
             const response = await fetch(url);
             const data = await response.json();
             if (data.success) {
@@ -75,7 +83,7 @@ export function SamContextProvider({ children }: { children: ReactNode }) {
         } finally {
             setIsLoadingContext(false);
         }
-    };
+    }, [workspaceId]);
 
     return (
         <SamContext.Provider value={{
