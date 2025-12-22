@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Package, Target, Users, BookOpen, Settings, Upload, Menu } from 'lucide-react';
+import { LayoutDashboard, Package, Target, Users, BookOpen, Settings, Upload, Menu, Sparkles } from 'lucide-react';
 import { KnowledgeFeed } from './KnowledgeFeed';
 import { ICPConfiguration } from './ICPConfiguration';
 import { DocumentUpload } from './DocumentUpload';
