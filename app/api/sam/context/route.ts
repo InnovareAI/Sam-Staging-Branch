@@ -51,10 +51,19 @@ export async function GET(request: Request) {
         }
 
         // 2. Fetch Knowledge Context
-        const kbCompleteness = await supabaseKnowledge.checkKBCompleteness(workspaceId);
-
-        // 3. Fetch Strategy Context (ICPs)
-        const icps = await supabaseKnowledge.getICPs({ workspaceId });
+        const [
+            kbCompleteness,
+            icps,
+            products,
+            competitors,
+            documents
+        ] = await Promise.all([
+            supabaseKnowledge.checkKBCompleteness(workspaceId),
+            supabaseKnowledge.getICPs({ workspaceId }),
+            supabaseKnowledge.getProducts({ workspaceId }),
+            supabaseKnowledge.getCompetitors({ workspaceId }),
+            supabaseKnowledge.getDocuments({ workspaceId, limit: 5 })
+        ]);
 
         // 4. Fetch Real Campaign Stats
         const { data: campaigns } = await supabase
@@ -104,12 +113,29 @@ export async function GET(request: Request) {
             knowledge: {
                 completeness: kbCompleteness?.overallCompleteness || 0,
                 sections: kbCompleteness?.sections || {},
-                missingCritical: kbCompleteness?.missingCritical || []
+                missingCritical: kbCompleteness?.missingCritical || [],
+                // Real Data
+                products: products.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    description: p.description
+                })),
+                competitors: competitors.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    strengths: c.strengths
+                })),
+                documents: documents.map(d => ({
+                    id: d.id,
+                    name: d.filename,
+                    date: d.created_at
+                }))
             },
             strategy: {
                 activeICPs: icps.length,
                 primaryICP: icps[0] || null,
-                icpCount: icps.length
+                icpCount: icps.length,
+                allICPs: icps.map(i => ({ id: i.id, name: i.name }))
             },
             stats
         });

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { BookOpen, BarChart3, Lightbulb, History, Search, MessageSquare } from "lucide-react";
+import { BookOpen, BarChart3, Lightbulb, History, Search, MessageSquare, FileText } from "lucide-react";
 import { useSamContext } from './SamContextProvider';
 import { useSamThreadedChat } from "@/lib/hooks/useSamThreadedChat";
 import { cn } from "@/lib/utils";
@@ -199,48 +199,73 @@ export function ContextPanel() {
                     {/* Knowledge Base Tab */}
                     {activeTab === 'knowledge' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                            <div className="p-4 rounded-xl border border-[#8B5CF6]/30 bg-[#8B5CF6]/5 space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="font-semibold text-[#A78BFA] flex items-center gap-2">
-                                        <BookOpen size={18} /> Knowledge Completeness
-                                    </h4>
-                                    <span className="text-xl font-bold text-[#A78BFA]">{contextData?.knowledge?.completeness || 0}%</span>
-                                </div>
-                                <div className="h-2 w-full bg-[#8B5CF6]/10 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-[#8B5CF6] transition-all duration-1000"
-                                        style={{ width: `${contextData?.knowledge?.completeness || 0}%` }}
-                                    />
-                                </div>
+                            {/* Completeness Summary (Small) */}
+                            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface/40 border border-border/40">
+                                <span className="text-xs text-muted-foreground">Knowledge Health</span>
+                                <span className="text-xs font-bold text-[#A78BFA]">{contextData?.knowledge?.completeness || 0}% Complete</span>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3">
-                                {contextData?.knowledge?.sections ? Object.entries(contextData.knowledge.sections).map(([name, data]: [string, any]) => (
-                                    <div key={name} className="flex items-center justify-between p-3 rounded-lg bg-surface/40 border border-border/40 hover:border-[#8B5CF6]/30 transition-colors">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-medium capitalize">{name.replace('_', ' ')}</span>
-                                            <span className="text-xs text-muted-foreground">{data.entries} entries</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-16 h-1.5 bg-surface-highlight rounded-full overflow-hidden">
-                                                <div className="h-full bg-[#8B5CF6]/60" style={{ width: `${data.percentage}%` }} />
+                            {/* Products Section */}
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Products</h4>
+                                {contextData?.knowledge?.products?.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {contextData.knowledge.products.map((p: any) => (
+                                            <div key={p.id} className="p-3 rounded-lg bg-[#8B5CF6]/5 border border-[#8B5CF6]/20">
+                                                <div className="font-medium text-sm text-[#A78BFA]">{p.name}</div>
+                                                {p.description && (
+                                                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{p.description}</div>
+                                                )}
                                             </div>
-                                            <span className="text-[10px] text-muted-foreground w-6 text-right">{data.percentage}%</span>
-                                        </div>
+                                        ))}
                                     </div>
-                                )) : (
-                                    <div className="text-center py-6 text-muted-foreground/60 text-sm">
-                                        No knowledge base data available.
+                                ) : (
+                                    <div className="text-xs text-muted-foreground italic px-2">No products found</div>
+                                )}
+                            </div>
+
+                            {/* Competitors Section */}
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Competitors</h4>
+                                {contextData?.knowledge?.competitors?.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {contextData.knowledge.competitors.map((c: any) => (
+                                            <div key={c.id} className="px-3 py-1.5 rounded-md bg-surface border border-border/40 text-xs font-medium">
+                                                {c.name}
+                                            </div>
+                                        ))}
                                     </div>
+                                ) : (
+                                    <div className="text-xs text-muted-foreground italic px-2">No competitors found</div>
+                                )}
+                            </div>
+
+                            {/* Recent Documents */}
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent Uploads</h4>
+                                {contextData?.knowledge?.documents?.length > 0 ? (
+                                    <div className="space-y-1">
+                                        {contextData.knowledge.documents.map((d: any) => (
+                                            <div key={d.id} className="flex items-center gap-2 p-2 rounded hover:bg-surface-highlight/50 transition-colors cursor-default">
+                                                <FileText size={14} className="text-muted-foreground" />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-xs text-foreground truncate">{d.name}</div>
+                                                    <div className="text-[10px] text-muted-foreground">{new Date(d.date).toLocaleDateString()}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-xs text-muted-foreground italic px-2">No documents recently uploaded</div>
                                 )}
                             </div>
 
                             {/* Quick Action */}
                             <button
                                 onClick={() => window.location.href = '/?tab=knowledge'}
-                                className="w-full p-3 rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 text-[#A78BFA] text-sm font-medium hover:bg-[#8B5CF6]/20 transition-colors"
+                                className="w-full mt-2 p-2 rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 text-[#A78BFA] text-xs font-medium hover:bg-[#8B5CF6]/20 transition-colors"
                             >
-                                Open Knowledgebase →
+                                Manage Knowledge Base →
                             </button>
                         </div>
                     )}
