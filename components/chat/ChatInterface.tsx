@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useSamThreadedChat, SamThreadMessage } from '@/lib/hooks/useSamThreadedChat';
 import { useSamContext } from './SamContextProvider';
+import { RichMessageRenderer } from './RichMessageRenderer';
 
 export function ChatInterface() {
     const {
@@ -382,7 +383,11 @@ export function ChatInterface() {
                                         : "bg-surface-highlight text-foreground border border-border/40 rounded-bl-none"
                                 )}
                             >
-                                <div className="text-base leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                                {msg.role === 'assistant' ? (
+                                    <RichMessageRenderer content={msg.content} />
+                                ) : (
+                                    <div className="text-base leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                                )}
 
                                 {/* Attachments */}
                                 {msg.attachments && msg.attachments.length > 0 && (
