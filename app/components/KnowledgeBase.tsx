@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Package, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, Bot, HelpCircle, Globe, ArrowLeft, Trash2, Activity, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Package, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, Bot, HelpCircle, Globe, ArrowLeft, Trash2, Activity, CheckCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import SAMOnboarding from './SAMOnboarding';
@@ -2482,1601 +2482,1470 @@ const KnowledgeBase: React.FC = () => {
                 </div>
               </div>
 
-              {/* KB Completeness and Health - First Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* KB Completeness Meter */}
-                <div className="bg-card rounded-xl p-6 border shadow">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-white text-lg font-semibold">Knowledgebase Completeness</span>
-                    <span className="text-white text-2xl font-bold">{completionDisplay}</span>
+
+              {/* Bento Grid Layout */}
+              <div className="grid grid-cols-12 gap-4">
+
+                {/* Row 1: SAM Readiness (Large) + Quick Upload (Medium) */}
+                <div className="col-span-12 lg:col-span-7 bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <Sparkles className="text-primary" size={20} />
+                      SAM Readiness
+                    </h3>
+                    <span className="text-3xl font-bold text-primary">{completionDisplay}</span>
                   </div>
 
-                  {/* Temperature-style completion bar */}
-                  <div className="relative mb-6">
-                    <div className="w-full bg-gray-600 rounded-full h-4 overflow-hidden">
-                      <div
-                        className="h-4 rounded-full transition-all duration-1000 ease-out"
-                        style={{
-                          width: completionWidth,
-                          background: 'linear-gradient(90deg, #3B82F6 0%, #10B981 50%, #F59E0B 75%, #EF4444 100%)'
-                        }}
-                      ></div>
-                    </div>
-
-                    {/* Temperature markers */}
-                    <div className="absolute -bottom-5 w-full flex justify-between text-xs text-gray-400">
-                      <span>0%</span>
-                      <span>25%</span>
-                      <span>50%</span>
-                      <span>75%</span>
-                      <span>100%</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
-                        <span className="text-gray-300">Basic</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                        <span className="text-gray-300">Good</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
-                        <span className="text-gray-300">Excellent</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
-                        <span className="text-gray-300">Expert</span>
+                  {/* Circular Progress Visualization */}
+                  <div className="flex items-center gap-6">
+                    <div className="relative w-32 h-32 flex-shrink-0">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-700" />
+                        <circle
+                          cx="50" cy="50" r="40" fill="none" strokeWidth="8" strokeLinecap="round"
+                          stroke="url(#progressGradient)"
+                          strokeDasharray={`${(knowledgeCompletion || 0) * 2.51} 251`}
+                          className="transition-all duration-1000"
+                        />
+                        <defs>
+                          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#3B82F6" />
+                            <stop offset="50%" stopColor="#8B5CF6" />
+                            <stop offset="100%" stopColor="#EC4899" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Bot className="text-primary" size={28} />
                       </div>
                     </div>
-                  </div>
 
-                  {!isKnowledgeLoading && (
-                    <div className="text-xs text-gray-400 mt-3 space-y-1">
-                      <p className="font-medium text-gray-300">Score Breakdown:</p>
-                      <p>• <span className="text-yellow-400 font-semibold">Essential Set: {Math.round(criticalScore)}/75%</span> (1 doc each: ICP, Product, Messaging, Pricing)</p>
-                      <p>• <span className="text-blue-400">Bonus Content: {Math.round(importantScore + supportingScore)}/25%</span> (Objections, Case Studies, etc.)</p>
-                      {icpBonus > 0 && <p className="text-green-400">• Extra ICPs: +{icpBonus}%</p>}
-                    </div>
-                  )}
-
-                  {!isKnowledgeLoading && (
-                    <details className="mt-4 text-xs text-gray-400 group">
-                      <summary className="cursor-pointer font-bold text-base px-4 py-3 rounded-lg transition-all list-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg hover:shadow-xl">
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-2">
-                            {knowledgeCompletion === 0
-                              ? '📊 How to reach 100% (Perfect Score)'
-                              : `🎯 Your Action Plan to ${knowledgeCompletion >= 100 ? 'Perfect' : 'Improve Your'} Score`}
-                          </span>
-                          <span className="text-xs opacity-75 group-open:rotate-180 transition-transform">▼</span>
+                    {/* Category Breakdown Bars */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-24">Foundation</span>
+                        <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all"
+                            style={{ width: `${Math.round(calculateCategoryScore(foundationSections) * 2)}%` }} />
                         </div>
-                      </summary>
-                      <div className="mt-3 space-y-3 pl-4 border-l-2 border">
-                        {knowledgeCompletion === 0 ? (
-                          // General guidance for completely empty KB
-                          <>
-                            <div className="bg-gradient-to-r from-yellow-900/20 to-yellow-800/10 border border-yellow-600/30 rounded-lg p-4 -ml-4 pl-6 mb-3">
-                              <p className="font-bold text-yellow-400 mb-2">🎯 ONE Complete Set = 75%</p>
-                              <p className="text-gray-300 text-sm mb-2">Upload these 4 essential documents to unlock full campaigns:</p>
-                              <ul className="ml-3 space-y-1 text-gray-300">
-                                <li>✓ 1 ICP Profile → <span className="text-white font-semibold">18.75%</span></li>
-                                <li>✓ 1 Product/Service Doc → <span className="text-white font-semibold">18.75%</span></li>
-                                <li>✓ 1 Messaging Template → <span className="text-white font-semibold">18.75%</span></li>
-                                <li>✓ 1 Pricing Document → <span className="text-white font-semibold">18.75%</span></li>
-                              </ul>
-                              <p className="text-yellow-300 font-semibold mt-2">= 75% Total</p>
-                            </div>
-
-                            <div>
-                              <p className="font-medium text-blue-400 mb-1">Bonus Content (25% to reach 100%):</p>
-                              <p className="text-gray-400 text-xs mb-2">Everything else is bonus to maximize SAM's effectiveness:</p>
-                              <ul className="ml-3 space-y-0.5 text-gray-400 text-xs">
-                                <li>• Objections, Case Studies, Competitor Intel → 5% each</li>
-                                <li>• Company, Buying Process, Personas, Compliance, Tone → 2% each</li>
-                                <li>• Extra ICPs → +2% bonus each (max +4%)</li>
-                                <li>• Additional messaging variants → Better A/B testing</li>
-                              </ul>
-                            </div>
-
-                            <div className="pt-3 bg-green-900/20 -ml-4 pl-4 pr-2 py-3 rounded border border-green-700/30 mt-3">
-                              <p className="font-medium text-green-400">💡 Quick Path to 75%:</p>
-                              <p className="text-gray-300 mt-1 text-sm">Just upload 4 documents (ICP, Product, Messaging, Pricing) and you're ready to launch!</p>
-                            </div>
-                          </>
-                        ) : (
-                          // Dynamic personalized recommendations
-                          <>
-                            {(() => {
-                              const recommendations = generateRecommendations();
-                              const incomplete = recommendations.filter(r => !r.isComplete);
-                              const complete = recommendations.filter(r => r.isComplete);
-
-                              return (
-                                <>
-                                  {knowledgeCompletion >= 100 ? (
-                                    <div className="pt-2 bg-green-900/20 -ml-4 pl-4 pr-2 py-2 rounded border border-green-700">
-                                      <p className="font-medium text-green-400">🎉 Perfect Score Achieved!</p>
-                                      <p className="text-gray-400 mt-1">Your knowledge base is fully optimized. SAM has everything needed for maximum effectiveness.</p>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <div>
-                                        <p className="font-medium text-gray-300 mb-1">Priority Actions (by impact):</p>
-                                        <p className="text-gray-400 text-xs">Fill these gaps to improve SAM's knowledge:</p>
-                                      </div>
-
-                                      <div className="space-y-3">
-                                        {incomplete.slice(0, 6).map(rec => {
-                                          const categoryColor = rec.category === 'critical' ? 'text-yellow-400' :
-                                            rec.category === 'important' ? 'text-orange-400' : 'text-blue-400';
-                                          const icon = rec.currentScore === 0 ? '❌' : '⚠️';
-
-                                          return (
-                                            <div key={rec.id} className="flex items-start justify-between gap-2 pb-2 border-b border/50 last:border-0">
-                                              <div className="flex-1">
-                                                <p className={`font-medium ${categoryColor}`}>
-                                                  {icon} {rec.label}
-                                                </p>
-                                                <p className="text-gray-400 text-xs mt-0.5">
-                                                  {rec.currentCount > 0
-                                                    ? `Has ${rec.currentCount}, add ${rec.docsNeeded} more → ${rec.nextMilestone}%`
-                                                    : `Add ${rec.docsNeeded} document${rec.docsNeeded > 1 ? 's' : ''} to start`}
-                                                </p>
-                                                <p className="text-blue-300 text-xs mt-1 italic">
-                                                  📞 {rec.samImpact}
-                                                </p>
-                                              </div>
-                                              <div className="text-right ml-2 flex-shrink-0">
-                                                <p className="text-green-400 font-medium">+{rec.impactPercent}%</p>
-                                                <p className="text-gray-500 text-xs">impact</p>
-                                              </div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-
-                                      {incomplete.length > 6 && (
-                                        <p className="text-gray-500 text-xs italic">
-                                          +{incomplete.length - 6} more sections to optimize
-                                        </p>
-                                      )}
-
-                                      {complete.length > 0 && (
-                                        <div className="pt-2 border-t border">
-                                          <p className="font-medium text-green-400 text-xs">
-                                            ✅ Completed: {complete.map(c => c.label).join(', ')}
-                                          </p>
-                                        </div>
-                                      )}
-
-                                      <div className="pt-2 border-t border">
-                                        <p className="font-medium text-gray-300 text-xs mb-2">How to Fill Knowledge Gaps:</p>
-                                        <div className="space-y-1.5 text-xs text-gray-400">
-                                          <div className="flex items-start gap-2">
-                                            <span className="text-green-400">💬</span>
-                                            <div>
-                                              <span className="text-gray-300 font-medium">Complete SAM's Interview:</span> Answer targeted questions to fill specific sections quickly
-                                            </div>
-                                          </div>
-                                          <div className="flex items-start gap-2">
-                                            <span className="text-blue-400">📄</span>
-                                            <div>
-                                              <span className="text-gray-300 font-medium">Upload Documents:</span> Upload your existing sales collateral, playbooks, and guides
-                                            </div>
-                                          </div>
-                                          <div className="flex items-start gap-2 opacity-60">
-                                            <span className="text-purple-400">✅</span>
-                                            <div>
-                                              <span className="text-gray-300 font-medium">Website Content:</span> Already extracted during onboarding
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      <div className="pt-2 bg-gray-750 -ml-4 pl-4 pr-2 py-2 rounded">
-                                        <p className="font-medium text-green-400">💡 Quick Win:</p>
-                                        <p className="text-gray-400 mt-1">
-                                          {incomplete.length > 0 && incomplete[0].impactPercent >= 6
-                                            ? `Focus on ${incomplete[0].label} first for the biggest impact (+${incomplete[0].impactPercent}%).`
-                                            : 'Focus on critical sections (Products, ICP, Messaging, Pricing) for maximum impact.'}
-                                        </p>
-                                      </div>
-                                    </>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </>
-                        )}
+                        <span className="text-xs text-foreground w-8">{Math.round(calculateCategoryScore(foundationSections))}%</span>
                       </div>
-                    </details>
-                  )}
-
-                  {isKnowledgeLoading && (
-                    <p className="text-xs text-gray-400 mt-2">
-                      Calculating coverage based on critical sales enablement content...
-                    </p>
-                  )}
-                </div>
-
-                {/* KB Health */}
-                <div className="bg-card rounded-xl p-6 border shadow">
-                  <h3 className="text-white text-lg font-semibold mb-4">Knowledgebase Health</h3>
-                  <div className="space-y-4">
-                    {healthMetrics.map((metric) => (
-                      <div key={metric.label}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-gray-300 text-sm font-medium">{metric.label}</p>
-                            <p className="text-gray-500 text-xs">{metric.description}</p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-24 bg-muted rounded-full h-2 overflow-hidden">
-                              <div
-                                className={`${getHealthColor(metric.value)} h-2 rounded-full transition-all duration-500`}
-                                style={{ width: metric.value === null ? '0%' : `${metric.value}%` }}
-                              ></div>
-                            </div>
-                            <span className={`text-xs ${getHealthTextColor(metric.value)}`}>
-                              {metric.value === null ? '—' : `${metric.value}%`}
-                            </span>
-                          </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-24">GTM Strategy</span>
+                        <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-purple-400 to-violet-500 rounded-full transition-all"
+                            style={{ width: `${Math.round(calculateCategoryScore(gtmStrategySections) * 4)}%` }} />
                         </div>
+                        <span className="text-xs text-foreground w-8">{Math.round(calculateCategoryScore(gtmStrategySections))}%</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Actions & Navigation */}
-              <div className="bg-card rounded-xl p-6 border shadow">
-                <h3 className="text-white text-lg font-semibold mb-4">Quick Actions</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {sections.slice(1).filter(s => s.id !== 'analytics').map((section) => {
-                    const IconComponent = section.icon;
-                    return (
-                      <button
-                        key={section.id}
-                        onClick={() => setActiveSection(section.id)}
-                        className="bg-muted border border rounded-lg p-4 text-left transition-all hover:bg-purple-600 hover:border-purple-500 group cursor-pointer"
-                      >
-                        <div className="flex items-center mb-2">
-                          <IconComponent className="text-blue-400 mr-2 group-hover:scale-110 transition-transform" size={18} />
-                          <span className="text-white text-sm font-medium">{section.label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-24">Customer Intel</span>
+                        <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all"
+                            style={{ width: `${Math.round(calculateCategoryScore(customerIntelSections) * 6.67)}%` }} />
                         </div>
-                        <p className="text-gray-300 text-xs">
-                          {getQuickActionDescription(section.id)}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Stats Row - Total Documents, ICP Profiles, KB Completion, SAM Insights */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Total Documents */}
-                <div className="bg-card border shadow rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-400 text-sm">Total Documents</p>
-                      <p className="text-white text-2xl font-bold">
-                        {documentsLoading ? '—' : documents.length}
-                      </p>
-                    </div>
-                    <FileText className="text-blue-400" size={24} />
-                  </div>
-                  <p className="text-green-400 text-xs mt-2">
-                    {documentsLoading ? 'Loading documents…' : documentsError ? documentsError : `${documents.length} assets ready for RAG`}
-                  </p>
-                </div>
-
-                {/* ICP Profiles */}
-                <div className="bg-card border shadow rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-400 text-sm">ICP Profiles</p>
-                      <p className="text-white text-2xl font-bold">
-                        {icpCount === null ? '—' : icpCount}
-                      </p>
-                    </div>
-                    <Target className="text-purple-400" size={24} />
-                  </div>
-                  <p className="text-blue-400 text-xs mt-2">
-                    {icpCount === null ? 'Loading ICPs…' : icpCount > 0 ? 'Primary profile seeded for demo' : 'Add an ICP to unlock tailored outreach'}
-                  </p>
-                </div>
-
-                {/* KB Completion Summary */}
-                <div className="bg-card border shadow rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-400 text-sm">KB Completion</p>
-                      <p className="text-white text-2xl font-bold">{completionDisplay}</p>
-                    </div>
-                    <Activity className="text-green-400" size={24} />
-                  </div>
-                  <p className="text-green-400 text-xs mt-2">
-                    {!isKnowledgeLoading ? `${Math.round(criticalScore)}% Critical coverage` : 'Calculating...'}
-                  </p>
-                </div>
-
-                {/* SAM Insights */}
-                <div className="bg-card border shadow rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-400 text-sm">SAM Insights</p>
-                      <p className="text-white text-2xl font-bold">156</p>
-                    </div>
-                    <Brain className="text-orange-400" size={24} />
-                  </div>
-                  <p className="text-green-400 text-xs mt-2">+23 today</p>
-                </div>
-              </div>
-
-              {/* Recent SAM Insights from Conversations */}
-              <div className="bg-card rounded-xl p-6 border shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white text-lg font-semibold flex items-center">
-                    <Brain className="mr-2 text-orange-400" size={20} />
-                    Recent SAM Insights
-                  </h3>
-                  <button className="text-blue-400 hover:text-blue-300 text-sm">View All</button>
-                </div>
-                <div className="space-y-3">
-                  {documentsLoading ? (
-                    <div className="text-center py-8 text-gray-400 text-sm">Loading insights…</div>
-                  ) : documentsError ? (
-                    <div className="text-center py-8 text-red-400 text-sm">{documentsError}</div>
-                  ) : latestDocuments.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500 text-sm">
-                      Upload knowledge assets so Sam can surface insights from your content library.
-                    </div>
-                  ) : (
-                    latestDocuments.map((doc) => (
-                      <div key={`insight-${doc.id}`} className="bg-muted rounded-lg p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="text-white text-sm font-medium">{doc.title}</p>
-                            {doc.summary && (
-                              <p className="text-gray-300 text-xs mt-1">{doc.summary}</p>
-                            )}
-                          </div>
-                          <span className="text-blue-400 text-xs bg-blue-400/10 px-2 py-1 rounded">
-                            {getSectionLabel(doc.category || 'documents')}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex items-center text-gray-400 text-xs">
-                          <Clock size={12} className="mr-1" />
-                          {doc.updatedAt ? formatRelativeTime(doc.updatedAt) : 'Just now'}
-                        </div>
+                        <span className="text-xs text-foreground w-8">{Math.round(calculateCategoryScore(customerIntelSections))}%</span>
                       </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Latest Knowledge Assets */}
-              <div className="bg-card rounded-xl p-6 border shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white text-lg font-semibold flex items-center">
-                    <FileText className="mr-2 text-blue-400" size={20} />
-                    Latest Knowledge Base Assets
-                  </h3>
-                  <button
-                    onClick={() => loadDocuments(selectedIcpId)}
-                    className="text-blue-400 hover:text-blue-300 text-sm"
-                  >
-                    Refresh
-                  </button>
-                </div>
-
-                {documentsLoading ? (
-                  <div className="text-gray-400 text-sm">Loading documents…</div>
-                ) : documentsError ? (
-                  <div className="text-red-400 text-sm">{documentsError}</div>
-                ) : latestDocuments.length === 0 ? (
-                  <div className="text-gray-400 text-sm">
-                    No documents uploaded yet. Drop your pitch deck, pricing sheet, or objection handlers to power SAM.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {latestDocuments.map((doc) => (
-                      <div
-                        key={doc.id}
-                        className="bg-muted border border rounded-lg p-4 hover:bg-gray-650 hover:border-purple-500 transition-all cursor-pointer"
-                        onClick={() => {
-                          console.log('[KB] Document clicked:', doc);
-                          // TODO: Implement document detail view or actions
-                          alert(`Document: ${doc.title}\n\nCategory: ${doc.category}\n\nSummary: ${doc.summary || 'No summary'}\n\nTags: ${doc.tags?.join(', ') || 'None'}`);
-                        }}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <p className="text-white text-sm font-semibold">{doc.title}</p>
-                            <p className="text-gray-400 text-xs">Category: {doc.category}</p>
-                          </div>
-                          <div className="flex items-center gap-2 ml-2">
-                            <span className="text-xs text-gray-300">
-                              {doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString() : ''}
-                            </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent card click when deleting
-                                deleteDocument(doc.id);
-                              }}
-                              className="text-gray-400 hover:text-red-400 transition-colors p-1"
-                              title="Delete document"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-24">Execution</span>
+                        <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
+                          <div className="h-full bg-gradient-to-r from-orange-400 to-amber-500 rounded-full transition-all"
+                            style={{ width: `${Math.round(calculateCategoryScore(executionAssetsSections) * 10)}%` }} />
                         </div>
-                        <p className="text-gray-300 text-xs mb-3 line-clamp-3">{doc.summary || 'No summary available.'}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(doc.tags || []).slice(0, 4).map((tag: string) => (
-                            <span key={tag} className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-0.5 rounded-full">
-                              {tag}
-                            </span>
-                          ))}
-                          {doc.tags && doc.tags.length > 4 && (
-                            <span className="text-[11px] text-gray-400">+{doc.tags.length - 4} more</span>
-                          )}
-                        </div>
+                        <span className="text-xs text-foreground w-8">{Math.round(calculateCategoryScore(executionAssetsSections))}%</span>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'analytics' && (
-            <div>
-              <button
-                onClick={() => setActiveSection('overview')}
-                className="mb-6 text-blue-400 hover:text-blue-300 flex items-center text-sm"
-              >
-                <ArrowLeft className="mr-2" size={16} />
-                Back to Overview
-              </button>
-              <KnowledgeBaseAnalytics />
-            </div>
-          )}
-
-          {activeSection === 'icp' && (
-            <>
-              {Object.keys(icpProfiles).length === 0 ? (
-                <div className="bg-card border shadow rounded-lg p-12 text-center">
-                  <Target size={48} className="mx-auto text-gray-500 mb-4" />
-                  <h3 className="text-xl font-medium text-white mb-2">No ICP Profiles Yet</h3>
-                  <p className="text-gray-400 mb-6">Create your first Ideal Customer Profile to get started</p>
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
-                  >
-                    <Plus className="inline mr-2" size={18} />
-                    Go to Overview to Create ICP
-                  </button>
-                </div>
-              ) : (
-                <ICPConfigEditable
-                  profile={Object.values(icpProfiles)[0]}
-                  onUpdate={async (updates) => {
-                    const icpId = Object.keys(icpProfiles)[0];
-                    const response = await fetch(`/api/knowledge-base/icps/${icpId}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(updates)
-                    });
-                    if (response.ok) {
-                      await loadIcpProfiles();
-                    }
-                  }}
-                  onBack={() => setActiveSection('overview')}
-                />
-              )}
-            </>
-          )}
-
-          {activeSection === 'products' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-2xl font-semibold text-white flex items-center">
-                      <Package className="mr-2" size={24} />
-                      Products & Services
-                    </h2>
-                    {kbFeedback?.sectionFeedback?.products && (
-                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${kbFeedback.sectionFeedback.products.status === 'critical' ? 'bg-red-500/20 text-red-300 border border-red-500/40' :
-                        kbFeedback.sectionFeedback.products.status === 'needs-attention' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40' :
-                          kbFeedback.sectionFeedback.products.status === 'good' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
-                            'bg-green-500/20 text-green-300 border border-green-500/40'
-                        }`}>
-                        {kbFeedback.sectionFeedback.products.message}
-                      </span>
-                    )}
-                  </div>
-                  {kbFeedback?.sectionFeedback?.products?.suggestion && (
-                    <p className="text-sm text-gray-400 mt-2">
-                      💬 SAM: {kbFeedback.sectionFeedback.products.suggestion}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="products" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    📄 Product sheets, service descriptions, feature specs, pricing guides, demo scripts
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                  {renderDocumentList(
-                    'products',
-                    <FileText size={48} className="text-gray-500" />,
-                    'No product documents uploaded',
-                    'Upload product sheets, feature specs, and pricing guides to get started'
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-muted border border rounded-lg p-4 mt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-white">Structured Product Library</h3>
-                  <button
-                    onClick={handleQuickAddProduct}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
-                  >
-                    <Plus className="mr-1" size={14} />
-                    Add Product
-                  </button>
-                </div>
-                {products.length === 0 ? (
-                  <p className="text-gray-400 text-sm">
-                    No structured products captured yet. Add your offerings so SAM can reference positioning, benefits, and feature highlights in conversations.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {products.map((product) => (
-                      <div key={product.id} className="border rounded-lg p-3 bg-card">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="text-white font-medium text-sm">{product.name}</p>
-                            {product.description && (
-                              <p className="text-gray-400 text-xs mt-1">{product.description}</p>
-                            )}
-                          </div>
-                          <span className="text-[11px] text-gray-500">
-                            {formatRelativeTime(product.updated_at || product.created_at || '')}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {product.category && (
-                            <span className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-0.5 rounded-full">
-                              {product.category}
-                            </span>
-                          )}
-                          {(product.features ?? []).slice(0, 3).map((feature) => (
-                            <span key={feature} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
-                              {feature}
-                            </span>
-                          ))}
-                          {(product.use_cases ?? []).slice(0, 2).map((useCase) => (
-                            <span key={useCase} className="text-[11px] bg-purple-500/10 text-purple-200 px-2 py-0.5 rounded-full">
-                              {useCase}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'competition' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <TrendingUp className="mr-2" size={24} />
-                    Competition Analysis
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="competition" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    🎯 Competitor analysis, battlecards, win/loss reports, market research, SWOT analysis
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                  {renderDocumentList(
-                    'competition',
-                    <TrendingUp size={48} className="text-gray-500" />,
-                    'No competitive analysis documents uploaded',
-                    'Upload battlecards, market research, and win/loss reports'
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-muted border border rounded-lg p-4 mt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-white">Competitive Intelligence</h3>
-                  <button
-                    onClick={handleQuickAddCompetitor}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
-                  >
-                    <Plus className="mr-1" size={14} />
-                    Add Competitor
-                  </button>
-                </div>
-                {competitors.length === 0 ? (
-                  <p className="text-gray-400 text-sm">
-                    Capture competitor positioning, strengths, and weaknesses to give SAM fast access to battlecard insights during conversations.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {competitors.map((competitor) => (
-                      <div key={competitor.id} className="border rounded-lg p-3 bg-card">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="text-white font-medium text-sm">{competitor.name}</p>
-                            {competitor.website && (
-                              <a
-                                href={competitor.website}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-blue-400 text-xs hover:underline"
-                              >
-                                {competitor.website}
-                              </a>
-                            )}
-                            {competitor.description && (
-                              <p className="text-gray-400 text-xs mt-1">{competitor.description}</p>
-                            )}
-                          </div>
-                          <span className="text-[11px] text-gray-500">
-                            {formatRelativeTime(competitor.updated_at || competitor.created_at || '')}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {(competitor.strengths ?? []).slice(0, 3).map((item) => (
-                            <span key={item} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
-                              {item}
-                            </span>
-                          ))}
-                          {(competitor.weaknesses ?? []).slice(0, 2).map((item) => (
-                            <span key={item} className="text-[11px] bg-red-500/10 text-red-200 px-2 py-0.5 rounded-full">
-                              {item}
-                            </span>
-                          ))}
-                          {competitor.pricing_model && (
-                            <span className="text-[11px] bg-yellow-500/10 text-yellow-200 px-2 py-0.5 rounded-full">
-                              {competitor.pricing_model}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'messaging' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <MessageSquare className="mr-2" size={24} />
-                    Proven Messaging Templates
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="messaging" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    💬 Email templates, LinkedIn messages, objection handlers, value propositions, case studies
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Current Templates</h3>
-                  {renderDocumentList(
-                    'messaging',
-                    <MessageSquare size={48} className="text-gray-500" />,
-                    'No messaging templates uploaded',
-                    'Upload email templates, LinkedIn sequences, and objection handlers'
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'tone' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <Mic className="mr-2" size={24} />
-                    Tone of Voice Documents
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="tone-of-voice" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    🎭 Brand voice guidelines, writing style guides, communication frameworks, persona-based messaging
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Current Guidelines</h3>
-                  {renderDocumentList(
-                    'tone-of-voice',
-                    <Mic size={48} className="text-gray-500" />,
-                    'No tone of voice guidelines uploaded',
-                    'Upload brand voice guides and communication frameworks'
-                  )}
-                </div>
-              </div>
-
-              {/* Email & Publication Analysis Section */}
-              <div className="bg-muted border border rounded-lg p-6">
-                <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-                  <Mail className="mr-2" size={20} />
-                  Email & Publication Analysis
-                </h3>
-                <p className="text-gray-300 text-sm mb-6">
-                  Upload your past emails or published content to help SAM learn your authentic writing style and communication patterns.
-                </p>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="text-white font-medium mb-3">Upload Content</h4>
-                    <DocumentUpload section="sender-emails" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                    <p className="text-xs text-gray-400 mt-2">
-                      📧 Email exports (.txt, .eml), blog posts, LinkedIn articles, newsletters, published content
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h4 className="text-white font-medium mb-3">Analyzed Content</h4>
-                    {renderDocumentList(
-                      'sender-emails',
-                      <Mail size={48} className="text-gray-500" />,
-                      'No content analyzed yet',
-                      'Upload email exports or published content to analyze your writing style'
-                    )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Style Analysis Results */}
-                <div className="mt-6 bg-gray-600 border border-gray-500 rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-3 flex items-center">
-                    <TrendingUp className="mr-2" size={16} />
-                    Writing Style Analysis
+                {/* Quick Upload Zone */}
+                <div className="col-span-12 lg:col-span-5 bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-sm rounded-2xl p-6 border border-dashed border-slate-600 hover:border-primary/50 transition-all group cursor-pointer shadow-xl"
+                  onClick={() => setActiveSection('documents')}>
+                  <div className="flex flex-col items-center justify-center h-full min-h-[160px]">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <Upload className="text-primary" size={28} />
+                    </div>
+                    <p className="text-foreground font-medium mb-1">Drop files or click to upload</p>
+                    <p className="text-xs text-muted-foreground text-center">PDF, DOCX, TXT, or paste a URL</p>
+                    <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                      <FileText size={14} />
+                      <span>{documentsLoading ? '...' : `${documents.length} documents uploaded`}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2: Category Groups (3 columns) */}
+                {/* Foundation */}
+                <div className="col-span-12 md:col-span-6 lg:col-span-4 bg-gradient-to-br from-cyan-500/5 to-blue-600/5 backdrop-blur-sm rounded-2xl p-5 border border-cyan-500/20 shadow-lg hover:border-cyan-400/40 transition-all">
+                  <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+                    Foundation
+                    <span className="ml-auto text-xs text-cyan-400">{Math.round(calculateCategoryScore(foundationSections))}%</span>
                   </h4>
-                  <div className="text-center py-8">
-                    <div className="text-gray-400 mb-2">No style analysis available</div>
-                    <div className="text-gray-500 text-sm">Upload and analyze content to see your writing patterns and tone</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'company' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <Briefcase className="mr-2" size={24} />
-                    Company Information & Brand Guidelines
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="company-info" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    🏢 Company overview, team bios, achievements, partnerships, brand guidelines
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
-                  {renderDocumentList(
-                    'company-info',
-                    <Briefcase size={48} className="text-gray-500" />,
-                    'No company documents uploaded',
-                    'Upload company overview, team profiles, and brand guidelines'
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'success' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <Trophy className="mr-2" size={24} />
-                    Customer Success Stories & Case Studies
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="success-stories" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    🏆 Case studies, customer testimonials, reference stories, ROI data, success metrics
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Current Stories</h3>
-                  {renderDocumentList(
-                    'success-stories',
-                    <Trophy size={48} className="text-gray-500" />,
-                    'No success stories uploaded',
-                    'Upload case studies, testimonials, and customer success stories'
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'buying' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <GitBranch className="mr-2" size={24} />
-                    Buying Process & Decision Framework
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="buying-process" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    🔄 Buying journey maps, decision criteria, approval processes, stakeholder analysis, procurement guides
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Current Frameworks</h3>
-                  {renderDocumentList(
-                    'buying-process',
-                    <GitBranch size={48} className="text-gray-500" />,
-                    'No buying process documents uploaded',
-                    'Upload buying journey maps, decision frameworks, and procurement guides'
-                  )}
-
-                  <div className="bg-muted border border rounded-lg p-4 mt-4">
-                    <h4 className="text-white font-medium mb-3">Decision Framework Summary</h4>
-                    <div className="text-center py-4">
-                      <div className="text-gray-400 text-sm">No decision framework data available</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'compliance' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <Shield className="mr-2" size={24} />
-                    Compliance & Restrictions
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="compliance" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    🛡️ Industry regulations, compliance guidelines, approved/restricted phrases, HITL checkpoints
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Compliance Rules</h3>
-                  {renderDocumentList(
-                    'compliance',
-                    <Shield size={48} className="text-gray-500" />,
-                    'No compliance documents uploaded',
-                    'Upload industry regulations and compliance guidelines'
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-muted border border rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3">Human-in-the-Loop Checkpoints</h4>
-                <div className="text-center py-4">
-                  <div className="text-gray-400 text-sm">No checkpoints configured</div>
-                  <div className="text-gray-500 text-xs mt-1">Define triggers that require human review before sending</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'personas' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <UserCheck className="mr-2" size={24} />
-                    Personas & Roles
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="personas" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    👥 Role profiles, pain points, motivations, communication preferences, decision-making patterns
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Persona Library</h3>
-                  {renderDocumentList(
-                    'personas',
-                    <UserCheck size={48} className="text-gray-500" />,
-                    'No personas uploaded',
-                    'Upload persona sheets with role insights, pains, and motivations'
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-muted border border rounded-lg p-4 mt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-white">Structured Personas</h3>
-                  <button
-                    onClick={handleQuickAddPersona}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
-                  >
-                    <Plus className="mr-1" size={14} />
-                    Add Persona
-                  </button>
-                </div>
-                {personas.length === 0 ? (
-                  <p className="text-gray-400 text-sm">
-                    Capture structured personas so SAM can tailor messaging, objections, and success stories to the contacts you work with most.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {personas.map((persona) => {
-                      const icp = persona.icp_id ? icpProfiles[persona.icp_id] : undefined;
+                  <div className="space-y-2">
+                    {foundationSections.map(section => {
+                      const sectionData = sections.find(s => s.id === section.id);
+                      const IconComponent = sectionData?.icon || FileText;
+                      const score = getSectionScore(section.id);
                       return (
-                        <div key={persona.id} className="border rounded-lg p-3 bg-card">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="text-white font-medium text-sm">{persona.name}</p>
-                              <p className="text-gray-400 text-xs">
-                                {persona.job_title || 'Role not specified'}
-                                {persona.department ? ` • ${persona.department}` : ''}
-                              </p>
-                              {icp && (
-                                <p className="text-gray-500 text-[11px] mt-1">Aligned ICP: {icp.name || icp.icp_name || icp.id}</p>
-                              )}
-                            </div>
-                            <span className="text-[11px] text-gray-500">
-                              {formatRelativeTime(persona.updated_at || persona.created_at || '')}
-                            </span>
+                        <button key={section.id} onClick={() => setActiveSection(section.id)}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-all group">
+                          <IconComponent size={16} className="text-cyan-400" />
+                          <span className="text-sm text-foreground flex-1 text-left">{section.label}</span>
+                          <div className="w-12 bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                            <div className={cn("h-full rounded-full", score >= 70 ? "bg-green-400" : score >= 40 ? "bg-yellow-400" : "bg-slate-600")}
+                              style={{ width: `${score}%` }} />
                           </div>
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {(persona.pain_points ?? []).slice(0, 3).map((item) => (
-                              <span key={item} className="text-[11px] bg-red-500/10 text-red-200 px-2 py-0.5 rounded-full">
-                                Pain: {item}
-                              </span>
-                            ))}
-                            {(persona.goals ?? []).slice(0, 2).map((item) => (
-                              <span key={item} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
-                                Goal: {item}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
+                </div>
+
+                {/* GTM Strategy */}
+                <div className="col-span-12 md:col-span-6 lg:col-span-4 bg-gradient-to-br from-purple-500/5 to-violet-600/5 backdrop-blur-sm rounded-2xl p-5 border border-purple-500/20 shadow-lg hover:border-purple-400/40 transition-all">
+                  <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-purple-400"></div>
+                    GTM Strategy
+                    <span className="ml-auto text-xs text-purple-400">{Math.round(calculateCategoryScore(gtmStrategySections))}%</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {gtmStrategySections.map(section => {
+                      const sectionData = sections.find(s => s.id === section.id);
+                      const IconComponent = sectionData?.icon || FileText;
+                      const score = getSectionScore(section.id);
+                      return (
+                        <button key={section.id} onClick={() => setActiveSection(section.id)}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-all group">
+                          <IconComponent size={16} className="text-purple-400" />
+                          <span className="text-sm text-foreground flex-1 text-left">{section.label}</span>
+                          <div className="w-12 bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                            <div className={cn("h-full rounded-full", score >= 70 ? "bg-green-400" : score >= 40 ? "bg-yellow-400" : "bg-slate-600")}
+                              style={{ width: `${score}%` }} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Customer Intelligence */}
+                <div className="col-span-12 md:col-span-6 lg:col-span-4 bg-gradient-to-br from-green-500/5 to-emerald-600/5 backdrop-blur-sm rounded-2xl p-5 border border-green-500/20 shadow-lg hover:border-green-400/40 transition-all">
+                  <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                    Customer Intelligence
+                    <span className="ml-auto text-xs text-green-400">{Math.round(calculateCategoryScore(customerIntelSections))}%</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {customerIntelSections.map(section => {
+                      const sectionData = sections.find(s => s.id === section.id);
+                      const IconComponent = sectionData?.icon || FileText;
+                      const score = getSectionScore(section.id);
+                      return (
+                        <button key={section.id} onClick={() => setActiveSection(section.id)}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-all group">
+                          <IconComponent size={16} className="text-green-400" />
+                          <span className="text-sm text-foreground flex-1 text-left">{section.label}</span>
+                          <div className="w-12 bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                            <div className={cn("h-full rounded-full", score >= 70 ? "bg-green-400" : score >= 40 ? "bg-yellow-400" : "bg-slate-600")}
+                              style={{ width: `${score}%` }} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Row 3: SAM Activity Feed (Wide) + Execution Assets (Narrow) */}
+                {/* SAM Activity Feed */}
+                <div className="col-span-12 lg:col-span-8 bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-sm rounded-2xl p-5 border border-slate-700/50 shadow-xl">
+                  <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Activity className="text-primary" size={16} />
+                    SAM Activity
+                    <span className="ml-2 w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    <span className="text-xs text-muted-foreground font-normal">Live</span>
+                  </h4>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {kbFeedback?.recent_activity?.slice(0, 5).map((activity: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-3 text-sm">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Bot size={14} className="text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground text-sm truncate">{activity.message || 'SAM used knowledge for a campaign'}</p>
+                          <p className="text-xs text-muted-foreground">{activity.timestamp || 'Just now'}</p>
+                        </div>
+                      </div>
+                    )) || (
+                        <>
+                          <div className="flex items-center gap-3 text-sm">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <Bot size={14} className="text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-foreground">SAM ready to use your knowledge</p>
+                              <p className="text-xs text-muted-foreground">Upload content to see activity</p>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                  </div>
+                </div>
+
+                {/* Execution Assets */}
+                <div className="col-span-12 lg:col-span-4 bg-gradient-to-br from-orange-500/5 to-amber-600/5 backdrop-blur-sm rounded-2xl p-5 border border-orange-500/20 shadow-lg hover:border-orange-400/40 transition-all">
+                  <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                    Execution Assets
+                    <span className="ml-auto text-xs text-orange-400">{Math.round(calculateCategoryScore(executionAssetsSections))}%</span>
+                  </h4>
+                  <div className="space-y-2">
+                    {executionAssetsSections.map(section => {
+                      const sectionData = sections.find(s => s.id === section.id);
+                      const IconComponent = sectionData?.icon || FileText;
+                      const score = getSectionScore(section.id);
+                      return (
+                        <button key={section.id} onClick={() => setActiveSection(section.id)}
+                          className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-all group">
+                          <IconComponent size={16} className="text-orange-400" />
+                          <span className="text-sm text-foreground flex-1 text-left">{section.label}</span>
+                          <div className="w-12 bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                            <div className={cn("h-full rounded-full", score >= 70 ? "bg-green-400" : score >= 40 ? "bg-yellow-400" : "bg-slate-600")}
+                              style={{ width: `${score}%` }} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Row 4: Recent Documents */}
+                <div className="col-span-12 bg-gradient-to-br from-slate-800/40 to-slate-900/40 backdrop-blur-sm rounded-2xl p-5 border border-slate-700/30 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <FileText className="text-primary" size={16} />
+                      Recent Documents
+                    </h4>
+                    <button onClick={() => setActiveSection('documents')} className="text-xs text-primary hover:underline">
+                      View All →
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {documentsLoading ? (
+                      <p className="text-sm text-muted-foreground col-span-full">Loading...</p>
+                    ) : latestDocuments.length === 0 ? (
+                      <p className="text-sm text-muted-foreground col-span-full">No documents yet. Upload your first document above.</p>
+                    ) : (
+                      latestDocuments.slice(0, 4).map((doc) => (
+                        <div key={doc.id} className="p-3 bg-slate-800/50 rounded-xl border border-slate-700/50 hover:border-primary/30 transition-all cursor-pointer"
+                          onClick={() => setActiveSection('documents')}>
+                          <p className="text-sm text-foreground font-medium truncate">{doc.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{getSectionLabel(doc.category || 'documents')}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+
+
+
+          {/* Analytics Section */}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          {
+            activeSection === 'analytics' && (
+              <div>
+                <button
+                  onClick={() => setActiveSection('overview')}
+                  className="mb-6 text-blue-400 hover:text-blue-300 flex items-center text-sm"
+                >
+                  <ArrowLeft className="mr-2" size={16} />
+                  Back to Overview
+                </button>
+                <KnowledgeBaseAnalytics />
+              </div>
+            )
+          }
+
+          {
+            activeSection === 'icp' && (
+              <>
+                {Object.keys(icpProfiles).length === 0 ? (
+                  <div className="bg-card border shadow rounded-lg p-12 text-center">
+                    <Target size={48} className="mx-auto text-gray-500 mb-4" />
+                    <h3 className="text-xl font-medium text-white mb-2">No ICP Profiles Yet</h3>
+                    <p className="text-gray-400 mb-6">Create your first Ideal Customer Profile to get started</p>
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                    >
+                      <Plus className="inline mr-2" size={18} />
+                      Go to Overview to Create ICP
+                    </button>
+                  </div>
+                ) : (
+                  <ICPConfigEditable
+                    profile={Object.values(icpProfiles)[0]}
+                    onUpdate={async (updates) => {
+                      const icpId = Object.keys(icpProfiles)[0];
+                      const response = await fetch(`/api/knowledge-base/icps/${icpId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updates)
+                      });
+                      if (response.ok) {
+                        await loadIcpProfiles();
+                      }
+                    }}
+                    onBack={() => setActiveSection('overview')}
+                  />
                 )}
-              </div>
+              </>
+            )
+          }
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-muted border border rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-2">Leadership Roles</h4>
-                  <div className="space-y-1 text-sm text-gray-300">
-                    <div>• Founder/Co-Founder</div>
-                    <div>• CEO/C-Suite</div>
-                    <div>• VP Sales/Revenue</div>
-                    <div>• Head of Growth</div>
-                  </div>
-                </div>
-                <div className="bg-muted border border rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-2">Operational Roles</h4>
-                  <div className="space-y-1 text-sm text-gray-300">
-                    <div>• Sales Manager</div>
-                    <div>• SDR/BDR Lead</div>
-                    <div>• Marketing Director</div>
-                    <div>• Operations Manager</div>
-                  </div>
-                </div>
-                <div className="bg-muted border border rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-2">Service Providers</h4>
-                  <div className="space-y-1 text-sm text-gray-300">
-                    <div>• Agency Owner</div>
-                    <div>• Consultant</div>
-                    <div>• Recruiter</div>
-                    <div>• Financial Advisor</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'objections' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <MessageCircle className="mr-2" size={24} />
-                    Objections & Responses
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="objections" onComplete={loadDocuments} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    💬 Common objections, proven rebuttals, redirect strategies, conversation frameworks
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Objection Handlers</h3>
-                  {renderDocumentList(
-                    'objections',
-                    <MessageCircle size={48} className="text-gray-500" />,
-                    'No objection handling scripts uploaded',
-                    'Upload common objections and proven rebuttals'
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-muted border border rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3 flex items-center">
-                  <TrendingUp className="mr-2" size={16} />
-                  Objection Analysis
-                </h4>
-                <div className="text-center py-4">
-                  <div className="text-gray-400 text-sm">No objection data available</div>
-                  <div className="text-gray-500 text-xs mt-1">Upload objection handling documents to see category analysis</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'pricing' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <DollarSign className="mr-2" size={24} />
-                    Pricing & Packages
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="pricing" onComplete={loadDocuments} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    💰 Pricing tiers, package details, ROI calculators, cost justification materials
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Pricing Materials</h3>
-                  {renderDocumentList(
-                    'pricing',
-                    <DollarSign size={48} className="text-gray-500" />,
-                    'No pricing documents uploaded',
-                    'Upload pricing tiers, ROI calculators, and cost justification materials'
-                  )}
-                </div>
-              </div>
-
-              <div className="text-center py-8 mb-6">
-                <div className="text-gray-400 mb-2">No pricing packages configured</div>
-                <div className="text-gray-500 text-sm">Upload pricing documentation to display package information</div>
-              </div>
-
-              <div className="bg-muted border border rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3">ROI Analysis</h4>
-                <div className="text-center py-4">
-                  <div className="text-gray-400 text-sm">No ROI data available</div>
-                  <div className="text-gray-500 text-xs mt-1">Upload cost comparison documents to display ROI analysis</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-
-          {activeSection === 'metrics' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <BarChart className="mr-2" size={24} />
-                    Success Metrics
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="metrics" onComplete={loadDocuments} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    📊 Success benchmarks, industry improvements, ROI studies, timeline examples
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">Success Studies</h3>
-                  {renderDocumentList(
-                    'metrics',
-                    <BarChart size={48} className="text-gray-500" />,
-                    'No success metrics uploaded',
-                    'Upload benchmark reports, ROI studies, and timeline examples'
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-muted border border rounded-lg p-4 text-center">
-                  <div className="text-3xl font-bold text-green-400 mb-2">35%</div>
-                  <div className="text-white font-medium">Avg. Lead Engagement Increase</div>
-                  <div className="text-gray-400 text-sm">First 30 days</div>
-                </div>
-                <div className="bg-muted border border rounded-lg p-4 text-center">
-                  <div className="text-3xl font-bold text-blue-400 mb-2">50%</div>
-                  <div className="text-white font-medium">Faster Outreach Cycle</div>
-                  <div className="text-gray-400 text-sm">vs Manual SDRs</div>
-                </div>
-                <div className="bg-muted border border rounded-lg p-4 text-center">
-                  <div className="text-3xl font-bold text-purple-400 mb-2">10x</div>
-                  <div className="text-white font-medium">ROI Within 3 Months</div>
-                  <div className="text-gray-400 text-sm">Typical customer</div>
-                </div>
-              </div>
-
-              <div className="bg-muted border border rounded-lg p-4 mb-6">
-                <h4 className="text-white font-medium mb-3">Success Timeline</h4>
-                <div className="space-y-4">
+          {
+            activeSection === 'products' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center">
-                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4">30</div>
-                    <div>
-                      <div className="text-white font-medium">Days 1-30: Foundation</div>
-                      <div className="text-gray-400 text-sm">Setup, training, initial campaigns • 15-25% improvement</div>
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-semibold text-white flex items-center">
+                        <Package className="mr-2" size={24} />
+                        Products & Services
+                      </h2>
+                      {kbFeedback?.sectionFeedback?.products && (
+                        <span className={`text-xs px-3 py-1 rounded-full font-medium ${kbFeedback.sectionFeedback.products.status === 'critical' ? 'bg-red-500/20 text-red-300 border border-red-500/40' :
+                          kbFeedback.sectionFeedback.products.status === 'needs-attention' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40' :
+                            kbFeedback.sectionFeedback.products.status === 'good' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40' :
+                              'bg-green-500/20 text-green-300 border border-green-500/40'
+                          }`}>
+                          {kbFeedback.sectionFeedback.products.message}
+                        </span>
+                      )}
                     </div>
+                    {kbFeedback?.sectionFeedback?.products?.suggestion && (
+                      <p className="text-sm text-gray-400 mt-2">
+                        💬 SAM: {kbFeedback.sectionFeedback.products.suggestion}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mr-4">60</div>
-                    <div>
-                      <div className="text-white font-medium">Days 31-60: Optimization</div>
-                      <div className="text-gray-400 text-sm">AI learning, message refinement • 35-45% improvement</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold mr-4">90</div>
-                    <div>
-                      <div className="text-white font-medium">Days 61-90: Scale</div>
-                      <div className="text-gray-400 text-sm">Full automation, team expansion • 50%+ improvement</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-muted border border rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3">Benchmarks by Industry</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">SaaS/Tech:</span>
-                      <span className="text-green-400">45% response improvement</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Professional Services:</span>
-                      <span className="text-green-400">38% response improvement</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Financial Services:</span>
-                      <span className="text-green-400">32% response improvement</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Healthcare:</span>
-                      <span className="text-green-400">29% response improvement</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Manufacturing:</span>
-                      <span className="text-green-400">34% response improvement</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-300">Real Estate:</span>
-                      <span className="text-green-400">41% response improvement</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === 'setup' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <Settings className="mr-2" size={24} />
-                    CRM Settings & Integration
-                  </h2>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
-                  <DocumentUpload section="crm-setup" onComplete={loadDocuments} />
-                  <p className="text-sm text-gray-400 mt-3">
-                    ⚙️ CRM integration guides, field mapping templates, automation workflows, sync protocols
-                  </p>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white mb-4">CRM Configuration</h3>
-                  <div className="space-y-2">
-                    <div className="bg-muted border border rounded-lg p-3">
-                      <div className="text-white text-sm font-medium">Salesforce Integration Guide.pdf</div>
-                      <div className="text-gray-400 text-xs">Field mapping, lead routing • API configuration</div>
-                    </div>
-                    <div className="bg-muted border border rounded-lg p-3">
-                      <div className="text-white text-sm font-medium">HubSpot Sync Configuration.pdf</div>
-                      <div className="text-gray-400 text-xs">Contact properties, deal stages • Workflow automation</div>
-                    </div>
-                    <div className="bg-muted border border rounded-lg p-3">
-                      <div className="text-white text-sm font-medium">Pipedrive Setup Template.pdf</div>
-                      <div className="text-gray-400 text-xs">Pipeline configuration, activity tracking • Custom fields</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-muted border border rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-3 flex items-center">
-                    <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
-                    Salesforce
-                  </h4>
-                  <div className="space-y-2 text-sm text-gray-300">
-                    <div>• Lead → Contact conversion</div>
-                    <div>• Opportunity creation rules</div>
-                    <div>• Activity logging</div>
-                    <div>• Custom field sync</div>
-                  </div>
-                </div>
-                <div className="bg-muted border border rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-3 flex items-center">
-                    <div className="w-3 h-3 bg-orange-500 rounded mr-2"></div>
-                    HubSpot
-                  </h4>
-                  <div className="space-y-2 text-sm text-gray-300">
-                    <div>• Contact property mapping</div>
-                    <div>• Deal stage automation</div>
-                    <div>• Email engagement tracking</div>
-                    <div>• Workflow triggers</div>
-                  </div>
-                </div>
-                <div className="bg-muted border border rounded-lg p-4">
-                  <h4 className="text-white font-medium mb-3 flex items-center">
-                    <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
-                    Pipedrive
-                  </h4>
-                  <div className="space-y-2 text-sm text-gray-300">
-                    <div>• Person/Organization sync</div>
-                    <div>• Deal creation automation</div>
-                    <div>• Activity scheduling</div>
-                    <div>• Pipeline management</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-muted border border rounded-lg p-4 mb-6">
-                <h4 className="text-white font-medium mb-3">Field Mapping Examples</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <div className="text-gray-300 mb-2 font-medium">Standard Contact Fields</div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">SAM Field:</span>
-                        <span className="text-white">CRM Field:</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">contact_name</span>
-                        <span className="text-white">→ First/Last Name</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">company_name</span>
-                        <span className="text-white">→ Account/Company</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">job_title</span>
-                        <span className="text-white">→ Title</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">email_address</span>
-                        <span className="text-white">→ Email</span>
-                      </div>
-                    </div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="products" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      📄 Product sheets, service descriptions, feature specs, pricing guides, demo scripts
+                    </p>
                   </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
+                    {renderDocumentList(
+                      'products',
+                      <FileText size={48} className="text-gray-500" />,
+                      'No product documents uploaded',
+                      'Upload product sheets, feature specs, and pricing guides to get started'
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-muted border border rounded-lg p-4 mt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-white">Structured Product Library</h3>
+                    <button
+                      onClick={handleQuickAddProduct}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
+                    >
+                      <Plus className="mr-1" size={14} />
+                      Add Product
+                    </button>
+                  </div>
+                  {products.length === 0 ? (
+                    <p className="text-gray-400 text-sm">
+                      No structured products captured yet. Add your offerings so SAM can reference positioning, benefits, and feature highlights in conversations.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {products.map((product) => (
+                        <div key={product.id} className="border rounded-lg p-3 bg-card">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="text-white font-medium text-sm">{product.name}</p>
+                              {product.description && (
+                                <p className="text-gray-400 text-xs mt-1">{product.description}</p>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-gray-500">
+                              {formatRelativeTime(product.updated_at || product.created_at || '')}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {product.category && (
+                              <span className="text-[11px] bg-blue-500/10 text-blue-200 px-2 py-0.5 rounded-full">
+                                {product.category}
+                              </span>
+                            )}
+                            {(product.features ?? []).slice(0, 3).map((feature) => (
+                              <span key={feature} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
+                                {feature}
+                              </span>
+                            ))}
+                            {(product.use_cases ?? []).slice(0, 2).map((useCase) => (
+                              <span key={useCase} className="text-[11px] bg-purple-500/10 text-purple-200 px-2 py-0.5 rounded-full">
+                                {useCase}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          }
+
+          {
+            activeSection === 'competition' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <TrendingUp className="mr-2" size={24} />
+                      Competition Analysis
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <div className="text-gray-300 mb-2 font-medium">SAM Specific Fields</div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">sam_campaign_id</span>
-                        <span className="text-white">→ Custom Field</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">last_outreach_date</span>
-                        <span className="text-white">→ Last Activity</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">response_status</span>
-                        <span className="text-white">→ Lead Status</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">engagement_score</span>
-                        <span className="text-white">→ Lead Score</span>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="competition" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      🎯 Competitor analysis, battlecards, win/loss reports, market research, SWOT analysis
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
+                    {renderDocumentList(
+                      'competition',
+                      <TrendingUp size={48} className="text-gray-500" />,
+                      'No competitive analysis documents uploaded',
+                      'Upload battlecards, market research, and win/loss reports'
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-muted border border rounded-lg p-4 mt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-white">Competitive Intelligence</h3>
+                    <button
+                      onClick={handleQuickAddCompetitor}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
+                    >
+                      <Plus className="mr-1" size={14} />
+                      Add Competitor
+                    </button>
+                  </div>
+                  {competitors.length === 0 ? (
+                    <p className="text-gray-400 text-sm">
+                      Capture competitor positioning, strengths, and weaknesses to give SAM fast access to battlecard insights during conversations.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {competitors.map((competitor) => (
+                        <div key={competitor.id} className="border rounded-lg p-3 bg-card">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="text-white font-medium text-sm">{competitor.name}</p>
+                              {competitor.website && (
+                                <a
+                                  href={competitor.website}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-blue-400 text-xs hover:underline"
+                                >
+                                  {competitor.website}
+                                </a>
+                              )}
+                              {competitor.description && (
+                                <p className="text-gray-400 text-xs mt-1">{competitor.description}</p>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-gray-500">
+                              {formatRelativeTime(competitor.updated_at || competitor.created_at || '')}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {(competitor.strengths ?? []).slice(0, 3).map((item) => (
+                              <span key={item} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
+                                {item}
+                              </span>
+                            ))}
+                            {(competitor.weaknesses ?? []).slice(0, 2).map((item) => (
+                              <span key={item} className="text-[11px] bg-red-500/10 text-red-200 px-2 py-0.5 rounded-full">
+                                {item}
+                              </span>
+                            ))}
+                            {competitor.pricing_model && (
+                              <span className="text-[11px] bg-yellow-500/10 text-yellow-200 px-2 py-0.5 rounded-full">
+                                {competitor.pricing_model}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          }
+
+          {
+            activeSection === 'messaging' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <MessageSquare className="mr-2" size={24} />
+                      Proven Messaging Templates
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="messaging" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      💬 Email templates, LinkedIn messages, objection handlers, value propositions, case studies
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Current Templates</h3>
+                    {renderDocumentList(
+                      'messaging',
+                      <MessageSquare size={48} className="text-gray-500" />,
+                      'No messaging templates uploaded',
+                      'Upload email templates, LinkedIn sequences, and objection handlers'
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          {
+            activeSection === 'tone' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <Mic className="mr-2" size={24} />
+                      Tone of Voice Documents
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="tone-of-voice" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      🎭 Brand voice guidelines, writing style guides, communication frameworks, persona-based messaging
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Current Guidelines</h3>
+                    {renderDocumentList(
+                      'tone-of-voice',
+                      <Mic size={48} className="text-gray-500" />,
+                      'No tone of voice guidelines uploaded',
+                      'Upload brand voice guides and communication frameworks'
+                    )}
+                  </div>
+                </div>
+
+                {/* Email & Publication Analysis Section */}
+                <div className="bg-muted border border rounded-lg p-6">
+                  <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+                    <Mail className="mr-2" size={20} />
+                    Email & Publication Analysis
+                  </h3>
+                  <p className="text-gray-300 text-sm mb-6">
+                    Upload your past emails or published content to help SAM learn your authentic writing style and communication patterns.
+                  </p>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-white font-medium mb-3">Upload Content</h4>
+                      <DocumentUpload section="sender-emails" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                      <p className="text-xs text-gray-400 mt-2">
+                        📧 Email exports (.txt, .eml), blog posts, LinkedIn articles, newsletters, published content
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h4 className="text-white font-medium mb-3">Analyzed Content</h4>
+                      {renderDocumentList(
+                        'sender-emails',
+                        <Mail size={48} className="text-gray-500" />,
+                        'No content analyzed yet',
+                        'Upload email exports or published content to analyze your writing style'
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Style Analysis Results */}
+                  <div className="mt-6 bg-gray-600 border border-gray-500 rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-3 flex items-center">
+                      <TrendingUp className="mr-2" size={16} />
+                      Writing Style Analysis
+                    </h4>
+                    <div className="text-center py-8">
+                      <div className="text-gray-400 mb-2">No style analysis available</div>
+                      <div className="text-gray-500 text-sm">Upload and analyze content to see your writing patterns and tone</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          {
+            activeSection === 'company' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <Briefcase className="mr-2" size={24} />
+                      Company Information & Brand Guidelines
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="company-info" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      🏢 Company overview, team bios, achievements, partnerships, brand guidelines
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Current Documents</h3>
+                    {renderDocumentList(
+                      'company-info',
+                      <Briefcase size={48} className="text-gray-500" />,
+                      'No company documents uploaded',
+                      'Upload company overview, team profiles, and brand guidelines'
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          {
+            activeSection === 'success' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <Trophy className="mr-2" size={24} />
+                      Customer Success Stories & Case Studies
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="success-stories" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      🏆 Case studies, customer testimonials, reference stories, ROI data, success metrics
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Current Stories</h3>
+                    {renderDocumentList(
+                      'success-stories',
+                      <Trophy size={48} className="text-gray-500" />,
+                      'No success stories uploaded',
+                      'Upload case studies, testimonials, and customer success stories'
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          {
+            activeSection === 'buying' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <GitBranch className="mr-2" size={24} />
+                      Buying Process & Decision Framework
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="buying-process" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      🔄 Buying journey maps, decision criteria, approval processes, stakeholder analysis, procurement guides
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Current Frameworks</h3>
+                    {renderDocumentList(
+                      'buying-process',
+                      <GitBranch size={48} className="text-gray-500" />,
+                      'No buying process documents uploaded',
+                      'Upload buying journey maps, decision frameworks, and procurement guides'
+                    )}
+
+                    <div className="bg-muted border border rounded-lg p-4 mt-4">
+                      <h4 className="text-white font-medium mb-3">Decision Framework Summary</h4>
+                      <div className="text-center py-4">
+                        <div className="text-gray-400 text-sm">No decision framework data available</div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+            )
+          }
 
-              <div className="bg-muted border border rounded-lg p-4">
-                <h4 className="text-white font-medium mb-3">Automation Rules Configuration</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <input type="checkbox" className="mr-2" defaultChecked />
-                      <span className="text-gray-300">Auto-create leads from SAM campaigns</span>
-                    </div>
-                    <div className="flex items-center">
-                      <input type="checkbox" className="mr-2" defaultChecked />
-                      <span className="text-gray-300">Sync response status updates</span>
-                    </div>
-                    <div className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      <span className="text-gray-300">Create tasks for follow-ups</span>
-                    </div>
-                    <div className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      <span className="text-gray-300">Update lead scores based on engagement</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      <span className="text-gray-300">Trigger workflows on replies</span>
-                    </div>
-                    <div className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      <span className="text-gray-300">Assign leads to sales reps</span>
-                    </div>
-                    <div className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      <span className="text-gray-300">Create opportunities for qualified leads</span>
-                    </div>
-                    <div className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      <span className="text-gray-300">Send notifications to team members</span>
-                    </div>
+          {
+            activeSection === 'compliance' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <Shield className="mr-2" size={24} />
+                      Compliance & Restrictions
+                    </h2>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {activeSection === 'sam_onboarding' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <Bot className="mr-2" size={24} />
-                    SAM Onboarding Experience
-                  </h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="compliance" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      🛡️ Industry regulations, compliance guidelines, approved/restricted phrases, HITL checkpoints
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Compliance Rules</h3>
+                    {renderDocumentList(
+                      'compliance',
+                      <Shield size={48} className="text-gray-500" />,
+                      'No compliance documents uploaded',
+                      'Upload industry regulations and compliance guidelines'
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-muted border border rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3">Human-in-the-Loop Checkpoints</h4>
+                  <div className="text-center py-4">
+                    <div className="text-gray-400 text-sm">No checkpoints configured</div>
+                    <div className="text-gray-500 text-xs mt-1">Define triggers that require human review before sending</div>
+                  </div>
                 </div>
               </div>
-              <p className="text-gray-400 mb-6">Interactive conversational onboarding to collect company data and build your knowledge base</p>
-              <SAMOnboarding onComplete={(data) => console.log('Onboarding completed:', data)} />
-            </div>
-          )}
+            )
+          }
 
-          {activeSection === 'documents' && (
-            <div className="bg-card rounded-xl p-6 border shadow">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setActiveSection('overview')}
-                    className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
-                    title="Back to Knowledgebase"
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                  <h2 className="text-2xl font-semibold text-white flex items-center">
-                    <FileText className="mr-2" size={24} />
-                    Document Management
-                  </h2>
+          {
+            activeSection === 'personas' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <UserCheck className="mr-2" size={24} />
+                      Personas & Roles
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="personas" onComplete={() => loadDocuments(selectedIcpId)} icpId={selectedIcpId} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      👥 Role profiles, pain points, motivations, communication preferences, decision-making patterns
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Persona Library</h3>
+                    {renderDocumentList(
+                      'personas',
+                      <UserCheck size={48} className="text-gray-500" />,
+                      'No personas uploaded',
+                      'Upload persona sheets with role insights, pains, and motivations'
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-muted border border rounded-lg p-4 mt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-white">Structured Personas</h3>
+                    <button
+                      onClick={handleQuickAddPersona}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center"
+                    >
+                      <Plus className="mr-1" size={14} />
+                      Add Persona
+                    </button>
+                  </div>
+                  {personas.length === 0 ? (
+                    <p className="text-gray-400 text-sm">
+                      Capture structured personas so SAM can tailor messaging, objections, and success stories to the contacts you work with most.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {personas.map((persona) => {
+                        const icp = persona.icp_id ? icpProfiles[persona.icp_id] : undefined;
+                        return (
+                          <div key={persona.id} className="border rounded-lg p-3 bg-card">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="text-white font-medium text-sm">{persona.name}</p>
+                                <p className="text-gray-400 text-xs">
+                                  {persona.job_title || 'Role not specified'}
+                                  {persona.department ? ` • ${persona.department}` : ''}
+                                </p>
+                                {icp && (
+                                  <p className="text-gray-500 text-[11px] mt-1">Aligned ICP: {icp.name || icp.icp_name || icp.id}</p>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-gray-500">
+                                {formatRelativeTime(persona.updated_at || persona.created_at || '')}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {(persona.pain_points ?? []).slice(0, 3).map((item) => (
+                                <span key={item} className="text-[11px] bg-red-500/10 text-red-200 px-2 py-0.5 rounded-full">
+                                  Pain: {item}
+                                </span>
+                              ))}
+                              {(persona.goals ?? []).slice(0, 2).map((item) => (
+                                <span key={item} className="text-[11px] bg-green-500/10 text-green-200 px-2 py-0.5 rounded-full">
+                                  Goal: {item}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-muted border border rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-2">Leadership Roles</h4>
+                    <div className="space-y-1 text-sm text-gray-300">
+                      <div>• Founder/Co-Founder</div>
+                      <div>• CEO/C-Suite</div>
+                      <div>• VP Sales/Revenue</div>
+                      <div>• Head of Growth</div>
+                    </div>
+                  </div>
+                  <div className="bg-muted border border rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-2">Operational Roles</h4>
+                    <div className="space-y-1 text-sm text-gray-300">
+                      <div>• Sales Manager</div>
+                      <div>• SDR/BDR Lead</div>
+                      <div>• Marketing Director</div>
+                      <div>• Operations Manager</div>
+                    </div>
+                  </div>
+                  <div className="bg-muted border border rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-2">Service Providers</h4>
+                    <div className="space-y-1 text-sm text-gray-300">
+                      <div>• Agency Owner</div>
+                      <div>• Consultant</div>
+                      <div>• Recruiter</div>
+                      <div>• Financial Advisor</div>
+                    </div>
+                  </div>
                 </div>
               </div>
+            )
+          }
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <DocumentUpload section="general" onComplete={loadDocuments} />
-                <VectorTest />
+          {
+            activeSection === 'objections' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <MessageCircle className="mr-2" size={24} />
+                      Objections & Responses
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="objections" onComplete={loadDocuments} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      💬 Common objections, proven rebuttals, redirect strategies, conversation frameworks
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Objection Handlers</h3>
+                    {renderDocumentList(
+                      'objections',
+                      <MessageCircle size={48} className="text-gray-500" />,
+                      'No objection handling scripts uploaded',
+                      'Upload common objections and proven rebuttals'
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-muted border border rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3 flex items-center">
+                    <TrendingUp className="mr-2" size={16} />
+                    Objection Analysis
+                  </h4>
+                  <div className="text-center py-4">
+                    <div className="text-gray-400 text-sm">No objection data available</div>
+                    <div className="text-gray-500 text-xs mt-1">Upload objection handling documents to see category analysis</div>
+                  </div>
+                </div>
               </div>
+            )
+          }
 
-              <div className="mb-6">
-                <DocumentsTable />
+          {
+            activeSection === 'pricing' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <DollarSign className="mr-2" size={24} />
+                      Pricing & Packages
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="pricing" onComplete={loadDocuments} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      💰 Pricing tiers, package details, ROI calculators, cost justification materials
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Pricing Materials</h3>
+                    {renderDocumentList(
+                      'pricing',
+                      <DollarSign size={48} className="text-gray-500" />,
+                      'No pricing documents uploaded',
+                      'Upload pricing tiers, ROI calculators, and cost justification materials'
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-center py-8 mb-6">
+                  <div className="text-gray-400 mb-2">No pricing packages configured</div>
+                  <div className="text-gray-500 text-sm">Upload pricing documentation to display package information</div>
+                </div>
+
+                <div className="bg-muted border border rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3">ROI Analysis</h4>
+                  <div className="text-center py-4">
+                    <div className="text-gray-400 text-sm">No ROI data available</div>
+                    <div className="text-gray-500 text-xs mt-1">Upload cost comparison documents to display ROI analysis</div>
+                  </div>
+                </div>
               </div>
+            )
+          }
 
-              <ChunkDrawer />
-            </div>
-          )}
-        </div>
-      </div>
+
+          {
+            activeSection === 'metrics' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <BarChart className="mr-2" size={24} />
+                      Success Metrics
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="metrics" onComplete={loadDocuments} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      📊 Success benchmarks, industry improvements, ROI studies, timeline examples
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">Success Studies</h3>
+                    {renderDocumentList(
+                      'metrics',
+                      <BarChart size={48} className="text-gray-500" />,
+                      'No success metrics uploaded',
+                      'Upload benchmark reports, ROI studies, and timeline examples'
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-muted border border rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-green-400 mb-2">35%</div>
+                    <div className="text-white font-medium">Avg. Lead Engagement Increase</div>
+                    <div className="text-gray-400 text-sm">First 30 days</div>
+                  </div>
+                  <div className="bg-muted border border rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-blue-400 mb-2">50%</div>
+                    <div className="text-white font-medium">Faster Outreach Cycle</div>
+                    <div className="text-gray-400 text-sm">vs Manual SDRs</div>
+                  </div>
+                  <div className="bg-muted border border rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-purple-400 mb-2">10x</div>
+                    <div className="text-white font-medium">ROI Within 3 Months</div>
+                    <div className="text-gray-400 text-sm">Typical customer</div>
+                  </div>
+                </div>
+
+                <div className="bg-muted border border rounded-lg p-4 mb-6">
+                  <h4 className="text-white font-medium mb-3">Success Timeline</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4">30</div>
+                      <div>
+                        <div className="text-white font-medium">Days 1-30: Foundation</div>
+                        <div className="text-gray-400 text-sm">Setup, training, initial campaigns • 15-25% improvement</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mr-4">60</div>
+                      <div>
+                        <div className="text-white font-medium">Days 31-60: Optimization</div>
+                        <div className="text-gray-400 text-sm">AI learning, message refinement • 35-45% improvement</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold mr-4">90</div>
+                      <div>
+                        <div className="text-white font-medium">Days 61-90: Scale</div>
+                        <div className="text-gray-400 text-sm">Full automation, team expansion • 50%+ improvement</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-muted border border rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3">Benchmarks by Industry</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">SaaS/Tech:</span>
+                        <span className="text-green-400">45% response improvement</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">Professional Services:</span>
+                        <span className="text-green-400">38% response improvement</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">Financial Services:</span>
+                        <span className="text-green-400">32% response improvement</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">Healthcare:</span>
+                        <span className="text-green-400">29% response improvement</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">Manufacturing:</span>
+                        <span className="text-green-400">34% response improvement</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">Real Estate:</span>
+                        <span className="text-green-400">41% response improvement</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          {
+            activeSection === 'setup' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <Settings className="mr-2" size={24} />
+                      CRM Settings & Integration
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-white mb-4">Upload Documents</h3>
+                    <DocumentUpload section="crm-setup" onComplete={loadDocuments} />
+                    <p className="text-sm text-gray-400 mt-3">
+                      ⚙️ CRM integration guides, field mapping templates, automation workflows, sync protocols
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white mb-4">CRM Configuration</h3>
+                    <div className="space-y-2">
+                      <div className="bg-muted border border rounded-lg p-3">
+                        <div className="text-white text-sm font-medium">Salesforce Integration Guide.pdf</div>
+                        <div className="text-gray-400 text-xs">Field mapping, lead routing • API configuration</div>
+                      </div>
+                      <div className="bg-muted border border rounded-lg p-3">
+                        <div className="text-white text-sm font-medium">HubSpot Sync Configuration.pdf</div>
+                        <div className="text-gray-400 text-xs">Contact properties, deal stages • Workflow automation</div>
+                      </div>
+                      <div className="bg-muted border border rounded-lg p-3">
+                        <div className="text-white text-sm font-medium">Pipedrive Setup Template.pdf</div>
+                        <div className="text-gray-400 text-xs">Pipeline configuration, activity tracking • Custom fields</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-muted border border rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-3 flex items-center">
+                      <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+                      Salesforce
+                    </h4>
+                    <div className="space-y-2 text-sm text-gray-300">
+                      <div>• Lead → Contact conversion</div>
+                      <div>• Opportunity creation rules</div>
+                      <div>• Activity logging</div>
+                      <div>• Custom field sync</div>
+                    </div>
+                  </div>
+                  <div className="bg-muted border border rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-3 flex items-center">
+                      <div className="w-3 h-3 bg-orange-500 rounded mr-2"></div>
+                      HubSpot
+                    </h4>
+                    <div className="space-y-2 text-sm text-gray-300">
+                      <div>• Contact property mapping</div>
+                      <div>• Deal stage automation</div>
+                      <div>• Email engagement tracking</div>
+                      <div>• Workflow triggers</div>
+                    </div>
+                  </div>
+                  <div className="bg-muted border border rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-3 flex items-center">
+                      <div className="w-3 h-3 bg-green-500 rounded mr-2"></div>
+                      Pipedrive
+                    </h4>
+                    <div className="space-y-2 text-sm text-gray-300">
+                      <div>• Person/Organization sync</div>
+                      <div>• Deal creation automation</div>
+                      <div>• Activity scheduling</div>
+                      <div>• Pipeline management</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-muted border border rounded-lg p-4 mb-6">
+                  <h4 className="text-white font-medium mb-3">Field Mapping Examples</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-300 mb-2 font-medium">Standard Contact Fields</div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">SAM Field:</span>
+                          <span className="text-white">CRM Field:</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">contact_name</span>
+                          <span className="text-white">→ First/Last Name</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">company_name</span>
+                          <span className="text-white">→ Account/Company</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">job_title</span>
+                          <span className="text-white">→ Title</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">email_address</span>
+                          <span className="text-white">→ Email</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-gray-300 mb-2 font-medium">SAM Specific Fields</div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">sam_campaign_id</span>
+                          <span className="text-white">→ Custom Field</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">last_outreach_date</span>
+                          <span className="text-white">→ Last Activity</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">response_status</span>
+                          <span className="text-white">→ Lead Status</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">engagement_score</span>
+                          <span className="text-white">→ Lead Score</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-muted border border rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-3">Automation Rules Configuration</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <input type="checkbox" className="mr-2" defaultChecked />
+                        <span className="text-gray-300">Auto-create leads from SAM campaigns</span>
+                      </div>
+                      <div className="flex items-center">
+                        <input type="checkbox" className="mr-2" defaultChecked />
+                        <span className="text-gray-300">Sync response status updates</span>
+                      </div>
+                      <div className="flex items-center">
+                        <input type="checkbox" className="mr-2" />
+                        <span className="text-gray-300">Create tasks for follow-ups</span>
+                      </div>
+                      <div className="flex items-center">
+                        <input type="checkbox" className="mr-2" />
+                        <span className="text-gray-300">Update lead scores based on engagement</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <input type="checkbox" className="mr-2" />
+                        <span className="text-gray-300">Trigger workflows on replies</span>
+                      </div>
+                      <div className="flex items-center">
+                        <input type="checkbox" className="mr-2" />
+                        <span className="text-gray-300">Assign leads to sales reps</span>
+                      </div>
+                      <div className="flex items-center">
+                        <input type="checkbox" className="mr-2" />
+                        <span className="text-gray-300">Create opportunities for qualified leads</span>
+                      </div>
+                      <div className="flex items-center">
+                        <input type="checkbox" className="mr-2" />
+                        <span className="text-gray-300">Send notifications to team members</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          {
+            activeSection === 'sam_onboarding' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <Bot className="mr-2" size={24} />
+                      SAM Onboarding Experience
+                    </h2>
+                  </div>
+                </div>
+                <p className="text-gray-400 mb-6">Interactive conversational onboarding to collect company data and build your knowledge base</p>
+                <SAMOnboarding onComplete={(data) => console.log('Onboarding completed:', data)} />
+              </div>
+            )
+          }
+
+          {
+            activeSection === 'documents' && (
+              <div className="bg-card rounded-xl p-6 border shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => setActiveSection('overview')}
+                      className="mr-4 p-2 text-gray-400 hover:text-white hover:bg-muted rounded-lg transition-colors"
+                      title="Back to Knowledgebase"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
+                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                      <FileText className="mr-2" size={24} />
+                      Document Management
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <DocumentUpload section="general" onComplete={loadDocuments} />
+                  <VectorTest />
+                </div>
+
+                <div className="mb-6">
+                  <DocumentsTable />
+                </div>
+
+                <ChunkDrawer />
+              </div>
+            )
+          }
+        </div >
+      </div >
     </div >
   );
 };
