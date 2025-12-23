@@ -6,6 +6,7 @@ import { MessageCircle, Brain, CheckSquare, Megaphone, MessageSquare, BarChart3,
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { createClient } from '@/app/lib/supabase';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 // Menu items from app/page.tsx
 const menuItems = [
@@ -193,6 +194,7 @@ export function ChatSidebar() {
                                     <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
                                     <p className="text-xs text-green-500">Active session</p>
                                 </div>
+                                <ThemeToggle />
                             </div>
                             <button
                                 type="button"
