@@ -1746,7 +1746,11 @@ const KnowledgeBase: React.FC = () => {
       }
       const payload = await response.json();
       const entries = Array.isArray(payload?.icps) ? payload.icps : [];
-      const mapped = entries.reduce((acc: Record<string, ICPProfile>, icp: Record<string, unknown>) => {
+      // Filter out document entries - only include real ICP profiles
+      const realIcps = entries.filter((icp: Record<string, unknown>) =>
+        icp.source !== 'document' && !String(icp.name || '').endsWith('.md')
+      );
+      const mapped = realIcps.reduce((acc: Record<string, ICPProfile>, icp: Record<string, unknown>) => {
         const profile = transformICPResponse(icp);
         acc[profile.id] = profile;
         return acc;
