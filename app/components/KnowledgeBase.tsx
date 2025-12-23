@@ -2407,36 +2407,76 @@ const KnowledgeBase: React.FC = () => {
         <div>
           {activeSection === 'overview' && (
             <div className="space-y-6">
-              {/* ICP Selector - Multi-ICP Support */}
-              {Object.keys(icpProfiles).length > 1 && (
-                <div className="bg-card border shadow rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Target className="text-purple-400" size={20} />
-                      <span className="text-white font-medium">View Knowledge Base for:</span>
-                    </div>
-                    <select
-                      value={selectedIcpId || ''}
-                      onChange={(e) => setSelectedIcpId(e.target.value || null)}
-                      className="bg-muted border border text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    >
-                      <option value="">All ICPs (Global + Specific)</option>
-                      {Object.values(icpProfiles).map((icp) => (
-                        <option key={icp.id} value={icp.id}>
-                          {icp.name || icp.icp_name || 'Unnamed ICP'}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <p className="text-gray-400 text-xs mt-2">
-                    {selectedIcpId
-                      ? `Showing content specific to this ICP plus global content`
-                      : `Showing all knowledge base content across all ICPs`}
+              {/* ICP Tabs - Horizontal Navigation */}
+              <div className="bg-card rounded-xl border shadow overflow-hidden">
+                <div className="flex items-center border-b border-border overflow-x-auto">
+                  {/* Your Business Tab (Shared Content) */}
+                  <button
+                    onClick={() => setSelectedIcpId(null)}
+                    className={cn(
+                      "flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-[1px]",
+                      selectedIcpId === null
+                        ? "border-primary text-primary bg-primary/5"
+                        : "border-transparent text-muted-foreground hover:text-foreground hover:bg-surface-muted"
+                    )}
+                  >
+                    <Briefcase size={16} />
+                    <span>Your Business</span>
+                    <span className="ml-1 text-xs bg-surface-muted px-2 py-0.5 rounded-full">
+                      {Math.round(calculateCategoryScore(foundationSections))}%
+                    </span>
+                  </button>
+
+                  {/* Individual ICP Tabs */}
+                  {Object.values(icpProfiles).map((icp) => {
+                    // Calculate ICP-specific completion (simplified)
+                    const icpCompletion = Math.round(calculateCategoryScore(customerIntelSections));
+                    return (
+                      <button
+                        key={icp.id}
+                        onClick={() => setSelectedIcpId(icp.id)}
+                        className={cn(
+                          "flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-[1px]",
+                          selectedIcpId === icp.id
+                            ? "border-primary text-primary bg-primary/5"
+                            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-surface-muted"
+                        )}
+                      >
+                        <Target size={16} />
+                        <span>{icp.name || icp.icp_name || 'Unnamed ICP'}</span>
+                        <span className={cn(
+                          "ml-1 text-xs px-2 py-0.5 rounded-full",
+                          icpCompletion >= 70 ? "bg-green-500/20 text-green-400" :
+                            icpCompletion >= 40 ? "bg-yellow-500/20 text-yellow-400" :
+                              "bg-red-500/20 text-red-400"
+                        )}>
+                          {icpCompletion}%
+                        </span>
+                      </button>
+                    );
+                  })}
+
+                  {/* Add ICP Button */}
+                  <button
+                    onClick={() => setActiveSection('icp')}
+                    className="flex items-center gap-1.5 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-primary transition-colors whitespace-nowrap ml-2"
+                  >
+                    <Plus size={16} />
+                    <span>Add ICP</span>
+                  </button>
+                </div>
+
+                {/* Tab Content Description */}
+                <div className="px-5 py-3 bg-surface-muted/30">
+                  <p className="text-sm text-muted-foreground">
+                    {selectedIcpId === null ? (
+                      <>📊 <strong>Your Business</strong> — Shared knowledge that applies to all your target markets</>
+                    ) : (
+                      <>🎯 <strong>{icpProfiles[selectedIcpId]?.name || 'ICP'}</strong> — Customer-specific insights, personas, and messaging</>
+                    )}
                   </p>
                 </div>
-              )}
-
-
+              </div>
 
               {/* KB Completeness and Health - First Row */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
