@@ -80,11 +80,37 @@ export async function GET(request: Request) {
         // Fetch documents from knowledge_base table (same source as KB page)
         const { data: kbDocuments } = await supabase
             .from('knowledge_base')
-            .select('id, category, title, tags, updated_at')
+            .select('id, category, section, title, tags, updated_at')
             .eq('workspace_id', workspaceId)
             .eq('is_active', true)
-            .order('updated_at', { ascending: false })
-            .limit(5);
+            .order('updated_at', { ascending: false });
+
+        // Calculate category scores based on document counts
+        const categorySections = {
+            foundation: ['company', 'product', 'value_prop', 'pricing'],
+            gtm: ['competitors', 'channels', 'go_to_market', 'gtm'],
+            customer: ['personas', 'icp', 'pain_points', 'buyer_journey'],
+            execution: ['templates', 'collateral', 'case_studies', 'brand_voice']
+        };
+
+        const getCategoryScore = (sections: string[]) => {
+            const docs = kbDocuments?.filter(d =>
+                sections.includes(d.section?.toLowerCase() || '') ||
+                sections.includes(d.category?.toLowerCase() || '')
+            ) || [];
+            // Max 100%, assume 3+ docs per section = full score
+            const maxDocs = sections.length * 3;
+            return Math.min(100, Math.round((docs.length / maxDocs) * 100));
+        };
+
+        const categoryScores = {
+            foundation: getCategoryScore(categorySections.foundation),
+            gtm: getCategoryScore(categorySections.gtm),
+            customer: getCategoryScore(categorySections.customer),
+            execution: getCategoryScore(categorySections.execution)
+        };
+
+        const recentDocs = (kbDocuments || []).slice(0, 5);
 
         // 4. Fetch Real Campaign Stats
         const { data: campaigns } = await supabase
@@ -135,6 +161,7 @@ export async function GET(request: Request) {
                 completeness: kbCompleteness?.overallCompleteness || 0,
                 sections: kbCompleteness?.sections || {},
                 missingCritical: kbCompleteness?.missingCritical || [],
+                categoryScores,
                 // Real Data
                 products: products.map(p => ({
                     id: p.id,
@@ -146,7 +173,7 @@ export async function GET(request: Request) {
                     name: c.name,
                     strengths: c.strengths
                 })),
-                documents: (kbDocuments || []).map(d => ({
+                documents: recentDocs.map(d => ({
                     id: d.id,
                     name: d.title,
                     category: d.category,

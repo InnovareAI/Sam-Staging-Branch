@@ -24,10 +24,27 @@ export interface OnboardingState {
     totalTasks: number;
 }
 
+export interface AIInsight {
+    type: 'goal' | 'strategy' | 'gap' | 'suggestion';
+    content: string;
+    priority?: 'low' | 'medium' | 'high';
+    actionLabel?: string;
+    actionTab?: 'history' | 'knowledge' | 'stats' | 'strategy' | 'discovery';
+}
+
+export interface ContextIntelligence {
+    currentGoal: string;
+    samStrategy: string;
+    insights: AIInsight[];
+    suggestedActions: { label: string; value: string; icon?: string }[];
+}
+
 interface SamContextType {
     // UI State
-    activeTab: string;
-    setActiveTab: (tab: string) => void;
+    activeTab: 'history' | 'knowledge' | 'stats' | 'strategy' | 'discovery';
+    setActiveTab: (tab: 'history' | 'knowledge' | 'stats' | 'strategy' | 'discovery') => void;
+    isContextOpen: boolean;
+    setIsContextOpen: (isOpen: boolean) => void;
 
     // Data
     activeLead: LeadIntelligence | null;
@@ -39,6 +56,10 @@ interface SamContextType {
     contextData: any | null;
     isLoadingContext: boolean;
     refreshContext: (threadId?: string) => Promise<void>;
+
+    // AI Intelligence
+    intelligence: ContextIntelligence;
+    processContext: (lastMessage: string, threadType: string) => void;
 }
 
 const SamContext = createContext<SamContextType | undefined>(undefined);
@@ -47,7 +68,8 @@ export function SamContextProvider({ children }: { children: ReactNode }) {
     const params = useParams();
     const workspaceId = params.workspaceId as string | undefined;
 
-    const [activeTab, setActiveTab] = useState('knowledge');
+    const [activeTab, setActiveTab] = useState<'history' | 'knowledge' | 'stats' | 'strategy' | 'discovery'>('knowledge');
+    const [isContextOpen, setIsContextOpen] = useState(false);
     const [activeLead, setActiveLead] = useState<LeadIntelligence | null>(null);
 
     const [contextData, setContextData] = useState<any | null>(null);
@@ -61,9 +83,52 @@ export function SamContextProvider({ children }: { children: ReactNode }) {
         totalTasks: 5
     });
 
+    const [intelligence, setIntelligence] = useState<ContextIntelligence>({
+        currentGoal: "Establish Baseline Knowledge",
+        samStrategy: "Learn about your product and target personas to optimize outreach.",
+        insights: [
+            { type: 'gap', content: "Sam needs more details about your pricing to handle objections.", priority: 'high', actionLabel: 'Add Pricing', actionTab: 'knowledge' },
+            { type: 'suggestion', content: "Mentioning the recent funding round in your next message could build trust.", priority: 'medium' }
+        ],
+        suggestedActions: [
+            { label: "Update ICP", value: "icp", icon: "Target" },
+            { label: "Draft Reply", value: "reply", icon: "PenTool" }
+        ]
+    });
+
     const updateOnboarding = (data: Partial<OnboardingState>) => {
         setOnboardingState(prev => ({ ...prev, ...data }));
     };
+
+    const processContext = useCallback((lastMessage: string, threadType: string) => {
+        // Simple heuristic for demo/prototype intelligence
+        const lowerMessage = lastMessage.toLowerCase();
+
+        if (lowerMessage.includes('price') || lowerMessage.includes('cost')) {
+            setActiveTab('knowledge');
+            setIntelligence(prev => ({
+                ...prev,
+                currentGoal: "Pricing Strategy",
+                insights: [
+                    { type: 'strategy', content: "Sam is analyzing competitor pricing based on your query.", priority: 'medium' },
+                    ...prev.insights.filter(i => i.type !== 'strategy')
+                ]
+            }));
+        } else if (lowerMessage.includes('lead') || lowerMessage.includes('prospect') || lowerMessage.includes('find')) {
+            setActiveTab('discovery');
+            setIntelligence(prev => ({
+                ...prev,
+                currentGoal: "Lead Discovery",
+                samStrategy: "Finding high-intent prospects that match your 'Founder' persona.",
+                suggestedActions: [
+                    { label: "Refine Search", value: "discovery", icon: "Search" },
+                    { label: "Export Leads", value: "export", icon: "Download" }
+                ]
+            }));
+        } else if (lowerMessage.includes('campaign') || lowerMessage.includes('stats') || lowerMessage.includes('performance')) {
+            setActiveTab('stats');
+        }
+    }, []);
 
     const refreshContext = useCallback(async (threadId?: string) => {
         try {
@@ -95,7 +160,11 @@ export function SamContextProvider({ children }: { children: ReactNode }) {
             updateOnboarding,
             contextData,
             isLoadingContext,
-            refreshContext
+            refreshContext,
+            isContextOpen,
+            setIsContextOpen,
+            intelligence,
+            processContext
         }}>
             {children}
         </SamContext.Provider>

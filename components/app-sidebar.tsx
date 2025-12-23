@@ -124,9 +124,8 @@ export function AppSidebar({
   };
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      {/* SAM AI Header - matching ChatSidebar */}
-      <SidebarHeader className="border-b border-border/60 px-4 py-4">
+    <Sidebar collapsible="offcanvas" {...props}>
+      <SidebarHeader className="border-b border-border/60 p-6">
         <div className="flex items-center gap-3">
           <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent">
             <img
@@ -139,7 +138,7 @@ export function AppSidebar({
               }}
             />
           </div>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+          <div className="flex flex-col">
             <span className="text-lg font-bold tracking-tight" style={{ color: 'hsl(var(--header-foreground))' }}>
               SAM AI
             </span>
@@ -151,8 +150,8 @@ export function AppSidebar({
       </SidebarHeader>
 
       {/* Navigation Menu - matching ChatSidebar style */}
-      <SidebarContent className="py-4 overflow-y-auto">
-        <nav className="space-y-2 px-3">
+      <SidebarContent className="py-6 overflow-y-auto">
+        <nav className="space-y-3 px-4">
           {menuItems.map((item) => {
             const isActive = getIsActive(item.path);
             const IconComponent = item.icon;
@@ -163,28 +162,28 @@ export function AppSidebar({
                 type="button"
                 onClick={() => handleNavClick(item.path)}
                 className={cn(
-                  "group w-full rounded-xl border border-transparent px-3 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                  "group w-full rounded-xl border border-transparent px-4 py-3.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                   isActive
                     ? "bg-primary/15 text-foreground shadow-glow ring-1 ring-primary/35"
                     : "text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground"
                 )}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-center gap-4">
                   <span
                     className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors",
                       isActive
                         ? "bg-primary/25 text-foreground"
                         : "bg-surface-highlight text-muted-foreground group-hover:text-foreground"
                     )}
                   >
-                    <IconComponent size={18} />
+                    <IconComponent size={20} />
                   </span>
-                  <div className="flex-1 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-semibold leading-tight text-foreground">
+                  <div className="flex-1 overflow-hidden">
+                    <p className="text-sm font-semibold leading-tight text-foreground truncate">
                       {item.label}
                     </p>
-                    <p className="mt-1 text-xs leading-snug text-muted-foreground group-hover:text-muted-foreground/90">
+                    <p className="mt-1 text-[11px] leading-snug text-muted-foreground group-hover:text-muted-foreground/90 truncate">
                       {item.description}
                     </p>
                   </div>
@@ -196,30 +195,39 @@ export function AppSidebar({
       </SidebarContent>
 
       {/* User Footer - matching ChatSidebar style */}
-      <SidebarFooter className="border-t border-border/60">
-        <div className="space-y-4 px-4 py-4">
+      <SidebarFooter className="border-t border-border/60 p-4">
+        <div className="space-y-4">
           {/* User Profile Card */}
-          <div className="rounded-xl border border-border/60 bg-surface-highlight/40 px-4 py-4 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
+          <div className="rounded-2xl border border-border/60 bg-surface-highlight/40 p-4 transition-all duration-300">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/25 text-sm font-semibold text-foreground">
-                  <User size={16} />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-foreground ring-2 ring-primary/10 overflow-hidden shadow-inner">
+                  {user?.avatar ? (
+                    <img src={user.avatar} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <User size={20} className="text-primary/60" />
+                  )}
                 </div>
-                <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                  <p className="truncate text-sm font-medium text-foreground">
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-sm font-bold text-slate-100">
                     {user?.name || 'User'}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">{user?.email || ''}</p>
-                  <p className="text-xs text-green-500">Active session</p>
+                  <p className="truncate text-[10px] text-slate-500 uppercase tracking-tight">{user?.email || ''}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
+                    <p className="text-[10px] text-green-500 font-medium">Active</p>
+                  </div>
                 </div>
-                <ThemeToggle />
+                <div>
+                  <ThemeToggle />
+                </div>
               </div>
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-surface-highlight px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-destructive/20 hover:text-destructive group-data-[collapsible=icon]:px-2"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-surface-highlight/60 px-3 py-2.5 text-xs font-semibold text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
               >
                 <LogOut size={16} />
-                <span className="group-data-[collapsible=icon]:hidden">Sign Out</span>
+                <span>Sign Out</span>
               </button>
             </div>
           </div>

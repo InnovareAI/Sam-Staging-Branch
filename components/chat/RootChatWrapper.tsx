@@ -21,17 +21,15 @@ export default function RootChatWrapper() {
     }
 
     return (
-        <SamContextProvider>
-            <AdaptiveLayout
-                isSidebarOpen={isSidebarOpen}
-                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                isContextOpen={isContextOpen}
-                onToggleContext={() => setIsContextOpen(!isContextOpen)}
-                sidebar={<ChatSidebar />}
-                contextPanel={<ContextPanel />}
-            >
-                <ChatInterface />
-            </AdaptiveLayout>
-        </SamContextProvider>
+        <AdaptiveLayout
+            isSidebarOpen={isSidebarOpen}
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            isContextOpen={isContextOpen}
+            onToggleContext={() => setIsContextOpen(!isContextOpen)}
+            sidebar={<ChatSidebar />}
+            contextPanel={<ContextPanel />}
+        >
+            <ChatInterface />
+        </AdaptiveLayout>
     );
 }

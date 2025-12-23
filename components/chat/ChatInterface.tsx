@@ -21,7 +21,7 @@ export function ChatInterface() {
         archiveThread
     } = useSamThreadedChat();
 
-    const { refreshContext } = useSamContext();
+    const { refreshContext, setActiveTab, setIsContextOpen, processContext } = useSamContext();
 
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -319,6 +319,9 @@ export function ChatInterface() {
 
         await sendMessage(currentInput, undefined, attachmentIds);
 
+        // Feed message into AI Context Processor
+        processContext(currentInput, currentThread?.thread_type || 'general');
+
         // Refresh context after sending to catch any updates (e.g. lead score)
         if (currentThread?.id) {
             refreshContext(currentThread.id);
@@ -341,11 +344,11 @@ export function ChatInterface() {
                     {/* Welcome State if no messages */}
                     {messages.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-4">
-                            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent overflow-hidden">
+                            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-transparent overflow-hidden shadow-2xl ring-4 ring-primary/10">
                                 <img
                                     src="/SAM.jpg"
                                     alt="Sam AI"
-                                    className="w-20 h-20 rounded-2xl object-cover"
+                                    className="w-full h-full rounded-2xl object-cover"
                                     style={{ objectPosition: 'center 30%' }}
                                 />
                             </div>

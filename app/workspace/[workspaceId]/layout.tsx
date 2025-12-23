@@ -1,8 +1,11 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createServerSupabaseClient } from '@/app/lib/supabase';
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { SamContextProvider } from "@/components/chat/SamContextProvider";
+import { GlobalContextWrapper } from "@/components/chat/GlobalContextWrapper";
+import React from 'react';
 
 export default async function WorkspaceLayout({
   children,
@@ -14,12 +17,9 @@ export default async function WorkspaceLayout({
   const { workspaceId } = await params;
   const supabase = await createServerSupabaseClient();
 
-  // Detect if we're on the chat route - it has its own sidebar
+  // Detect if we're on the chat route
   const headersList = await headers();
   const xPathname = headersList.get('x-pathname') || '';
-
-  // Chat route check: path containing /chat should use its own sidebar
-  const isChatRoute = xPathname.includes('/chat') || xPathname === '/';
 
   // Server-side auth check
   const { data: { user } } = await supabase.auth.getUser();
@@ -38,11 +38,6 @@ export default async function WorkspaceLayout({
 
   if (!member) {
     redirect('/');
-  }
-
-  // Chat route uses its own layout with ChatSidebar
-  if (isChatRoute) {
-    return <>{children}</>;
   }
 
   // Get workspace details
@@ -64,17 +59,24 @@ export default async function WorkspaceLayout({
   };
 
   return (
-    <SidebarProvider>
-      <AppSidebar
-        user={userData}
-        workspaceId={workspaceId}
-        enabledFeatures={enabledFeatures}
-      />
-      <SidebarInset>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          {children}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <SamContextProvider>
+      <SidebarProvider defaultOpen={true} >
+        <AppSidebar
+          user={userData}
+          workspaceId={workspaceId}
+          enabledFeatures={enabledFeatures}
+          currentPath={xPathname}
+        />
+        <SidebarInset>
+          <div className="flex flex-1 flex-col h-screen bg-[#020617] text-slate-50 overflow-hidden">
+            {/* Main Content Area */}
+            <main className="flex-1 overflow-auto relative flex flex-col">
+              {children}
+            </main>
+            <GlobalContextWrapper />
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </SamContextProvider>
   );
 }

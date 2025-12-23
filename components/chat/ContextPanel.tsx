@@ -1,14 +1,17 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { BookOpen, BarChart3, Lightbulb, History, Search, MessageSquare, FileText, RefreshCw } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Brain, BarChart3, Target, History, Search, MessageSquare, FileText, RefreshCw, Sparkles, PenTool, Zap, AlertCircle, TrendingUp, Users, Lightbulb } from "lucide-react";
 import { useSamContext } from './SamContextProvider';
 import { useSamThreadedChat } from "@/lib/hooks/useSamThreadedChat";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
+import { DiscoveryPanel } from './DiscoveryPanel';
 
 export function ContextPanel() {
     const {
@@ -17,11 +20,75 @@ export function ContextPanel() {
         activeLead,
         onboardingState,
         contextData,
-        refreshContext
+        refreshContext,
+        intelligence,
+        processContext
     } = useSamContext();
 
     const { threads, currentThread, switchToThread, loadThreads, isLoading } = useSamThreadedChat();
     const [search, setSearch] = useState('');
+    const [researchLoading, setResearchLoading] = useState<string | null>(null);
+    const [researchResult, setResearchResult] = useState<any>(null);
+
+    const params = useParams();
+    const workspaceId = params?.workspaceId as string;
+
+    const triggerResearch = async (analysisType: 'competitors' | 'trends' | 'news') => {
+        if (!workspaceId) return;
+        setResearchLoading(analysisType);
+        setResearchResult(null);
+        try {
+            const response = await fetch('/api/sam/strategic-analysis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workspaceId, analysisType }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                setResearchResult({ type: analysisType, data: data.result });
+            } else {
+                alert('Research failed: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Research error:', error);
+            alert('Failed to complete research. Please try again.');
+        } finally {
+            setResearchLoading(null);
+        }
+    };
+
+    const [savingToKB, setSavingToKB] = useState(false);
+
+    const saveToKnowledgeBase = async () => {
+        if (!workspaceId || !researchResult) return;
+        setSavingToKB(true);
+        try {
+            const response = await fetch('/api/sam/knowledge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    workspaceId,
+                    section: researchResult.type === 'competitors' ? 'competitors' : researchResult.type === 'trends' ? 'go_to_market' : 'industry_news',
+                    title: researchResult.type === 'competitors' ? 'AI-Generated Competitor Analysis' : researchResult.type === 'trends' ? 'AI-Generated Market Trends' : 'AI-Generated Industry Insights',
+                    content: JSON.stringify(researchResult.data, null, 2),
+                    source: 'ai_research',
+                }),
+            });
+            const data = await response.json();
+            if (data.success || data.id) {
+                alert('✅ Saved to Knowledge Base!');
+                setResearchResult(null);
+                refreshContext();
+            } else {
+                alert('Failed to save: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            alert('Failed to save to Knowledge Base.');
+        } finally {
+            setSavingToKB(false);
+        }
+    };
 
     // Load threads and context on mount
     useEffect(() => {
@@ -63,6 +130,24 @@ export function ContextPanel() {
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <button
+                                    onClick={() => setActiveTab('discovery')}
+                                    className={cn(
+                                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                                        activeTab === 'discovery'
+                                            ? "bg-[#A855F7]/25 text-[#D8B4FE] ring-2 ring-[#A855F7]/40"
+                                            : "bg-[#A855F7]/10 text-[#D8B4FE]/60 hover:bg-[#A855F7]/20 hover:text-[#D8B4FE]"
+                                    )}
+                                >
+                                    <Users size={18} />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                                <p>Lead Discovery</p>
+                            </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
                                     onClick={() => setActiveTab('knowledge')}
                                     className={cn(
                                         "w-10 h-10 rounded-full flex items-center justify-center transition-all",
@@ -71,11 +156,11 @@ export function ContextPanel() {
                                             : "bg-[#8B5CF6]/10 text-[#A78BFA]/60 hover:bg-[#8B5CF6]/20 hover:text-[#A78BFA]"
                                     )}
                                 >
-                                    <BookOpen size={18} />
+                                    <Brain size={18} />
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom">
-                                <p>Knowledge</p>
+                                <p>AI Knowledge</p>
                             </TooltipContent>
                         </Tooltip>
                         <Tooltip>
@@ -107,11 +192,11 @@ export function ContextPanel() {
                                             : "bg-[#F59E0B]/10 text-[#FBBF24]/60 hover:bg-[#F59E0B]/20 hover:text-[#FBBF24]"
                                     )}
                                 >
-                                    <Lightbulb size={18} />
+                                    <Target size={18} />
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom">
-                                <p>Strategy</p>
+                                <p>ICP Strategy</p>
                             </TooltipContent>
                         </Tooltip>
                     </div>
@@ -121,6 +206,75 @@ export function ContextPanel() {
             {/* Content Area */}
             <ScrollArea className="flex-1 p-4">
                 <div className="space-y-6">
+                    {/* AI Intelligence Header - ALWAYS VISIBLE */}
+                    <div className="space-y-4 mb-2">
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-white/10 shadow-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-2 opacity-20 transition-opacity group-hover:opacity-40">
+                                <Zap size={40} className="text-primary" />
+                            </div>
+
+                            <div className="flex items-center gap-2 mb-2">
+                                <Sparkles size={16} className="text-primary animate-pulse" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary/80">AI Command Center</span>
+                            </div>
+
+                            <h3 className="text-sm font-semibold text-white mb-1">{intelligence.currentGoal}</h3>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                {intelligence.samStrategy}
+                            </p>
+
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                {intelligence.suggestedActions.map((action, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => {
+                                            if (action.value === 'discovery') setActiveTab('discovery');
+                                            if (action.value === 'icp') setActiveTab('strategy');
+                                        }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-medium text-slate-300 hover:bg-primary/20 hover:text-white transition-all"
+                                    >
+                                        {action.icon === 'Target' && <Target size={12} />}
+                                        {action.icon === 'PenTool' && <PenTool size={12} />}
+                                        {action.icon === 'Search' && <Search size={12} />}
+                                        {action.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Priorities / Gaps */}
+                        <div className="space-y-2">
+                            {intelligence.insights.map((insight, idx) => (
+                                <div key={idx} className={cn(
+                                    "p-3 rounded-xl border flex gap-3 transition-all animate-in fade-in slide-in-from-right-2",
+                                    insight.priority === 'high'
+                                        ? "bg-red-500/10 border-red-500/20"
+                                        : "bg-white/5 border-white/10"
+                                )}>
+                                    <div className="mt-0.5">
+                                        {insight.type === 'gap' && <AlertCircle size={14} className="text-red-400" />}
+                                        {insight.type === 'suggestion' && <Lightbulb size={14} className="text-amber-400" />}
+                                        {insight.type === 'strategy' && <Zap size={14} className="text-primary" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[11px] text-slate-300 leading-tight">
+                                            {insight.content}
+                                        </p>
+                                        {insight.actionLabel && (
+                                            <button
+                                                onClick={() => insight.actionTab && setActiveTab(insight.actionTab)}
+                                                className="mt-1 text-[10px] font-bold text-primary hover:underline"
+                                            >
+                                                {insight.actionLabel} →
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <Separator className="bg-white/5" />
                     {/* History Tab */}
                     {activeTab === 'history' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
@@ -217,7 +371,7 @@ export function ContextPanel() {
                             <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
                                 <div className="flex items-center justify-between mb-2">
                                     <h4 className="font-semibold text-foreground flex items-center gap-2">
-                                        <BookOpen size={16} className="text-primary" />
+                                        <Brain size={16} className="text-primary" />
                                         SAM Readiness
                                     </h4>
                                     <span className="text-2xl font-bold text-primary">{contextData?.knowledge?.completeness || 0}%</span>
@@ -241,11 +395,11 @@ export function ContextPanel() {
                                             <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
                                             Foundation
                                         </span>
-                                        <span className="text-xs text-cyan-400 font-medium">50% weight</span>
+                                        <span className="text-xs text-cyan-400 font-medium">{contextData?.knowledge?.categoryScores?.foundation || 0}%</span>
                                     </div>
                                     <div className="text-xs text-muted-foreground mb-2">Company, Product, Value Prop</div>
                                     <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-cyan-400 rounded-full transition-all" style={{ width: '15%' }} />
+                                        <div className="h-full bg-cyan-400 rounded-full transition-all" style={{ width: `${contextData?.knowledge?.categoryScores?.foundation || 0}%` }} />
                                     </div>
                                 </div>
 
@@ -256,11 +410,11 @@ export function ContextPanel() {
                                             <div className="w-2 h-2 rounded-full bg-purple-400"></div>
                                             GTM Strategy
                                         </span>
-                                        <span className="text-xs text-purple-400 font-medium">25% weight</span>
+                                        <span className="text-xs text-purple-400 font-medium">{contextData?.knowledge?.categoryScores?.gtm || 0}%</span>
                                     </div>
                                     <div className="text-xs text-muted-foreground mb-2">Competitors, Channels, Pricing</div>
                                     <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-purple-400 rounded-full transition-all" style={{ width: '5%' }} />
+                                        <div className="h-full bg-purple-400 rounded-full transition-all" style={{ width: `${contextData?.knowledge?.categoryScores?.gtm || 0}%` }} />
                                     </div>
                                 </div>
 
@@ -271,11 +425,11 @@ export function ContextPanel() {
                                             <div className="w-2 h-2 rounded-full bg-green-400"></div>
                                             Customer Intelligence
                                         </span>
-                                        <span className="text-xs text-green-400 font-medium">15% weight</span>
+                                        <span className="text-xs text-green-400 font-medium">{contextData?.knowledge?.categoryScores?.customer || 0}%</span>
                                     </div>
                                     <div className="text-xs text-muted-foreground mb-2">Personas, ICPs, Pain Points</div>
                                     <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-green-400 rounded-full transition-all" style={{ width: '0%' }} />
+                                        <div className="h-full bg-green-400 rounded-full transition-all" style={{ width: `${contextData?.knowledge?.categoryScores?.customer || 0}%` }} />
                                     </div>
                                 </div>
 
@@ -286,27 +440,95 @@ export function ContextPanel() {
                                             <div className="w-2 h-2 rounded-full bg-orange-400"></div>
                                             Execution Assets
                                         </span>
-                                        <span className="text-xs text-orange-400 font-medium">10% weight</span>
+                                        <span className="text-xs text-orange-400 font-medium">{contextData?.knowledge?.categoryScores?.execution || 0}%</span>
                                     </div>
                                     <div className="text-xs text-muted-foreground mb-2">Collateral, Templates, Brand Voice</div>
                                     <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-orange-400 rounded-full transition-all" style={{ width: '0%' }} />
+                                        <div className="h-full bg-orange-400 rounded-full transition-all" style={{ width: `${contextData?.knowledge?.categoryScores?.execution || 0}%` }} />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Quick Actions */}
-                            <div className="space-y-2 pt-2">
-                                <button
-                                    onClick={() => window.location.href = '/workspace/knowledge'}
-                                    className="w-full p-3 rounded-lg border border-primary/30 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <BookOpen size={16} />
-                                    Open Knowledge Base
-                                </button>
-                                <p className="text-xs text-center text-muted-foreground">
-                                    Upload docs or chat with SAM to fill your knowledge base
+                            {/* Teach Sam - Strategic Intelligence */}
+                            <div className="space-y-3 pt-2">
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                    <Sparkles size={12} className="text-amber-400" />
+                                    Teach Sam
+                                </h4>
+                                <p className="text-[10px] text-muted-foreground">
+                                    Help Sam understand your market context to provide better strategic advice.
                                 </p>
+
+                                {/* Research Result Card */}
+                                {researchResult && (
+                                    <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2 animate-in fade-in">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold text-amber-400 uppercase">
+                                                {researchResult.type === 'competitors' && '🔍 Competitor Analysis'}
+                                                {researchResult.type === 'trends' && '📈 Market Trends'}
+                                                {researchResult.type === 'news' && '⚡ Industry Insights'}
+                                            </span>
+                                            <button onClick={() => setResearchResult(null)} className="text-muted-foreground hover:text-foreground">
+                                                ✕
+                                            </button>
+                                        </div>
+                                        <pre className="text-[9px] text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto bg-black/20 rounded p-2">
+                                            {JSON.stringify(researchResult.data, null, 2)}
+                                        </pre>
+                                        <button
+                                            onClick={saveToKnowledgeBase}
+                                            disabled={savingToKB}
+                                            className="w-full py-1.5 text-[10px] font-bold bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition-colors disabled:opacity-50"
+                                        >
+                                            {savingToKB ? 'Saving...' : 'Save to Knowledge Base'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => triggerResearch('competitors')}
+                                        disabled={researchLoading !== null}
+                                        className={cn(
+                                            "p-3 rounded-lg border border-purple-500/30 bg-purple-500/10 text-purple-400 text-[10px] font-medium hover:bg-purple-500/20 transition-colors flex flex-col items-center gap-1.5",
+                                            researchLoading === 'competitors' && "animate-pulse"
+                                        )}
+                                    >
+                                        <Users size={16} />
+                                        {researchLoading === 'competitors' ? 'Researching...' : 'Competitors'}
+                                    </button>
+                                    <button
+                                        onClick={() => triggerResearch('trends')}
+                                        disabled={researchLoading !== null}
+                                        className={cn(
+                                            "p-3 rounded-lg border border-green-500/30 bg-green-500/10 text-green-400 text-[10px] font-medium hover:bg-green-500/20 transition-colors flex flex-col items-center gap-1.5",
+                                            researchLoading === 'trends' && "animate-pulse"
+                                        )}
+                                    >
+                                        <TrendingUp size={16} />
+                                        {researchLoading === 'trends' ? 'Researching...' : 'Market Trends'}
+                                    </button>
+                                    <button
+                                        onClick={() => triggerResearch('news')}
+                                        disabled={researchLoading !== null}
+                                        className={cn(
+                                            "p-3 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-[10px] font-medium hover:bg-cyan-500/20 transition-colors flex flex-col items-center gap-1.5",
+                                            researchLoading === 'news' && "animate-pulse"
+                                        )}
+                                    >
+                                        <Zap size={16} />
+                                        {researchLoading === 'news' ? 'Researching...' : 'Industry News'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            window.location.href = `/workspace/${workspaceId}/knowledge`;
+                                        }}
+                                        className="p-3 rounded-lg border border-primary/30 bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20 transition-colors flex flex-col items-center gap-1.5"
+                                    >
+                                        <Brain size={16} />
+                                        Full KB
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -345,8 +567,20 @@ export function ContextPanel() {
                                     </div>
                                 </div>
                                 <div className="p-3 rounded-lg border border-border/40 bg-surface/30">
-                                    <div className="text-xs text-muted-foreground mb-1">Replies Received</div>
+                                    <div className="text-xs text-[#F472B6]/70">Replies Received</div>
                                     <div className="text-lg font-semibold">{contextData?.stats?.campaign?.replied || 0}</div>
+                                </div>
+                                <div className="p-3 rounded-lg border border-border/40 bg-surface/30">
+                                    <div className="text-xs text-muted-foreground mb-1 flex items-center justify-between">
+                                        Positive Sentiment
+                                        <TrendingUp size={12} className="text-green-400" />
+                                    </div>
+                                    <div className="text-lg font-semibold">82%</div>
+                                    <div className="mt-1 flex gap-1 h-1">
+                                        {[40, 60, 45, 80, 75, 90, 85].map((h, i) => (
+                                            <div key={i} className="flex-1 bg-green-500/40 rounded-t-full" style={{ height: `${h}%` }} />
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
@@ -405,6 +639,11 @@ export function ContextPanel() {
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {/* Discovery Tab */}
+                    {activeTab === 'discovery' && (
+                        <DiscoveryPanel />
                     )}
                 </div>
             </ScrollArea >
