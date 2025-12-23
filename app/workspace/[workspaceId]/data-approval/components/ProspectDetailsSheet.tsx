@@ -10,16 +10,20 @@ import {
 import { ProspectData } from "./types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, Linkedin, MapPin, Building, Star, Phone, Globe, Calendar, User } from "lucide-react";
+import { Mail, Linkedin, MapPin, Building, Star, Phone, Globe, Calendar, User, CheckCircle, XCircle, Trash2, Upload } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 interface ProspectDetailsSheetProps {
     prospect: ProspectData | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onApprove?: (ids: string[]) => void;
+    onReject?: (ids: string[]) => void;
+    onDelete?: (id: string) => void;
+    onAddToCampaign?: (ids: string[]) => void;
 }
 
-export function ProspectDetailsSheet({ prospect, open, onOpenChange }: ProspectDetailsSheetProps) {
+export function ProspectDetailsSheet({ prospect, open, onOpenChange, onApprove, onReject, onDelete, onAddToCampaign }: ProspectDetailsSheetProps) {
     if (!prospect) return null;
 
     return (
@@ -34,12 +38,8 @@ export function ProspectDetailsSheet({ prospect, open, onOpenChange }: ProspectD
                             </SheetDescription>
                         </div>
                         <Badge
-                            variant={
-                                prospect.approvalStatus === 'approved' ? 'default' :
-                                    prospect.approvalStatus === 'rejected' ? 'destructive' :
-                                        'secondary'
-                            }
-                            className="text-sm capitalize"
+                            variant={prospect.approvalStatus === 'approved' ? 'outline' : prospect.approvalStatus === 'rejected' ? 'destructive' : 'secondary'}
+                            className={`text-sm capitalize ${prospect.approvalStatus === 'approved' ? 'bg-green-600/20 text-green-400 border-green-600/30' : ''}`}
                         >
                             {prospect.approvalStatus}
                         </Badge>
@@ -154,24 +154,62 @@ export function ProspectDetailsSheet({ prospect, open, onOpenChange }: ProspectD
                     </div>
                 </div>
 
-                <div className="mt-8 flex gap-3">
+                {/* Action Buttons */}
+                <div className="mt-8 space-y-3">
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={() => onApprove?.([prospect.id])}
+                            disabled={prospect.approvalStatus === 'approved'}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Approve
+                        </Button>
+                        <Button
+                            onClick={() => onReject?.([prospect.id])}
+                            disabled={prospect.approvalStatus === 'rejected'}
+                            className="flex-1"
+                            variant="destructive"
+                        >
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Reject
+                        </Button>
+                    </div>
                     <Button
-                        onClick={() => window.open(prospect.linkedinUrl, '_blank')}
-                        disabled={!prospect.linkedinUrl}
-                        className="flex-1"
-                        variant="outline"
+                        onClick={() => onAddToCampaign?.([prospect.id])}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                        <Linkedin className="w-4 h-4 mr-2" />
-                        View Profile
+                        <Upload className="w-4 h-4 mr-2" />
+                        Add to Campaign
                     </Button>
+                    <Separator />
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={() => window.open(prospect.linkedinUrl, '_blank')}
+                            disabled={!prospect.linkedinUrl}
+                            className="flex-1"
+                            variant="outline"
+                        >
+                            <Linkedin className="w-4 h-4 mr-2" />
+                            View Profile
+                        </Button>
+                        <Button
+                            onClick={() => window.location.href = `mailto:${prospect.email}`}
+                            disabled={!prospect.email}
+                            className="flex-1"
+                            variant="outline"
+                        >
+                            <Mail className="w-4 h-4 mr-2" />
+                            Send Email
+                        </Button>
+                    </div>
                     <Button
-                        onClick={() => window.location.href = `mailto:${prospect.email}`}
-                        disabled={!prospect.email}
-                        className="flex-1"
+                        onClick={() => onDelete?.(prospect.id)}
+                        className="w-full"
                         variant="outline"
                     >
-                        <Mail className="w-4 h-4 mr-2" />
-                        Send Email
+                        <Trash2 className="w-4 h-4 mr-2 text-red-500" />
+                        Delete Prospect
                     </Button>
                 </div>
             </SheetContent>

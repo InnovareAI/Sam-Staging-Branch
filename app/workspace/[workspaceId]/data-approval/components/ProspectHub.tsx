@@ -104,8 +104,10 @@ import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 import ImportProspectsModal from '@/components/ImportProspectsModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useRouter } from 'next/navigation';
-import { Upload } from 'lucide-react';
+import { Upload, Trash2 } from 'lucide-react';
 import { AddToCampaignModal } from './AddToCampaignModal';
+import { CreateCampaignModal } from './CreateCampaignModal';
+import { Button } from '@/components/ui/button';
 
 
 export default function ProspectHub({ workspaceId }: ProspectHubProps) {
@@ -152,11 +154,17 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
         refetchOnWindowFocus: false // Prevent annoying refetches
     });
 
-    const [stats, setStats] = useState({ total: 0, approved: 0, rejected: 0, pending: 0 });
+    const [stats, setStats] = useState({ total: 0, approved: 0, rejected: 0, pending: 0, lists: 0 });
     const [showImportModal, setShowImportModal] = useState(false);
     const [showAddToCampaignModal, setShowAddToCampaignModal] = useState(false);
+    const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
+    const [defaultCampaignName, setDefaultCampaignName] = useState('');
     const [addToCampaignIds, setAddToCampaignIds] = useState<string[]>([]);
-    const [importInitialTab, setImportInitialTab] = useState('file');
+    const [importInitialTab, setImportInitialTab] = useState<any>('url');
+    const [isProcessingPaste, setIsProcessingPaste] = useState(false);
+    const [isProcessingUrl, setIsProcessingUrl] = useState(false);
+    const [isProcessingCsv, setIsProcessingCsv] = useState(false);
+    const [isProcessingQuickAdd, setIsProcessingQuickAdd] = useState(false);
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         title: '',
@@ -164,14 +172,23 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
         onConfirm: () => { },
         type: 'warning' as 'warning' | 'danger' | 'info'
     });
+    const [lastAction, setLastAction] = useState<{
+        type: 'approve' | 'reject' | 'delete',
+        ids: string[],
+        previousStates: Record<string, 'pending' | 'approved' | 'rejected'>,
+        prospects?: ProspectData[]
+    } | null>(null);
 
     useEffect(() => {
         if (prospects) {
+            // Count unique lists (sessionIds)
+            const uniqueSessions = new Set(prospects.map(p => p.sessionId).filter(Boolean));
             setStats({
                 total: prospects.length,
                 approved: prospects.filter(p => p.approvalStatus === 'approved').length,
                 rejected: prospects.filter(p => p.approvalStatus === 'rejected').length,
                 pending: prospects.filter(p => p.approvalStatus === 'pending').length,
+                lists: uniqueSessions.size,
             });
         }
     }, [prospects]);
@@ -182,6 +199,149 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
         toastSuccess(`Imported ${newProspects.length} prospects from ${source}`);
         refetch();
         setShowImportModal(false);
+    };
+
+    const handleLinkedInUrl = async (url: string) => {
+        setIsProcessingUrl(true);
+        try {
+            // Extract search parameters from URL
+            const urlObj = new URL(url);
+            const savedSearchId = urlObj.searchParams.get('savedSearchId');
+            const keywords = urlObj.searchParams.get('keywords');
+            const sessionId = urlObj.searchParams.get('sessionId');
+
+            console.log('LinkedIn Search URL parsed:', { savedSearchId, keywords, sessionId });
+
+            const response = await fetch('/api/linkedin/search/simple', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    search_criteria: {
+                        saved_search_id: savedSearchId,
+                        keywords: keywords,
+                        url: url // Pass full URL as fallback
+                    },
+                    workspace_id: workspaceId
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                toastSuccess(`Successfully started import for ${data.count || 0} prospects`);
+                refetch();
+                setShowImportModal(false);
+            } else {
+                toastError(data.error || 'Failed to start LinkedIn import');
+            }
+        } catch (error) {
+            console.error('LinkedIn URL error:', error);
+            toastError('Invalid URL or search failed');
+        } finally {
+            setIsProcessingUrl(false);
+        }
+    };
+
+    const handleCsvUpload = async (file: File) => {
+        setIsProcessingCsv(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('workspace_id', workspaceId);
+            formData.append('campaign_name', `${new Date().toISOString().split('T')[0]}-CSV-Import`);
+
+            const response = await fetch('/api/prospect-approval/upload-csv', {
+                method: 'POST',
+                // Don't set Content-Type, browser will set it with boundary
+                body: formData
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                toastSuccess(`Uploaded ${data.count || 0} prospects from CSV`);
+                refetch();
+                setShowImportModal(false);
+            } else {
+                toastError(data.error || 'Failed to upload CSV');
+            }
+        } catch (error) {
+            console.error('CSV upload error:', error);
+            toastError('Error uploading CSV file');
+        } finally {
+            setIsProcessingCsv(false);
+        }
+    };
+
+    const handlePasteData = async (text: string) => {
+        setIsProcessingPaste(true);
+        try {
+            const lines = text.trim().split('\n');
+            const prospectsData = lines.map(line => {
+                const parts = line.includes('\t') ? line.split('\t') : line.split(',');
+                const cleanParts = parts.map(p => p.trim());
+                return {
+                    name: cleanParts[0] || 'Unknown',
+                    title: cleanParts[1] || '',
+                    company: { name: cleanParts[2] || '' },
+                    contact: {
+                        email: cleanParts[3] || '',
+                        linkedin_url: cleanParts[4] || ''
+                    }
+                };
+            }).filter(p => p.name !== 'Unknown' || p.contact.linkedin_url);
+
+            const response = await fetch('/api/prospect-approval/upload-prospects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    workspace_id: workspaceId,
+                    prospects: prospectsData,
+                    source: 'paste-import'
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                toastSuccess(`Imported ${data.count || 0} prospects from clipboard`);
+                refetch();
+                setShowImportModal(false);
+            } else {
+                toastError(data.error || 'Failed to import pasted data');
+            }
+        } catch (error) {
+            console.error('Paste error:', error);
+            toastError('Error processing pasted data');
+        } finally {
+            setIsProcessingPaste(false);
+        }
+    };
+
+    const handleQuickAdd = async (url: string) => {
+        setIsProcessingQuickAdd(true);
+        try {
+            const response = await fetch('/api/prospect-approval/upload-prospects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    workspace_id: workspaceId,
+                    prospects: [{ contact: { linkedin_url: url } }],
+                    source: 'quick-add'
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                toastSuccess('Prospect added successfully');
+                refetch();
+                setShowImportModal(false);
+            } else {
+                toastError(data.error || 'Failed to add prospect');
+            }
+        } catch (error) {
+            console.error('Quick add error:', error);
+            toastError('Error adding prospect');
+        } finally {
+            setIsProcessingQuickAdd(false);
+        }
     };
 
     const updateProspectStatus = async (id: string, status: 'approved' | 'rejected' | 'pending') => {
@@ -205,6 +365,9 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                 return old.map(p => p.id === id ? { ...p, approvalStatus: status } : p);
             });
 
+            // For single updates, we don't necessarily need a big undo UI, but we could add it.
+            // However, bulk actions are more important.
+
             if (status === 'approved') toastSuccess('Prospect approved');
             else if (status === 'rejected') toastSuccess('Prospect rejected');
         } catch (error) {
@@ -213,36 +376,160 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
         }
     };
 
-    const handleApprove = (ids: string[]) => {
-        ids.forEach(id => updateProspectStatus(id, 'approved'));
+    const handleUndo = async () => {
+        if (!lastAction) return;
+
+        try {
+            if (lastAction.type === 'delete' && lastAction.prospects) {
+                // Restoration for delete is harder because we need a POST API for full restoration.
+                // For now, let's notify the user if delete undo is not supported or implement it if API allows.
+                // Assuming we can't easily undo permanent delete without a specialized 'restore' API.
+                toastInfo("Undo for delete is coming soon. Please contact support if this was a mistake.");
+                return;
+            }
+
+            // For approve/reject, we just set them back to their previous status
+            await Promise.all(lastAction.ids.map(id => {
+                const prevStatus = lastAction.previousStates[id] || 'pending';
+                const prospect = prospects.find(p => p.id === id);
+                if (!prospect?.sessionId) return Promise.resolve();
+
+                return fetch('/api/prospect-approval/decisions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: prospect.sessionId,
+                        prospect_id: id,
+                        decision: prevStatus
+                    })
+                });
+            }));
+
+            // Restoration for delete
+            if (lastAction.type === 'delete' && lastAction.prospects) {
+                // We use the POST /api/prospect-approval/prospects endpoint to re-insert them
+                // Group by session
+                const sessions = new Map<string, ProspectData[]>();
+                lastAction.prospects.forEach(p => {
+                    if (p.sessionId) {
+                        if (!sessions.has(p.sessionId)) sessions.set(p.sessionId, []);
+                        sessions.get(p.sessionId)!.push(p);
+                    }
+                });
+
+                await Promise.all(Array.from(sessions.entries()).map(([sessionId, sessionProspects]) => {
+                    const prospectsData = sessionProspects.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        title: p.title,
+                        company: p.company,
+                        contact: {
+                            email: p.email,
+                            linkedin_url: p.linkedinUrl,
+                            phone: p.phone,
+                            linkedin_user_id: p.linkedinUserId
+                        },
+                        location: p.location,
+                        connection_degree: p.connectionDegree ? parseInt(p.connectionDegree) : undefined,
+                        enrichment_score: p.enrichmentScore,
+                        source: p.source
+                    }));
+                    return fetch('/api/prospect-approval/prospects', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: sessionId,
+                            prospects_data: prospectsData
+                        })
+                    });
+                }));
+            }
+
+            // Restore cache
+            queryClient.setQueryData(['prospect-hub-data', workspaceId], (old: ProspectData[] | undefined) => {
+                if (!old) return [];
+                if (lastAction.type === 'delete' && lastAction.prospects) {
+                    return [...lastAction.prospects, ...old].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+                }
+                const newIds = new Set(lastAction.ids);
+                return old.map(p => newIds.has(p.id) ? { ...p, approvalStatus: lastAction.previousStates[p.id] || 'pending' } : p);
+            });
+
+            toastSuccess(`Undone last ${lastAction.type} action`);
+            setLastAction(null);
+            refetch(); // Final sync
+        } catch (error) {
+            console.error('Undo error:', error);
+            toastError('Failed to undo action');
+        }
     };
 
-    const handleReject = (ids: string[]) => {
-        ids.forEach(id => updateProspectStatus(id, 'rejected'));
-    };
-
-    const handleDelete = async (id: string) => {
+    const handleDeleteMultiple = async (ids: string[]) => {
+        const prospectsToDelete = prospects.filter(p => ids.includes(p.id));
         setConfirmModal({
             isOpen: true,
-            title: 'Delete Prospect',
-            message: 'Are you sure you want to permanently delete this prospect?',
+            title: `Delete ${ids.length} Prospects`,
+            message: `Are you sure you want to permanently delete these ${ids.length} prospects?`,
             type: 'danger',
             onConfirm: async () => {
                 try {
-                    await fetch(`/api/prospect-approval/delete?prospect_id=${id}`, { method: 'DELETE' });
-                    toastSuccess('Prospect deleted');
+                    setLastAction({ type: 'delete', ids, previousStates: {}, prospects: prospectsToDelete });
+                    await Promise.all(ids.map(id =>
+                        fetch(`/api/prospect-approval/delete?prospect_id=${id}`, { method: 'DELETE' })
+                    ));
+                    toastSuccess(
+                        <div className="flex items-center gap-2">
+                            <span>Deleted {ids.length} prospects</span>
+                            <Button variant="link" size="sm" onClick={handleUndo} className="h-auto p-0 text-blue-400 decoration-blue-400">Undo</Button>
+                        </div>
+                    );
                     refetch();
                 } catch (error) {
-                    toastError('Failed to delete prospect');
+                    console.error('Bulk delete error:', error);
+                    toastError('Failed to delete some prospects');
                 }
                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
             }
         });
     };
 
-    // ... inside component ...
+    const handleApprove = (ids: string[]) => {
+        const previousStates: Record<string, any> = {};
+        ids.forEach(id => {
+            const p = prospects.find(x => x.id === id);
+            if (p) previousStates[id] = p.approvalStatus;
+        });
 
-    // ... inside component ...
+        setLastAction({ type: 'approve', ids, previousStates });
+        ids.forEach(id => updateProspectStatus(id, 'approved'));
+
+        toastInfo(
+            <div className="flex items-center gap-2">
+                <span>Approved {ids.length} prospects</span>
+                <Button variant="link" size="sm" onClick={handleUndo} className="h-auto p-0 text-blue-400 decoration-blue-400">Undo</Button>
+            </div>
+        );
+    };
+
+    const handleReject = (ids: string[]) => {
+        const previousStates: Record<string, any> = {};
+        ids.forEach(id => {
+            const p = prospects.find(x => x.id === id);
+            if (p) previousStates[id] = p.approvalStatus;
+        });
+
+        setLastAction({ type: 'reject', ids, previousStates });
+        ids.forEach(id => updateProspectStatus(id, 'rejected'));
+
+        toastInfo(
+            <div className="flex items-center gap-2">
+                <span>Rejected {ids.length} prospects</span>
+                <Button variant="link" size="sm" onClick={handleUndo} className="h-auto p-0 text-blue-400 decoration-blue-400">Undo</Button>
+            </div>
+        );
+    };
+
+    const handleDelete = (id: string) => handleDeleteMultiple([id]);
 
     const [selectedProspect, setSelectedProspect] = useState<ProspectData | null>(null);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -260,6 +547,7 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                 approved={stats.approved}
                 rejected={stats.rejected}
                 pending={stats.pending}
+                lists={stats.lists}
             />
 
             {/* Prospects Table Section */}
@@ -280,12 +568,15 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                             onApprove={handleApprove}
                             onReject={handleReject}
                             onDelete={handleDelete}
+                            onDeleteSelected={handleDeleteMultiple}
                             onViewDetails={handleViewDetails}
                             onImportClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
                             onAddToCampaign={(ids) => {
                                 setAddToCampaignIds(ids);
                                 setShowAddToCampaignModal(true);
                             }}
+                            onCreateCampaign={() => setShowCreateCampaignModal(true)}
+                            title="Prospect Database"
                         />
                     </>
                 )}
@@ -296,9 +587,15 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                 <ImportProspectsModal
                     open={showImportModal}
                     onClose={() => setShowImportModal(false)}
-                    onDataCollected={handleDataCollected}
-                    workspaceId={workspaceId}
-                    initialTab={importInitialTab}
+                    onLinkedInUrl={handleLinkedInUrl}
+                    onCsvUpload={handleCsvUpload}
+                    onPaste={handlePasteData}
+                    onQuickAdd={handleQuickAdd}
+                    isProcessingUrl={isProcessingUrl}
+                    isProcessingCsv={isProcessingCsv}
+                    isProcessingPaste={isProcessingPaste}
+                    isProcessingQuickAdd={isProcessingQuickAdd}
+                    initialTab={importInitialTab as any}
                 />
             )}
 
@@ -318,6 +615,20 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                 />
             )}
 
+            {showCreateCampaignModal && (
+                <CreateCampaignModal
+                    open={showCreateCampaignModal}
+                    onClose={() => setShowCreateCampaignModal(false)}
+                    workspaceId={workspaceId}
+                    defaultName={defaultCampaignName}
+                    prospects={prospects}
+                    onSuccess={(campaignId) => {
+                        // Navigate to campaign hub to configure the new campaign
+                        router.push(`/workspace/${workspaceId}/campaign-hub`);
+                    }}
+                />
+            )}
+
             <ConfirmModal
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
@@ -331,6 +642,14 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                 prospect={selectedProspect}
                 open={isSheetOpen}
                 onOpenChange={setIsSheetOpen}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onDelete={handleDelete}
+                onAddToCampaign={(ids) => {
+                    setAddToCampaignIds(ids);
+                    setShowAddToCampaignModal(true);
+                    setIsSheetOpen(false);
+                }}
             />
         </div>
     );

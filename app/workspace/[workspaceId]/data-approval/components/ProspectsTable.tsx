@@ -27,6 +27,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
     Table,
     TableBody,
     TableCell,
@@ -35,7 +42,8 @@ import {
     TableRow
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronsUpDown, MoreHorizontal, Star, Linkedin, Mail, CheckCircle, XCircle, Trash2, Eye, Upload } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChevronDown, ChevronsUpDown, MoreHorizontal, Star, Linkedin, Mail, CheckCircle, XCircle, Trash2, Eye, Upload, Plus, Download, Users, Filter } from "lucide-react";
 import { ProspectData } from "./types";
 
 interface ProspectsTableProps {
@@ -46,6 +54,9 @@ interface ProspectsTableProps {
     onViewDetails: (prospect: ProspectData) => void;
     onImportClick?: () => void;
     onAddToCampaign?: (ids: string[]) => void;
+    onCreateCampaign?: () => void;
+    onDeleteSelected?: (ids: string[]) => void;
+    title?: string;
 }
 
 export const columns: ColumnDef<ProspectData>[] = [
@@ -98,13 +109,29 @@ export const columns: ColumnDef<ProspectData>[] = [
     {
         accessorKey: "company",
         size: 150,
-        header: "Company",
+        header: ({ column }) => (
+            <Button
+                variant="ghost"
+                className="-ml-4"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Company
+                <ChevronsUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
         cell: ({ row }) => <div className="font-medium">{row.getValue("company")}</div>
     },
     {
         accessorKey: "campaignTag",
         size: 120,
-        header: "Search Name",
+        header: ({ column }) => (
+            <Button
+                variant="ghost"
+                className="-ml-4"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Search Name
+                <ChevronsUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
         cell: ({ row }) => <div className="text-sm text-gray-400">{row.getValue("campaignTag") || '-'}</div>
     },
     {
@@ -129,12 +156,23 @@ export const columns: ColumnDef<ProspectData>[] = [
     {
         accessorKey: "status",
         size: 100,
-        header: "Status",
+        header: ({ column }) => (
+            <Button
+                variant="ghost"
+                className="-ml-4"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                Status
+                <ChevronsUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
         cell: ({ row }) => {
             const status = row.original.approvalStatus;
             return (
                 <div className="flex items-center gap-2">
-                    <Badge variant={status === 'approved' ? 'default' : status === 'rejected' ? 'destructive' : 'secondary'}>
+                    <Badge
+                        className={status === 'approved' ? 'bg-green-600/20 text-green-400 border-green-600/30' : ''}
+                        variant={status === 'approved' ? 'outline' : status === 'rejected' ? 'destructive' : 'secondary'}
+                    >
                         {status}
                     </Badge>
                 </div>
@@ -168,6 +206,7 @@ export const columns: ColumnDef<ProspectData>[] = [
                 onDelete?: (id: string) => void;
                 onViewDetails?: (prospect: ProspectData) => void;
                 onAddToCampaign?: (ids: string[]) => void;
+                onDismiss?: (id: string) => void;
             };
 
             return (
@@ -216,6 +255,13 @@ export const columns: ColumnDef<ProspectData>[] = [
                             <DropdownMenuItem onClick={() => meta.onDelete?.(prospect.id)} className="text-red-600 focus:text-red-700 cursor-pointer">
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                onClick={() => meta.onDismiss?.(prospect.id)}
+                                className="text-gray-600 focus:text-gray-700 cursor-pointer"
+                            >
+                                <Eye className="mr-2 h-4 w-4" /> Dismiss (Hide)
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
@@ -224,14 +270,83 @@ export const columns: ColumnDef<ProspectData>[] = [
     }
 ];
 
-export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDetails, onImportClick, onAddToCampaign }: ProspectsTableProps) {
+export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDetails, onImportClick, onAddToCampaign, onCreateCampaign, onDeleteSelected, title }: ProspectsTableProps) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+    const [globalFilter, setGlobalFilter] = React.useState('');
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
     const [rowSelection, setRowSelection] = React.useState({});
+    const [minQuality, setMinQuality] = React.useState(0);
+    const [contactFilters, setContactFilters] = React.useState({
+        hasEmail: false,
+        hasLinkedIn: false,
+        hasPhone: false
+    });
+    const [degreeFilters, setDegreeFilters] = React.useState<string[]>([]);
+    const [dismissedIds, setDismissedIds] = React.useState<Set<string>>(new Set());
+    const [showDismissed, setShowDismissed] = React.useState(false);
+    const [selectedList, setSelectedList] = React.useState<string>('all');
+
+    // Persistence for columns
+    React.useEffect(() => {
+        const saved = localStorage.getItem('prospect_table_columns');
+        if (saved) {
+            try {
+                setColumnVisibility(JSON.parse(saved));
+            } catch (e) {
+                console.error('Failed to parse saved columns', e);
+            }
+        }
+    }, []);
+
+    React.useEffect(() => {
+        if (Object.keys(columnVisibility).length > 0) {
+            localStorage.setItem('prospect_table_columns', JSON.stringify(columnVisibility));
+        }
+    }, [columnVisibility]);
+
+    // Get unique lists (campaignTag or sessionId) for the filter
+    const uniqueLists = React.useMemo(() => {
+        const lists = new Map<string, { id: string; name: string; count: number }>();
+        data.forEach(p => {
+            const listId = p.sessionId || 'unknown';
+            const listName = p.campaignTag || p.sessionId || 'Unnamed List';
+            if (!lists.has(listId)) {
+                lists.set(listId, { id: listId, name: listName, count: 0 });
+            }
+            lists.get(listId)!.count++;
+        });
+        return Array.from(lists.values());
+    }, [data]);
+
+    // Filter out dismissed prospects and by selected list
+    const filteredData = React.useMemo(() => {
+        let result = data;
+        // Filter by list if not 'all'
+        if (selectedList !== 'all') {
+            result = result.filter(p => (p.sessionId || 'unknown') === selectedList);
+        }
+        // Filter out dismissed unless showing dismissed
+        if (!showDismissed) {
+            result = result.filter(p => !dismissedIds.has(p.id));
+        }
+        // Advanced filters
+        if (minQuality > 0) {
+            result = result.filter(p => (p.qualityScore || 0) >= minQuality);
+        }
+        if (contactFilters.hasEmail) result = result.filter(p => !!p.email);
+        if (contactFilters.hasLinkedIn) result = result.filter(p => !!p.linkedinUrl);
+        if (contactFilters.hasPhone) result = result.filter(p => !!p.phone);
+        if (degreeFilters.length > 0) {
+            result = result.filter(p => degreeFilters.includes(p.connectionDegree || ''));
+        }
+        return result;
+    }, [data, dismissedIds, showDismissed, selectedList, minQuality, contactFilters, degreeFilters]);
+
+    const dismissedCount = dismissedIds.size;
 
     const table = useReactTable({
-        data,
+        data: filteredData,
         columns,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
@@ -241,40 +356,295 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
         getFilteredRowModel: getFilteredRowModel(),
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
+        onGlobalFilterChange: setGlobalFilter,
+        globalFilterFn: (row, columnId, filterValue) => {
+            const val = filterValue.toLowerCase();
+            const p = row.original;
+            return (
+                p.name?.toLowerCase().includes(val) ||
+                p.company?.toLowerCase().includes(val) ||
+                p.title?.toLowerCase().includes(val) ||
+                p.email?.toLowerCase().includes(val) ||
+                p.linkedinUrl?.toLowerCase().includes(val)
+            );
+        },
         meta: {
             onApprove,
             onReject,
             onDelete,
             onViewDetails,
-            onAddToCampaign
+            onAddToCampaign,
+            onDismiss: (prospectId: string) => {
+                setDismissedIds(prev => {
+                    const newSet = new Set(prev);
+                    newSet.add(prospectId);
+                    return newSet;
+                });
+            }
         },
         state: {
             sorting,
             columnFilters,
+            globalFilter,
             columnVisibility,
             rowSelection
         }
     });
 
+    // Download CSV function
+    const downloadCSV = () => {
+        const rows = table.getFilteredRowModel().rows;
+        if (rows.length === 0) return;
+
+        const headers = ['Name', 'Title', 'Company', 'Email', 'LinkedIn URL', 'Location', 'Status', 'Quality Score'];
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => {
+                const p = row.original;
+                return [
+                    `"${p.name || ''}"`,
+                    `"${p.title || ''}"`,
+                    `"${p.company || ''}"`,
+                    `"${p.email || ''}"`,
+                    `"${p.linkedinUrl || ''}"`,
+                    `"${p.location || ''}"`,
+                    `"${p.approvalStatus || ''}"`,
+                    `"${p.qualityScore || 0}"`
+                ].join(',');
+            })
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `prospects_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // Smart selection functions
+    const selectAllVisible = () => {
+        const newSelection: Record<string, boolean> = {};
+        table.getFilteredRowModel().rows.forEach(row => {
+            newSelection[row.id] = true;
+        });
+        setRowSelection(newSelection);
+    };
+
+    const selectTopQuality = (minScore: number = 80) => {
+        const newSelection: Record<string, boolean> = {};
+        table.getFilteredRowModel().rows.forEach(row => {
+            if (row.original.qualityScore >= minScore) {
+                newSelection[row.id] = true;
+            }
+        });
+        setRowSelection(newSelection);
+    };
+
+    const selectWithEmail = () => {
+        const newSelection: Record<string, boolean> = {};
+        table.getFilteredRowModel().rows.forEach(row => {
+            if (row.original.email && row.original.email.trim() !== '') {
+                newSelection[row.id] = true;
+            }
+        });
+        setRowSelection(newSelection);
+    };
+
+    const selectFirstDegree = () => {
+        const newSelection: Record<string, boolean> = {};
+        table.getFilteredRowModel().rows.forEach(row => {
+            if (row.original.connectionDegree === '1st') {
+                newSelection[row.id] = true;
+            }
+        });
+        setRowSelection(newSelection);
+    };
+
+    const clearSelection = () => {
+        setRowSelection({});
+    };
+
     return (
         <Card>
-            <CardContent className="pt-6">
-                <div className="mb-4 flex items-center gap-2">
+            {title && (
+                <div className="px-6 pt-6 pb-2">
+                    <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+                    <p className="text-sm text-muted-foreground">
+                        {table.getFilteredRowModel().rows.length} {table.getFilteredRowModel().rows.length === data.length ? 'total leads' : 'results found'}
+                    </p>
+                </div>
+            )}
+            <CardContent className="pt-4">
+                <div className="mb-4 flex items-center gap-2 flex-wrap">
+                    {/* List Selector */}
+                    <Select value={selectedList} onValueChange={setSelectedList}>
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="All Lists" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Lists ({uniqueLists.length})</SelectItem>
+                            {uniqueLists.map((list) => (
+                                <SelectItem key={list.id} value={list.id}>
+                                    {list.name} ({list.count})
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <Input
-                        placeholder="Filter by company..."
-                        value={(table.getColumn("company")?.getFilterValue() as string) ?? ""}
-                        onChange={(event) => table.getColumn("company")?.setFilterValue(event.target.value)}
+                        placeholder="Search prospects..."
+                        value={globalFilter ?? ""}
+                        onChange={(event) => setGlobalFilter(event.target.value)}
                         className="max-w-sm"
                     />
                     {onImportClick && (
                         <Button
                             onClick={onImportClick}
-                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20"
                         >
                             <Upload className="mr-2 h-4 w-4" />
                             Import Prospects
                         </Button>
                     )}
+                    {onCreateCampaign && (
+                        <Button
+                            onClick={onCreateCampaign}
+                            variant="outline"
+                            className="border-gray-700 hover:bg-gray-800 text-gray-300"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Campaign
+                        </Button>
+                    )}
+                    {/* Download CSV Button */}
+                    <Button
+                        onClick={downloadCSV}
+                        variant="outline"
+                        className="border-gray-700 hover:bg-gray-800 text-gray-300"
+                        disabled={table.getFilteredRowModel().rows.length === 0}
+                    >
+                        <Download className="mr-2 h-4 w-4" />
+                        Export CSV ({table.getFilteredRowModel().rows.length})
+                    </Button>
+                    {/* Smart Selection Dropdown */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline">
+                                <Users className="mr-2 h-4 w-4" />
+                                Select <ChevronDown className="ml-2 h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={selectAllVisible}>
+                                Select All Visible
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => selectTopQuality(80)}>
+                                Select Top Quality (80+)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={selectWithEmail}>
+                                Select With Email
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={selectFirstDegree}>
+                                Select 1st Degree
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={clearSelection} className="text-red-600">
+                                Clear Selection
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className={minQuality > 0 || contactFilters.hasEmail || contactFilters.hasLinkedIn || contactFilters.hasPhone || degreeFilters.length > 0 ? "border-blue-500 text-blue-500" : ""}>
+                                <Filter className="mr-2 h-4 w-4" />
+                                Filters
+                                {(minQuality > 0 || contactFilters.hasEmail || contactFilters.hasLinkedIn || contactFilters.hasPhone || degreeFilters.length > 0) && (
+                                    <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px]">
+                                        !
+                                    </Badge>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-4 bg-gray-900 border-gray-800">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <h4 className="font-medium text-sm">Quality Score (&gt;= {minQuality})</h4>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        step="5"
+                                        value={minQuality}
+                                        onChange={(e) => setMinQuality(parseInt(e.target.value))}
+                                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="font-medium text-sm">Contact Availability</h4>
+                                    <div className="grid gap-2">
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="hasEmail"
+                                                checked={contactFilters.hasEmail}
+                                                onCheckedChange={(checked) => setContactFilters(p => ({ ...p, hasEmail: !!checked }))}
+                                            />
+                                            <label htmlFor="hasEmail" className="text-sm">Has Email</label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="hasLinkedIn"
+                                                checked={contactFilters.hasLinkedIn}
+                                                onCheckedChange={(checked) => setContactFilters(p => ({ ...p, hasLinkedIn: !!checked }))}
+                                            />
+                                            <label htmlFor="hasLinkedIn" className="text-sm">Has LinkedIn</label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="hasPhone"
+                                                checked={contactFilters.hasPhone}
+                                                onCheckedChange={(checked) => setContactFilters(p => ({ ...p, hasPhone: !!checked }))}
+                                            />
+                                            <label htmlFor="hasPhone" className="text-sm">Has Phone</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="font-medium text-sm">Connection Degree</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['1st', '2nd', '3rd'].map(deg => (
+                                            <Button
+                                                key={deg}
+                                                variant={degreeFilters.includes(deg) ? "default" : "outline"}
+                                                size="sm"
+                                                className="h-7 px-2"
+                                                onClick={() => {
+                                                    setDegreeFilters(prev =>
+                                                        prev.includes(deg) ? prev.filter(d => d !== deg) : [...prev, deg]
+                                                    );
+                                                }}
+                                            >
+                                                {deg}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full text-xs text-muted-foreground h-7"
+                                    onClick={() => {
+                                        setMinQuality(0);
+                                        setContactFilters({ hasEmail: false, hasLinkedIn: false, hasPhone: false });
+                                        setDegreeFilters([]);
+                                    }}
+                                >
+                                    Clear Filters
+                                </Button>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="ml-auto">
@@ -299,9 +669,9 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-                <div className="rounded-md border">
+                <div className="rounded-md border max-h-[600px] overflow-auto relative">
                     <Table>
-                        <TableHeader>
+                        <TableHeader className="sticky top-0 z-10 bg-gray-900 shadow-sm">
                             {table.getHeaderGroups().map((headerGroup) => (
                                 <TableRow key={headerGroup.id}>
                                     {headerGroup.headers.map((header) => {
@@ -343,12 +713,35 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                         </TableBody>
                     </Table>
                 </div>
-                <div className="flex items-center justify-end space-x-2 pt-4">
-                    <div className="flex-1 flex items-center gap-2">
-                        <span className="text-muted-foreground text-sm">
-                            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                            {table.getFilteredRowModel().rows.length} row(s) selected.
+                <div className="flex items-center justify-between space-x-2 pt-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground text-sm font-medium">
+                            {table.getFilteredRowModel().rows.length} {table.getFilteredRowModel().rows.length === data.length ? 'leads' : 'results'}
                         </span>
+                        <span className="text-muted-foreground text-sm">
+                            • {table.getFilteredSelectedRowModel().rows.length} selected
+                        </span>
+                        {dismissedCount > 0 && (
+                            <span className="text-muted-foreground text-sm flex items-center gap-1">
+                                • {dismissedCount} hidden
+                                <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="h-auto py-0 px-1 text-blue-600 hover:text-blue-700"
+                                    onClick={() => setShowDismissed(!showDismissed)}
+                                >
+                                    {showDismissed ? 'Hide' : 'Show'}
+                                </Button>
+                                <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="h-auto py-0 px-1 text-red-600 hover:text-red-700"
+                                    onClick={() => setDismissedIds(new Set())}
+                                >
+                                    Clear
+                                </Button>
+                            </span>
+                        )}
                         {table.getFilteredSelectedRowModel().rows.length > 0 && (
                             <>
                                 <Button
@@ -392,10 +785,46 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                                         Add to Campaign
                                     </Button>
                                 )}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                    onClick={() => {
+                                        const ids = table.getFilteredSelectedRowModel().rows.map(r => r.original.id);
+                                        if (onDeleteSelected) {
+                                            onDeleteSelected(ids);
+                                        } else {
+                                            // Fallback if prop not provided
+                                            ids.forEach(id => onDelete(id));
+                                        }
+                                        setRowSelection({});
+                                    }}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete ({table.getFilteredSelectedRowModel().rows.length})
+                                </Button>
                             </>
                         )}
                     </div>
-                    <div className="space-x-2">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Rows per page</span>
+                        <Select
+                            value={`${table.getState().pagination.pageSize}`}
+                            onValueChange={(value) => {
+                                table.setPageSize(Number(value))
+                            }}
+                        >
+                            <SelectTrigger className="h-8 w-[70px]">
+                                <SelectValue placeholder={table.getState().pagination.pageSize} />
+                            </SelectTrigger>
+                            <SelectContent side="top">
+                                {[10, 25, 50, 100].map((pageSize) => (
+                                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                                        {pageSize}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <Button
                             variant="outline"
                             size="sm"
@@ -413,6 +842,6 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                     </div>
                 </div>
             </CardContent>
-        </Card>
+        </Card >
     );
 }

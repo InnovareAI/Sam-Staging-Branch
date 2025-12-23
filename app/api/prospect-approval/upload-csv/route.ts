@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/app/lib/supabase';
 import { normalizeFullName } from '@/lib/enrich-prospect-name';
 import {
   normalizeCompanyName,
@@ -82,31 +83,55 @@ function hasUnicodeInLinkedInUrl(url: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user authentication
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
+    // Check for internal auth headers (when called from SAM or scripts)
+    const internalAuth = request.headers.get('X-Internal-Auth');
+    const internalUserId = request.headers.get('X-User-Id');
 
-    // Create user client for authentication
-    const userSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: { headers: { Authorization: authHeader } }
+    let user: any = null;
+    let authHeaderValue = request.headers.get('authorization');
+
+    if (internalAuth === 'true' && internalUserId) {
+      console.log('🔐 Internal auth detected in CSV upload');
+      const { data: userData, error: userError } = await supabaseAdmin()
+        .from('users')
+        .select('id, email, current_workspace_id')
+        .eq('id', internalUserId)
+        .single();
+
+      if (userData) {
+        user = userData;
+        console.log(`✅ CSV Upload - Internal auth successful: ${user.email}`);
+      } else {
+        console.error('❌ CSV Upload - Internal user not found:', { internalUserId, error: userError?.message });
+        return NextResponse.json({ success: false, error: 'User not found' }, { status: 401 });
       }
-    );
+    } else {
+      // Standard authentication
+      if (!authHeaderValue) {
+        return NextResponse.json({
+          success: false,
+          error: 'Authentication required'
+        }, { status: 401 });
+      }
 
-    // Get authenticated user
-    const { data: { user }, error: authError } = await userSupabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid authentication'
-      }, { status: 401 });
+      // Create user client for authentication
+      const userSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: { headers: { Authorization: authHeaderValue } }
+        }
+      );
+
+      // Get authenticated user
+      const { data: { user: authUser }, error: authError } = await userSupabase.auth.getUser();
+      if (authError || !authUser) {
+        return NextResponse.json({
+          success: false,
+          error: 'Invalid authentication'
+        }, { status: 401 });
+      }
+      user = authUser;
     }
 
     // Create service role client for database operations
@@ -598,12 +623,12 @@ export async function POST(request: NextRequest) {
         .insert(batch);
 
       if (error) {
-        console.error(`CSV Upload - Error inserting batch ${Math.floor(i/BATCH_SIZE) + 1}:`, error);
+        console.error(`CSV Upload - Error inserting batch ${Math.floor(i / BATCH_SIZE) + 1}:`, error);
         insertError = error;
         break;
       }
       insertedCount += batch.length;
-      console.log(`CSV Upload - Inserted batch ${Math.floor(i/BATCH_SIZE) + 1} (${insertedCount}/${prospectRecords.length})`);
+      console.log(`CSV Upload - Inserted batch ${Math.floor(i / BATCH_SIZE) + 1} (${insertedCount}/${prospectRecords.length})`);
     }
 
     if (insertError) {

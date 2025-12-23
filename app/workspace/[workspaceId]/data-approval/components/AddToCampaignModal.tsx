@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toastError, toastSuccess } from '@/lib/toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, FolderPlus } from 'lucide-react';
 
 interface AddToCampaignModalProps {
     open: boolean;
@@ -40,9 +40,9 @@ export function AddToCampaignModal({ open, onClose, workspaceId, prospectIds, on
             const response = await fetch(`/api/campaigns?workspace_id=${workspaceId}`);
             if (!response.ok) throw new Error('Failed to fetch campaigns');
             const data = await response.json();
-            if (data.success && data.campaigns) {
-                // Filter for active/draft campaigns generally, depending on business logic
-                setCampaigns(data.campaigns);
+            const fetchedCampaigns = data.data?.campaigns || data.campaigns || [];
+            if (data.success) {
+                setCampaigns(fetchedCampaigns);
             }
         } catch (error) {
             console.error(error);
@@ -77,9 +77,7 @@ export function AddToCampaignModal({ open, onClose, workspaceId, prospectIds, on
                 onSuccess();
                 onClose();
             } else {
-                // Handle conflicts warning
                 if (data.error === 'campaign_conflict') {
-                    // For now just error, later could show specific conflict UI
                     toastError(data.message || 'Some prospects are already in other campaigns.');
                 } else {
                     toastError(data.message || 'Failed to add prospects');
@@ -94,33 +92,54 @@ export function AddToCampaignModal({ open, onClose, workspaceId, prospectIds, on
         }
     };
 
+    const handleClose = () => {
+        setSelectedCampaignId('');
+        onClose();
+    };
+
     return (
-        <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px]">
+        <Dialog open={open} onOpenChange={handleClose}>
+            <DialogContent className="sm:max-w-[450px] bg-gray-900 border-gray-700">
                 <DialogHeader>
-                    <DialogTitle>Add to Campaign</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="text-white text-lg font-semibold flex items-center gap-2">
+                        <FolderPlus className="h-5 w-5 text-blue-400" />
+                        Add to Campaign
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-400">
                         Select a campaign to add {prospectIds.length} selected prospect{prospectIds.length !== 1 ? 's' : ''} to.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
+
+                <div className="mt-4 space-y-4">
                     {fetching ? (
-                        <div className="flex justify-center p-4">
-                            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                        <div className="flex justify-center py-8">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                         </div>
                     ) : (
-                        <div className="grid gap-2">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Select Campaign
+                            </label>
                             <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a campaign" />
+                                <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                                    <SelectValue placeholder="Choose a campaign..." />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-gray-800 border-gray-700">
                                     {campaigns.length === 0 ? (
-                                        <div className="p-2 text-sm text-gray-500 text-center">No campaigns found</div>
+                                        <div className="p-4 text-sm text-gray-400 text-center">
+                                            No campaigns found. Create one first.
+                                        </div>
                                     ) : (
                                         campaigns.map((campaign) => (
-                                            <SelectItem key={campaign.id} value={campaign.id}>
-                                                {campaign.name} ({campaign.status})
+                                            <SelectItem
+                                                key={campaign.id}
+                                                value={campaign.id}
+                                                className="text-white hover:bg-gray-700 focus:bg-gray-700"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span>{campaign.name}</span>
+                                                    <span className="text-xs text-gray-400">({campaign.status})</span>
+                                                </div>
                                             </SelectItem>
                                         ))
                                     )}
@@ -129,15 +148,25 @@ export function AddToCampaignModal({ open, onClose, workspaceId, prospectIds, on
                         </div>
                     )}
                 </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose} disabled={loading}>
+
+                <div className="flex gap-3 mt-6">
+                    <Button
+                        variant="outline"
+                        onClick={handleClose}
+                        disabled={loading}
+                        className="flex-1 bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+                    >
                         Cancel
                     </Button>
-                    <Button onClick={handleAdd} disabled={!selectedCampaignId || loading}>
+                    <Button
+                        onClick={handleAdd}
+                        disabled={!selectedCampaignId || loading}
+                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white"
+                    >
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Add to Campaign
                     </Button>
-                </DialogFooter>
+                </div>
             </DialogContent>
         </Dialog>
     );

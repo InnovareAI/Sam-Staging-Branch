@@ -181,7 +181,10 @@ export async function POST(request: NextRequest) {
     console.log('🔍 [SEARCH-5b/6] Unipile config valid:', {
       hasDSN: !!unipileDSN,
       hasKey: !!unipileApiKey,
-      dsnValue: unipileDSN?.substring(0, 20)
+      dsnValue: unipileDSN?.substring(0, 20),
+      apiKeyPrefix: unipileApiKey?.substring(0, 8),
+      apiKeySuffix: unipileApiKey?.substring(unipileApiKey.length - 4),
+      apiKeyLength: unipileApiKey?.length
     });
 
     // Step 1: Get ALL accounts from Unipile
@@ -490,6 +493,18 @@ export async function POST(request: NextRequest) {
       unipilePayload.keywords = search_criteria.keywords;
     }
 
+    // Saved Search ID (Sales Navigator)
+    if (search_criteria.saved_search_id) {
+      unipilePayload.saved_search_id = search_criteria.saved_search_id;
+      console.log('🎯 Using Saved Search ID:', search_criteria.saved_search_id);
+    }
+
+    // Direct Search URL fallback (from search_criteria.url)
+    if (search_criteria.url && !unipilePayload.saved_search_id && !unipilePayload.keywords) {
+      unipilePayload.url = search_criteria.url;
+      console.log('🎯 Using Direct Search URL as fallback:', search_criteria.url);
+    }
+
     // Track if we can use structured filters or need to fall back to keywords
     // For classic API, ALWAYS use keyword-based search (parameter lookups often fail)
     let useStructuredFilters = (api !== 'classic');
@@ -542,7 +557,7 @@ export async function POST(request: NextRequest) {
     if (api !== 'classic' && search_criteria.company) {
       console.log('🎯 Processing company filter:', search_criteria.company);
       const companyIds = await lookupParameterIds('COMPANY', search_criteria.company);
-      
+
       if (companyIds && companyIds.length > 0) {
         // Use the company IDs for the appropriate API type
         if (api === 'sales_navigator') {
@@ -575,7 +590,7 @@ export async function POST(request: NextRequest) {
       // Use SALES_INDUSTRY for Sales Navigator, INDUSTRY for Classic/Recruiter
       const industryType = api === 'sales_navigator' ? 'INDUSTRY' : 'INDUSTRY';
       const industryIds = await lookupParameterIds('INDUSTRY', search_criteria.industry);
-      
+
       if (industryIds && industryIds.length > 0) {
         // Use the industry IDs for the appropriate API type
         if (api === 'sales_navigator') {
@@ -604,7 +619,7 @@ export async function POST(request: NextRequest) {
     if (api !== 'classic' && search_criteria.school) {
       console.log('🎯 Processing school filter:', search_criteria.school);
       const schoolIds = await lookupParameterIds('SCHOOL', search_criteria.school);
-      
+
       if (schoolIds && schoolIds.length > 0) {
         // Use the school IDs for the appropriate API type
         if (api === 'sales_navigator') {
@@ -880,7 +895,7 @@ export async function POST(request: NextRequest) {
         firstName = nameParts[0] || '';
         lastName = nameParts.slice(1).join(' ') || '';
       }
-      
+
       // CRITICAL: Skip if no name available - we can't use prospects without names
       if (!firstName || firstName === 'Unknown') {
         return null; // Will be filtered out
