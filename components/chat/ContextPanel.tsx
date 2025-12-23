@@ -210,77 +210,104 @@ export function ContextPanel() {
                             </div>
                         </div>
                     )}
-                    {/* Knowledge Base Tab */}
+                    {/* Knowledge Base Tab - Enhanced Getting Started */}
                     {activeTab === 'knowledge' && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                            {/* Completeness Summary (Small) */}
-                            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface/40 border border-border/40">
-                                <span className="text-xs text-muted-foreground">Knowledge Health</span>
-                                <span className="text-xs font-bold text-[#A78BFA]">{contextData?.knowledge?.completeness || 0}% Complete</span>
+                            {/* SAM Readiness Header */}
+                            <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="font-semibold text-foreground flex items-center gap-2">
+                                        <BookOpen size={16} className="text-primary" />
+                                        SAM Readiness
+                                    </h4>
+                                    <span className="text-2xl font-bold text-primary">{contextData?.knowledge?.completeness || 0}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-surface-highlight rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-primary to-purple-400 rounded-full transition-all duration-500"
+                                        style={{ width: `${contextData?.knowledge?.completeness || 0}%` }}
+                                    />
+                                </div>
                             </div>
 
-                            {/* Products Section */}
+                            {/* 4 Category Groups Checklist */}
                             <div className="space-y-2">
-                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Products</h4>
-                                {contextData?.knowledge?.products?.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {contextData.knowledge.products.map((p: any) => (
-                                            <div key={p.id} className="p-3 rounded-lg bg-[#8B5CF6]/5 border border-[#8B5CF6]/20">
-                                                <div className="font-medium text-sm text-[#A78BFA]">{p.name}</div>
-                                                {p.description && (
-                                                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{p.description}</div>
-                                                )}
-                                            </div>
-                                        ))}
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Knowledge Categories</h4>
+
+                                {/* Foundation */}
+                                <div className="p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+                                            Foundation
+                                        </span>
+                                        <span className="text-xs text-cyan-400 font-medium">50% weight</span>
                                     </div>
-                                ) : (
-                                    <div className="text-xs text-muted-foreground italic px-2">No products found</div>
-                                )}
+                                    <div className="text-xs text-muted-foreground mb-2">Company, Product, Value Prop</div>
+                                    <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-cyan-400 rounded-full transition-all" style={{ width: '15%' }} />
+                                    </div>
+                                </div>
+
+                                {/* GTM Strategy */}
+                                <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-purple-400"></div>
+                                            GTM Strategy
+                                        </span>
+                                        <span className="text-xs text-purple-400 font-medium">25% weight</span>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground mb-2">Competitors, Channels, Pricing</div>
+                                    <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-purple-400 rounded-full transition-all" style={{ width: '5%' }} />
+                                    </div>
+                                </div>
+
+                                {/* Customer Intelligence */}
+                                <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                                            Customer Intelligence
+                                        </span>
+                                        <span className="text-xs text-green-400 font-medium">15% weight</span>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground mb-2">Personas, ICPs, Pain Points</div>
+                                    <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-green-400 rounded-full transition-all" style={{ width: '0%' }} />
+                                    </div>
+                                </div>
+
+                                {/* Execution Assets */}
+                                <div className="p-3 rounded-lg bg-orange-500/5 border border-orange-500/20">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                                            Execution Assets
+                                        </span>
+                                        <span className="text-xs text-orange-400 font-medium">10% weight</span>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground mb-2">Collateral, Templates, Brand Voice</div>
+                                    <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-orange-400 rounded-full transition-all" style={{ width: '0%' }} />
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Competitors Section */}
-                            <div className="space-y-2">
-                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Competitors</h4>
-                                {contextData?.knowledge?.competitors?.length > 0 ? (
-                                    <div className="flex flex-wrap gap-2">
-                                        {contextData.knowledge.competitors.map((c: any) => (
-                                            <div key={c.id} className="px-3 py-1.5 rounded-md bg-surface border border-border/40 text-xs font-medium">
-                                                {c.name}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-xs text-muted-foreground italic px-2">No competitors found</div>
-                                )}
+                            {/* Quick Actions */}
+                            <div className="space-y-2 pt-2">
+                                <button
+                                    onClick={() => window.location.href = '/workspace/knowledge'}
+                                    className="w-full p-3 rounded-lg border border-primary/30 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <BookOpen size={16} />
+                                    Open Knowledge Base
+                                </button>
+                                <p className="text-xs text-center text-muted-foreground">
+                                    Upload docs or chat with SAM to fill your knowledge base
+                                </p>
                             </div>
-
-                            {/* Recent Documents */}
-                            <div className="space-y-2">
-                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent Uploads</h4>
-                                {contextData?.knowledge?.documents?.length > 0 ? (
-                                    <div className="space-y-1">
-                                        {contextData.knowledge.documents.map((d: any) => (
-                                            <div key={d.id} className="flex items-center gap-2 p-2 rounded hover:bg-surface-highlight/50 transition-colors cursor-default">
-                                                <FileText size={14} className="text-muted-foreground" />
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-xs text-foreground truncate">{d.name}</div>
-                                                    <div className="text-[10px] text-muted-foreground">{new Date(d.date).toLocaleDateString()}</div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-xs text-muted-foreground italic px-2">No documents recently uploaded</div>
-                                )}
-                            </div>
-
-                            {/* Quick Action */}
-                            <button
-                                onClick={() => window.location.href = '/?tab=knowledge'}
-                                className="w-full mt-2 p-2 rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 text-[#A78BFA] text-xs font-medium hover:bg-[#8B5CF6]/20 transition-colors"
-                            >
-                                Manage Knowledge Base →
-                            </button>
                         </div>
                     )}
                     {/* Campaign Stats Tab */}
