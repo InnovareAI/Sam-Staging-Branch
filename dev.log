@@ -21342,3 +21342,7 @@ Import trace for requested module:
  ✓ Compiled in 436ms (1220 modules)
  ✓ Compiled in 1910ms (1220 modules)
  ✓ Compiled in 2s (1220 modules)
+ ✓ Compiled in 363ms (546 modules)
+ ✓ Compiled in 312ms (546 modules)
+ ✓ Compiled in 54ms (164 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (130kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
