@@ -12,10 +12,10 @@ const supabase = createClient(
 async function createEmbeddings(text: string): Promise<number[]> {
   try {
     console.log('[Vectorize] Creating embedding for text length:', text.length);
-    
+
     // Limit text length for embedding (Gemini has token limits)
     const truncatedText = text.substring(0, 10000);
-    
+
     // Use Gemini REST API directly
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`,
@@ -42,34 +42,29 @@ async function createEmbeddings(text: string): Promise<number[]> {
 
     const data = await response.json();
     const embedding = data.embedding?.values || [];
-    
+
     console.log('[Vectorize] Generated embedding with', embedding.length, 'dimensions');
-    
+
     if (embedding.length === 0) {
       throw new Error('Gemini returned empty embedding');
     }
-    
-    // Pad or truncate to 1536 dimensions to match our vector column size
-    if (embedding.length < 1536) {
-      // Pad with zeros if needed
-      console.log('[Vectorize] Padding embedding from', embedding.length, 'to 1536 dimensions');
-      return [...embedding, ...Array(1536 - embedding.length).fill(0)];
-    } else if (embedding.length > 1536) {
-      // Truncate if needed
-      console.log('[Vectorize] Truncating embedding from', embedding.length, 'to 1536 dimensions');
-      return embedding.slice(0, 1536);
+
+    // Gemini text-embedding-004 returns 768 dimensions.
+    // We now use this directly without padding to 1536.
+    if (embedding.length > 768) {
+      console.log('[Vectorize] Truncating embedding from', embedding.length, 'to 768 dimensions');
+      return embedding.slice(0, 768);
     }
-    
+
     return embedding;
 
   } catch (error) {
     console.error('Gemini embedding creation error:', error);
     console.error('Error details:', error instanceof Error ? error.message : String(error));
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
 
     // Fallback: Create a simple hash-based vector for development
-    console.warn('[Vectorize] Using fallback hash-based embedding');
-    const fallbackVector = Array.from({ length: 1536 }, (_, i) => {
+    console.warn('[Vectorize] Using fallback hash-based embedding (768-dim)');
+    const fallbackVector = Array.from({ length: 768 }, (_, i) => {
       const hash = Array.from(text).reduce((acc, char, index) => {
         return acc + char.charCodeAt(0) * (index + 1);
       }, 0);
@@ -84,17 +79,17 @@ async function createEmbeddings(text: string): Promise<number[]> {
 function splitIntoChunks(content: string, chunkSize: number = 1000, overlap: number = 200): string[] {
   const chunks: string[] = [];
   let start = 0;
-  
+
   while (start < content.length) {
     const end = Math.min(start + chunkSize, content.length);
     const chunk = content.substring(start, end);
-    
+
     // Try to end at a sentence boundary
     if (end < content.length) {
       const lastPeriod = chunk.lastIndexOf('.');
       const lastNewline = chunk.lastIndexOf('\n');
       const boundary = Math.max(lastPeriod, lastNewline);
-      
+
       if (boundary > start + chunkSize * 0.5) {
         chunks.push(chunk.substring(0, boundary + 1).trim());
         start += boundary + 1;
@@ -107,7 +102,7 @@ function splitIntoChunks(content: string, chunkSize: number = 1000, overlap: num
       break;
     }
   }
-  
+
   return chunks.filter(chunk => chunk.length > 50); // Remove very small chunks
 }
 
@@ -126,7 +121,7 @@ async function createSAMKnowledgeEntries(
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     const embedding = await createEmbeddings(chunk);
-    
+
     // Create enhanced metadata for SAM AI context
     const enhancedMetadata = {
       ...metadata,
@@ -177,7 +172,7 @@ function extractKeywords(content: string): string[] {
   });
 
   return Object.entries(wordCounts)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 10)
     .map(([word]) => word);
 }
@@ -197,7 +192,7 @@ function generateSAMContext(chunk: string, section: string, tags: string[]): str
 
   const baseContext = contexts[section] || 'This information is relevant for SAM AI conversations.';
   const tagContext = tags.length > 0 ? ` Key topics include: ${tags.slice(0, 5).join(', ')}.` : '';
-  
+
   return baseContext + tagContext + ' Use this information to provide accurate, helpful responses in conversations.';
 }
 
@@ -206,8 +201,8 @@ export async function POST(request: NextRequest) {
     const { documentId, content, tags, section, metadata } = await request.json();
 
     if (!documentId || !content || !section) {
-      return NextResponse.json({ 
-        error: 'Missing required fields: documentId, content, section' 
+      return NextResponse.json({
+        error: 'Missing required fields: documentId, content, section'
       }, { status: 400 });
     }
 
@@ -234,7 +229,7 @@ export async function POST(request: NextRequest) {
 
     // Create knowledge entries with embeddings
     const knowledgeEntries = await createSAMKnowledgeEntries(
-      documentId, 
+      documentId,
       workspaceId,
       sectionId,
       content,
@@ -251,10 +246,10 @@ export async function POST(request: NextRequest) {
       console.error('Vector storage error:', vectorError);
       console.error('Vector error details:', JSON.stringify(vectorError, null, 2));
       console.error('Sample entry:', JSON.stringify(knowledgeEntries[0], null, 2));
-      return NextResponse.json({ 
-        error: 'Failed to store vectors', 
+      return NextResponse.json({
+        error: 'Failed to store vectors',
         details: vectorError.message || vectorError.toString(),
-        code: vectorError.code 
+        code: vectorError.code
       }, { status: 500 });
     }
 
@@ -316,8 +311,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Vectorization error:', error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Vectorization failed' 
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Vectorization failed'
     }, { status: 500 });
   }
 }

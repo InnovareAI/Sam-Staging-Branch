@@ -352,7 +352,10 @@ export function ProspectsTable({
         if (contactFilters.hasLinkedIn) result = result.filter(p => !!p.linkedinUrl);
         if (contactFilters.hasPhone) result = result.filter(p => !!p.phone);
         if (degreeFilters.length > 0) {
-            result = result.filter(p => degreeFilters.includes(p.connectionDegree || ''));
+            result = result.filter(p => {
+                const deg = String(p.connectionDegree);
+                return degreeFilters.some(f => deg.includes(f[0])); // Match '1' in '1st' or '1'
+            });
         }
         return result;
     }, [data, dismissedIds, showDismissed, selectedList, minQuality, contactFilters, degreeFilters]);
@@ -470,7 +473,8 @@ export function ProspectsTable({
     const selectFirstDegree = () => {
         const newSelection: Record<string, boolean> = {};
         table.getFilteredRowModel().rows.forEach(row => {
-            if (row.original.connectionDegree === '1st') {
+            const deg = String(row.original.connectionDegree);
+            if (deg === '1' || deg === '1st') {
                 newSelection[row.id] = true;
             }
         });

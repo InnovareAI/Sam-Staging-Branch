@@ -14,6 +14,7 @@ const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
 interface UnipileRequestOptions extends RequestInit {
     maxRetries?: number;
     initialDelay?: number;
+    timeout?: number;
 }
 
 /**
@@ -23,13 +24,17 @@ export async function unipileRequest(
     endpoint: string,
     options: UnipileRequestOptions = {}
 ) {
-    const { maxRetries = 3, initialDelay = 1000, ...fetchOptions } = options;
+    const { maxRetries = 3, initialDelay = 1000, timeout = 30000, ...fetchOptions } = options;
     let attempt = 0;
 
     while (attempt < maxRetries) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
         try {
             const response = await fetch(`${UNIPILE_BASE_URL}${endpoint}`, {
                 ...fetchOptions,
+                signal: controller.signal,
                 headers: {
                     'X-API-KEY': UNIPILE_API_KEY,
                     'Accept': 'application/json',
@@ -37,6 +42,8 @@ export async function unipileRequest(
                     ...fetchOptions.headers,
                 },
             });
+
+            clearTimeout(timeoutId);
 
             // Handle Success
             if (response.ok) {
@@ -84,7 +91,15 @@ export async function unipileRequest(
             throw new Error(errorMessage || `Unipile API error: ${response.status}`);
 
         } catch (error: any) {
+            clearTimeout(timeoutId);
+
             if (error.message === 'LINKEDIN_COMMERCIAL_LIMIT') throw error;
+
+            if (error.name === 'AbortError') {
+                logger.warn(`⏱️ Unipile request timed out after ${timeout}ms (Attempt ${attempt + 1}/${maxRetries})`, {
+                    metadata: { endpoint }
+                });
+            }
 
             if (attempt >= maxRetries - 1) {
                 logger.error(`❌ Unipile request failed after ${maxRetries} attempts`, error, {
@@ -96,6 +111,9 @@ export async function unipileRequest(
             // Network errors or other unexpected issues
             attempt++;
             const delayMs = initialDelay * Math.pow(2, attempt);
+            logger.warn(`⚠️ Unipile network error on attempt ${attempt}. Retrying in ${delayMs}ms...`, {
+                metadata: { endpoint, error: error.message }
+            });
             await new Promise(resolve => setTimeout(resolve, delayMs));
         }
     }

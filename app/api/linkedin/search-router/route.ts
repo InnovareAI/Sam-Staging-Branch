@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { search_criteria, target_count = 50, needs_emails = false } = body;
+    const { search_criteria, target_count = 50, needs_emails = false, category = 'people' } = body;
 
     // Get workspace
     const { data: userProfile } = await supabase
@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         accountType: accountType.type,
         search_criteria,
-        target_count
+        target_count,
+        category
       });
 
       // AUTO-FALLBACK: If Unipile failed due to rate limits, use BrightData
@@ -152,7 +153,8 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           accountType: accountType.type,
           search_criteria,
-          target_count
+          target_count,
+          category
         });
 
         // AUTO-FALLBACK: If Unipile failed due to rate limits, use BrightData
@@ -288,6 +290,7 @@ async function searchViaUnipile(
     accountType: string;
     search_criteria: any;
     target_count: number;
+    category?: string;
   }
 ) {
   // Forward to existing Unipile endpoint
@@ -296,7 +299,8 @@ async function searchViaUnipile(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       search_criteria: params.search_criteria,
-      target_count: params.target_count
+      target_count: params.target_count,
+      category: params.category || 'people'
     })
   });
 

@@ -89,7 +89,7 @@ function getServiceClient() {
 /**
  * Generate embedding for text using Google Gemini text-embedding-004
  */
-async function generateEmbedding(text: string): Promise<number[] | null> {
+export async function generateEmbedding(text: string): Promise<number[] | null> {
   if (!GEMINI_API_KEY) {
     console.error('❌ GEMINI_API_KEY not set for embeddings');
     return null;
@@ -129,11 +129,10 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
       return null;
     }
 
-    // Pad to 1536 dimensions to match vector column size (Gemini returns 768)
-    if (embedding.length < 1536) {
-      return [...embedding, ...Array(1536 - embedding.length).fill(0)];
-    } else if (embedding.length > 1536) {
-      return embedding.slice(0, 1536);
+    // Gemini text-embedding-004 returns 768 dimensions.
+    // We now use this directly without padding to 1536.
+    if (embedding.length > 768) {
+      return embedding.slice(0, 768);
     }
 
     return embedding;
@@ -384,9 +383,9 @@ function extractSection(content: string, header: string): string {
     }
     if (capturing) {
       if (line.startsWith('Intent:') || line.startsWith('Channel:') ||
-          line.startsWith('Industry:') || line.startsWith('Role:') ||
-          line.startsWith('Original Outreach:') || line.startsWith("Prospect's Message:") ||
-          line.startsWith('Our Response:')) {
+        line.startsWith('Industry:') || line.startsWith('Role:') ||
+        line.startsWith('Original Outreach:') || line.startsWith("Prospect's Message:") ||
+        line.startsWith('Our Response:')) {
         break;
       }
       result.push(line);

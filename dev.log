@@ -21381,3 +21381,2362 @@ Import trace for requested module:
  ✓ Compiled in 353ms (546 modules)
  ✓ Compiled in 299ms (546 modules)
  ✓ Compiled in 320ms (546 modules)
+ ✓ Compiled in 488ms (1370 modules)
+ ✓ Compiled in 333ms (546 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ○ Compiling /workspace/[workspaceId]/chat ...
+ ✓ Compiled /workspace/[workspaceId]/chat in 603ms (1325 modules)
+ GET / 200 in 1452ms
+ ✓ Compiled /api/sam/context in 327ms (1348 modules)
+ GET /api/sam/threads? 200 in 625ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1031ms
+ ✓ Compiled /workspace/[workspaceId] in 199ms (1357 modules)
+ GET /workspace/knowledge 307 in 824ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET / 200 in 327ms
+ GET /api/sam/threads? 200 in 213ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 639ms
+ GET /workspace/knowledge 307 in 259ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET / 200 in 181ms
+ GET /api/sam/threads? 200 in 276ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 536ms
+ GET /workspace/knowledge 307 in 258ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET / 200 in 205ms
+ GET /api/sam/threads? 200 in 211ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 573ms
+ ✓ Compiled /_not-found in 282ms (1362 modules)
+ GET /knowledge 404 in 365ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET / 200 in 83ms
+ ○ Compiling /workspace/[workspaceId]/knowledge ...
+ ✓ Compiled /workspace/[workspaceId]/knowledge in 562ms (1415 modules)
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 1355ms
+ ✓ Compiled /api/knowledge-base/personas in 374ms (1425 modules)
+[KB Documents API] GET request started, icp_id: null
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+ GET /api/knowledge-base/competitors 200 in 706ms
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+ GET /api/knowledge-base/products 200 in 738ms
+ GET /api/knowledge-base/personas 200 in 774ms
+[KB Documents API] Found 20 documents
+ GET /api/knowledge-base/icps 200 in 787ms
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 833ms
+[KB Documents API] GET request started, icp_id: null
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+ ✓ Compiled /api/sam/kb-feedback in 207ms (1427 modules)
+[KB Documents API] Found 20 documents
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 369ms
+ GET /api/sam/kb-feedback 200 in 540ms
+ GET /api/sam/kb-feedback 200 in 322ms
+ ✓ Compiled in 1066ms (1346 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ✓ Compiled /api/knowledge-base/personas in 150ms (734 modules)
+ ✓ Compiled (742 modules)
+[KB Documents API] GET request started, icp_id: null
+ GET / 200 in 464ms
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+ ✓ Compiled /_not-found in 232ms (1365 modules)
+ GET /api/knowledge-base/products 200 in 1021ms
+[KB Documents API] Found 20 documents
+ GET /api/knowledge-base/competitors 200 in 1028ms
+ GET /knowledge 404 in 302ms
+ GET /api/knowledge-base/personas 200 in 1058ms
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 1151ms
+ GET /api/knowledge-base/icps 200 in 1154ms
+ GET /knowledge 404 in 143ms
+[KB Documents API] GET request started, icp_id: null
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 263ms
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+[KB Documents API] Found 20 documents
+ ✓ Compiled /api/sam/kb-feedback in 388ms (745 modules)
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 692ms
+ GET /api/sam/kb-feedback 200 in 1019ms
+ ○ Compiling /_error ...
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ✓ Compiled /_error in 2.1s (1705 modules)
+ GET /knowledge 404 in 1298ms
+ GET / 200 in 1325ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 1329ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 98ms
+ GET /api/sam/kb-feedback 404 in 2512ms
+ GET /knowledge 404 in 203ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 289ms
+ GET / 200 in 291ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 440ms
+[KB Documents API] GET request started, icp_id: null
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+[KB Documents API] Found 20 documents
+ GET /api/knowledge-base/products 200 in 459ms
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 471ms
+ GET /api/knowledge-base/personas 200 in 479ms
+ GET /api/knowledge-base/competitors 200 in 480ms
+ GET /api/knowledge-base/icps 200 in 555ms
+[KB Documents API] GET request started, icp_id: null
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+[KB Documents API] Found 20 documents
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 350ms
+ GET /api/sam/kb-feedback 200 in 327ms
+ GET /api/sam/kb-feedback 200 in 341ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 72ms
+ ✓ Compiled /api/sam/context in 142ms (829 modules)
+ ✓ Compiled (833 modules)
+ GET /api/sam/threads? 200 in 608ms
+ GET /api/sam/threads? 200 in 144ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 891ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 384ms
+🔍 AUTH DEBUG: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  authError: undefined,
+  cookies: [
+    'lastWorkspaceId',
+    'sb-latxadqrvrrrcvkktrog-auth-token',
+    '__next_hmr_refresh_hash__'
+  ]
+}
+ POST /api/sam/threads 200 in 382ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ○ Compiling /api/sam/threads/[threadId]/messages ...
+ ✓ Compiled /api/sam/threads/[threadId]/messages in 623ms (1663 modules)
+ POST /api/sam/threads/2bd4d484-7beb-4819-9480-3b8d1fcfeb44/messages 200 in 1126ms
+ GET /api/sam/context?threadId=2bd4d484-7beb-4819-9480-3b8d1fcfeb44&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1101ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 620ms
+❌ Send message API error (FULL DETAILS): [Error: aborted] { code: 'ECONNRESET' }
+Error stack: Error: aborted
+    at abortIncoming (node:_http_server:838:17)
+    at socketOnClose (node:_http_server:832:3)
+    at Socket.emit (node:events:531:35)
+    at TCP.<anonymous> (node:net:346:12)
+    at TCP.callbackTrampoline (node:internal/async_hooks:130:17)
+Error message: aborted
+ GET /api/sam/threads? 200 in 168ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 494ms
+🔍 AUTH DEBUG: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  authError: undefined,
+  cookies: [
+    'lastWorkspaceId',
+    'sb-latxadqrvrrrcvkktrog-auth-token',
+    '__next_hmr_refresh_hash__'
+  ]
+}
+ POST /api/sam/threads 200 in 409ms
+⏰ User activity tracked for f6885ff3-deef-4781-8721-93011c990b1b
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+ GET /api/sam/context?threadId=e783cfdd-434d-41c2-b26a-4bc3965b4544&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 696ms
+📊 KB Completeness: 67% Status: partial
+[SAM Query] Gemini API error: 400 {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+Embedding generation error: Error: Gemini API error: 400
+    at createQueryEmbedding (app/api/sam/threads/[threadId]/messages/route.ts:124:13)
+    at async fetchKnowledgeSnippets (app/api/sam/threads/[threadId]/messages/route.ts:155:23)
+    at async POST (app/api/sam/threads/[threadId]/messages/route.ts:1061:27)
+  122 |       const errorText = await response.text();
+  123 |       console.error('[SAM Query] Gemini API error:', response.status, errorText);
+> 124 |       throw new Error(`Gemini API error: ${response.status}`);
+      |             ^
+  125 |     }
+  126 |
+  127 |     const data = await response.json();
+🔍 Conversation History Check: {
+  historyLength: 1,
+  history: [
+    {
+      role: 'user',
+      content: 'Give me a list of 3 prospects with their status'
+    }
+  ],
+  isFirstMessage: true
+}
+✅ First message - using AI for concise intro
+🤖 About to insert Sam message: {
+  thread_id: 'e783cfdd-434d-41c2-b26a-4bc3965b4544',
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  role: 'assistant',
+  content_length: 328,
+  message_order: 2,
+  model_used: 'llm-router'
+}
+🧠 Triggering knowledge extraction for thread e783cfdd-434d-41c2-b26a-4bc3965b4544 (Msg #2)
+ POST /api/sam/threads/e783cfdd-434d-41c2-b26a-4bc3965b4544/messages 200 in 24679ms
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+❌ Knowledge extraction API error: 500
+⏰ User activity tracked for f6885ff3-deef-4781-8721-93011c990b1b
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+📊 KB Completeness: 67% Status: partial
+[SAM Query] Gemini API error: 400 {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+Embedding generation error: Error: Gemini API error: 400
+    at createQueryEmbedding (app/api/sam/threads/[threadId]/messages/route.ts:124:13)
+    at async fetchKnowledgeSnippets (app/api/sam/threads/[threadId]/messages/route.ts:155:23)
+    at async POST (app/api/sam/threads/[threadId]/messages/route.ts:1061:27)
+  122 |       const errorText = await response.text();
+  123 |       console.error('[SAM Query] Gemini API error:', response.status, errorText);
+> 124 |       throw new Error(`Gemini API error: ${response.status}`);
+      |             ^
+  125 |     }
+  126 |
+  127 |     const data = await response.json();
+🔍 Conversation History Check: {
+  historyLength: 3,
+  history: [
+    {
+      role: 'user',
+      content: 'Give me a list of 3 prospects with their status'
+    },
+    {
+      role: 'assistant',
+      content: "I'd be happy to help you find prospects! To search for leads, I need a bit more info:\n" +
+        '\n' +
+        '1️⃣ **Job Title** - What role are you targeting? (e.g., CEO, VP Sales, CTO)\n' +
+        '2️⃣ **Location** - Where should they be based?\n' +
+        '3️⃣ **Industry or Keywords** - Any specific sector or company type?\n' +
+        '\n' +
+        'What kind of prospects are you looking for today?'
+    },
+    {
+      role: 'user',
+      content: 'What are the main topics in the icp discovery documents?'
+    }
+  ],
+  isFirstMessage: false
+}
+🤖 About to insert Sam message: {
+  thread_id: 'e783cfdd-434d-41c2-b26a-4bc3965b4544',
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  role: 'assistant',
+  content_length: 793,
+  message_order: 4,
+  model_used: 'llm-router'
+}
+🧠 Triggering knowledge extraction for thread e783cfdd-434d-41c2-b26a-4bc3965b4544 (Msg #4)
+ POST /api/sam/threads/e783cfdd-434d-41c2-b26a-4bc3965b4544/messages 200 in 9684ms
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+❌ Embedding generation failed: Error: Gemini API error: 400 - {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+    at generateEmbedding (lib/sam-qa-storage.ts:371:13)
+    at async storeQuestionAnswer (lib/sam-qa-storage.ts:81:23)
+    at async storeQAInKnowledgeBase (lib/sam-kb-integration.ts:33:22)
+    at async updateKBRealtime (lib/realtime-kb-updater.ts:175:20)
+  369 |     if (!response.ok) {
+  370 |       const errorText = await response.text();
+> 371 |       throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+      |             ^
+  372 |     }
+  373 |
+  374 |     const data = await response.json();
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+✅ Real-time KB update: id_be_happy → icp_definition
+📊 ICP completion updated: 14%
+✅ KB updated in real-time
+ GET /api/sam/context?threadId=e783cfdd-434d-41c2-b26a-4bc3965b4544&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 750ms
+❌ Knowledge extraction API error: 500
+⏰ User activity tracked for f6885ff3-deef-4781-8721-93011c990b1b
+🚀 ICP request detected - proceeding without proactive LinkedIn check {
+  workspaceId: 'babdcab8-1a78-4b2f-913e-6e9fd9821009',
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b'
+}
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+📊 KB Completeness: 67% Status: partial
+[SAM Query] Gemini API error: 400 {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+Embedding generation error: Error: Gemini API error: 400
+    at createQueryEmbedding (app/api/sam/threads/[threadId]/messages/route.ts:124:13)
+    at async fetchKnowledgeSnippets (app/api/sam/threads/[threadId]/messages/route.ts:155:23)
+    at async POST (app/api/sam/threads/[threadId]/messages/route.ts:1061:27)
+  122 |       const errorText = await response.text();
+  123 |       console.error('[SAM Query] Gemini API error:', response.status, errorText);
+> 124 |       throw new Error(`Gemini API error: ${response.status}`);
+      |             ^
+  125 |     }
+  126 |
+  127 |     const data = await response.json();
+🔍 Conversation History Check: {
+  historyLength: 5,
+  history: [
+    {
+      role: 'user',
+      content: 'Give me a list of 3 prospects with their status'
+    },
+    {
+      role: 'assistant',
+      content: "I'd be happy to help you find prospects! To search for leads, I need a bit more info:\n" +
+        '\n' +
+        '1️⃣ **Job Title** - What role are you targeting? (e.g., CEO, VP Sales, CTO)\n' +
+        '2️⃣ **Location** - Where should they be based?\n' +
+        '3️⃣ **Industry or Keywords** - Any specific sector or company type?\n' +
+        '\n' +
+        'What kind of prospects are you looking for today?'
+    },
+    {
+      role: 'user',
+      content: 'What are the main topics in the icp discovery documents?'
+    },
+    {
+      role: 'assistant',
+      content: 'Based on your uploaded ICP documents, here are the main topics covered:\n' +
+        '\n' +
+        '**Core ICP Elements:**\n' +
+        '- **Target Industries** - Technology, SaaS, B2B services, and professional services sectors\n' +
+        '- **Company Size & Revenue** - SMBs to mid-market companies, typically 10-500 employees\n' +
+        '- **Geographic Focus** - Primarily US-based, with emphasis on major tech hubs\n' +
+        '- **Decision Maker Profiles** - CEOs, Founders, VPs of Sales, and Revenue leaders\n' +
+        '- **Pain Points** - Manual outreach inefficiencies, lead quality issues, scaling sales teams\n' +
+        '- **Buying Triggers** - Growth phases, new funding rounds, expanding sales teams\n' +
+        '\n' +
+        "Your ICP section is 100% complete with 57 entries—solid foundation! Is there a specific aspect you'd like me to dig deeper into, or shall we use this to find some matching prospects?"
+    },
+    { role: 'user', content: 'CEOs in New York in the SaaS industry' }
+  ],
+  isFirstMessage: false
+}
+🤖 About to insert Sam message: {
+  thread_id: 'e783cfdd-434d-41c2-b26a-4bc3965b4544',
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  role: 'assistant',
+  content_length: 215,
+  message_order: 6,
+  model_used: 'llm-router'
+}
+🧠 Triggering knowledge extraction for thread e783cfdd-434d-41c2-b26a-4bc3965b4544 (Msg #6)
+ POST /api/sam/threads/e783cfdd-434d-41c2-b26a-4bc3965b4544/messages 200 in 6394ms
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+❌ Embedding generation failed: Error: Gemini API error: 400 - {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+    at generateEmbedding (lib/sam-qa-storage.ts:371:13)
+    at async storeQuestionAnswer (lib/sam-qa-storage.ts:81:23)
+    at async storeQAInKnowledgeBase (lib/sam-kb-integration.ts:33:22)
+    at async updateKBRealtime (lib/realtime-kb-updater.ts:175:20)
+  369 |     if (!response.ok) {
+  370 |       const errorText = await response.text();
+> 371 |       throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+      |             ^
+  372 |     }
+  373 |
+  374 |     const data = await response.json();
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+✅ Real-time KB update: based_on_your → icp_definition
+📊 ICP completion updated: 14%
+✅ KB updated in real-time
+ GET /api/sam/context?threadId=e783cfdd-434d-41c2-b26a-4bc3965b4544&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 517ms
+❌ Knowledge extraction API error: 500
+⏰ User activity tracked for f6885ff3-deef-4781-8721-93011c990b1b
+🚀 ICP request detected - proceeding without proactive LinkedIn check {
+  workspaceId: 'babdcab8-1a78-4b2f-913e-6e9fd9821009',
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b'
+}
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+📊 KB Completeness: 67% Status: partial
+[SAM Query] Gemini API error: 400 {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+Embedding generation error: Error: Gemini API error: 400
+    at createQueryEmbedding (app/api/sam/threads/[threadId]/messages/route.ts:124:13)
+    at async fetchKnowledgeSnippets (app/api/sam/threads/[threadId]/messages/route.ts:155:23)
+    at async POST (app/api/sam/threads/[threadId]/messages/route.ts:1061:27)
+  122 |       const errorText = await response.text();
+  123 |       console.error('[SAM Query] Gemini API error:', response.status, errorText);
+> 124 |       throw new Error(`Gemini API error: ${response.status}`);
+      |             ^
+  125 |     }
+  126 |
+  127 |     const data = await response.json();
+🔍 Conversation History Check: {
+  historyLength: 7,
+  history: [
+    {
+      role: 'user',
+      content: 'Give me a list of 3 prospects with their status'
+    },
+    {
+      role: 'assistant',
+      content: "I'd be happy to help you find prospects! To search for leads, I need a bit more info:\n" +
+        '\n' +
+        '1️⃣ **Job Title** - What role are you targeting? (e.g., CEO, VP Sales, CTO)\n' +
+        '2️⃣ **Location** - Where should they be based?\n' +
+        '3️⃣ **Industry or Keywords** - Any specific sector or company type?\n' +
+        '\n' +
+        'What kind of prospects are you looking for today?'
+    },
+    {
+      role: 'user',
+      content: 'What are the main topics in the icp discovery documents?'
+    },
+    {
+      role: 'assistant',
+      content: 'Based on your uploaded ICP documents, here are the main topics covered:\n' +
+        '\n' +
+        '**Core ICP Elements:**\n' +
+        '- **Target Industries** - Technology, SaaS, B2B services, and professional services sectors\n' +
+        '- **Company Size & Revenue** - SMBs to mid-market companies, typically 10-500 employees\n' +
+        '- **Geographic Focus** - Primarily US-based, with emphasis on major tech hubs\n' +
+        '- **Decision Maker Profiles** - CEOs, Founders, VPs of Sales, and Revenue leaders\n' +
+        '- **Pain Points** - Manual outreach inefficiencies, lead quality issues, scaling sales teams\n' +
+        '- **Buying Triggers** - Growth phases, new funding rounds, expanding sales teams\n' +
+        '\n' +
+        "Your ICP section is 100% complete with 57 entries—solid foundation! Is there a specific aspect you'd like me to dig deeper into, or shall we use this to find some matching prospects?"
+    },
+    { role: 'user', content: 'CEOs in New York in the SaaS industry' },
+    {
+      role: 'assistant',
+      content: 'Great target! Before I start the search, I need two quick things:\n' +
+        '\n' +
+        '1️⃣ **Connection Degree** - 1st, 2nd, or 3rd degree connections?\n' +
+        '2️⃣ **Campaign Name** - What should we call this search? (e.g., "NYC SaaS CEOs Q1")'
+    },
+    { role: 'user', content: 'CEOs in New York in the SaaS industry' }
+  ],
+  isFirstMessage: false
+}
+🤖 About to insert Sam message: {
+  thread_id: 'e783cfdd-434d-41c2-b26a-4bc3965b4544',
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  role: 'assistant',
+  content_length: 209,
+  message_order: 8,
+  model_used: 'llm-router'
+}
+ POST /api/sam/threads/e783cfdd-434d-41c2-b26a-4bc3965b4544/messages 200 in 7747ms
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+❌ Embedding generation failed: Error: Gemini API error: 400 - {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+    at generateEmbedding (lib/sam-qa-storage.ts:371:13)
+    at async storeQuestionAnswer (lib/sam-qa-storage.ts:81:23)
+    at async storeQAInKnowledgeBase (lib/sam-kb-integration.ts:33:22)
+    at async updateKBRealtime (lib/realtime-kb-updater.ts:175:20)
+  369 |     if (!response.ok) {
+  370 |       const errorText = await response.text();
+> 371 |       throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+      |             ^
+  372 |     }
+  373 |
+  374 |     const data = await response.json();
+✅ Tracked conversation analytics for thread e783cfdd-434d-41c2-b26a-4bc3965b4544
+✅ Real-time KB update: great_target_before → icp_definition
+📊 ICP completion updated: 14%
+✅ KB updated in real-time
+ GET /api/sam/context?threadId=e783cfdd-434d-41c2-b26a-4bc3965b4544&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 580ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 312ms
+ GET /api/sam/threads? 200 in 231ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 666ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 487ms
+ ✓ Compiled /api/knowledge-base/competitors in 181ms (830 modules)
+ ✓ Compiled (838 modules)
+[KB Documents API] GET request started, icp_id: null
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+ GET /api/knowledge-base/products 200 in 706ms
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+[KB Documents API] Found 20 documents
+ GET /api/knowledge-base/competitors 200 in 785ms
+ GET /api/knowledge-base/personas 200 in 792ms
+ GET /api/knowledge-base/icps 200 in 820ms
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 833ms
+[KB Documents API] GET request started, icp_id: null
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+ ✓ Compiled /api/sam/kb-feedback in 177ms (840 modules)
+[KB Documents API] Found 20 documents
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 389ms
+ GET /api/sam/kb-feedback 200 in 606ms
+ GET /api/sam/kb-feedback 200 in 380ms
+ ✓ Compiled in 524ms (781 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 297ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 300ms
+ GET / 200 in 316ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 786ms (1582 modules)
+ GET /knowledge 404 in 1169ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 872ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 962ms
+ GET /knowledge 404 in 89ms
+ ✓ Compiled in 420ms (781 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 298ms
+ GET / 200 in 300ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 338ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 544ms (1582 modules)
+ ✓ Compiled in 381ms (1582 modules)
+ GET /knowledge 404 in 1146ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 932ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 857ms
+ GET /knowledge 404 in 94ms
+ ✓ Compiled in 436ms (781 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ○ Compiling /_not-found ...
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 672ms
+ GET / 200 in 681ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 714ms
+ ✓ Compiled /_not-found in 924ms (1596 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ✓ Compiled in 403ms (1582 modules)
+ GET /knowledge 404 in 1554ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 916ms
+ GET / 200 in 645ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 954ms
+ GET /knowledge 404 in 129ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 320ms
+ GET /knowledge 404 in 150ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 324ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 222ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 171ms
+ ✓ Compiled in 389ms (781 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 400ms
+ GET / 200 in 415ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 427ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 621ms (1582 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 257ms (1582 modules)
+ GET /knowledge 404 in 676ms
+ GET /knowledge 404 in 1085ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 742ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 608ms
+ GET /knowledge 404 in 45ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 469ms
+ ✓ Compiled /api/knowledge-base/personas in 191ms (830 modules)
+ ✓ Compiled (838 modules)
+[KB Documents API] GET request started, icp_id: null
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+ GET /api/knowledge-base/competitors 200 in 807ms
+ GET /api/knowledge-base/icps 200 in 815ms
+ GET /api/knowledge-base/personas 200 in 816ms
+[KB Documents API] Found 20 documents
+ GET /api/knowledge-base/products 200 in 846ms
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 863ms
+[KB Documents API] GET request started, icp_id: null
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+ ✓ Compiled /api/sam/kb-feedback in 155ms (840 modules)
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+[KB Documents API] Found 20 documents
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 409ms
+ GET /api/sam/kb-feedback 200 in 630ms
+ GET /api/sam/kb-feedback 200 in 346ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ○ Compiling /_not-found ...
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled /_not-found in 1811ms (1760 modules)
+ GET /knowledge 404 in 1783ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 1784ms
+ GET / 200 in 1787ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 1788ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 135ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 303ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 429ms
+ GET / 200 in 433ms
+ GET /knowledge 404 in 298ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 2162ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 436ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 361ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 110ms
+ ✓ Compiled /api/knowledge-base/personas in 207ms (831 modules)
+ ✓ Compiled (839 modules)
+[KB Documents API] GET request started, icp_id: null
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+[KB Documents API] Found 20 documents
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ GET /api/knowledge-base/documents 200 in 1015ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 612ms (1703 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /api/knowledge-base/competitors 404 in 1685ms
+ GET /api/knowledge-base/products 404 in 1685ms
+ GET /api/knowledge-base/personas 404 in 1686ms
+ GET /api/knowledge-base/icps 404 in 1687ms
+ GET /knowledge 404 in 851ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /api/knowledge-base/documents 200 in 192ms
+[KB Documents API] GET request started, icp_id: null
+[KB Documents API] User authenticated: f6885ff3-deef-4781-8721-93011c990b1b
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 938ms
+[KB Documents API] Fetching documents for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009
+[KB Documents API] Found 20 documents
+[KB Documents API] Processing documents...
+[KB Documents API] Successfully processed 20 documents
+ ✓ Compiled /api/sam/kb-feedback in 459ms (933 modules)
+ GET /api/knowledge-base/documents 404 in 368ms
+ GET /api/knowledge-base/icps 404 in 368ms
+ GET /api/knowledge-base/competitors 404 in 369ms
+ GET /api/knowledge-base/products 404 in 370ms
+ GET /api/knowledge-base/personas 404 in 371ms
+ GET /api/knowledge-base/documents 404 in 84ms
+ ✓ Compiled in 388ms (781 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 307ms
+ GET / 200 in 331ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 387ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 620ms (1582 modules)
+ ✓ Compiled in 488ms (1582 modules)
+ GET /knowledge 404 in 1370ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 1076ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 1133ms
+ GET /knowledge 404 in 150ms
+ ✓ Compiled in 445ms (781 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 481ms
+ GET / 200 in 505ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 523ms
+ ○ Compiling /_not-found ...
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled /_not-found in 756ms (1582 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 488ms (1582 modules)
+ GET /knowledge 404 in 1118ms
+ GET /knowledge 404 in 1487ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 1063ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 946ms
+ GET /knowledge 404 in 44ms
+ ✓ Compiled in 314ms (785 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 113ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 220ms
+ GET / 200 in 221ms
+ GET /knowledge 404 in 109ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 257ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 212ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 148ms
+ ✓ Compiled in 297ms (785 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 127ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 338ms
+ GET / 200 in 348ms
+ GET /knowledge 404 in 171ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 369ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 420ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 360ms
+ ✓ Compiled in 386ms (781 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET / 200 in 440ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 449ms
+ ✓ Compiled /_not-found in 499ms (1582 modules)
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 521ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 352ms (1582 modules)
+ GET /knowledge 404 in 864ms
+ GET /knowledge 404 in 1130ms
+ ⨯ SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+<w> [webpack.cache.PackFileCacheStrategy] Restoring pack failed from /Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/.next/cache/webpack/client-development-fallback.pack.gz: Error: incorrect header check
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 1205ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 941ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled /_error in 372ms (1675 modules)
+ GET /knowledge 500 in 2611ms
+ ✓ Compiled in 485ms (782 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 578ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 603ms
+ GET / 200 in 607ms
+ ○ Compiling /_not-found ...
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 286ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 257ms
+ ✓ Compiled /_not-found in 773ms (1675 modules)
+ GET /knowledge 404 in 392ms
+ ✓ Compiled in 552ms (786 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 124ms
+ GET /knowledge 404 in 186ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 331ms
+ GET / 200 in 339ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 347ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 199ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 118ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 64ms
+ ✓ Compiled /api/sam/context in 198ms (921 modules)
+ ✓ Compiled (925 modules)
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 84ms
+ GET /api/sam/threads? 200 in 1060ms
+ GET /api/sam/threads? 200 in 216ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1506ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 728ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET / 200 in 381ms
+ GET /api/sam/threads? 200 in 209ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 628ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3.7s (3731 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /?tab=campaign 200 in 3878ms
+🔍 currentWorkspace Computation: { selectedWorkspaceId: null, workspacesCount: 0, workspaceIds: [] }
+❌ No selectedWorkspaceId, returning null
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET / 200 in 770ms
+ ✓ Compiled /api/sam/context in 468ms (1960 modules)
+ ✓ Compiled (1964 modules)
+ GET /api/sam/threads? 200 in 1060ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1309ms
+🔍 AUTH DEBUG: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  authError: undefined,
+  cookies: [
+    'lastWorkspaceId',
+    'sb-latxadqrvrrrcvkktrog-auth-token',
+    '__next_hmr_refresh_hash__'
+  ]
+}
+ POST /api/sam/threads 200 in 406ms
+ ✓ Compiled /api/sam/context in 300ms (985 modules)
+ ✓ Compiled (988 modules)
+⏰ User activity tracked for f6885ff3-deef-4781-8721-93011c990b1b
+✅ Tracked conversation analytics for thread 844eb197-c019-456d-a704-d52224b702d3
+ GET /api/sam/context?threadId=844eb197-c019-456d-a704-d52224b702d3&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1157ms
+📊 KB Completeness: 67% Status: partial
+[SAM Query] Gemini API error: 400 {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+Embedding generation error: Error: Gemini API error: 400
+    at createQueryEmbedding (app/api/sam/threads/[threadId]/messages/route.ts:124:13)
+    at async fetchKnowledgeSnippets (app/api/sam/threads/[threadId]/messages/route.ts:155:23)
+    at async POST (app/api/sam/threads/[threadId]/messages/route.ts:1061:27)
+  122 |       const errorText = await response.text();
+  123 |       console.error('[SAM Query] Gemini API error:', response.status, errorText);
+> 124 |       throw new Error(`Gemini API error: ${response.status}`);
+      |             ^
+  125 |     }
+  126 |
+  127 |     const data = await response.json();
+🔍 Conversation History Check: {
+  historyLength: 1,
+  history: [
+    {
+      role: 'user',
+      content: 'Help me find leads on LinkedIn matching my ICP:'
+    }
+  ],
+  isFirstMessage: true
+}
+✅ First message - using AI for concise intro
+🤖 About to insert Sam message: {
+  thread_id: '844eb197-c019-456d-a704-d52224b702d3',
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  role: 'assistant',
+  content_length: 492,
+  message_order: 2,
+  model_used: 'llm-router'
+}
+🧠 Triggering knowledge extraction for thread 844eb197-c019-456d-a704-d52224b702d3 (Msg #2)
+ POST /api/sam/threads/844eb197-c019-456d-a704-d52224b702d3/messages 200 in 8759ms
+✅ Tracked conversation analytics for thread 844eb197-c019-456d-a704-d52224b702d3
+✅ Tracked conversation analytics for thread 844eb197-c019-456d-a704-d52224b702d3
+❌ Knowledge extraction API error: 500
+ ○ Compiling /workspace/[workspaceId]/data-approval ...
+ ✓ Compiled /workspace/[workspaceId]/data-approval in 804ms (951 modules)
+ GET /workspace/1/data-approval 307 in 1407ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET / 200 in 249ms
+ ✓ Compiled /api/sam/context in 128ms (970 modules)
+ ✓ Compiled (974 modules)
+ GET /api/sam/threads? 200 in 593ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 815ms
+ ✓ Compiled /api/sam/threads/[threadId]/messages in 141ms (1037 modules)
+ GET /api/sam/threads/d8cddd47-e5df-4e66-88e1-73cc89617fbe/messages 200 in 465ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1155ms (1941 modules)
+🔍 currentWorkspace Computation: { selectedWorkspaceId: null, workspacesCount: 0, workspaceIds: [] }
+❌ No selectedWorkspaceId, returning null
+ GET /?tab=campaign 200 in 1678ms
+ ○ Compiling /api/mcp/health ...
+ ✓ Compiled /api/mcp/health in 872ms (3752 modules)
+[workspace/list] Request headers: {"accept":"*/*","accept-encoding":"gzip, deflate, br, zstd","accept-language":"en-US,en;q=0.9,de-DE;q=0.8,de;q=0.7","authorization":"Bearer eyJhbGciOiJIU...","cache-control":"no-cache","connection":"keep-alive","cookie":"lastWorkspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009; sb-latxadqrvrrrcvkktrog-auth-token=base64-eyJhY2Nlc3NfdG9rZW4iOiJleUpoYkdjaU9pSklVekkxTmlJc0ltdHBaQ0k2SWpNcmFtbGpVVXR1UzBOVGNHNW1UVFlpTENKMGVYQWlPaUpLVjFRaWZRLmV5SnBjM01pT2lKb2RIUndjem92TDJ4aGRIaGhaSEZ5ZG5KeWNtTjJhMnQwY205bkxuTjFjR0ZpWVhObExtTnZMMkYxZEdndmRqRWlMQ0p6ZFdJaU9pSm1Oamc0TldabU15MWtaV1ZtTFRRM09ERXRPRGN5TVMwNU16QXhNV001T1RCaU1XSWlMQ0poZFdRaU9pSmhkWFJvWlc1MGFXTmhkR1ZrSWl3aVpYaHdJam94TnpZMk5UQTVOekl3TENKcFlYUWlPakUzTmpZMU1EWXhNakFzSW1WdFlXbHNJam9pZEd4QWFXNXViM1poY21WaGFTNWpiMjBpTENKd2FHOXVaU0k2SWlJc0ltRndjRjl0WlhSaFpHRjBZU0k2ZXlKd2NtOTJhV1JsY2lJNkltVnRZV2xzSWl3aWNISnZkbWxrWlhKeklqcGJJbVZ0WVdsc0lsMTlMQ0oxYzJWeVgyMWxkR0ZrWVhSaElqcDdJbVZ0WVdsc1gzWmxjbWxtYVdWa0lqcDBjblZsTENKbWFYSnpkRjl1WVcxbElqb2lWR2h2Y25OMFpXNGlMQ0ptZFd4c1gyNWhiV1VpT2lKVWFHOXljM1JsYmlCTWFXNTZJaXdpYVhOZmMzVndaWEpmWVdSdGFXNGlPblJ5ZFdVc0lteGhjM1JmYm1GdFpTSTZJa3hwYm5vaUxDSnZjbWRoYm1sNllYUnBiMjRpT2lKSmJtNXZkbUZ5WlVGSkluMHNJbkp2YkdVaU9pSmhkWFJvWlc1MGFXTmhkR1ZrSWl3aVlXRnNJam9pWVdGc01TSXNJbUZ0Y2lJNlczc2liV1YwYUc5a0lqb2ljR0Z6YzNkdmNtUWlMQ0owYVcxbGMzUmhiWEFpT2pFM05qWTBNek0yTURSOVhTd2ljMlZ6YzJsdmJsOXBaQ0k2SWpBek16Z3hNakZqTFdGa016QXROR1F5TVMxaFltTmpMVFk1TWpKbE1UVmxZamN4TVNJc0ltbHpYMkZ1YjI1NWJXOTFjeUk2Wm1Gc2MyVjkuS2FfYzd6QllwT3BMdkxwLXh4V1Q3NE9YUkVyQmdfVnJZbFVCVzc1cHcxZyIsInRva2VuX3R5cGUiOiJiZWFyZXIiLCJleHBpcmVzX2luIjozNjAwLCJleHBpcmVzX2F0IjoxNzY2NTA5NzIwLCJyZWZyZXNoX3Rva2VuIjoidXZmZ292MmczZWd2IiwidXNlciI6eyJpZCI6ImY2ODg1ZmYzLWRlZWYtNDc4MS04NzIxLTkzMDExYzk5MGIxYiIsImF1ZCI6ImF1dGhlbnRpY2F0ZWQiLCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImVtYWlsIjoidGxAaW5ub3ZhcmVhaS5jb20iLCJlbWFpbF9jb25maXJtZWRfYXQiOiIyMDI1LTA5LTIzVDA2OjQzOjI5LjY5NzY1NloiLCJwaG9uZSI6IiIsImNvbmZpcm1lZF9hdCI6IjIwMjUtMDktMjNUMDY6NDM6MjkuNjk3NjU2WiIsImxhc3Rfc2lnbl9pbl9hdCI6IjIwMjUtMTItMjNUMTM6NDg6MzEuMTgzMTE5WiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJmaXJzdF9uYW1lIjoiVGhvcnN0ZW4iLCJmdWxsX25hbWUiOiJUaG9yc3RlbiBMaW56IiwiaXNfc3VwZXJfYWRtaW4iOnRydWUsImxhc3RfbmFtZSI6IkxpbnoiLCJvcmdhbml6YXRpb24iOiJJbm5vdmFyZUFJIn0sImlkZW50aXRpZXMiOlt7ImlkZW50aXR5X2lkIjoiMTlkOTk4ZWYtNjRhMC00Mzk3LTllNDAtOTNlMWI3ODlmY2FiIiwiaWQiOiJmNjg4NWZmMy1kZWVmLTQ3ODEtODcyMS05MzAxMWM5OTBiMWIiLCJ1c2VyX2lkIjoiZjY4ODVmZjMtZGVlZi00NzgxLTg3MjEtOTMwMTFjOTkwYjFiIiwiaWRlbnRpdHlfZGF0YSI6eyJlbWFpbCI6InRsQGlubm92YXJlYWkuY29tIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJwaG9uZV92ZXJpZmllZCI6ZmFsc2UsInN1YiI6ImY2ODg1ZmYzLWRlZWYtNDc4MS04NzIxLTkzMDExYzk5MGIxYiJ9LCJwcm92aWRlciI6ImVtYWlsIiwibGFzdF9zaWduX2luX2F0IjoiMjAyNS0wOS0yM1QwNjo0MzoyOS42OTUxMDFaIiwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMjNUMDY6NDM6MjkuNjk1MTUyWiIsInVwZGF0ZWRfYXQiOiIyMDI1LTA5LTIzVDA2OjQzOjI5LjY5NTE1MloiLCJlbWFpbCI6InRsQGlubm92YXJlYWkuY29tIn1dLCJjcmVhdGVkX2F0IjoiMjAyNS0wOS0yM1QwNjo0MzoyOS42OTM3OTRaIiwidXBkYXRlZF9hdCI6IjIwMjUtMTItMjNUMTY6MDg6NDAuMjQxNDM2WiIsImlzX2Fub255bW91cyI6ZmFsc2V9fQ; __next_hmr_refresh_hash__=97507bb67b962d0838237b7f8956694587bc9b0ac5d15891","dnt":"1","host":"localhost:3000","pragma":"no-cache","referer":"http://localhost:3000/?tab=campaign","sec-ch-ua":"\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"","sec-ch-ua-mobile":"?0","sec-ch-ua-platform":"\"macOS\"","sec-fetch-dest":"empty","sec-fetch-mode":"cors","sec-fetch-site":"same-origin","user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36","x-forwarded-for":"::1","x-forwarded-host":"localhost:3000","x-forwarded-port":"3000","x-forwarded-proto":"http","x-pathname":"/api/workspace/list"}
+[workspace/list] Cookie count: 3
+[workspace/list] Auth header present: true Bearer eyJhbGciOiJIUzI1NiIsImt...
+[workspace/list] Found Authorization header, verifying token...
+[workspace/list] Request headers: {"accept":"*/*","accept-encoding":"gzip, deflate, br, zstd","accept-language":"en-US,en;q=0.9,de-DE;q=0.8,de;q=0.7","authorization":"Bearer eyJhbGciOiJIU...","cache-control":"no-cache","connection":"keep-alive","cookie":"lastWorkspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009; sb-latxadqrvrrrcvkktrog-auth-token=base64-eyJhY2Nlc3NfdG9rZW4iOiJleUpoYkdjaU9pSklVekkxTmlJc0ltdHBaQ0k2SWpNcmFtbGpVVXR1UzBOVGNHNW1UVFlpTENKMGVYQWlPaUpLVjFRaWZRLmV5SnBjM01pT2lKb2RIUndjem92TDJ4aGRIaGhaSEZ5ZG5KeWNtTjJhMnQwY205bkxuTjFjR0ZpWVhObExtTnZMMkYxZEdndmRqRWlMQ0p6ZFdJaU9pSm1Oamc0TldabU15MWtaV1ZtTFRRM09ERXRPRGN5TVMwNU16QXhNV001T1RCaU1XSWlMQ0poZFdRaU9pSmhkWFJvWlc1MGFXTmhkR1ZrSWl3aVpYaHdJam94TnpZMk5UQTVOekl3TENKcFlYUWlPakUzTmpZMU1EWXhNakFzSW1WdFlXbHNJam9pZEd4QWFXNXViM1poY21WaGFTNWpiMjBpTENKd2FHOXVaU0k2SWlJc0ltRndjRjl0WlhSaFpHRjBZU0k2ZXlKd2NtOTJhV1JsY2lJNkltVnRZV2xzSWl3aWNISnZkbWxrWlhKeklqcGJJbVZ0WVdsc0lsMTlMQ0oxYzJWeVgyMWxkR0ZrWVhSaElqcDdJbVZ0WVdsc1gzWmxjbWxtYVdWa0lqcDBjblZsTENKbWFYSnpkRjl1WVcxbElqb2lWR2h2Y25OMFpXNGlMQ0ptZFd4c1gyNWhiV1VpT2lKVWFHOXljM1JsYmlCTWFXNTZJaXdpYVhOZmMzVndaWEpmWVdSdGFXNGlPblJ5ZFdVc0lteGhjM1JmYm1GdFpTSTZJa3hwYm5vaUxDSnZjbWRoYm1sNllYUnBiMjRpT2lKSmJtNXZkbUZ5WlVGSkluMHNJbkp2YkdVaU9pSmhkWFJvWlc1MGFXTmhkR1ZrSWl3aVlXRnNJam9pWVdGc01TSXNJbUZ0Y2lJNlczc2liV1YwYUc5a0lqb2ljR0Z6YzNkdmNtUWlMQ0owYVcxbGMzUmhiWEFpT2pFM05qWTBNek0yTURSOVhTd2ljMlZ6YzJsdmJsOXBaQ0k2SWpBek16Z3hNakZqTFdGa016QXROR1F5TVMxaFltTmpMVFk1TWpKbE1UVmxZamN4TVNJc0ltbHpYMkZ1YjI1NWJXOTFjeUk2Wm1Gc2MyVjkuS2FfYzd6QllwT3BMdkxwLXh4V1Q3NE9YUkVyQmdfVnJZbFVCVzc1cHcxZyIsInRva2VuX3R5cGUiOiJiZWFyZXIiLCJleHBpcmVzX2luIjozNjAwLCJleHBpcmVzX2F0IjoxNzY2NTA5NzIwLCJyZWZyZXNoX3Rva2VuIjoidXZmZ292MmczZWd2IiwidXNlciI6eyJpZCI6ImY2ODg1ZmYzLWRlZWYtNDc4MS04NzIxLTkzMDExYzk5MGIxYiIsImF1ZCI6ImF1dGhlbnRpY2F0ZWQiLCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImVtYWlsIjoidGxAaW5ub3ZhcmVhaS5jb20iLCJlbWFpbF9jb25maXJtZWRfYXQiOiIyMDI1LTA5LTIzVDA2OjQzOjI5LjY5NzY1NloiLCJwaG9uZSI6IiIsImNvbmZpcm1lZF9hdCI6IjIwMjUtMDktMjNUMDY6NDM6MjkuNjk3NjU2WiIsImxhc3Rfc2lnbl9pbl9hdCI6IjIwMjUtMTItMjNUMTM6NDg6MzEuMTgzMTE5WiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJmaXJzdF9uYW1lIjoiVGhvcnN0ZW4iLCJmdWxsX25hbWUiOiJUaG9yc3RlbiBMaW56IiwiaXNfc3VwZXJfYWRtaW4iOnRydWUsImxhc3RfbmFtZSI6IkxpbnoiLCJvcmdhbml6YXRpb24iOiJJbm5vdmFyZUFJIn0sImlkZW50aXRpZXMiOlt7ImlkZW50aXR5X2lkIjoiMTlkOTk4ZWYtNjRhMC00Mzk3LTllNDAtOTNlMWI3ODlmY2FiIiwiaWQiOiJmNjg4NWZmMy1kZWVmLTQ3ODEtODcyMS05MzAxMWM5OTBiMWIiLCJ1c2VyX2lkIjoiZjY4ODVmZjMtZGVlZi00NzgxLTg3MjEtOTMwMTFjOTkwYjFiIiwiaWRlbnRpdHlfZGF0YSI6eyJlbWFpbCI6InRsQGlubm92YXJlYWkuY29tIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJwaG9uZV92ZXJpZmllZCI6ZmFsc2UsInN1YiI6ImY2ODg1ZmYzLWRlZWYtNDc4MS04NzIxLTkzMDExYzk5MGIxYiJ9LCJwcm92aWRlciI6ImVtYWlsIiwibGFzdF9zaWduX2luX2F0IjoiMjAyNS0wOS0yM1QwNjo0MzoyOS42OTUxMDFaIiwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMjNUMDY6NDM6MjkuNjk1MTUyWiIsInVwZGF0ZWRfYXQiOiIyMDI1LTA5LTIzVDA2OjQzOjI5LjY5NTE1MloiLCJlbWFpbCI6InRsQGlubm92YXJlYWkuY29tIn1dLCJjcmVhdGVkX2F0IjoiMjAyNS0wOS0yM1QwNjo0MzoyOS42OTM3OTRaIiwidXBkYXRlZF9hdCI6IjIwMjUtMTItMjNUMTY6MDg6NDAuMjQxNDM2WiIsImlzX2Fub255bW91cyI6ZmFsc2V9fQ; __next_hmr_refresh_hash__=97507bb67b962d0838237b7f8956694587bc9b0ac5d15891","dnt":"1","host":"localhost:3000","pragma":"no-cache","referer":"http://localhost:3000/?tab=campaign","sec-ch-ua":"\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"","sec-ch-ua-mobile":"?0","sec-ch-ua-platform":"\"macOS\"","sec-fetch-dest":"empty","sec-fetch-mode":"cors","sec-fetch-site":"same-origin","user-agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36","x-forwarded-for":"::1","x-forwarded-host":"localhost:3000","x-forwarded-port":"3000","x-forwarded-proto":"http","x-pathname":"/api/workspace/list"}
+[workspace/list] Cookie count: 3
+[workspace/list] Auth header present: true Bearer eyJhbGciOiJIUzI1NiIsImt...
+[workspace/list] Found Authorization header, verifying token...
+[workspace/list] Auth via Bearer token: f6885ff3-deef-4781-8721-93011c990b1b tl@innovareai.com
+[workspace/list] Authenticated user via bearer_token : f6885ff3-deef-4781-8721-93011c990b1b tl@innovareai.com
+[workspace/list] Auth via Bearer token: f6885ff3-deef-4781-8721-93011c990b1b tl@innovareai.com
+[workspace/list] Authenticated user via bearer_token : f6885ff3-deef-4781-8721-93011c990b1b tl@innovareai.com
+[workspace/list] User current_workspace_id: babdcab8-1a78-4b2f-913e-6e9fd9821009
+[workspace/list] Is super admin: true tl@innovareai.com
+[workspace/list] Super admin - fetching ALL workspaces
+[workspace/list] User current_workspace_id: babdcab8-1a78-4b2f-913e-6e9fd9821009
+[workspace/list] Is super admin: true tl@innovareai.com
+[workspace/list] Super admin - fetching ALL workspaces
+[workspace/list] Super admin - found 12 workspaces
+[workspace/list] CRITICAL DEBUG - Workspace IDs to filter by: [
+  'e61966ed-18c2-425c-8e83-f466dd5902bb',
+  '8a720935-db68-43e2-b16d-34383ec6c3e8',
+  'c3100bea-82a6-4365-b159-6581f1be9be3',
+  'aa1a214c-02f0-4f3a-8849-92c7a50ee4f7',
+  '7f0341da-88db-476b-ae0a-fc0da5b70861',
+  '2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c',
+  '96c03b38-a2f4-40de-9e16-43098599e1d4',
+  'cd57981a-e63b-401c-bde1-ac71752c2293',
+  '04666209-fce8-4d71-8eaf-01278edfc73b',
+  'dea5a7f2-673c-4429-972d-6ba5fca473fb',
+  '5b81ee67-4d41-4997-b5a4-e1432e060d12',
+  'babdcab8-1a78-4b2f-913e-6e9fd9821009'
+]
+[workspace/list] Number of workspace IDs: 12
+[workspace/list] Super admin - found 12 workspaces
+[workspace/list] CRITICAL DEBUG - Workspace IDs to filter by: [
+  'e61966ed-18c2-425c-8e83-f466dd5902bb',
+  '8a720935-db68-43e2-b16d-34383ec6c3e8',
+  'c3100bea-82a6-4365-b159-6581f1be9be3',
+  'aa1a214c-02f0-4f3a-8849-92c7a50ee4f7',
+  '7f0341da-88db-476b-ae0a-fc0da5b70861',
+  '2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c',
+  '96c03b38-a2f4-40de-9e16-43098599e1d4',
+  'cd57981a-e63b-401c-bde1-ac71752c2293',
+  '04666209-fce8-4d71-8eaf-01278edfc73b',
+  'dea5a7f2-673c-4429-972d-6ba5fca473fb',
+  '5b81ee67-4d41-4997-b5a4-e1432e060d12',
+  'babdcab8-1a78-4b2f-913e-6e9fd9821009'
+]
+[workspace/list] Number of workspace IDs: 12
+🔍 Bright Data env vars: { customer: 'SET', zone: 'SET', password: 'SET' }
+[workspace/list] Found current workspace from DB: Thorsten Linz
+[workspace/list] Returning: { workspaceCount: 12, current: 'Thorsten Linz' }
+ GET /api/workspace/list 200 in 1365ms
+[workspace/list] Found current workspace from DB: Thorsten Linz
+[workspace/list] Returning: { workspaceCount: 12, current: 'Thorsten Linz' }
+ GET /api/workspace/list 200 in 1351ms
+ ○ Compiling /workspace/[workspaceId]/campaign-hub ...
+ GET /api/mcp/health 200 in 2079ms
+ ✓ Compiled /workspace/[workspaceId]/campaign-hub in 2.5s (4571 modules)
+Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server.
+[workspace/set-current] Setting current workspace: {
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  userEmail: 'tl@innovareai.com',
+  workspaceId: 'babdcab8-1a78-4b2f-913e-6e9fd9821009'
+}
+[workspace/set-current] Successfully updated current_workspace_id
+ POST /api/workspace/set-current 200 in 2742ms
+⚠️ Using user ID as workspace ID
+🔍 Debug: User tl@innovareai.com workspace: {
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  workspace_id: 'f6885ff3-deef-4781-8721-93011c990b1b'
+}
+🔍 User authentication check: {
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  user_email: 'tl@innovareai.com',
+  is_innovareai_manager: true,
+  workspace_id: 'f6885ff3-deef-4781-8721-93011c990b1b'
+}
+✅ User tl@innovareai.com access granted for workspace f6885ff3-deef-4781-8721-93011c990b1b
+ GET /api/sam/threads?status=active 200 in 2707ms
+🔍 Auto-association check for tl@innovareai.com: {
+  total_accounts: 15,
+  linkedin_accounts: 12,
+  existing_user_associations: 5,
+  user_email: 'tl@innovareai.com'
+}
+⏭️ Skipping 09Uv5wIaSFOiN2gru_svbA - already associated
+🔍 Checking account 4nt1J-blSnGUPBjH2Nfjpg: {
+  account_name: '𝗖𝗵𝗮𝗿𝗶𝘀𝘀𝗮 𝗦𝗮𝗻𝗶𝗲𝗹',
+  possible_emails: [ '𝗖𝗵𝗮𝗿𝗶𝘀𝘀𝗮 𝗦𝗮𝗻𝗶𝗲𝗹' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+🔍 Checking account I0XZxvzfSRuCL8nuFoUEuw: {
+  account_name: 'Rony Chatterjee, PhD',
+  possible_emails: [ 'rony chatterjee, phd' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+🔍 Checking account J-G6dHUDSxGBkYuuTysbeg: {
+  account_name: 'Marie Sebueng',
+  possible_emails: [ 'marie sebueng' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+🔍 Checking account KeHOhroOTSut7IQr5DU4Ag: {
+  account_name: 'Martin Schechtner',
+  possible_emails: [ 'martin schechtner' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+🔍 Checking account Ll1T0gRVTYmLM6kqN1cJcg: {
+  account_name: 'ChonaM Lamberte',
+  possible_emails: [ 'chonam lamberte' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+🔍 Checking account RFrEaJZOSGieognCTW0V6w: {
+  account_name: 'Brian Neirby',
+  possible_emails: [ 'brian neirby' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+🔍 Checking account aroiwOeQQo2S8_-FqLjzNw: {
+  account_name: 'Michelle Angelica  Gestuveo ',
+  possible_emails: [ 'michelle angelica  gestuveo ' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+🔍 Checking account fntPg3vJTZ2Z1MP4rISntg: {
+  account_name: 'Samantha Truman',
+  possible_emails: [ 'samantha truman' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+🔍 Checking account gW6mCsj7RK-vp89UcDUC2w: {
+  account_name: 'Sebastian Henkel',
+  possible_emails: [ 'sebastian henkel' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+🔍 Checking account nGqBWgDmTkqnoMGA3Hbc9w: {
+  account_name: 'Stan Bounev',
+  possible_emails: [ 'stan bounev' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+🔍 Checking account ymtTx4xVQ6OVUFk83ctwtA: {
+  account_name: 'Irish Maguad',
+  possible_emails: [ 'irish maguad' ],
+  user_email: 'tl@innovareai.com',
+  exact_match: false,
+  domain_match: false,
+  will_associate: false,
+  association_type: 'none'
+}
+LinkedIn accounts for user tl@innovareai.com in workspace f6885ff3-deef-4781-8721-93011c990b1b: {
+  user_linkedin_count: 1,
+  user_accounts: [
+    {
+      id: '09Uv5wIaSFOiN2gru_svbA',
+      name: 'Thorsten Linz',
+      username: 'Thorsten Linz',
+      status: [Array],
+      created: '2025-12-17T08:40:56.600Z'
+    }
+  ]
+}
+📊 Final result for tl@innovareai.com: {
+  has_linkedin: true,
+  user_linkedin_accounts: 1,
+  connection_status: 'connected'
+}
+ GET /api/unipile/accounts 200 in 2859ms
+ GET /api/analytics/campaigns?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009&time_range=7d&campaign_type=all 200 in 3044ms
+ ○ Compiling /api/sam/threads/[threadId]/messages ...
+ ✓ Compiled /api/sam/threads/[threadId]/messages in 650ms (2444 modules)
+🏢 [CAMPAIGN HUB MAIN] Workspace ID being used: babdcab8-1a78-4b2f-913e-6e9fd9821009 from prop: babdcab8-1a78-4b2f-913e-6e9fd9821009
+🔍 CampaignHub Debug: {
+  campaignFilter: 'active',
+  allCampaignsCount: 0,
+  filteredCampaignsCount: 0,
+  loadingAllCampaigns: true,
+  allCampaignsData: []
+}
+ GET /api/sam/threads/844eb197-c019-456d-a704-d52224b702d3/messages 200 in 966ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 200 in 3675ms
+ ○ Compiling /api/campaigns ...
+ ✓ Compiled /api/campaigns in 993ms (4738 modules)
+Get timezone error: ReferenceError: cookies is not defined
+    at GET (app/api/user/get-timezone/route.ts:11:25)
+   9 | export async function GET() {
+  10 |   try {
+> 11 |     const cookieStore = await cookies();
+     |                         ^
+  12 |     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  13 |
+  14 |     // Get authenticated user
+ GET /api/user/get-timezone 200 in 1112ms
+🚀 [CAMPAIGNS API] ===== REQUEST START =====
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+👤 [CAMPAIGNS API] Auth check: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  email: 'tl@innovareai.com',
+  authError: undefined
+}
+🏢 [CAMPAIGNS API] Workspace ID: babdcab8-1a78-4b2f-913e-6e9fd9821009 from URL: babdcab8-1a78-4b2f-913e-6e9fd9821009
+🔑 [CAMPAIGNS API] Service role key exists: true length: 219
+🔧 Fixed corrupted server-side cookie (decoded base64)
+👥 [CAMPAIGNS API] Membership check: {
+  found: true,
+  membershipId: '3511cd2f-a1e6-49d1-adc5-67d7e909834e',
+  error: undefined
+}
+📊 [CAMPAIGNS API] Fetching campaigns for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009 user: f6885ff3-deef-4781-8721-93011c990b1b tl@innovareai.com
+ GET /api/workspace-accounts/check?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1300ms
+📊 [CAMPAIGNS API] Query result: {
+  campaignCount: 10,
+  error: undefined,
+  firstCampaign: 'tete',
+  allNames: [
+    'tete',
+    'tete',
+    'tete',
+    'IA/ Techstars/ 1st Degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    'Techstars !st Degree',
+    '20251217-CLI-CSV Upload',
+    'IA- Techstars- Founders'
+  ]
+}
+✅ [CAMPAIGNS API] Returning 10 campaigns
+ GET /api/campaigns?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1435ms
+ ○ Compiling /workspace/[workspaceId]/data-approval ...
+ ✓ Compiled /workspace/[workspaceId]/data-approval in 695ms (1362 modules)
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 1407ms
+ ✓ Compiled /api/prospect-approval/workspace-prospects in 195ms (1381 modules)
+ GET /api/prospect-approval/workspace-prospects?page=1&limit=50&status=all 200 in 726ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 104ms
+ ✓ Compiled /api/sam/context in 183ms (1383 modules)
+ ✓ Compiled (1387 modules)
+ GET /api/sam/threads? 200 in 812ms
+ GET /api/sam/threads? 200 in 154ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1123ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 429ms
+🔍 AUTH DEBUG: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  authError: undefined,
+  cookies: [
+    'lastWorkspaceId',
+    'sb-latxadqrvrrrcvkktrog-auth-token',
+    '__next_hmr_refresh_hash__'
+  ]
+}
+ POST /api/sam/threads 200 in 442ms
+ ✓ Compiled /api/sam/context in 289ms (1400 modules)
+ ✓ Compiled (1403 modules)
+⏰ User activity tracked for f6885ff3-deef-4781-8721-93011c990b1b
+✅ Tracked conversation analytics for thread 4661e62f-c5ed-4fbe-9934-7bf6e1b9bfbe
+ GET /api/sam/context?threadId=4661e62f-c5ed-4fbe-9934-7bf6e1b9bfbe&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1212ms
+📊 KB Completeness: 67% Status: partial
+[SAM Query] Gemini API error: 400 {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+Embedding generation error: Error: Gemini API error: 400
+    at createQueryEmbedding (app/api/sam/threads/[threadId]/messages/route.ts:124:13)
+    at async fetchKnowledgeSnippets (app/api/sam/threads/[threadId]/messages/route.ts:155:23)
+    at async POST (app/api/sam/threads/[threadId]/messages/route.ts:1061:27)
+  122 |       const errorText = await response.text();
+  123 |       console.error('[SAM Query] Gemini API error:', response.status, errorText);
+> 124 |       throw new Error(`Gemini API error: ${response.status}`);
+      |             ^
+  125 |     }
+  126 |
+  127 |     const data = await response.json();
+🔍 Conversation History Check: {
+  historyLength: 1,
+  history: [
+    {
+      role: 'user',
+      content: 'Help me find leads on LinkedIn matching my ICP:'
+    }
+  ],
+  isFirstMessage: true
+}
+✅ First message - using AI for concise intro
+ ✓ Compiled /workspace/[workspaceId]/data-approval in 178ms (1448 modules)
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 717ms
+ ✓ Compiled /api/prospect-approval/workspace-prospects in 174ms (1450 modules)
+ GET /api/prospect-approval/workspace-prospects?page=1&limit=50&status=all 200 in 667ms
+🤖 About to insert Sam message: {
+  thread_id: '4661e62f-c5ed-4fbe-9934-7bf6e1b9bfbe',
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  role: 'assistant',
+  content_length: 501,
+  message_order: 2,
+  model_used: 'llm-router'
+}
+🧠 Triggering knowledge extraction for thread 4661e62f-c5ed-4fbe-9934-7bf6e1b9bfbe (Msg #2)
+ POST /api/sam/threads/4661e62f-c5ed-4fbe-9934-7bf6e1b9bfbe/messages 200 in 23232ms
+✅ Tracked conversation analytics for thread 4661e62f-c5ed-4fbe-9934-7bf6e1b9bfbe
+✅ Tracked conversation analytics for thread 4661e62f-c5ed-4fbe-9934-7bf6e1b9bfbe
+❌ Knowledge extraction API error: 500
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 84ms
+ GET /api/sam/threads? 200 in 226ms
+ GET /api/sam/threads? 200 in 164ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 526ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 404ms
+🔍 AUTH DEBUG: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  authError: undefined,
+  cookies: [
+    'lastWorkspaceId',
+    'sb-latxadqrvrrrcvkktrog-auth-token',
+    '__next_hmr_refresh_hash__'
+  ]
+}
+ POST /api/sam/threads 200 in 359ms
+⏰ User activity tracked for f6885ff3-deef-4781-8721-93011c990b1b
+✅ Tracked conversation analytics for thread b20e4b07-595a-4c75-99a6-6334246bb3af
+ GET /api/sam/context?threadId=b20e4b07-595a-4c75-99a6-6334246bb3af&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 548ms
+📊 KB Completeness: 67% Status: partial
+[SAM Query] Gemini API error: 400 {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+Embedding generation error: Error: Gemini API error: 400
+    at createQueryEmbedding (app/api/sam/threads/[threadId]/messages/route.ts:124:13)
+    at async fetchKnowledgeSnippets (app/api/sam/threads/[threadId]/messages/route.ts:155:23)
+    at async POST (app/api/sam/threads/[threadId]/messages/route.ts:1061:27)
+  122 |       const errorText = await response.text();
+  123 |       console.error('[SAM Query] Gemini API error:', response.status, errorText);
+> 124 |       throw new Error(`Gemini API error: ${response.status}`);
+      |             ^
+  125 |     }
+  126 |
+  127 |     const data = await response.json();
+🔍 Conversation History Check: {
+  historyLength: 1,
+  history: [
+    {
+      role: 'user',
+      content: 'Help me find leads on LinkedIn matching my ICP:'
+    }
+  ],
+  isFirstMessage: true
+}
+✅ First message - using AI for concise intro
+🤖 About to insert Sam message: {
+  thread_id: 'b20e4b07-595a-4c75-99a6-6334246bb3af',
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  role: 'assistant',
+  content_length: 515,
+  message_order: 2,
+  model_used: 'llm-router'
+}
+🧠 Triggering knowledge extraction for thread b20e4b07-595a-4c75-99a6-6334246bb3af (Msg #2)
+ POST /api/sam/threads/b20e4b07-595a-4c75-99a6-6334246bb3af/messages 200 in 22393ms
+✅ Tracked conversation analytics for thread b20e4b07-595a-4c75-99a6-6334246bb3af
+✅ Tracked conversation analytics for thread b20e4b07-595a-4c75-99a6-6334246bb3af
+❌ Knowledge extraction API error: 500
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 113ms
+ GET /api/prospect-approval/workspace-prospects?page=1&limit=50&status=all 200 in 495ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 72ms
+ GET /api/sam/threads? 200 in 292ms
+ GET /api/sam/threads? 200 in 159ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 592ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 429ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 76ms
+ GET /api/prospect-approval/workspace-prospects?page=1&limit=50&status=all 200 in 407ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 71ms
+ GET /api/sam/threads? 200 in 283ms
+ GET /api/sam/threads? 200 in 206ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 599ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 482ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 86ms
+ GET /api/prospect-approval/workspace-prospects?page=1&limit=50&status=all 200 in 502ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 90ms
+ GET /api/sam/threads? 200 in 466ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 187ms
+ GET /api/sam/threads? 200 in 156ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 846ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 381ms
+ ✓ Compiled in 1250ms (2205 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 396ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 399ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 515ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 516ms
+ GET / 200 in 517ms
+ ○ Compiling /_not-found ...
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ✓ Compiled /_not-found in 1322ms (3513 modules)
+ ✓ Compiled /api/sam/threads in 0ms (1318 modules)
+ ✓ Compiled in 434ms (3532 modules)
+ GET /knowledge 404 in 2594ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 2013ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 2014ms
+ GET / 200 in 2017ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 200 in 2058ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /knowledge 404 in 148ms
+ GET /api/sam/threads? 200 in 1521ms
+ ○ Compiling /api/sam/context ...
+ ✓ Compiled /api/sam/context in 588ms (1341 modules)
+ GET /api/sam/threads? 200 in 833ms
+ GET /api/sam/threads? 404 in 116ms
+ GET /api/sam/threads? 404 in 85ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1361ms
+ GET /api/sam/threads? 404 in 113ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 404 in 197ms
+ GET /api/sam/threads? 404 in 167ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 404 in 87ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 404 in 93ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 404 in 76ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 404 in 83ms
+ ✓ Compiled in 442ms (2205 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 392ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 391ms
+ GET / 200 in 488ms
+ ○ Compiling /_not-found ...
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ✓ Compiled /_not-found in 833ms (3513 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 569ms (3513 modules)
+ GET /knowledge 404 in 1472ms
+ GET /knowledge 404 in 1775ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 1774ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 1639ms
+ GET / 200 in 1645ms
+ GET /knowledge 404 in 416ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 469ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 157ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 87ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 75ms
+ ✓ Compiled in 532ms (2209 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 161ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 327ms
+ GET / 200 in 330ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 333ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 364ms
+ GET /knowledge 404 in 143ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 303ms
+ GET / 200 in 337ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 301ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 1121ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 955ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 86ms
+ ✓ Compiled in 951ms (2205 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 664ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 666ms
+ GET / 200 in 673ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1734ms (3513 modules)
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 1834ms
+ GET /knowledge 404 in 1839ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 1230ms
+ GET / 200 in 1160ms
+ GET /knowledge 404 in 172ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 470ms
+ GET /knowledge 404 in 246ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 200 in 455ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET / 200 in 459ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 296ms
+ GET / 200 in 403ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 367ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 130ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 102ms
+🏢 [CAMPAIGN HUB MAIN] Workspace ID being used: babdcab8-1a78-4b2f-913e-6e9fd9821009 from prop: babdcab8-1a78-4b2f-913e-6e9fd9821009
+🔍 CampaignHub Debug: {
+  campaignFilter: 'active',
+  allCampaignsCount: 0,
+  filteredCampaignsCount: 0,
+  loadingAllCampaigns: true,
+  allCampaignsData: []
+}
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 200 in 834ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 233ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 120ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 130ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 106ms
+ ○ Compiling /api/campaigns ...
+ ✓ Compiled /api/campaigns in 821ms (1431 modules)
+ ✓ Compiled (1439 modules)
+Get timezone error: ReferenceError: cookies is not defined
+    at GET (app/api/user/get-timezone/route.ts:11:25)
+   9 | export async function GET() {
+  10 |   try {
+> 11 |     const cookieStore = await cookies();
+     |                         ^
+  12 |     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  13 |
+  14 |     // Get authenticated user
+ GET /api/user/get-timezone 200 in 1244ms
+🚀 [CAMPAIGNS API] ===== REQUEST START =====
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+👤 [CAMPAIGNS API] Auth check: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  email: 'tl@innovareai.com',
+  authError: undefined
+}
+🏢 [CAMPAIGNS API] Workspace ID: babdcab8-1a78-4b2f-913e-6e9fd9821009 from URL: babdcab8-1a78-4b2f-913e-6e9fd9821009
+🔑 [CAMPAIGNS API] Service role key exists: true length: 219
+🔧 Fixed corrupted server-side cookie (decoded base64)
+👥 [CAMPAIGNS API] Membership check: {
+  found: true,
+  membershipId: '3511cd2f-a1e6-49d1-adc5-67d7e909834e',
+  error: undefined
+}
+📊 [CAMPAIGNS API] Fetching campaigns for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009 user: f6885ff3-deef-4781-8721-93011c990b1b tl@innovareai.com
+ GET /api/workspace-accounts/check?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1530ms
+📊 [CAMPAIGNS API] Query result: {
+  campaignCount: 10,
+  error: undefined,
+  firstCampaign: 'tete',
+  allNames: [
+    'tete',
+    'tete',
+    'tete',
+    'IA/ Techstars/ 1st Degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    'Techstars !st Degree',
+    '20251217-CLI-CSV Upload',
+    'IA- Techstars- Founders'
+  ]
+}
+✅ [CAMPAIGNS API] Returning 10 campaigns
+ GET /api/campaigns?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1629ms
+ ✓ Compiled in 606ms (2205 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ○ Compiling /_not-found ...
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 622ms
+ GET / 200 in 631ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 762ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 200 in 761ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 359ms
+ ✓ Compiled /_not-found in 1160ms (3513 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 500ms (3513 modules)
+ GET /knowledge 404 in 881ms
+ GET /knowledge 404 in 2127ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 1313ms
+ GET /knowledge 404 in 96ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 134ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 108ms
+🏢 [CAMPAIGN HUB MAIN] Workspace ID being used: babdcab8-1a78-4b2f-913e-6e9fd9821009 from prop: babdcab8-1a78-4b2f-913e-6e9fd9821009
+🔍 CampaignHub Debug: {
+  campaignFilter: 'active',
+  allCampaignsCount: 0,
+  filteredCampaignsCount: 0,
+  loadingAllCampaigns: true,
+  allCampaignsData: []
+}
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 177ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 200 in 1560ms
+ ✓ Compiled /api/campaigns in 178ms (1431 modules)
+ ✓ Compiled (1439 modules)
+Get timezone error: ReferenceError: cookies is not defined
+    at GET (app/api/user/get-timezone/route.ts:11:25)
+   9 | export async function GET() {
+  10 |   try {
+> 11 |     const cookieStore = await cookies();
+     |                         ^
+  12 |     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  13 |
+  14 |     // Get authenticated user
+ GET /api/user/get-timezone 200 in 611ms
+🚀 [CAMPAIGNS API] ===== REQUEST START =====
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+👤 [CAMPAIGNS API] Auth check: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  email: 'tl@innovareai.com',
+  authError: undefined
+}
+🏢 [CAMPAIGNS API] Workspace ID: babdcab8-1a78-4b2f-913e-6e9fd9821009 from URL: babdcab8-1a78-4b2f-913e-6e9fd9821009
+🔑 [CAMPAIGNS API] Service role key exists: true length: 219
+👥 [CAMPAIGNS API] Membership check: {
+  found: true,
+  membershipId: '3511cd2f-a1e6-49d1-adc5-67d7e909834e',
+  error: undefined
+}
+📊 [CAMPAIGNS API] Fetching campaigns for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009 user: f6885ff3-deef-4781-8721-93011c990b1b tl@innovareai.com
+🔧 Fixed corrupted server-side cookie (decoded base64)
+📊 [CAMPAIGNS API] Query result: {
+  campaignCount: 10,
+  error: undefined,
+  firstCampaign: 'tete',
+  allNames: [
+    'tete',
+    'tete',
+    'tete',
+    'IA/ Techstars/ 1st Degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    'Techstars !st Degree',
+    '20251217-CLI-CSV Upload',
+    'IA- Techstars- Founders'
+  ]
+}
+ GET /api/workspace-accounts/check?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 857ms
+✅ [CAMPAIGNS API] Returning 10 campaigns
+ GET /api/campaigns?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 945ms
+ ✓ Compiled in 495ms (2205 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ○ Compiling /_not-found ...
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 560ms
+ GET / 200 in 565ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 588ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ✓ Compiled /_not-found in 2.2s (3527 modules)
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 2466ms
+ GET /knowledge 404 in 2601ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 2478ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 2171ms
+ GET / 200 in 2182ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 714ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 351ms
+ GET / 200 in 314ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 1467ms (3513 modules)
+ GET /knowledge 404 in 1461ms
+ GET /knowledge 404 in 416ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 828ms
+ GET / 200 in 755ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 288ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 182ms
+ GET / 200 in 231ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 159ms
+ GET / 200 in 212ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 682ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 90ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 99ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 90ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 86ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 82ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 86ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 88ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 88ms
+ ✓ Compiled in 1079ms (2209 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 216ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 686ms
+ GET / 200 in 689ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 719ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 330ms
+ GET / 200 in 272ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 1660ms (3527 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ✓ Compiled in 896ms (3527 modules)
+ GET /knowledge 404 in 996ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 3040ms
+ GET /knowledge 404 in 2827ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 2102ms
+ GET / 200 in 1219ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 384ms
+🏢 [CAMPAIGN HUB MAIN] Workspace ID being used: babdcab8-1a78-4b2f-913e-6e9fd9821009 from prop: babdcab8-1a78-4b2f-913e-6e9fd9821009
+🔍 CampaignHub Debug: {
+  campaignFilter: 'active',
+  allCampaignsCount: 0,
+  filteredCampaignsCount: 0,
+  loadingAllCampaigns: true,
+  allCampaignsData: []
+}
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 367ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 345ms
+ GET / 200 in 396ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 200 in 1964ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 173ms
+ GET / 200 in 176ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 556ms
+ GET / 200 in 668ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 125ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 187ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 185ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 144ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 124ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 133ms
+ ✓ Compiled /api/campaigns in 474ms (1431 modules)
+ ✓ Compiled (1439 modules)
+Get timezone error: ReferenceError: cookies is not defined
+    at GET (app/api/user/get-timezone/route.ts:11:25)
+   9 | export async function GET() {
+  10 |   try {
+> 11 |     const cookieStore = await cookies();
+     |                         ^
+  12 |     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  13 |
+  14 |     // Get authenticated user
+ GET /api/user/get-timezone 200 in 862ms
+🚀 [CAMPAIGNS API] ===== REQUEST START =====
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+👤 [CAMPAIGNS API] Auth check: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  email: 'tl@innovareai.com',
+  authError: undefined
+}
+🏢 [CAMPAIGNS API] Workspace ID: babdcab8-1a78-4b2f-913e-6e9fd9821009 from URL: babdcab8-1a78-4b2f-913e-6e9fd9821009
+🔑 [CAMPAIGNS API] Service role key exists: true length: 219
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 975ms
+👥 [CAMPAIGNS API] Membership check: {
+  found: true,
+  membershipId: '3511cd2f-a1e6-49d1-adc5-67d7e909834e',
+  error: undefined
+}
+📊 [CAMPAIGNS API] Fetching campaigns for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009 user: f6885ff3-deef-4781-8721-93011c990b1b tl@innovareai.com
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 88ms
+🔧 Fixed corrupted server-side cookie (decoded base64)
+📊 [CAMPAIGNS API] Query result: {
+  campaignCount: 10,
+  error: undefined,
+  firstCampaign: 'tete',
+  allNames: [
+    'tete',
+    'tete',
+    'tete',
+    'IA/ Techstars/ 1st Degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    'Techstars !st Degree',
+    '20251217-CLI-CSV Upload',
+    'IA- Techstars- Founders'
+  ]
+}
+ GET /api/workspace-accounts/check?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1194ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 89ms
+✅ [CAMPAIGNS API] Returning 10 campaigns
+ GET /api/campaigns?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1285ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 87ms
+ ✓ Compiled in 691ms (2205 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 387ms
+ GET / 200 in 392ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 200 in 424ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 426ms
+ ○ Compiling /_not-found ...
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 325ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled /_not-found in 873ms (3513 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 565ms (3513 modules)
+ GET /knowledge 404 in 1096ms
+ GET /knowledge 404 in 1927ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 1366ms
+ GET /knowledge 404 in 106ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 159ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 105ms
+🏢 [CAMPAIGN HUB MAIN] Workspace ID being used: babdcab8-1a78-4b2f-913e-6e9fd9821009 from prop: babdcab8-1a78-4b2f-913e-6e9fd9821009
+🔍 CampaignHub Debug: {
+  campaignFilter: 'active',
+  allCampaignsCount: 0,
+  filteredCampaignsCount: 0,
+  loadingAllCampaigns: true,
+  allCampaignsData: []
+}
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 172ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 200 in 1456ms
+ ✓ Compiled /api/campaigns in 210ms (1337 modules)
+ ✓ Compiled (1439 modules)
+🚀 [CAMPAIGNS API] ===== REQUEST START =====
+Get timezone error: ReferenceError: cookies is not defined
+    at GET (app/api/user/get-timezone/route.ts:11:25)
+   9 | export async function GET() {
+  10 |   try {
+> 11 |     const cookieStore = await cookies();
+     |                         ^
+  12 |     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  13 |
+  14 |     // Get authenticated user
+ GET /api/user/get-timezone 200 in 699ms
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+🔧 Fixed corrupted server-side cookie (decoded base64)
+👤 [CAMPAIGNS API] Auth check: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  email: 'tl@innovareai.com',
+  authError: undefined
+}
+🏢 [CAMPAIGNS API] Workspace ID: babdcab8-1a78-4b2f-913e-6e9fd9821009 from URL: babdcab8-1a78-4b2f-913e-6e9fd9821009
+🔑 [CAMPAIGNS API] Service role key exists: true length: 219
+ GET /api/workspace-accounts/check?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 814ms
+👥 [CAMPAIGNS API] Membership check: {
+  found: true,
+  membershipId: '3511cd2f-a1e6-49d1-adc5-67d7e909834e',
+  error: undefined
+}
+📊 [CAMPAIGNS API] Fetching campaigns for workspace: babdcab8-1a78-4b2f-913e-6e9fd9821009 user: f6885ff3-deef-4781-8721-93011c990b1b tl@innovareai.com
+📊 [CAMPAIGNS API] Query result: {
+  campaignCount: 10,
+  error: undefined,
+  firstCampaign: 'tete',
+  allNames: [
+    'tete',
+    'tete',
+    'tete',
+    'IA/ Techstars/ 1st Degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    '20251217-THO-IA/ Startup/ US/ 1st degree',
+    'Techstars !st Degree',
+    '20251217-CLI-CSV Upload',
+    'IA- Techstars- Founders'
+  ]
+}
+✅ [CAMPAIGNS API] Returning 10 campaigns
+ GET /api/campaigns?workspace_id=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 977ms
+ ✓ Compiled /api/prospect-approval/workspace-prospects in 177ms (1441 modules)
+ GET /api/prospect-approval/workspace-prospects?page=1&limit=50&status=all 200 in 633ms
+ ✓ Compiled /workspace/[workspaceId]/data-approval in 452ms (1381 modules)
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 1257ms
+ GET /api/prospect-approval/workspace-prospects?page=1&limit=50&status=all 200 in 383ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 383ms
+ ✓ Compiled /api/sam/context in 472ms (1381 modules)
+ ✓ Compiled (1385 modules)
+ GET /api/sam/threads? 200 in 1041ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1281ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 512ms
+ ✓ Compiled /api/prospect-approval/workspace-prospects in 168ms (1387 modules)
+ GET /api/prospect-approval/workspace-prospects?page=1&limit=50&status=all 200 in 571ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 355ms
+ GET /api/sam/threads? 200 in 193ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 652ms
+🔍 AUTH DEBUG: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  authError: undefined,
+  cookies: [
+    'lastWorkspaceId',
+    'sb-latxadqrvrrrcvkktrog-auth-token',
+    '__next_hmr_refresh_hash__'
+  ]
+}
+ POST /api/sam/threads 200 in 374ms
+ ✓ Compiled /api/sam/threads/[threadId]/messages in 422ms (1450 modules)
+⏰ User activity tracked for f6885ff3-deef-4781-8721-93011c990b1b
+🚀 ICP request detected - proceeding without proactive LinkedIn check {
+  workspaceId: 'babdcab8-1a78-4b2f-913e-6e9fd9821009',
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b'
+}
+✅ Tracked conversation analytics for thread a8a64d4a-45d9-42f4-9a64-8f65654ad27e
+ GET /api/sam/context?threadId=a8a64d4a-45d9-42f4-9a64-8f65654ad27e&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1233ms
+📊 KB Completeness: 67% Status: partial
+[SAM Query] Gemini API error: 400 {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+Embedding generation error: Error: Gemini API error: 400
+    at createQueryEmbedding (app/api/sam/threads/[threadId]/messages/route.ts:124:13)
+    at async fetchKnowledgeSnippets (app/api/sam/threads/[threadId]/messages/route.ts:155:23)
+    at async POST (app/api/sam/threads/[threadId]/messages/route.ts:1061:27)
+  122 |       const errorText = await response.text();
+  123 |       console.error('[SAM Query] Gemini API error:', response.status, errorText);
+> 124 |       throw new Error(`Gemini API error: ${response.status}`);
+      |             ^
+  125 |     }
+  126 |
+  127 |     const data = await response.json();
+🔍 Conversation History Check: {
+  historyLength: 1,
+  history: [ { role: 'user', content: 'find companies and their directors' } ],
+  isFirstMessage: true
+}
+✅ First message - using AI for concise intro
+🤖 About to insert Sam message: {
+  thread_id: 'a8a64d4a-45d9-42f4-9a64-8f65654ad27e',
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  role: 'assistant',
+  content_length: 188,
+  message_order: 2,
+  model_used: 'llm-router'
+}
+🧠 Triggering knowledge extraction for thread a8a64d4a-45d9-42f4-9a64-8f65654ad27e (Msg #2)
+ POST /api/sam/threads/a8a64d4a-45d9-42f4-9a64-8f65654ad27e/messages 200 in 7848ms
+✅ Tracked conversation analytics for thread a8a64d4a-45d9-42f4-9a64-8f65654ad27e
+✅ Tracked conversation analytics for thread a8a64d4a-45d9-42f4-9a64-8f65654ad27e
+❌ Knowledge extraction API error: 500
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 480ms
+ GET /api/prospect-approval/workspace-prospects?page=1&limit=50&status=all 200 in 433ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 347ms
+ GET /api/sam/threads? 200 in 239ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 662ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 378ms
+ GET /api/sam/threads? 200 in 202ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 613ms
+🔍 AUTH DEBUG: {
+  hasUser: true,
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  authError: undefined,
+  cookies: [
+    'lastWorkspaceId',
+    'sb-latxadqrvrrrcvkktrog-auth-token',
+    '__next_hmr_refresh_hash__'
+  ]
+}
+ POST /api/sam/threads 200 in 348ms
+⏰ User activity tracked for f6885ff3-deef-4781-8721-93011c990b1b
+🚀 ICP request detected - proceeding without proactive LinkedIn check {
+  workspaceId: 'babdcab8-1a78-4b2f-913e-6e9fd9821009',
+  userId: 'f6885ff3-deef-4781-8721-93011c990b1b'
+}
+✅ Tracked conversation analytics for thread e9d6f00e-ba2c-4b13-8483-870a73c57e0b
+ GET /api/sam/context?threadId=e9d6f00e-ba2c-4b13-8483-870a73c57e0b&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 673ms
+📊 KB Completeness: 67% Status: partial
+[SAM Query] Gemini API error: 400 {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+Embedding generation error: Error: Gemini API error: 400
+    at createQueryEmbedding (app/api/sam/threads/[threadId]/messages/route.ts:124:13)
+    at async fetchKnowledgeSnippets (app/api/sam/threads/[threadId]/messages/route.ts:155:23)
+    at async POST (app/api/sam/threads/[threadId]/messages/route.ts:1061:27)
+  122 |       const errorText = await response.text();
+  123 |       console.error('[SAM Query] Gemini API error:', response.status, errorText);
+> 124 |       throw new Error(`Gemini API error: ${response.status}`);
+      |             ^
+  125 |     }
+  126 |
+  127 |     const data = await response.json();
+🔍 Conversation History Check: {
+  historyLength: 1,
+  history: [ { role: 'user', content: 'find companies and their directors' } ],
+  isFirstMessage: true
+}
+✅ First message - using AI for concise intro
+🤖 About to insert Sam message: {
+  thread_id: 'e9d6f00e-ba2c-4b13-8483-870a73c57e0b',
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  role: 'assistant',
+  content_length: 340,
+  message_order: 2,
+  model_used: 'llm-router'
+}
+🧠 Triggering knowledge extraction for thread e9d6f00e-ba2c-4b13-8483-870a73c57e0b (Msg #2)
+ POST /api/sam/threads/e9d6f00e-ba2c-4b13-8483-870a73c57e0b/messages 200 in 15591ms
+✅ Tracked conversation analytics for thread e9d6f00e-ba2c-4b13-8483-870a73c57e0b
+✅ Tracked conversation analytics for thread e9d6f00e-ba2c-4b13-8483-870a73c57e0b
+❌ Knowledge extraction API error: 500
+⏰ User activity tracked for f6885ff3-deef-4781-8721-93011c990b1b
+✅ Tracked conversation analytics for thread e9d6f00e-ba2c-4b13-8483-870a73c57e0b
+📊 KB Completeness: 67% Status: partial
+[SAM Query] Gemini API error: 400 {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+Embedding generation error: Error: Gemini API error: 400
+    at createQueryEmbedding (app/api/sam/threads/[threadId]/messages/route.ts:124:13)
+    at async fetchKnowledgeSnippets (app/api/sam/threads/[threadId]/messages/route.ts:155:23)
+    at async POST (app/api/sam/threads/[threadId]/messages/route.ts:1061:27)
+  122 |       const errorText = await response.text();
+  123 |       console.error('[SAM Query] Gemini API error:', response.status, errorText);
+> 124 |       throw new Error(`Gemini API error: ${response.status}`);
+      |             ^
+  125 |     }
+  126 |
+  127 |     const data = await response.json();
+🔍 Conversation History Check: {
+  historyLength: 3,
+  history: [
+    { role: 'user', content: 'find companies and their directors' },
+    {
+      role: 'assistant',
+      content: 'I can help you find company directors! Let me narrow this down to get you targeted results.\n' +
+        '\n' +
+        '**Quick questions:**\n' +
+        '1️⃣ **Location** - Where should these companies be based? (e.g., New York, California, UK)\n' +
+        '2️⃣ **Industry** - Which sector? (e.g., tech, healthcare, finance, manufacturing)\n' +
+        '\n' +
+        "Let's start with location - where are you targeting?"
+    },
+    { role: 'user', content: 'United States' }
+  ],
+  isFirstMessage: false
+}
+🤖 About to insert Sam message: {
+  thread_id: 'e9d6f00e-ba2c-4b13-8483-870a73c57e0b',
+  user_id: 'f6885ff3-deef-4781-8721-93011c990b1b',
+  role: 'assistant',
+  content_length: 227,
+  message_order: 4,
+  model_used: 'llm-router'
+}
+🧠 Triggering knowledge extraction for thread e9d6f00e-ba2c-4b13-8483-870a73c57e0b (Msg #4)
+ POST /api/sam/threads/e9d6f00e-ba2c-4b13-8483-870a73c57e0b/messages 200 in 6319ms
+✅ Tracked conversation analytics for thread e9d6f00e-ba2c-4b13-8483-870a73c57e0b
+❌ Embedding generation failed: Error: Gemini API error: 400 - {
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+
+    at generateEmbedding (lib/sam-qa-storage.ts:371:13)
+    at async storeQuestionAnswer (lib/sam-qa-storage.ts:81:23)
+    at async storeQAInKnowledgeBase (lib/sam-kb-integration.ts:33:22)
+    at async updateKBRealtime (lib/realtime-kb-updater.ts:175:20)
+  369 |     if (!response.ok) {
+  370 |       const errorText = await response.text();
+> 371 |       throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+      |             ^
+  372 |     }
+  373 |
+  374 |     const data = await response.json();
+✅ Tracked conversation analytics for thread e9d6f00e-ba2c-4b13-8483-870a73c57e0b
+ GET /api/sam/context?threadId=e9d6f00e-ba2c-4b13-8483-870a73c57e0b&workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 589ms
+❌ Knowledge extraction API error: 500
+ ✓ Compiled in 1050ms (2205 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 450ms
+ GET / 200 in 452ms
+ ○ Compiling /_not-found ...
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 200 in 586ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 586ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 587ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ ✓ Compiled /_not-found in 1626ms (3558 modules)
+ GET /knowledge 404 in 2132ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 1552ms
+ GET / 200 in 1558ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 1501ms
+ GET /knowledge 404 in 177ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 229ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 263ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 100ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 118ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 90ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 92ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 90ms
+ ✓ Compiled in 425ms (2209 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 340ms
+ GET / 200 in 344ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 345ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 349ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/knowledge 200 in 349ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 591ms
+ GET /knowledge 404 in 234ms
+ GET / 200 in 264ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 266ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 304ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 295ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/data-approval 200 in 290ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 404 in 468ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 252ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 1467ms (3570 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /login 200 in 1434ms
+ GET /login 200 in 1713ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 1560ms
+ GET /login 200 in 217ms
+ GET /login 200 in 185ms
+ GET /knowledge 404 in 217ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 244ms
+ GET /login 200 in 129ms
+ GET /login 200 in 132ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 201ms
+ GET /login 200 in 114ms
+ GET /login 200 in 115ms
+ GET /login 200 in 124ms
+ GET /login 200 in 156ms
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat 200 in 196ms
+ GET /login 200 in 102ms
+ GET /login 200 in 104ms
+ GET /login 200 in 78ms
+ GET /login 200 in 70ms
+ GET /login 200 in 65ms
+ GET /login 200 in 77ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/campaign-hub 307 in 205ms
+ GET /login 200 in 84ms
+ ✓ Compiled in 423ms (2211 modules)
+ GET /knowledge 404 in 103ms
+ GET /login 200 in 141ms
+ GET /knowledge 404 in 116ms
+ GET /login 200 in 120ms
+ GET /login 200 in 89ms
+ GET /login 200 in 89ms
+ GET /login 200 in 96ms
+ GET /login 200 in 94ms
+ ○ Compiling /api/auth/signin ...
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled /api/auth/signin in 2.4s (3589 modules)
+Signing in user with Supabase Auth: { email: 'tl@innovareai.com' }
+ GET /login 200 in 2749ms
+ GET /knowledge 404 in 722ms
+ GET /login 200 in 70ms
+ GET /login 200 in 65ms
+User signed in successfully: f6885ff3-deef-4781-8721-93011c990b1b
+ POST /api/auth/signin 200 in 2973ms
+ GET /login 200 in 99ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET / 200 in 213ms
+ ○ Compiling /api/sam/context ...
+ ✓ Compiled /api/sam/context in 625ms (1394 modules)
+ ✓ Compiled (1398 modules)
+ GET /api/sam/threads? 200 in 1462ms
+ GET /api/sam/threads? 200 in 199ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 1768ms
+ GET /api/sam/context?workspaceId=babdcab8-1a78-4b2f-913e-6e9fd9821009 200 in 396ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/.next/cache/webpack/client-development/13.pack.gz_' -> '/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/.next/cache/webpack/client-development/13.pack.gz'
+ ✓ Compiled in 534ms (2207 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /login 200 in 318ms
+ GET / 200 in 394ms
+ ○ Compiling /_not-found ...
+ GET /login 200 in 289ms
+ ✓ Compiled /_not-found in 1028ms (3112 modules)
+ ✓ Compiled in 625ms (3112 modules)
+ GET /login 200 in 1281ms
+ GET /knowledge 404 in 1881ms
+ GET /knowledge 404 in 145ms
+ GET /login 200 in 150ms
+ GET /login 200 in 60ms
+ GET /login 200 in 65ms
+ GET /login 200 in 58ms
+ GET /login 200 in 68ms
+ ✓ Compiled in 441ms (2211 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 198ms
+ GET /login 200 in 324ms
+ GET /knowledge 404 in 210ms
+ GET / 200 in 392ms
+ GET /login 200 in 123ms
+ GET /login 200 in 114ms
+ GET /login 200 in 85ms
+ GET /login 200 in 72ms
+ GET /login 200 in 80ms
+ GET /login 200 in 77ms
+ GET /login 200 in 77ms
+ ✓ Compiled in 450ms (2211 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /login 200 in 554ms
+ GET / 200 in 651ms
+ GET /login 200 in 215ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 2.3s (3126 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /knowledge 404 in 2407ms
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 2093ms
+ GET /login 200 in 1750ms
+ GET / 200 in 255ms
+ GET /login 200 in 150ms
+ GET /login 200 in 89ms
+ GET /login 200 in 72ms
+ GET /login 200 in 71ms
+ GET /login 200 in 70ms
+ GET /login 200 in 74ms
+ GET /login 200 in 67ms
+ GET /login 200 in 218ms
+ GET /login 200 in 525ms
+ GET /login 200 in 82ms
+ GET /login 200 in 99ms
+ GET /login 200 in 80ms
+ GET /login 200 in 65ms
+ ✓ Compiled in 866ms (2207 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /login 200 in 294ms
+ GET / 200 in 352ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /login 200 in 235ms
+ ○ Compiling /_not-found ...
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled /_not-found in 908ms (3112 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 585ms (3112 modules)
+ GET /knowledge 404 in 1134ms
+ GET /knowledge 404 in 1696ms
+ GET /login 200 in 1175ms
+ GET /knowledge 404 in 84ms
+ GET /login 200 in 71ms
+ GET /login 200 in 67ms
+ GET /login 200 in 63ms
+ GET /login 200 in 65ms
+ GET /login 200 in 62ms
+ ✓ Compiled in 416ms (2211 modules)
+[Middleware] Fast rewriting to cached workspace: /workspace/babdcab8-1a78-4b2f-913e-6e9fd9821009/chat
+ GET /knowledge 404 in 145ms
+ GET /login 200 in 210ms
+ GET / 200 in 300ms
+ GET /knowledge 404 in 143ms
+ GET /login 200 in 159ms
+ GET /login 200 in 113ms
+ GET /login 200 in 101ms
+ GET /login 200 in 88ms
+ GET /login 200 in 81ms
+ GET /login 200 in 74ms
+ GET /login 200 in 81ms

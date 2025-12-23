@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { generateEmbedding } from '@/lib/services/reply-rag';
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -127,7 +128,7 @@ ${conversationText.substring(0, 12000)}${conversationText.length > 12000 ? '...'
 
   } catch (error) {
     console.error('Conversation analysis error:', error);
-    
+
     // Fallback analysis
     return {
       knowledge_gaps: [{
@@ -159,16 +160,16 @@ export async function POST(request: NextRequest) {
     const { conversationId, messages, userId, trigger = 'manual' } = await request.json();
 
     if (!conversationId || !messages || !Array.isArray(messages)) {
-      return NextResponse.json({ 
-        error: 'Missing required fields: conversationId, messages' 
+      return NextResponse.json({
+        error: 'Missing required fields: conversationId, messages'
       }, { status: 400 });
     }
 
     // Filter for meaningful conversations (minimum length, recent, etc.)
     if (messages.length < 4) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'Conversation too short for meaningful insights',
-        processed: false 
+        processed: false
       });
     }
 
@@ -238,8 +239,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Insight extraction error:', error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Insight extraction failed' 
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Insight extraction failed'
     }, { status: 500 });
   }
 }
@@ -250,15 +251,20 @@ async function processAutomaticInsights(insights: any, conversationId: string, i
     // 1. Auto-add new competitors to competition tracking
     if (insights.competitive_mentions?.length > 0) {
       for (const mention of insights.competitive_mentions) {
+        // Generate embedding for semantic check
+        const embedding = await generateEmbedding(mention.competitor);
+
         const { error } = await supabase
           .from('competitive_intelligence')
           .upsert({
             competitor_name: mention.competitor,
             first_mentioned: new Date().toISOString(),
+            last_mentioned: new Date().toISOString(),
             mention_context: mention.context,
             positioning_notes: mention.positioning_opportunity,
             source: `conversation_${conversationId}`,
-            status: 'auto_detected'
+            status: 'auto_detected',
+            embedding: embedding
           }, { onConflict: 'competitor_name' });
 
         if (error) {
@@ -267,40 +273,96 @@ async function processAutomaticInsights(insights: any, conversationId: string, i
       }
     }
 
-    // 2. Auto-categorize frequent customer insights
+    // 2. Auto-categorize frequent customer insights with SEMANTIC DEDUPLICATION
     if (insights.customer_insights?.length > 0) {
-      const frequentInsights = insights.customer_insights.filter(
-        (insight: any) => insight.frequency === 'common' && insight.business_impact === 'high'
-      );
+      for (const insight of insights.customer_insights) {
+        const textToEmbed = `${insight.insight_type}: ${insight.description}`;
+        const embedding = await generateEmbedding(textToEmbed);
 
-      for (const insight of frequentInsights) {
+        if (embedding) {
+          // Check for similar existing patterns
+          const { data: similarPatterns, error: searchError } = await supabase.rpc('match_customer_insights', {
+            p_query_embedding: embedding,
+            p_match_threshold: 0.85,
+            p_match_count: 1
+          });
+
+          if (!searchError && similarPatterns && similarPatterns.length > 0) {
+            // Found a similar pattern - CLUSTER it
+            const existing = similarPatterns[0];
+            console.log(`[Insight] Clustering insight with existing pattern: ${existing.id} (sim: ${existing.similarity})`);
+
+            // Using a simple append for source_conversations if we don't have a specific RPC
+            const { data: current } = await supabase
+              .from('customer_insight_patterns')
+              .select('source_conversations, frequency_score')
+              .eq('id', existing.id)
+              .single();
+
+            const updatedSources = Array.from(new Set([...(current?.source_conversations || []), conversationId]));
+
+            await supabase
+              .from('customer_insight_patterns')
+              .update({
+                frequency_score: (current?.frequency_score || existing.frequency_score || 1) + 1,
+                last_seen: new Date().toISOString(),
+                source_conversations: updatedSources
+              })
+              .eq('id', existing.id);
+
+            continue;
+          }
+        }
+
+        // No similar pattern found - INSERT NEW
         const { error } = await supabase
           .from('customer_insight_patterns')
-          .upsert({
+          .insert({
             insight_type: insight.insight_type,
             description: insight.description,
             frequency_score: 1,
-            business_impact: insight.business_impact,
+            business_impact: insight.business_impact || 'medium',
             last_seen: new Date().toISOString(),
-            source_conversations: [conversationId]
-          }, { 
-            onConflict: 'insight_type,description',
-            ignoreDuplicates: false 
+            source_conversations: [conversationId],
+            embedding: embedding
           });
 
         if (error) {
-          console.warn('Failed to update insight pattern:', error);
+          console.warn('Failed to insert insight pattern:', error);
         }
       }
     }
 
-    // 3. Auto-flag urgent knowledge gaps
+    // 3. Auto-flag urgent knowledge gaps with SEMANTIC DEDUPLICATION
     if (insights.knowledge_gaps?.length > 0) {
-      const urgentGaps = insights.knowledge_gaps.filter(
-        (gap: any) => gap.impact === 'high'
-      );
+      for (const gap of insights.knowledge_gaps) {
+        const textToEmbed = `${gap.category}: ${gap.missing_info}`;
+        const embedding = await generateEmbedding(textToEmbed);
 
-      for (const gap of urgentGaps) {
+        if (embedding) {
+          // Check for existing similar gaps
+          const { data: similarGaps } = await supabase.rpc('match_knowledge_gaps', {
+            p_query_embedding: embedding,
+            p_match_threshold: 0.85,
+            p_match_count: 1
+          });
+
+          if (similarGaps && similarGaps.length > 0) {
+            const existing = similarGaps[0];
+            console.log(`[Insight] Skip redundant knowledge gap: ${existing.id} (sim: ${existing.similarity})`);
+
+            // Optionally update existing gap priority or status
+            if (gap.impact === 'high' && existing.impact_level !== 'high') {
+              await supabase
+                .from('knowledge_gap_tracking')
+                .update({ impact_level: 'high', status: 'urgent' })
+                .eq('id', existing.id);
+            }
+            continue;
+          }
+        }
+
+        // Insert new gap if unique
         const { error } = await supabase
           .from('knowledge_gap_tracking')
           .insert({
@@ -310,7 +372,8 @@ async function processAutomaticInsights(insights: any, conversationId: string, i
             suggested_section: gap.suggested_section,
             source_conversation: conversationId,
             insight_id: insightId,
-            status: 'urgent',
+            status: gap.impact === 'high' ? 'urgent' : 'open',
+            embedding: embedding,
             created_at: new Date().toISOString()
           });
 
@@ -332,32 +395,43 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const since = url.searchParams.get('since') || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    // Get recent conversations that haven't been analyzed
-    const { data: conversations, error } = await supabase
-      .from('sam_conversations')
-      .select('id, messages, user_id, created_at')
+    // Get recent conversation threads that haven't been analyzed
+    const { data: threads, error: threadsError } = await supabase
+      .from('sam_conversation_threads')
+      .select('id, user_id, created_at')
       .gte('created_at', since)
       .is('analyzed_for_insights', null)
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (error) {
-      throw error;
+    if (threadsError) {
+      throw threadsError;
     }
 
     const results = [];
-    
-    for (const conversation of conversations || []) {
+
+    for (const thread of threads || []) {
       try {
-        // Process each conversation
-        const insights = await extractConversationInsights(conversation.messages);
-        
+        // Fetch messages for this thread
+        const { data: messages, error: messagesError } = await supabase
+          .from('sam_thread_messages')
+          .select('role, content')
+          .eq('thread_id', thread.id)
+          .order('message_order', { ascending: true });
+
+        if (messagesError || !messages || messages.length < 4) {
+          continue;
+        }
+
+        // Process each conversation thread
+        const insights = await extractConversationInsights(messages);
+
         // Store insights
         const { data: insightRecord } = await supabase
           .from('conversation_insights')
           .insert({
-            conversation_id: conversation.id,
-            user_id: conversation.user_id,
+            conversation_id: thread.id,
+            user_id: thread.user_id,
             insights: insights,
             trigger_type: 'bulk_analysis',
             created_at: new Date().toISOString(),
@@ -366,14 +440,14 @@ export async function GET(request: NextRequest) {
           .select()
           .single();
 
-        // Mark conversation as analyzed
+        // Mark thread as analyzed
         await supabase
-          .from('sam_conversations')
+          .from('sam_conversation_threads')
           .update({ analyzed_for_insights: true })
-          .eq('id', conversation.id);
+          .eq('id', thread.id);
 
         results.push({
-          conversationId: conversation.id,
+          conversationId: thread.id,
           insightId: insightRecord?.id,
           insights: {
             gaps: insights.knowledge_gaps?.length || 0,
@@ -399,8 +473,8 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Bulk analysis error:', error);
-    return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Bulk analysis failed' 
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Bulk analysis failed'
     }, { status: 500 });
   }
 }

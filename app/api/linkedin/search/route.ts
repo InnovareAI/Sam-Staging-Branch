@@ -239,6 +239,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 LinkedIn search starting (fetch_all: ${fetch_all}, max_results: ${effectiveMaxResults}, per_page: ${perPageLimit})`);
 
+    const MAX_PAGE_RETRIES = 2;
+
     do {
       // Build search URL for this page
       const pageParams = new URLSearchParams({
@@ -253,50 +255,63 @@ export async function POST(request: NextRequest) {
         currentCount: allProspects.length
       });
 
-      try {
-        const searchResults = await unipileRequest(`/api/v1/linkedin/search?${pageParams}`, {
-          method: 'POST',
-          body: JSON.stringify(searchBody)
-        });
+      let pageRetryCount = 0;
+      let success = false;
 
-        lastPaging = searchResults.paging;
-        totalAvailable = searchResults.paging?.total_count || 0;
+      while (pageRetryCount <= MAX_PAGE_RETRIES && !success) {
+        try {
+          const searchResults = await unipileRequest(`/api/v1/linkedin/search?${pageParams}`, {
+            method: 'POST',
+            body: JSON.stringify(searchBody)
+          });
 
-        // Transform results
-        const pageProspects = (searchResults.items || []).map((item: any) =>
-          (transformLinkedInResult as any)(item, category, api)
-        );
+          lastPaging = searchResults.paging;
+          totalAvailable = searchResults.paging?.total_count || 0;
 
-        allProspects = allProspects.concat(pageProspects);
-        pagesFetched++;
+          // Transform results
+          const pageProspects = (searchResults.items || []).map((item: any) =>
+            (transformLinkedInResult as any)(item, category, api)
+          );
 
-        console.log(`✅ Page ${pagesFetched}: Got ${pageProspects.length} results (total: ${allProspects.length}/${totalAvailable})`);
+          allProspects = allProspects.concat(pageProspects);
+          pagesFetched++;
+          success = true;
 
-        // Update cursor
-        currentCursor = searchResults.cursor || searchResults.paging?.cursor || null;
+          console.log(`✅ Page ${pagesFetched}: Got ${pageProspects.length} results (total: ${allProspects.length}/${totalAvailable})`);
 
-        // Stop conditions
-        if (!currentCursor || allProspects.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50) {
-          break;
+          // Update cursor
+          currentCursor = searchResults.cursor || searchResults.paging?.cursor || null;
+
+        } catch (err: any) {
+          if (err.message === 'LINKEDIN_COMMERCIAL_LIMIT') {
+            console.error('🛑 Stopping search due to LinkedIn Commercial Use Limit');
+            break;
+          }
+
+          pageRetryCount++;
+          if (pageRetryCount <= MAX_PAGE_RETRIES) {
+            const retryDelay = 2000 * pageRetryCount;
+            console.warn(`⚠️ Page fetch failed, retrying in ${retryDelay}ms... (Retry ${pageRetryCount}/${MAX_PAGE_RETRIES})`, err.message);
+            await delay(retryDelay);
+          } else {
+            console.error('❌ UNIPILE API ERROR on page', pagesFetched + 1, err.message);
+            if (allProspects.length > 0) {
+              console.warn(`⚠️ Error on page ${pagesFetched + 1} after max retries, returning ${allProspects.length} results collected so far`);
+              break;
+            }
+            throw err;
+          }
         }
-
-        // Delay between pages
-        await delay(500);
-
-      } catch (err: any) {
-        if (err.message === 'LINKEDIN_COMMERCIAL_LIMIT') {
-          console.error('🛑 Stopping search due to LinkedIn Commercial Use Limit');
-          break;
-        }
-
-        console.error('❌ UNIPILE API ERROR on page', pagesFetched + 1, err.message);
-
-        if (allProspects.length > 0) {
-          console.warn(`⚠️ Error on page ${pagesFetched + 1}, returning ${allProspects.length} results collected so far`);
-          break;
-        }
-        throw err;
       }
+
+      // Stop conditions
+      if (!success || !currentCursor || allProspects.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50) {
+        break;
+      }
+
+      // Delay between pages
+      await delay(1000); // Increased delay for safety
+
     } while (true);
 
     // Trim to max_results if we fetched more

@@ -126,6 +126,14 @@ function analyzeSectionHealth(sectionId: string, docs: any[], icpCount?: number)
 
 // Analyze KB documents and provide actionable feedback
 async function analyzeKBDocuments(documents: any[], icpCount: number) {
+  const feedback: Array<{
+    type: 'critical' | 'warning' | 'suggestion' | 'success';
+    category: string;
+    title: string;
+    message: string;
+    action?: string;
+  }> = [];
+
   // Section grouping
   const sectionMap: Record<string, any[]> = {};
   documents.forEach(doc => {
@@ -286,7 +294,7 @@ export async function GET(request: NextRequest) {
 
     const sectionFeedback: Record<string, any> = {};
     const allSections = ['products', 'icp', 'messaging', 'pricing', 'objections', 'success', 'competition',
-                         'company', 'buying', 'personas', 'compliance', 'tone'];
+      'company', 'buying', 'personas', 'compliance', 'tone'];
 
     allSections.forEach(sectionId => {
       const docs = sectionMap[sectionId] || [];

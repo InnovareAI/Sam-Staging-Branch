@@ -1511,78 +1511,91 @@ function VectorTest() {
 }
 
 // Documents Table Component
-type Doc = { name: string; status: 'Ready' | 'Processing' | 'Error'; uploaded: string; labels: string[] };
+interface DocumentsTableProps {
+  documents: KnowledgeDocument[];
+  onDelete: (id: string) => void;
+  loading: boolean;
+}
 
-function DocumentsTable() {
-  const [documents] = useState<Doc[]>([]);
-
+function DocumentsTable({ documents, onDelete, loading }: DocumentsTableProps) {
   return (
-    <div className="bg-card rounded-lg border shadow">
-      <div className="p-6 border-b border">
-        <h3 className="text-lg font-semibold text-white">Documents</h3>
+    <div className="bg-card rounded-lg border shadow overflow-hidden">
+      <div className="p-4 border-b border bg-slate-800/50">
+        <h3 className="text-lg font-semibold text-white">Uploaded Documents</h3>
       </div>
-      <div>
-        {documents.length > 0 ? (
+      <div className="overflow-x-auto">
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading documents...</p>
+          </div>
+        ) : documents.length > 0 ? (
           <table className="w-full text-sm">
-            <thead className="bg-gray-750 text-gray-400">
+            <thead className="bg-slate-900/50 text-gray-400">
               <tr>
-                <th className="text-left px-4 py-2">File Name</th>
-                <th className="text-left px-4 py-2">Status</th>
-                <th className="text-left px-4 py-2">Uploaded</th>
-                <th className="text-left px-4 py-2">Labels</th>
-                <th className="text-right px-4 py-2">Action</th>
+                <th className="text-left px-4 py-3 font-medium">Title</th>
+                <th className="text-left px-4 py-3 font-medium">Category</th>
+                <th className="text-left px-4 py-3 font-medium">Tags</th>
+                <th className="text-left px-4 py-3 font-medium">Updated</th>
+                <th className="text-right px-4 py-3 font-medium">Action</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-700/50">
               {documents.map((d) => (
-                <tr key={d.name} className="border-t border">
-                  <td className="px-4 py-2 text-gray-300">{d.name}</td>
-                  <td className="px-4 py-2">
-                    {d.status === 'Ready' && (
-                      <span className="inline-flex items-center gap-1 text-green-400">
-                        <span className="w-2 h-2 rounded-full bg-green-500" />Ready
-                      </span>
-                    )}
-                    {d.status === 'Processing' && (
-                      <span className="inline-flex items-center gap-1 text-yellow-400">
-                        <span className="w-2 h-2 rounded-full bg-yellow-500" />Processing
-                      </span>
-                    )}
-                    {d.status === 'Error' && (
-                      <span className="inline-flex items-center gap-1 text-red-400">
-                        <span className="w-2 h-2 rounded-full bg-red-500" />Error
-                      </span>
-                    )}
+                <tr key={d.id} className="hover:bg-slate-800/30 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <FileText size={16} className="text-primary/70" />
+                      <span className="text-gray-200 font-medium">{d.title}</span>
+                    </div>
                   </td>
-                  <td className="px-4 py-2 text-gray-400">{d.uploaded}</td>
-                  <td className="px-4 py-2">
-                    <div className="flex gap-2 flex-wrap">
-                      {d.labels.length ? (
-                        d.labels.map(l => (
-                          <span key={l} className="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-200">
-                            {l}
+                  <td className="px-4 py-3">
+                    <Badge variant="outline" className="text-[10px] uppercase tracking-wider bg-slate-800/30">
+                      {d.section || 'General'}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1.5 flex-wrap">
+                      {d.tags && d.tags.length > 0 ? (
+                        d.tags.slice(0, 3).map(tag => (
+                          <span key={tag} className="px-1.5 py-0.5 text-[10px] rounded-md bg-primary/10 text-primary-foreground/80 border border-primary/20">
+                            {tag}
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-gray-500">—</span>
+                        <span className="text-xs text-gray-600">No tags</span>
+                      )}
+                      {d.tags && d.tags.length > 3 && (
+                        <span className="text-[10px] text-gray-500">+{d.tags.length - 3}</span>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-right">
-                    <button className="px-3 py-1 bg-muted hover:bg-gray-600 text-gray-300 rounded transition-colors">
-                      View Chunks
-                    </button>
+                  <td className="px-4 py-3 text-gray-400 text-xs">
+                    {d.updatedAt ? new Date(d.updatedAt).toLocaleDateString() : 'N/A'}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => onDelete(d.id)}
+                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                        title="Delete document"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <div className="text-center py-12">
-            <FileText size={48} className="mx-auto text-gray-500 mb-4" />
-            <h3 className="text-lg font-medium text-gray-300 mb-2">No Documents Uploaded</h3>
-            <p className="text-gray-400 text-sm max-w-md mx-auto">
-              Upload your first document to start building your knowledge base. Supported formats: PDF, TXT, MD, PNG, JPG, GIF, WEBP (max 25MB)
+          <div className="text-center py-12 bg-slate-800/20">
+            <div className="bg-slate-800/50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-700/50">
+              <Upload size={32} className="text-slate-600" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-300 mb-2">No Documents Found</h3>
+            <p className="text-gray-400 text-sm max-w-sm mx-auto px-6">
+              Your knowledge base is waiting for content. Upload documents or add data via the options above.
             </p>
           </div>
         )}
@@ -3931,7 +3944,11 @@ const KnowledgeBase: React.FC = () => {
                 </div>
 
                 <div className="mb-6">
-                  <DocumentsTable />
+                  <DocumentsTable
+                    documents={documents}
+                    onDelete={deleteDocument}
+                    loading={documentsLoading}
+                  />
                 </div>
 
                 <ChunkDrawer />

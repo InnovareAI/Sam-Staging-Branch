@@ -107,10 +107,13 @@ export async function POST(request: NextRequest) {
 
     // max_pages: Limit pagination to avoid gateway timeouts (default 10 pages = 1000 results)
     // When called via SAM chat, use lower max_pages to fit within 26s gateway timeout
-    const { search_criteria, target_count = 2500, fetch_all = true, max_pages = 10 } = requestBody;
+    const { search_criteria, target_count = 2500, fetch_all = true, max_pages = 10, category = 'people' } = requestBody;
 
     console.log('🔵 [SEARCH-4/6] Received search_criteria:', JSON.stringify(search_criteria));
     console.log('🔵 [SEARCH-4a/6] Target count:', target_count);
+
+    // Map 'companies' to 'company' for Unipile compatibility
+    const unipileCategory = category === 'companies' ? 'company' : category;
 
     // Get workspace (with fallback, or use internal auth workspace)
     if (!workspaceId) {
@@ -471,7 +474,7 @@ export async function POST(request: NextRequest) {
     // Build proper Unipile payload with detected API (for Sales Navigator/Recruiter)
     const unipilePayload: any = {
       api: api,  // Use detected API (sales_navigator, recruiter, or classic)
-      category: 'people' // Default to people search
+      category: unipileCategory // Use 'people' or 'company' from request
     };
 
     // Add search parameters to Unipile payload
