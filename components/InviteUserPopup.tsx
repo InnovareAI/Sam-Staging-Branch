@@ -171,10 +171,10 @@ export default function InviteUserPopup({
       {/* Header with icon */}
       <div className="flex items-center space-x-3 mb-6">
         <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
-          <Mail className="text-white" size={24} />
+          <Mail className="text-foreground" size={24} />
         </div>
         <div>
-          <h3 className="text-lg font-medium text-white">Send Invitation</h3>
+          <h3 className="text-lg font-medium text-foreground">Send Invitation</h3>
           <p className="text-gray-400 text-sm">Invite a new user to join your SAM AI workspace</p>
         </div>
       </div>

@@ -210,59 +210,59 @@ export default function CommentingAgentDashboard() {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div className="bg-surface-muted rounded-lg p-4 border border-border">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-8 h-8 bg-pink-600 rounded-lg flex items-center justify-center">
-              <Target size={16} className="text-white" />
+              <Target size={16} className="text-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{monitors.filter(m => m.status === 'active').length}</p>
-              <p className="text-xs text-gray-400">Active Monitors</p>
+              <p className="text-2xl font-bold text-foreground">{monitors.filter(m => m.status === 'active').length}</p>
+              <p className="text-xs text-muted-foreground">Active Monitors</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500">{monitors.length} total</p>
+          <p className="text-xs text-muted-foreground">{monitors.length} total</p>
         </div>
 
         <div
           onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/approve`)}
-          className="bg-gray-800 rounded-lg p-4 border border-gray-700 cursor-pointer hover:border-amber-500 transition-all"
+          className="bg-surface-muted rounded-lg p-4 border border-border cursor-pointer hover:border-amber-500 transition-all"
         >
           <div className="flex items-center gap-3 mb-2">
             <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center">
-              <Clock size={16} className="text-white" />
+              <Clock size={16} className="text-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats?.pending_comments || 0}</p>
+              <p className="text-2xl font-bold text-foreground">{stats?.pending_comments || 0}</p>
               <p className="text-xs text-gray-400 group-hover:text-amber-400 transition-colors">Pending Approval</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500">Awaiting review</p>
+          <p className="text-xs text-muted-foreground">Awaiting review</p>
         </div>
 
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div className="bg-surface-muted rounded-lg p-4 border border-border">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-              <CheckCircle2 size={16} className="text-white" />
+              <CheckCircle2 size={16} className="text-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats?.posted_today || 0}</p>
-              <p className="text-xs text-gray-400">Posted Today</p>
+              <p className="text-2xl font-bold text-foreground">{stats?.posted_today || 0}</p>
+              <p className="text-xs text-muted-foreground">Posted Today</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500">{stats?.posted_this_week || 0} this week</p>
+          <p className="text-xs text-muted-foreground">{stats?.posted_this_week || 0} this week</p>
         </div>
 
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div className="bg-surface-muted rounded-lg p-4 border border-border">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <BarChart3 size={16} className="text-white" />
+              <BarChart3 size={16} className="text-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-white">{stats?.engagement_rate || 0}%</p>
-              <p className="text-xs text-gray-400">Engagement Rate</p>
+              <p className="text-2xl font-bold text-foreground">{stats?.engagement_rate || 0}%</p>
+              <p className="text-xs text-muted-foreground">Engagement Rate</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500">Average</p>
+          <p className="text-xs text-muted-foreground">Average</p>
         </div>
       </div>
 
@@ -272,7 +272,7 @@ export default function CommentingAgentDashboard() {
         {/* Card 1: Personal Profiles */}
         <div
           onClick={() => openModal('profiles')}
-          className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-pink-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-surface-muted rounded-xl p-6 border border-border hover:border-pink-500/50 hover:bg-surface-muted/80 transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div>
             <div className="flex items-start justify-between mb-4">
@@ -280,7 +280,7 @@ export default function CommentingAgentDashboard() {
                 <Target size={24} className="text-pink-500" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-400">
+                <span className="text-sm font-medium text-muted-foreground">
                   {monitorsByType.profiles.length} Active
                 </span>
                 <button
@@ -325,7 +325,7 @@ export default function CommentingAgentDashboard() {
         {/* Card 2: Company Pages */}
         <div
           onClick={() => openModal('companies')}
-          className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-blue-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-surface-muted rounded-xl p-6 border border-border hover:border-blue-500/50 hover:bg-surface-muted/80 transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div>
             <div className="flex items-start justify-between mb-4">
@@ -333,7 +333,7 @@ export default function CommentingAgentDashboard() {
                 <Building2 size={24} className="text-blue-500" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-400">
+                <span className="text-sm font-medium text-muted-foreground">
                   {monitorsByType.companies.length} Active
                 </span>
                 <button
@@ -378,7 +378,7 @@ export default function CommentingAgentDashboard() {
         {/* Card 3: Hashtags */}
         <div
           onClick={() => openModal('hashtags')}
-          className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-purple-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group flex flex-col justify-between"
+          className="bg-surface-muted rounded-xl p-6 border border-border hover:border-purple-500/50 hover:bg-surface-muted/80 transition-all cursor-pointer group flex flex-col justify-between"
         >
           <div>
             <div className="flex items-start justify-between mb-4">
@@ -386,7 +386,7 @@ export default function CommentingAgentDashboard() {
                 <Hash size={24} className="text-purple-500" />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-400">
+                <span className="text-sm font-medium text-muted-foreground">
                   {monitorsByType.keywords.length} Active
                 </span>
                 <button
@@ -431,14 +431,14 @@ export default function CommentingAgentDashboard() {
         {/* Card 4: My Profile */}
         <div
           onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/my-posts`)}
-          className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-green-500/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+          className="bg-surface-muted rounded-xl p-6 border border-border hover:border-green-500/50 hover:bg-surface-muted/80 transition-all cursor-pointer group"
         >
           <div className="flex items-start justify-between mb-4">
             <div className="w-12 h-12 bg-green-600/20 rounded-xl flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
               <UserCircle2 size={24} className="text-green-500" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-400">
+              <span className="text-sm font-medium text-muted-foreground">
                 View
               </span>
               <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
@@ -472,12 +472,12 @@ export default function CommentingAgentDashboard() {
 
       {showSettingsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto p-4">
-          <div className="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-gray-700 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white">Commenting Agent Settings</h2>
+          <div className="bg-surface-muted rounded-xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-foreground">Commenting Agent Settings</h2>
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="text-gray-400 hover:text-gray-300"
+                className="text-gray-400 hover:text-muted-foreground"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

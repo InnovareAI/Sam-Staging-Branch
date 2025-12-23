@@ -2299,7 +2299,7 @@ export default function DataCollectionHub({
       {/* Pulsating Loading Overlay */}
       {loading && loadingMessage && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-gray-900 rounded-xl border border-purple-500/50 p-8 shadow-2xl">
+          <div className="bg-background rounded-xl border border-purple-500/50 p-8 shadow-2xl">
             <div className="flex flex-col items-center gap-4">
               {/* Pulsating purple circle */}
               <div className="relative">
@@ -2583,7 +2583,7 @@ export default function DataCollectionHub({
 
             {/* Row 2: Campaign Actions - Only show when there are approved prospects */}
             {prospectData.filter(p => p.approvalStatus === 'approved').length > 0 && (
-              <div className="flex items-center justify-between bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <div className="flex items-center justify-between bg-surface-muted/50 rounded-xl p-4 border border-gray-700">
                 <div className="flex items-center gap-4">
                   {/* Create New Campaign - Shows campaign type selection modal */}
                   <button
@@ -2790,7 +2790,7 @@ export default function DataCollectionHub({
             {/* Render prospects grouped by search name */}
             {sortedSearchGroups.flatMap(([searchName, prospects]) => [
               // Group header row
-              <tr key={`header-${searchName}`} className="bg-gray-800/80 border-b-2 border-purple-500/30">
+              <tr key={`header-${searchName}`} className="bg-surface-muted/80 border-b-2 border-purple-500/30">
                 <td colSpan={9} className="px-4 py-3">
                   <div className="flex items-center justify-between w-full">
                     <button
@@ -2803,7 +2803,7 @@ export default function DataCollectionHub({
                         ) : (
                           <ChevronRight className="w-5 h-5 text-gray-500" />
                         )}
-                        <span className="text-lg font-semibold text-white">{searchName}</span>
+                        <span className="text-lg font-semibold text-foreground">{searchName}</span>
                         <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-600/30 text-purple-300">
                           {prospects.length} prospects
                         </span>
@@ -2883,7 +2883,7 @@ export default function DataCollectionHub({
                   <td className="px-4 py-3 text-sm text-gray-300">{prospect.industry || '-'}</td>
                   <td className="px-4 py-3">
                     <div className="text-sm text-gray-300">
-                      <div className="font-medium text-white">{prospect.campaignName || 'Unnamed Campaign'}</div>
+                      <div className="font-medium text-foreground">{prospect.campaignName || 'Unnamed Campaign'}</div>
                       {prospect.campaignTag && prospect.campaignTag !== prospect.campaignName && (
                         <div className="text-xs text-gray-400 mt-0.5">{prospect.campaignTag}</div>
                       )}
@@ -2979,7 +2979,7 @@ export default function DataCollectionHub({
                       ? 'bg-red-500/5 opacity-50'
                       : selectedProspectIds.has(prospect.id)
                       ? 'bg-purple-600/10'
-                      : 'bg-gray-800/50'
+                      : 'bg-surface-muted/50'
                   }`}>
                     <td colSpan={10} className="px-4 py-2">
                       <DuplicateWarningBadge
@@ -3116,7 +3116,7 @@ export default function DataCollectionHub({
 
         {/* Results Summary - No Pagination */}
         {pagination.total > 0 && (
-          <div className="border-t border-gray-700 px-6 py-4 flex items-center justify-between bg-gray-900">
+          <div className="border-t border-gray-700 px-6 py-4 flex items-center justify-between bg-background">
             <div className="text-sm text-gray-400">
               Showing all {pagination.total} prospects across {sortedSearchGroups.length} searches
             </div>
@@ -3128,13 +3128,13 @@ export default function DataCollectionHub({
 
         {/* OLD PAGINATION REMOVED - Show all prospects in grouped sections */}
         {false && pagination.total > 0 && (
-          <div className="border-t border-gray-700 px-6 py-4 flex items-center justify-between bg-gray-900" style={{display: 'none'}}>
+          <div className="border-t border-gray-700 px-6 py-4 flex items-center justify-between bg-background" style={{display: 'none'}}>
             <div className="text-sm text-gray-400"></div>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => {}}
                 disabled={true}
-                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="px-3 py-1.5 bg-surface-muted hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 First
               </button>
@@ -3142,7 +3142,7 @@ export default function DataCollectionHub({
               <button
                 onClick={() => setCurrentPage(p => p - 1)}
                 disabled={!pagination.hasPrev || isLoadingSessions}
-                className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="px-4 py-1.5 bg-surface-muted hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 Previous
               </button>
@@ -3153,7 +3153,7 @@ export default function DataCollectionHub({
                   value={pagination.page}
                   onChange={(e) => setCurrentPage(Number(e.target.value))}
                   disabled={isLoadingSessions}
-                  className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 text-sm disabled:opacity-50"
+                  className="px-2 py-1 bg-surface-muted border border-gray-700 rounded text-gray-300 text-sm disabled:opacity-50"
                 >
                   {Array.from({ length: pagination.totalPages }, (_, i) => (
                     <option key={i + 1} value={i + 1}>
@@ -3167,7 +3167,7 @@ export default function DataCollectionHub({
               <button
                 onClick={() => setCurrentPage(p => p + 1)}
                 disabled={!pagination.hasNext || isLoadingSessions}
-                className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="px-4 py-1.5 bg-surface-muted hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 Next
               </button>
@@ -3175,7 +3175,7 @@ export default function DataCollectionHub({
               <button
                 onClick={() => setCurrentPage(pagination.totalPages)}
                 disabled={!pagination.hasNext || isLoadingSessions}
-                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="px-3 py-1.5 bg-surface-muted hover:bg-gray-700 text-gray-300 rounded border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 Last
               </button>
@@ -3620,7 +3620,7 @@ function DataValidationModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 border border-gray-700">
+      <div className="bg-surface-muted rounded-xl p-6 max-w-lg w-full mx-4 border border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
             {hasIssues ? (
@@ -3647,7 +3647,7 @@ function DataValidationModal({
           {/* Summary */}
           <div className="bg-gray-700/50 rounded-lg p-4">
             <p className="text-gray-300 text-sm mb-3">
-              Loaded <span className="font-bold text-white">{validationResults.totalProspects}</span> prospects
+              Loaded <span className="font-bold text-foreground">{validationResults.totalProspects}</span> prospects
             </p>
 
             {hasIssues && (
@@ -3814,9 +3814,9 @@ function CampaignTypeModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 border border-gray-700">
+      <div className="bg-surface-muted rounded-xl p-6 max-w-md w-full mx-4 border border-gray-700">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">Choose Campaign Type</h3>
+          <h3 className="text-lg font-semibold text-foreground">Choose Campaign Type</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
@@ -3840,7 +3840,7 @@ function CampaignTypeModal({
             value={campaignName}
             onChange={(e) => setCampaignName(e.target.value)}
             placeholder="Enter campaign name..."
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 bg-background border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
@@ -3852,7 +3852,7 @@ function CampaignTypeModal({
               disabled={emailCount === 0 || !hasEmailAccount}
               className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
                 emailCount === 0 || !hasEmailAccount
-                  ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                  ? 'border-gray-700 bg-surface-muted/50 opacity-50 cursor-not-allowed'
                   : 'border-gray-700 hover:border-blue-500 hover:bg-gray-750'
               }`}
             >
@@ -3886,7 +3886,7 @@ function CampaignTypeModal({
             disabled={connectorCount === 0}
             className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
               connectorCount === 0
-                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                ? 'border-gray-700 bg-surface-muted/50 opacity-50 cursor-not-allowed'
                 : 'border-gray-700 hover:border-purple-500 hover:bg-gray-750'
             }`}
           >
@@ -3907,7 +3907,7 @@ function CampaignTypeModal({
             disabled={messengerCount === 0}
             className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
               messengerCount === 0
-                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                ? 'border-gray-700 bg-surface-muted/50 opacity-50 cursor-not-allowed'
                 : 'border-gray-700 hover:border-green-500 hover:bg-gray-750'
             }`}
           >
@@ -3928,7 +3928,7 @@ function CampaignTypeModal({
             disabled={connectorCount === 0}
             className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
               connectorCount === 0
-                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                ? 'border-gray-700 bg-surface-muted/50 opacity-50 cursor-not-allowed'
                 : 'border-gray-700 hover:border-amber-500 hover:bg-gray-750'
             }`}
           >
@@ -3949,7 +3949,7 @@ function CampaignTypeModal({
             disabled={connectorCount === 0}
             className={`w-full p-4 rounded-lg border-2 transition-all group text-left ${
               connectorCount === 0
-                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                ? 'border-gray-700 bg-surface-muted/50 opacity-50 cursor-not-allowed'
                 : 'border-gray-700 hover:border-teal-500 hover:bg-gray-750'
             }`}
           >
@@ -4000,9 +4000,9 @@ function PreflightResultsModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-xl p-6 max-w-lg w-full mx-4 border border-gray-700 max-h-[80vh] overflow-y-auto">
+      <div className="bg-surface-muted rounded-xl p-6 max-w-lg w-full mx-4 border border-gray-700 max-h-[80vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">
+          <h3 className="text-lg font-semibold text-foreground">
             {isLoading ? 'Verifying Prospects...' : 'Pre-flight Check Results'}
           </h3>
           {!isLoading && (

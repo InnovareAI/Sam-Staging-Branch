@@ -1915,7 +1915,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
   }, {} as Record<string, number>)
 
   return (
-    <div className="flex h-full bg-gray-900 overflow-hidden">
+    <div className="flex h-full bg-background overflow-hidden">
       {/* Thread Sidebar */}
       <div className="w-80 border-r border-gray-700 flex-shrink-0 overflow-hidden">
         <ThreadSidebar
@@ -1930,11 +1930,11 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
         {currentThread ? (
           <>
             {/* Chat Header */}
-            <div className="bg-gray-800 border-b border-gray-700 p-4">
+            <div className="bg-surface-muted border-b border-gray-700 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div>
-                    <h1 className="text-lg font-semibold text-white">
+                    <h1 className="text-lg font-semibold text-foreground">
                       {currentThread.title}
                     </h1>
                     <div className="flex items-center space-x-2 text-sm text-gray-400">
@@ -2061,7 +2061,7 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
             </div>
 
             {/* Chat Input */}
-            <div className="flex-shrink-0 p-6 bg-gray-900 border-t border-gray-700">
+            <div className="flex-shrink-0 p-6 bg-background border-t border-gray-700">
               {pendingProspectData.length > 0 && (
                 <div className="mb-4 px-4 space-y-2">
                   {/* Main approve button */}
@@ -2107,8 +2107,8 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                 
                 <div className={`flex gap-3 items-end p-2 rounded-2xl border-2 transition-all duration-200 mt-4 ${
                   inputFocused 
-                    ? 'border-purple-500 bg-gray-800/50' 
-                    : 'border-gray-700 bg-gray-900'
+                    ? 'border-purple-500 bg-surface-muted/50' 
+                    : 'border-gray-700 bg-background'
                 }`}>
                   <input
                     ref={fileInputRef}
@@ -2145,11 +2145,11 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
                     }`}
                     title="Send message"
                   >
-                    <Send size={20} className="text-white" />
+                    <Send size={20} className="text-foreground" />
                   </button>
                 </div>
                 <div className="mt-2 px-2 text-xs text-gray-500">
-                  Press <kbd className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700">Enter</kbd> to send, <kbd className="px-1.5 py-0.5 bg-gray-800 rounded border border-gray-700">Shift + Enter</kbd> for new line
+                  Press <kbd className="px-1.5 py-0.5 bg-surface-muted rounded border border-gray-700">Enter</kbd> to send, <kbd className="px-1.5 py-0.5 bg-surface-muted rounded border border-gray-700">Shift + Enter</kbd> for new line
                 </div>
               </div>
             </div>
@@ -2226,12 +2226,12 @@ Ready to help you automate your LinkedIn prospecting! What would you like to sta
       {/* Memory Snapshots Panel */}
       {showMemorySnapshots && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="max-w-2xl w-full mx-4 bg-gray-800 rounded-lg shadow-xl">
+          <div className="max-w-2xl w-full mx-4 bg-surface-muted rounded-lg shadow-xl">
             <div className="p-6 border-b border-gray-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <Clock size={24} className="text-purple-400" />
-                  <h2 className="text-xl font-semibold text-white">
+                  <h2 className="text-xl font-semibold text-foreground">
                     Restore Memory Snapshots
                   </h2>
                 </div>

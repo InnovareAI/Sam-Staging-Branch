@@ -143,7 +143,7 @@ export default function ApprovedProspectsDashboard({ onCreateCampaign }: Approve
 
   if (loading) {
     return (
-      <div className="bg-gray-800 rounded-lg p-8">
+      <div className="bg-surface-muted rounded-lg p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
           <span className="ml-3 text-gray-300">Loading approved prospects...</span>
@@ -154,7 +154,7 @@ export default function ApprovedProspectsDashboard({ onCreateCampaign }: Approve
 
   if (prospects.length === 0) {
     return (
-      <div className="bg-gray-800 rounded-lg p-8 text-center">
+      <div className="bg-surface-muted rounded-lg p-8 text-center">
         <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
         <h3 className="text-xl font-semibold text-white mb-2">No Approved Prospects Yet</h3>
         <p className="text-gray-400 mb-6">
@@ -176,7 +176,7 @@ export default function ApprovedProspectsDashboard({ onCreateCampaign }: Approve
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg">
+    <div className="bg-surface-muted rounded-lg">
       {/* Header */}
       <div className="border-b border-gray-700 p-6">
         <div className="flex items-center justify-between mb-4">
@@ -193,7 +193,7 @@ export default function ApprovedProspectsDashboard({ onCreateCampaign }: Approve
             <button
               onClick={handleExportSelected}
               disabled={selectedProspects.size === 0}
-              className="flex items-center px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 text-white rounded-lg transition-colors"
+              className="flex items-center px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-surface-muted disabled:text-gray-500 text-white rounded-lg transition-colors"
             >
               <Download className="w-4 h-4 mr-2" />
               Export ({selectedProspects.size})
@@ -304,7 +304,7 @@ export default function ApprovedProspectsDashboard({ onCreateCampaign }: Approve
                   </div>
 
                   <div className="space-y-2">
-                    <h3 className="font-medium text-white">{prospect.name}</h3>
+                    <h3 className="font-medium text-foreground">{prospect.name}</h3>
                     <p className="text-sm text-gray-300">{prospect.title}</p>
                     <p className="text-sm text-gray-400">{prospect.company}</p>
                     

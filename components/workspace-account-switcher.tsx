@@ -196,7 +196,7 @@ export function WorkspaceAccountSwitcher({ workspaceId, currentUserId, onAccount
             <Button
               size="sm"
               onClick={() => handleAccountSwitch(account.account_type, account.id)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-foreground"
             >
               Switch To This
             </Button>

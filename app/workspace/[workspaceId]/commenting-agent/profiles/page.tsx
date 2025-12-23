@@ -164,10 +164,10 @@ export default function ProfilesListPage() {
             onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent`)}
             className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
           >
-            <ArrowLeft size={20} className="text-gray-400" />
+            <ArrowLeft size={20} className="text-muted-foreground" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Monitored Profiles</h1>
+            <h1 className="text-2xl font-bold text-foreground">Monitored Profiles</h1>
             <p className="text-gray-400 text-sm">{profiles.length} profile campaigns</p>
           </div>
         </div>
@@ -183,20 +183,20 @@ export default function ProfilesListPage() {
       {/* Filters */}
       <div className="flex items-center gap-4 mb-6">
         <div className="relative flex-1 max-w-md">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search profiles..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            className="w-full pl-10 pr-4 py-2.5 bg-surface-muted border border-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
           />
         </div>
         <div className="relative">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="appearance-none px-4 py-2.5 pr-10 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer"
+            className="appearance-none px-4 py-2.5 pr-10 bg-surface-muted border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -208,7 +208,7 @@ export default function ProfilesListPage() {
 
       {/* Profiles List */}
       {filteredProfiles.length === 0 ? (
-        <div className="bg-gray-800 rounded-xl p-12 text-center border border-gray-700">
+        <div className="bg-surface-muted rounded-xl p-12 text-center border border-border">
           <Target size={48} className="mx-auto text-gray-600 mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">
             {searchQuery || statusFilter !== 'all' ? 'No profiles found' : 'No profiles yet'}
@@ -234,7 +234,7 @@ export default function ProfilesListPage() {
             <div
               key={profile.id}
               onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent/monitor/${profile.id}`)}
-              className="bg-gray-800 rounded-xl p-5 border border-gray-700 hover:border-pink-600/50 hover:bg-gray-800/80 transition-all cursor-pointer group"
+              className="bg-surface-muted rounded-xl p-5 border border-border hover:border-pink-600/50 hover:bg-surface-muted/80 transition-all cursor-pointer group"
             >
               <div className="flex items-center justify-between">
                 {/* Profile Info */}
@@ -254,7 +254,7 @@ export default function ProfilesListPage() {
                         {profile.status}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Users size={14} />
                         {getTargetDisplay(profile)}
@@ -270,16 +270,16 @@ export default function ProfilesListPage() {
                 {/* Stats */}
                 <div className="hidden md:flex items-center gap-6 mx-6">
                   <div className="text-center">
-                    <p className="text-xl font-semibold text-white">{profile.posts_discovered || 0}</p>
-                    <p className="text-xs text-gray-500">Posts Found</p>
+                    <p className="text-xl font-semibold text-foreground">{profile.posts_discovered || 0}</p>
+                    <p className="text-xs text-muted-foreground">Posts Found</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xl font-semibold text-white">{profile.comments_generated || 0}</p>
-                    <p className="text-xs text-gray-500">Generated</p>
+                    <p className="text-xl font-semibold text-foreground">{profile.comments_generated || 0}</p>
+                    <p className="text-xs text-muted-foreground">Generated</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xl font-semibold text-white">{profile.comments_posted || 0}</p>
-                    <p className="text-xs text-gray-500">Posted</p>
+                    <p className="text-xl font-semibold text-foreground">{profile.comments_posted || 0}</p>
+                    <p className="text-xs text-muted-foreground">Posted</p>
                   </div>
                 </div>
 
@@ -319,7 +319,7 @@ export default function ProfilesListPage() {
                       onClick={() => setOpenMenuId(openMenuId === profile.id ? null : profile.id)}
                       className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
                     >
-                      <MoreVertical size={18} className="text-gray-400" />
+                      <MoreVertical size={18} className="text-muted-foreground" />
                     </button>
 
                     {openMenuId === profile.id && (

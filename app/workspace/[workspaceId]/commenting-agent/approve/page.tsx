@@ -297,17 +297,17 @@ export default function ApproveCommentsPage() {
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-gray-700 bg-gray-900">
+      <div className="flex-shrink-0 px-6 py-4 border-b border-border bg-background">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent`)}
               className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
             >
-              <ArrowLeft size={20} className="text-gray-400" />
+              <ArrowLeft size={20} className="text-muted-foreground" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-white">Comment Approval</h1>
+              <h1 className="text-xl font-bold text-foreground">Comment Approval</h1>
               <p className="text-gray-400 text-sm">
                 {dateFilter === 'today' ? "Today's Arrivals" : "History"} - {comments.length} items
               </p>
@@ -316,7 +316,7 @@ export default function ApproveCommentsPage() {
 
           <div className="flex items-center gap-6">
             {/* Today/History Toggle */}
-            <div className="flex p-1 bg-gray-800 rounded-lg border border-gray-700">
+            <div className="flex p-1 bg-surface-muted rounded-lg border border-border">
               <button
                 onClick={() => setDateFilter('today')}
                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${dateFilter === 'today'
@@ -361,9 +361,9 @@ export default function ApproveCommentsPage() {
                   e.stopPropagation();
                   setShowStatusDropdown(!showStatusDropdown);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-surface-muted hover:bg-gray-700 rounded-lg border border-border transition-colors"
               >
-                <Filter size={16} className="text-gray-400" />
+                <Filter size={16} className="text-muted-foreground" />
                 {(() => {
                   const current = STATUS_OPTIONS.find(s => s.value === statusFilter);
                   const Icon = current?.icon || Clock;
@@ -383,7 +383,7 @@ export default function ApproveCommentsPage() {
               </button>
 
               {showStatusDropdown && (
-                <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-56 bg-surface-muted border border-border rounded-lg shadow-xl z-50 overflow-hidden">
                   {STATUS_OPTIONS.map((option) => {
                     const Icon = option.icon;
                     const colorClass = option.color === 'amber' ? 'text-amber-400' :
@@ -426,7 +426,7 @@ export default function ApproveCommentsPage() {
       {/* Main Content */}
       <div className="flex-1 overflow-hidden flex">
         {/* Left Panel - Comment List */}
-        <div className="w-[400px] border-r border-gray-700 overflow-y-auto bg-gray-900">
+        <div className="w-[400px] border-r border-border overflow-y-auto bg-background">
           {comments.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-6">
               <MessageSquare size={48} className="text-gray-600 mb-4" />
@@ -475,8 +475,8 @@ export default function ApproveCommentsPage() {
                       setEditedComment('');
                     }}
                     className={`w-full p-4 text-left transition-colors ${selectedComment?.id === comment.id
-                      ? 'bg-gray-800 border-l-2 border-pink-500'
-                      : 'hover:bg-gray-800/50'
+                      ? 'bg-surface-muted border-l-2 border-pink-500'
+                      : 'hover:bg-surface-muted/50'
                       }`}
                   >
                     <div className="flex items-start gap-3">
@@ -504,11 +504,11 @@ export default function ApproveCommentsPage() {
         </div>
 
         {/* Right Panel - Comment Detail */}
-        <div className="flex-1 overflow-y-auto bg-gray-800/50">
+        <div className="flex-1 overflow-y-auto bg-surface-muted/50">
           {selectedComment ? (
             <div className="p-6 max-w-3xl mx-auto">
               {/* Post Card */}
-              <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 mb-6">
+              <div className="bg-surface-muted rounded-xl p-5 border border-border mb-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
@@ -534,9 +534,9 @@ export default function ApproveCommentsPage() {
               </div>
 
               {/* Generated Comment */}
-              <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+              <div className="bg-surface-muted rounded-xl p-5 border border-border">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">Generated Comment</h3>
+                  <h3 className="text-lg font-semibold text-foreground">Generated Comment</h3>
                   {statusFilter === 'pending_approval' && (
                     <button
                       onClick={() => handleRegenerate(selectedComment.id)}
@@ -566,7 +566,7 @@ export default function ApproveCommentsPage() {
 
                 {/* Action Buttons */}
                 {statusFilter === 'pending_approval' && (
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-700">
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
                     <div className="flex gap-2">
                       {isEditing ? (
                         <>

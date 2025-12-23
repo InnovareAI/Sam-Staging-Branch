@@ -38,7 +38,7 @@ export default function ModelSelector({ onChangeClick }: ModelSelectorProps) {
 
   if (loading) {
     return (
-      <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border animate-pulse">
+      <div className="p-4 bg-white dark:bg-background rounded-lg border animate-pulse">
         <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
         <div className="h-6 bg-gray-200 rounded w-48"></div>
       </div>
@@ -46,7 +46,7 @@ export default function ModelSelector({ onChangeClick }: ModelSelectorProps) {
   }
 
   return (
-    <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border">
+    <div className="p-4 bg-white dark:bg-background rounded-lg border">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm text-gray-500 mb-1">AI Model</div>
@@ -61,7 +61,7 @@ export default function ModelSelector({ onChangeClick }: ModelSelectorProps) {
         {onChangeClick && (
           <button
             onClick={onChangeClick}
-            className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50 dark:hover:bg-surface-muted"
           >
             Change Model
           </button>

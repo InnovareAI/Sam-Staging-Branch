@@ -99,13 +99,13 @@ export function AddToCampaignModal({ open, onClose, workspaceId, prospectIds, on
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[450px] bg-gray-900 border-gray-700">
+            <DialogContent className="sm:max-w-[450px] bg-background border-border">
                 <DialogHeader>
                     <DialogTitle className="text-white text-lg font-semibold flex items-center gap-2">
                         <FolderPlus className="h-5 w-5 text-blue-400" />
                         Add to Campaign
                     </DialogTitle>
-                    <DialogDescription className="text-gray-400">
+                    <DialogDescription className="text-muted-foreground">
                         Select a campaign to add {prospectIds.length} selected prospect{prospectIds.length !== 1 ? 's' : ''} to.
                     </DialogDescription>
                 </DialogHeader>
@@ -121,10 +121,10 @@ export function AddToCampaignModal({ open, onClose, workspaceId, prospectIds, on
                                 Select Campaign
                             </label>
                             <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                                <SelectTrigger className="bg-surface-muted border-border text-foreground">
                                     <SelectValue placeholder="Choose a campaign..." />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
+                                <SelectContent className="bg-surface-muted border-border">
                                     {campaigns.length === 0 ? (
                                         <div className="p-4 text-sm text-gray-400 text-center">
                                             No campaigns found. Create one first.
@@ -138,7 +138,7 @@ export function AddToCampaignModal({ open, onClose, workspaceId, prospectIds, on
                                             >
                                                 <div className="flex items-center gap-2">
                                                     <span>{campaign.name}</span>
-                                                    <span className="text-xs text-gray-400">({campaign.status})</span>
+                                                    <span className="text-xs text-muted-foreground">({campaign.status})</span>
                                                 </div>
                                             </SelectItem>
                                         ))
@@ -161,7 +161,7 @@ export function AddToCampaignModal({ open, onClose, workspaceId, prospectIds, on
                     <Button
                         onClick={handleAdd}
                         disabled={!selectedCampaignId || loading}
-                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white"
+                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-foreground"
                     >
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Add to Campaign

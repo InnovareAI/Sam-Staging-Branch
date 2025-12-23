@@ -40,7 +40,7 @@ export default function ScheduleSettings({ settings, onChange }: ScheduleSetting
                 <p className="text-gray-400 mb-4">Configure when messages should be sent to your prospects.</p>
             </div>
 
-            <div className="bg-gray-800 rounded-lg p-6 space-y-6 border border-gray-700">
+            <div className="bg-surface-muted rounded-lg p-6 space-y-6 border border-gray-700">
 
                 {/* Timezone */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -52,7 +52,7 @@ export default function ScheduleSettings({ settings, onChange }: ScheduleSetting
                         <select
                             value={settings.timezone}
                             onChange={(e) => handleChange('timezone', e.target.value)}
-                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white"
+                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-foreground"
                         >
                             {COMMON_TIMEZONES.map((tz) => (
                                 <option key={tz} value={tz}>{tz}</option>
@@ -71,7 +71,7 @@ export default function ScheduleSettings({ settings, onChange }: ScheduleSetting
                             <select
                                 value={settings.working_hours_start}
                                 onChange={(e) => handleChange('working_hours_start', parseInt(e.target.value))}
-                                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-white"
+                                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-foreground"
                             >
                                 {Array.from({ length: 24 }).map((_, i) => (
                                     <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>
@@ -81,7 +81,7 @@ export default function ScheduleSettings({ settings, onChange }: ScheduleSetting
                             <select
                                 value={settings.working_hours_end}
                                 onChange={(e) => handleChange('working_hours_end', parseInt(e.target.value))}
-                                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-white"
+                                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-foreground"
                             >
                                 {Array.from({ length: 24 }).map((_, i) => (
                                     <option key={i} value={i}>{i.toString().padStart(2, '0')}:00</option>

@@ -319,7 +319,7 @@ export function CreateCampaignModal({
 
         return (
             <Dialog open={open} onOpenChange={handleClose}>
-                <DialogContent className="sm:max-w-[500px] bg-gray-900 border-gray-700 max-h-[80vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-[500px] bg-background border-border max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-white text-lg font-semibold">
                             {preflightLoading ? 'Verifying Prospects...' : 'Pre-flight Check Results'}
@@ -329,7 +329,7 @@ export function CreateCampaignModal({
                     {preflightLoading ? (
                         <div className="flex flex-col items-center py-8">
                             <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-                            <p className="text-gray-400">Checking prospects against existing campaigns...</p>
+                            <p className="text-muted-foreground">Checking prospects against existing campaigns...</p>
                             <p className="text-gray-500 text-sm mt-2">This may take a few seconds</p>
                         </div>
                     ) : summary ? (
@@ -363,8 +363,8 @@ export function CreateCampaignModal({
                                         <span className="text-white text-sm font-medium">Rate Limits</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-400">Today: {summary.rateLimitStatus.dailyUsed}/{summary.rateLimitStatus.dailyLimit}</span>
-                                        <span className="text-gray-400">This week: {summary.rateLimitStatus.weeklyUsed}/{summary.rateLimitStatus.weeklyLimit}</span>
+                                        <span className="text-muted-foreground">Today: {summary.rateLimitStatus.dailyUsed}/{summary.rateLimitStatus.dailyLimit}</span>
+                                        <span className="text-muted-foreground">This week: {summary.rateLimitStatus.weeklyUsed}/{summary.rateLimitStatus.weeklyLimit}</span>
                                     </div>
                                     {summary.rateLimitStatus.warning && (
                                         <p className="text-yellow-400 text-xs mt-2">{summary.rateLimitStatus.warning}</p>
@@ -378,31 +378,31 @@ export function CreateCampaignModal({
                                     <h4 className="text-white text-sm font-medium">Blocked Reasons:</h4>
                                     {summary.alreadyContacted > 0 && (
                                         <div className="flex items-center justify-between text-sm bg-gray-700/50 rounded-lg px-3 py-2">
-                                            <span className="text-gray-300">Already contacted</span>
+                                            <span className="text-muted-foreground">Already contacted</span>
                                             <span className="text-red-400 font-medium">{summary.alreadyContacted}</span>
                                         </div>
                                     )}
                                     {summary.pendingInvitation > 0 && (
                                         <div className="flex items-center justify-between text-sm bg-gray-700/50 rounded-lg px-3 py-2">
-                                            <span className="text-gray-300">Pending invitation</span>
+                                            <span className="text-muted-foreground">Pending invitation</span>
                                             <span className="text-yellow-400 font-medium">{summary.pendingInvitation}</span>
                                         </div>
                                     )}
                                     {summary.duplicates > 0 && (
                                         <div className="flex items-center justify-between text-sm bg-gray-700/50 rounded-lg px-3 py-2">
-                                            <span className="text-gray-300">Duplicates in batch</span>
+                                            <span className="text-muted-foreground">Duplicates in batch</span>
                                             <span className="text-orange-400 font-medium">{summary.duplicates}</span>
                                         </div>
                                     )}
                                     {summary.wrongDegree > 0 && (
                                         <div className="flex items-center justify-between text-sm bg-gray-700/50 rounded-lg px-3 py-2">
-                                            <span className="text-gray-300">Wrong connection degree</span>
+                                            <span className="text-muted-foreground">Wrong connection degree</span>
                                             <span className="text-purple-400 font-medium">{summary.wrongDegree}</span>
                                         </div>
                                     )}
                                     {summary.previouslyFailed > 0 && (
                                         <div className="flex items-center justify-between text-sm bg-gray-700/50 rounded-lg px-3 py-2">
-                                            <span className="text-gray-300">Previously failed</span>
+                                            <span className="text-muted-foreground">Previously failed</span>
                                             <span className="text-gray-400 font-medium">{summary.previouslyFailed}</span>
                                         </div>
                                     )}
@@ -411,7 +411,7 @@ export function CreateCampaignModal({
 
                             {/* Verified count */}
                             {summary.verified > 0 && (
-                                <div className="text-sm text-gray-400">
+                                <div className="text-sm text-muted-foreground">
                                     ✓ {summary.verified} profiles verified with LinkedIn
                                 </div>
                             )}
@@ -445,7 +445,7 @@ export function CreateCampaignModal({
                     ) : (
                         <div className="text-center py-8">
                             <XCircle className="w-10 h-10 text-red-400 mx-auto mb-4" />
-                            <p className="text-gray-400">Failed to verify prospects</p>
+                            <p className="text-muted-foreground">Failed to verify prospects</p>
                         </div>
                     )}
                 </DialogContent>
@@ -456,10 +456,10 @@ export function CreateCampaignModal({
     // Render campaign type selection view
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[500px] bg-gray-900 border-gray-700">
+            <DialogContent className="sm:max-w-[500px] bg-background border-border">
                 <DialogHeader>
                     <DialogTitle className="text-white text-lg font-semibold">Create New Campaign</DialogTitle>
-                    <DialogDescription className="text-gray-400">
+                    <DialogDescription className="text-muted-foreground">
                         Name your campaign and choose the type
                         {eligibility.approvedCount > 0 ? (
                             <span className="ml-1">• {eligibility.approvedCount} approved prospects</span>
@@ -480,7 +480,7 @@ export function CreateCampaignModal({
                             placeholder="Enter campaign name..."
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
+                            className="bg-surface-muted border-border text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
                             autoFocus
                         />
                     </div>
@@ -503,8 +503,8 @@ export function CreateCampaignModal({
                                             onClick={() => type.enabled && handleSelectType(type.value)}
                                             disabled={isDisabled}
                                             className={`w-full p-4 rounded-lg border-2 transition-all text-left group ${isDisabled
-                                                ? 'border-gray-700 bg-gray-800/50 opacity-50 cursor-not-allowed'
-                                                : `border-gray-700 ${colors.hover} hover:bg-gray-800`
+                                                ? 'border-border bg-surface-muted/50 opacity-50 cursor-not-allowed'
+                                                : `border-border ${colors.hover} hover:bg-surface-muted`
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3">

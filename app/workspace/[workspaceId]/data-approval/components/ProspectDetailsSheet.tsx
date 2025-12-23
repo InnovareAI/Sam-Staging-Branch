@@ -258,7 +258,7 @@ export function ProspectDetailsSheet({ prospect, open, onOpenChange, onApprove, 
                         <Button
                             onClick={() => onApprove?.([prospect.id])}
                             disabled={prospect.approvalStatus === 'approved'}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-foreground"
                         >
                             <CheckCircle className="w-4 h-4 mr-2" />
                             Approve
@@ -275,7 +275,7 @@ export function ProspectDetailsSheet({ prospect, open, onOpenChange, onApprove, 
                     </div>
                     <Button
                         onClick={() => onAddToCampaign?.([prospect.id])}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-foreground"
                     >
                         <Upload className="w-4 h-4 mr-2" />
                         Add to Campaign

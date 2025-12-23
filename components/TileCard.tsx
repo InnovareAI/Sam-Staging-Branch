@@ -137,7 +137,7 @@ export function TileCard({
         </div>
 
         {/* Title and Description */}
-        <CardTitle className="text-base text-white">{title}</CardTitle>
+        <CardTitle className="text-base text-foreground">{title}</CardTitle>
         <CardDescription className="text-xs leading-relaxed">{description}</CardDescription>
       </CardHeader>
 
@@ -192,11 +192,11 @@ export function SimpleTileCard({
       <CardHeader className="p-4">
         {/* Icon */}
         <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center mb-2', colors.iconBg)}>
-          <Icon className="h-5 w-5 text-white" />
+          <Icon className="h-5 w-5 text-foreground" />
         </div>
 
         {/* Title and Description */}
-        <CardTitle className="text-base text-white">{title}</CardTitle>
+        <CardTitle className="text-base text-foreground">{title}</CardTitle>
         <CardDescription className="text-xs leading-relaxed">{description}</CardDescription>
       </CardHeader>
 

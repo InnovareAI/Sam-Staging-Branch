@@ -176,7 +176,7 @@ export function CampaignReplyCenter() {
 
         <div className="mt-3 flex justify-between items-center">
           <div className="flex space-x-2">
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-foreground">
               Reply
             </Button>
             <Button size="sm" variant="outline">

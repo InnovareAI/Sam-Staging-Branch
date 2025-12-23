@@ -292,7 +292,7 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
       case 'connecting': return 'border-blue-500/30 bg-blue-900/20';
       case 'waiting_2fa': return 'border-yellow-500/30 bg-yellow-900/20';
       case 'error': return 'border-red-500/30 bg-red-900/20';
-      default: return 'border-gray-500/30 bg-gray-900/20';
+      default: return 'border-gray-500/30 bg-background/20';
     }
   };
 
@@ -300,7 +300,7 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
 
   return (
     <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-lg">
+      <div className="bg-background rounded-xl shadow-2xl w-full max-w-lg">
         {/* Header */}
         <div className="p-6 border-b border-gray-700">
           <div className="flex items-center justify-between">
@@ -311,7 +311,7 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
                 </svg>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">LinkedIn Connection</h2>
+                <h2 className="text-xl font-bold text-foreground">LinkedIn Connection</h2>
                 <p className="text-gray-400 text-sm">Connect your LinkedIn account to SAM AI</p>
               </div>
             </div>
@@ -332,7 +332,7 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
             <div className="flex items-start space-x-3">
               {getStatusIcon()}
               <div className="flex-1">
-                <h3 className="font-semibold text-white">{connectionStatus.message}</h3>
+                <h3 className="font-semibold text-foreground">{connectionStatus.message}</h3>
                 {connectionStatus.details && (
                   <p className="text-sm text-gray-300 mt-1">{connectionStatus.details}</p>
                 )}
@@ -344,7 +344,7 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
 
             {/* 2FA Instructions */}
             {connectionStatus.stage === 'waiting_2fa' && (
-              <div className="mt-4 p-3 bg-gray-800 rounded border border-yellow-500/20">
+              <div className="mt-4 p-3 bg-surface-muted rounded border border-yellow-500/20">
                 <h4 className="text-yellow-300 font-medium text-sm mb-2">
                   📱 Complete LinkedIn Authentication
                 </h4>
@@ -368,7 +368,7 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
               <h4 className="text-white font-medium mb-2">Connected Accounts</h4>
               <div className="space-y-2">
                 {accounts.map((account) => (
-                  <div key={account.id} className="flex items-center justify-between p-3 bg-gray-800 rounded border border-gray-600">
+                  <div key={account.id} className="flex items-center justify-between p-3 bg-surface-muted rounded border border-gray-600">
                     <div className="flex items-center space-x-3">
                       <div className={`w-3 h-3 rounded-full ${
                         account.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'
@@ -476,11 +476,11 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
 
           {/* Troubleshooting Section */}
           {showTroubleshooting && (
-            <div className="mt-4 p-4 bg-gray-800 rounded border border-gray-600">
+            <div className="mt-4 p-4 bg-surface-muted rounded border border-gray-600">
               <h4 className="text-white font-medium mb-3">Troubleshooting</h4>
               <div className="space-y-3 text-sm text-gray-300">
                 <div>
-                  <p className="font-medium text-white">If 2FA is stuck:</p>
+                  <p className="font-medium text-foreground">If 2FA is stuck:</p>
                   <ul className="list-disc list-inside space-y-1 text-xs mt-1">
                     <li>Check LinkedIn mobile app for notifications</li>
                     <li>Ensure push notifications are enabled</li>
@@ -490,7 +490,7 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
                 </div>
                 
                 <div>
-                  <p className="font-medium text-white">Connection attempts: {connectionAttempts}</p>
+                  <p className="font-medium text-foreground">Connection attempts: {connectionAttempts}</p>
                   <p className="text-xs text-gray-400">Multiple attempts may indicate account conflicts</p>
                 </div>
 
@@ -505,7 +505,7 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
           )}
 
           {/* Connection Info */}
-          <div className="mt-4 p-3 bg-gray-800/50 rounded border border-gray-700">
+          <div className="mt-4 p-3 bg-surface-muted/50 rounded border border-gray-700">
             <div className="flex items-center space-x-2 text-gray-400 text-xs">
               <Shield className="w-3 h-3" />
               <span>Secure connection via Unipile • Workspace isolated</span>

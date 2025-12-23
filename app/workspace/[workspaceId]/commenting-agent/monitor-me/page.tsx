@@ -65,7 +65,7 @@ export default function MyProfileMonitorPage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-pink-900/20 text-white">
+                    <div className="w-12 h-12 bg-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-pink-900/20 text-foreground">
                         <LayoutDashboard size={24} />
                     </div>
                     <div>
@@ -77,7 +77,7 @@ export default function MyProfileMonitorPage() {
                     <button
                         onClick={handleRefresh}
                         disabled={refreshing || loading}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg border border-gray-700 transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-surface-muted hover:bg-gray-700 text-white rounded-lg border border-border transition-all disabled:opacity-50"
                     >
                         <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
                         {refreshing ? 'Refreshing...' : 'Refresh Feed'}
@@ -92,7 +92,7 @@ export default function MyProfileMonitorPage() {
                     { label: 'Total Reactions', value: posts.reduce((acc, p) => acc + p.likes_count, 0), icon: Heart, color: 'text-red-400', bg: 'bg-red-400/10' },
                     { label: 'Comments Found', value: posts.reduce((acc, p) => acc + p.comments_count, 0), icon: MessageSquare, color: 'text-blue-400', bg: 'bg-blue-400/10' },
                 ].map((stat, i) => (
-                    <div key={i} className="bg-gray-800/50 border border-gray-700 p-5 rounded-xl flex items-center gap-4">
+                    <div key={i} className="bg-surface-muted/50 border border-border p-5 rounded-xl flex items-center gap-4">
                         <div className={`p-3 rounded-lg ${stat.bg} ${stat.color}`}>
                             <stat.icon size={22} />
                         </div>
@@ -105,13 +105,13 @@ export default function MyProfileMonitorPage() {
             </div>
 
             {/* Main Content */}
-            <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-xl">
-                <div className="p-5 border-b border-gray-700 flex items-center justify-between bg-gray-800/50">
+            <div className="bg-surface-muted border border-border rounded-xl overflow-hidden shadow-xl">
+                <div className="p-5 border-b border-border flex items-center justify-between bg-surface-muted/50">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <Clock size={18} className="text-pink-500" />
                         Recent Posts
                     </h2>
-                    <span className="text-xs text-gray-500 font-medium px-2 py-1 bg-gray-900/50 rounded-full border border-gray-700">
+                    <span className="text-xs text-gray-500 font-medium px-2 py-1 bg-background/50 rounded-full border border-border">
                         Auto-Sync Active
                     </span>
                 </div>
@@ -126,7 +126,7 @@ export default function MyProfileMonitorPage() {
                         <div className="w-16 h-16 bg-red-900/20 text-red-400 rounded-full flex items-center justify-center mb-2">
                             <ShieldCheck size={32} />
                         </div>
-                        <h3 className="text-xl font-semibold text-white">Connection Error</h3>
+                        <h3 className="text-xl font-semibold text-foreground">Connection Error</h3>
                         <p className="text-gray-400 max-w-sm">{error}</p>
                         <button
                             onClick={loadPosts}
@@ -140,7 +140,7 @@ export default function MyProfileMonitorPage() {
                         <div className="w-16 h-16 bg-gray-700/50 rounded-full flex items-center justify-center mb-2">
                             <User size={32} />
                         </div>
-                        <h3 className="text-lg font-semibold text-white">No Recent Activity</h3>
+                        <h3 className="text-lg font-semibold text-foreground">No Recent Activity</h3>
                         <p className="text-sm max-w-xs">We couldn't find any recent posts on your LinkedIn profile. Post something new and refresh!</p>
                     </div>
                 ) : (
@@ -149,7 +149,7 @@ export default function MyProfileMonitorPage() {
                             <div key={post.social_id} className="p-6 hover:bg-gray-700/30 transition-all group">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex-1 space-y-3">
-                                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                             <Clock size={14} />
                                             {new Date(post.posted_at).toLocaleDateString(undefined, {
                                                 month: 'short',

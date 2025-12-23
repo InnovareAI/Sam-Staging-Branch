@@ -144,7 +144,7 @@ export default function EmailProvidersOnboarding({ isOpen, onClose, onComplete }
               <button
                 onClick={() => handleConnectProvider('google')}
                 disabled={connecting}
-                className="w-full bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 p-6 rounded-lg transition-colors flex items-center space-x-4 border-2 border-gray-600 hover:border-blue-500"
+                className="w-full bg-gray-700 hover:bg-gray-600 disabled:bg-surface-muted p-6 rounded-lg transition-colors flex items-center space-x-4 border-2 border-gray-600 hover:border-blue-500"
               >
                 <GoogleLogo size={48} />
                 <div className="text-left flex-1">
@@ -160,7 +160,7 @@ export default function EmailProvidersOnboarding({ isOpen, onClose, onComplete }
               <button
                 onClick={() => handleConnectProvider('microsoft')}
                 disabled={connecting}
-                className="w-full bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 p-6 rounded-lg transition-colors flex items-center space-x-4 border-2 border-gray-600 hover:border-blue-500"
+                className="w-full bg-gray-700 hover:bg-gray-600 disabled:bg-surface-muted p-6 rounded-lg transition-colors flex items-center space-x-4 border-2 border-gray-600 hover:border-blue-500"
               >
                 <MicrosoftLogo size={48} />
                 <div className="text-left flex-1">
@@ -242,7 +242,7 @@ export default function EmailProvidersOnboarding({ isOpen, onClose, onComplete }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface-muted rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="relative p-6">
           <button

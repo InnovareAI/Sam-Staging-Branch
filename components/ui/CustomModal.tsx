@@ -70,7 +70,7 @@ export default function CustomModal({
     >
       <div 
         className={`
-          bg-gray-800 rounded-2xl shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden
+          bg-surface-muted rounded-2xl shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden
           transform transition-all duration-200 ease-out
           ${className}
         `}

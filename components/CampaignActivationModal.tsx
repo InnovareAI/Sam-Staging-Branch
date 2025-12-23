@@ -57,7 +57,7 @@ export default function CampaignActivationModal({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-2xl shadow-2xl">
+      <div className="bg-background border border-gray-700 rounded-lg w-full max-w-2xl shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
           <div className="flex items-center gap-3">
@@ -65,7 +65,7 @@ export default function CampaignActivationModal({
               <CheckCircle className="w-6 h-6 text-green-400" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">Campaign Approved!</h2>
+              <h2 className="text-2xl font-bold text-foreground">Campaign Approved!</h2>
               <p className="text-gray-400 text-sm">Ready to activate and launch</p>
             </div>
           </div>
@@ -84,7 +84,7 @@ export default function CampaignActivationModal({
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">Campaign Details</h3>
-              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-2">
+              <div className="bg-surface-muted/50 border border-gray-700 rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Campaign Name:</span>
                   <span className="text-white font-medium">{campaignName}</span>
@@ -136,7 +136,7 @@ export default function CampaignActivationModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-700 bg-gray-800/30">
+        <div className="flex items-center justify-between p-6 border-t border-gray-700 bg-surface-muted/30">
           <button
             onClick={onClose}
             className="px-4 py-2 text-gray-400 hover:text-white transition-colors"

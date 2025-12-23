@@ -30,7 +30,8 @@
     --popover-foreground: 0 0% 9%;
 
     --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted-foreground: 0 0% 35%;
+    /* Darker for better icon visibility */
 
     --primary: 267 83% 55%;
     --primary-foreground: 0 0% 100%;

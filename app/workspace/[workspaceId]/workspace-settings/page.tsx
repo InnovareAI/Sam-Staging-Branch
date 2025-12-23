@@ -103,18 +103,18 @@ export default function WorkspaceSettingsPage() {
                 </div>
 
                 {/* Workspace Info Card */}
-                <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
+                <div className="bg-surface-muted/50 border border-border rounded-xl p-6 mb-6">
                     <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                         <Settings size={20} className="text-primary" />
                         Workspace Details
                     </h2>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-sm text-gray-400">Name</label>
+                            <label className="text-sm text-muted-foreground">Name</label>
                             <p className="text-white font-medium">{workspace?.name || 'Unnamed Workspace'}</p>
                         </div>
                         <div>
-                            <label className="text-sm text-gray-400">Created</label>
+                            <label className="text-sm text-muted-foreground">Created</label>
                             <p className="text-white font-medium">
                                 {workspace?.created_at ? new Date(workspace.created_at).toLocaleDateString() : '-'}
                             </p>
@@ -123,7 +123,7 @@ export default function WorkspaceSettingsPage() {
                 </div>
 
                 {/* Team Members Card */}
-                <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 mb-6">
+                <div className="bg-surface-muted/50 border border-border rounded-xl p-6 mb-6">
                     <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                         <Users size={20} className="text-blue-400" />
                         Team Members ({members.length})
@@ -158,7 +158,7 @@ export default function WorkspaceSettingsPage() {
                 </div>
 
                 {/* Pending Invitations Card */}
-                <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+                <div className="bg-surface-muted/50 border border-border rounded-xl p-6">
                     <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                         <Mail size={20} className="text-yellow-400" />
                         Pending Invitations ({invitations.length})

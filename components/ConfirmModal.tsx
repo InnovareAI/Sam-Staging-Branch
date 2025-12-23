@@ -78,13 +78,13 @@ export default function ConfirmModal({
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
-          className="pointer-events-auto bg-gray-900 rounded-2xl shadow-2xl border border-gray-700 max-w-md w-full transform transition-all"
+          className="pointer-events-auto bg-background rounded-2xl shadow-2xl border border-gray-700 max-w-md w-full transform transition-all"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header with Icon */}
           <div className={`bg-gradient-to-br ${config.bgGradient} border-b ${config.borderColor} p-6`}>
             <div className="flex items-start gap-4">
-              <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gray-800/50 flex items-center justify-center ${config.borderColor} border`}>
+              <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-surface-muted/50 flex items-center justify-center ${config.borderColor} border`}>
                 <IconComponent className={config.iconColor} size={24} />
               </div>
               <div className="flex-1">
@@ -92,7 +92,7 @@ export default function ConfirmModal({
               </div>
               <button
                 onClick={onClose}
-                className="flex-shrink-0 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-gray-800/50 p-1"
+                className="flex-shrink-0 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-surface-muted/50 p-1"
                 aria-label="Close"
               >
                 <X size={20} />
@@ -111,7 +111,7 @@ export default function ConfirmModal({
           <div className="flex gap-3 p-6 pt-0">
             <button
               onClick={onClose}
-              className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-all duration-200 border border-gray-700 hover:border-gray-600"
+              className="flex-1 px-4 py-3 bg-surface-muted hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-all duration-200 border border-gray-700 hover:border-gray-600"
             >
               {cancelText}
             </button>

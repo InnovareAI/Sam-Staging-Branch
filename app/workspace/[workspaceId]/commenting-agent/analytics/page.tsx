@@ -91,10 +91,10 @@ export default function AnalyticsPage() {
     changeLabel?: string;
     color: string;
   }) => (
-    <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+    <div className="bg-surface-muted rounded-xl p-5 border border-border">
       <div className="flex items-center justify-between mb-3">
         <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center`}>
-          <Icon size={20} className="text-white" />
+          <Icon size={20} className="text-foreground" />
         </div>
         {change !== undefined && (
           <div className={`flex items-center gap-1 text-sm ${
@@ -105,8 +105,8 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-sm text-gray-400">{label}</p>
+      <p className="text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-sm text-muted-foreground">{label}</p>
       {changeLabel && <p className="text-xs text-gray-500 mt-1">{changeLabel}</p>}
     </div>
   );
@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
             onClick={() => router.push(`/workspace/${workspaceId}/commenting-agent`)}
             className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
           >
-            <ArrowLeft size={20} className="text-gray-400" />
+            <ArrowLeft size={20} className="text-muted-foreground" />
           </button>
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -164,7 +164,7 @@ export default function AnalyticsPage() {
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value as any)}
-            className="appearance-none px-4 py-2.5 pr-10 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer"
+            className="appearance-none px-4 py-2.5 pr-10 bg-surface-muted border border-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500 cursor-pointer"
           >
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
@@ -205,12 +205,12 @@ export default function AnalyticsPage() {
       {/* Charts Section */}
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         {/* Activity Trend */}
-        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+        <div className="bg-surface-muted rounded-xl p-5 border border-border">
           <h2 className="text-lg font-semibold text-white mb-4">Activity Trend</h2>
           {analytics.trends.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-center">
               <Calendar size={32} className="text-gray-600 mb-2" />
-              <p className="text-gray-400">No data for this period</p>
+              <p className="text-muted-foreground">No data for this period</p>
             </div>
           ) : (
             <div className="h-48 flex items-end gap-1">
@@ -229,7 +229,7 @@ export default function AnalyticsPage() {
                     />
                   </div>
                   {idx % 7 === 0 && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       {new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </span>
                   )}
@@ -240,17 +240,17 @@ export default function AnalyticsPage() {
           <div className="flex items-center justify-center gap-6 mt-4">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-blue-500 rounded" />
-              <span className="text-sm text-gray-400">Posts Discovered</span>
+              <span className="text-sm text-muted-foreground">Posts Discovered</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-green-500 rounded" />
-              <span className="text-sm text-gray-400">Comments Posted</span>
+              <span className="text-sm text-muted-foreground">Comments Posted</span>
             </div>
           </div>
         </div>
 
         {/* Performance Breakdown */}
-        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+        <div className="bg-surface-muted rounded-xl p-5 border border-border">
           <h2 className="text-lg font-semibold text-white mb-4">Performance Breakdown</h2>
           <div className="space-y-4">
             <div>
@@ -308,10 +308,10 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-700">
+            <div className="pt-4 border-t border-border">
               <div className="flex items-center justify-between">
                 <span className="text-gray-400 text-sm">Avg. Comments/Day</span>
-                <span className="text-xl font-bold text-white">
+                <span className="text-xl font-bold text-foreground">
                   {analytics.overview.avg_comments_per_day.toFixed(1)}
                 </span>
               </div>
@@ -323,12 +323,12 @@ export default function AnalyticsPage() {
       {/* Tables Section */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Top Monitored Profiles */}
-        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+        <div className="bg-surface-muted rounded-xl p-5 border border-border">
           <h2 className="text-lg font-semibold text-white mb-4">Top Monitored Profiles</h2>
           {analytics.top_monitored_profiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
               <Target size={32} className="text-gray-600 mb-2" />
-              <p className="text-gray-400">No profile data yet</p>
+              <p className="text-muted-foreground">No profile data yet</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -359,12 +359,12 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Top Profiles */}
-        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+        <div className="bg-surface-muted rounded-xl p-5 border border-border">
           <h2 className="text-lg font-semibold text-white mb-4">Most Engaged Profiles</h2>
           {analytics.top_profiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
               <MessageSquare size={32} className="text-gray-600 mb-2" />
-              <p className="text-gray-400">No profile data yet</p>
+              <p className="text-muted-foreground">No profile data yet</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -399,19 +399,19 @@ export default function AnalyticsPage() {
         <div className="grid md:grid-cols-3 gap-4 text-sm">
           <div className="flex items-start gap-2">
             <CheckCircle2 size={16} className="text-green-400 flex-shrink-0 mt-0.5" />
-            <p className="text-gray-300">
+            <p className="text-muted-foreground">
               Aim for 80%+ approval rate by refining your brand voice settings
             </p>
           </div>
           <div className="flex items-start gap-2">
             <CheckCircle2 size={16} className="text-green-400 flex-shrink-0 mt-0.5" />
-            <p className="text-gray-300">
+            <p className="text-muted-foreground">
               Monitor 15-30 profiles for consistent daily engagement
             </p>
           </div>
           <div className="flex items-start gap-2">
             <CheckCircle2 size={16} className="text-green-400 flex-shrink-0 mt-0.5" />
-            <p className="text-gray-300">
+            <p className="text-muted-foreground">
               Post 10-20 comments per day for optimal visibility
             </p>
           </div>

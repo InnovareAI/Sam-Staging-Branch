@@ -452,7 +452,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                   value={linkedInCredentials.username}
                   onChange={(e) => setLinkedInCredentials(prev => ({ ...prev, username: e.target.value }))}
                   placeholder="your-email@example.com"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-surface-muted border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
                   disabled={connecting}
                 />
               </div>
@@ -467,7 +467,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                     value={linkedInCredentials.password}
                     onChange={(e) => setLinkedInCredentials(prev => ({ ...prev, password: e.target.value }))}
                     placeholder="Your LinkedIn password"
-                    className="w-full px-3 py-2 pr-10 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 pr-10 bg-surface-muted border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
                     disabled={connecting}
                   />
                   <button
@@ -486,7 +486,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                   <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                        <Shield className="w-4 h-4 text-white" />
+                        <Shield className="w-4 h-4 text-foreground" />
                       </div>
                       <div>
                         <h3 className="text-white font-medium text-sm">LinkedIn 2FA Required</h3>
@@ -554,7 +554,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                           onChange={(e) => setLinkedInCredentials(prev => ({ ...prev, twoFaCode: e.target.value }))}
                           placeholder="Enter 6-digit code"
                           maxLength={6}
-                          className="w-full px-3 py-2 bg-gray-800 border border-blue-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 text-center text-lg tracking-widest"
+                          className="w-full px-3 py-2 bg-surface-muted border border-blue-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 text-center text-lg tracking-widest"
                           disabled={connecting}
                         />
                         <p className="text-gray-400 text-xs mt-1 text-left">
@@ -571,7 +571,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                   <div className="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4 mb-4">
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                        <Shield className="w-4 h-4 text-white" />
+                        <Shield className="w-4 h-4 text-foreground" />
                       </div>
                       <div>
                         <h3 className="text-white font-medium text-sm">LinkedIn Verification Required</h3>
@@ -580,7 +580,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                     </div>
                     
                     {/* CAPTCHA Interface */}
-                    <div className="bg-gray-800 rounded-lg p-4 mb-4">
+                    <div className="bg-surface-muted rounded-lg p-4 mb-4">
                       <div className="text-center">
                         <div className="inline-block bg-gray-700 p-2 rounded-lg mb-4">
                           {/* Google reCAPTCHA container */}
@@ -626,7 +626,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                           type="checkbox"
                           checked={!!captchaResponse}
                           onChange={(e) => setCaptchaResponse(e.target.checked ? 'manual_verification_confirmed' : '')}
-                          className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500"
+                          className="w-4 h-4 text-blue-600 bg-surface-muted border-gray-600 rounded focus:ring-blue-500"
                         />
                         <span className="text-white text-sm">
                           I have completed the verification on LinkedIn
@@ -742,7 +742,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface-muted rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="relative p-6">
           <button

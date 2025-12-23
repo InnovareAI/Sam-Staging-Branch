@@ -41,7 +41,7 @@ export default function ModalExamples() {
   };
 
   return (
-    <div className="p-8 bg-gray-900 min-h-screen">
+    <div className="p-8 bg-background min-h-screen">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-8">Custom Modal Examples</h1>
         
@@ -214,7 +214,7 @@ export default function ModalExamples() {
         >
           <div className="p-6 space-y-6">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">General Settings</h3>
+              <h3 className="text-lg font-semibold text-foreground">General Settings</h3>
               
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -286,7 +286,7 @@ export default function ModalExamples() {
                 <div className="bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <h4 className="font-semibold text-white">API Status</h4>
+                    <h4 className="font-semibold text-foreground">API Status</h4>
                   </div>
                   <p className="text-gray-300 text-sm mt-2">All systems operational</p>
                 </div>
@@ -294,7 +294,7 @@ export default function ModalExamples() {
                 <div className="bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                    <h4 className="font-semibold text-white">Database</h4>
+                    <h4 className="font-semibold text-foreground">Database</h4>
                   </div>
                   <p className="text-gray-300 text-sm mt-2">Minor delays detected</p>
                 </div>
@@ -302,7 +302,7 @@ export default function ModalExamples() {
                 <div className="bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                    <h4 className="font-semibold text-white">Email Service</h4>
+                    <h4 className="font-semibold text-foreground">Email Service</h4>
                   </div>
                   <p className="text-gray-300 text-sm mt-2">Service temporarily unavailable</p>
                 </div>
@@ -310,7 +310,7 @@ export default function ModalExamples() {
                 <div className="bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <h4 className="font-semibold text-white">Storage</h4>
+                    <h4 className="font-semibold text-foreground">Storage</h4>
                   </div>
                   <p className="text-gray-300 text-sm mt-2">85% capacity remaining</p>
                 </div>

@@ -327,16 +327,16 @@ export default function ProspectSearchChat({
 
       {/* Modal Content */}
       <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none p-4">
-        <div className="w-full max-w-2xl max-h-[85vh] flex flex-col bg-gray-900 border border-gray-700 rounded-lg shadow-2xl pointer-events-auto">
+        <div className="w-full max-w-2xl max-h-[85vh] flex flex-col bg-background border border-gray-700 rounded-lg shadow-2xl pointer-events-auto">
           {/* Header */}
           <div className="p-4 border-b border-gray-700 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-white">Prospecting Assistant</h3>
+              <h3 className="text-lg font-semibold text-foreground">Prospecting Assistant</h3>
               <p className="text-sm text-gray-400">Ask me to find or refine prospects - I'll handle the rest</p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+              className="p-2 hover:bg-surface-muted rounded-lg transition-colors text-gray-400 hover:text-foreground"
               title="Close"
             >
               <X size={18} />
@@ -358,7 +358,7 @@ export default function ProspectSearchChat({
                   className={`max-w-[80%] rounded-lg px-4 py-2 ${
                     message.role === 'user'
                       ? 'bg-purple-600 text-white'
-                      : 'bg-gray-800 text-gray-100 border border-gray-700'
+                      : 'bg-surface-muted text-gray-100 border border-gray-700'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -372,7 +372,7 @@ export default function ProspectSearchChat({
             {/* Progress indicator */}
             {progress && (
               <div className="flex justify-start">
-                <div className="max-w-[80%] rounded-lg px-4 py-2 bg-gray-800 border border-purple-500">
+                <div className="max-w-[80%] rounded-lg px-4 py-2 bg-surface-muted border border-purple-500">
                   <p className="text-sm text-gray-100 mb-2">
                     ⏳ Searching... {progress.current}/{progress.total} ({Math.round((progress.current / progress.total) * 100)}%)
                   </p>
@@ -388,7 +388,7 @@ export default function ProspectSearchChat({
 
             {isLoading && !progress && (
               <div className="flex justify-start">
-                <div className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
+                <div className="bg-surface-muted border border-gray-700 rounded-lg px-4 py-2">
                   <p className="text-sm text-gray-400">Thinking...</p>
                 </div>
               </div>
@@ -417,7 +417,7 @@ export default function ProspectSearchChat({
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="e.g., 'Find 500 CEOs at tech startups in California'"
-                className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                className="flex-1 bg-surface-muted border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
                 disabled={isLoading}
               />
               <button

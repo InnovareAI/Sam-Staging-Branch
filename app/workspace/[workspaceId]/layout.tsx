@@ -18,8 +18,8 @@ export default async function WorkspaceLayout({
   const headersList = await headers();
   const xPathname = headersList.get('x-pathname') || '';
 
-  // Chat route check: /chat or / (root)
-  const isChatRoute = xPathname === '/chat' || xPathname === '/';
+  // Chat route check: path containing /chat should use its own sidebar
+  const isChatRoute = xPathname.includes('/chat') || xPathname === '/';
 
   // Server-side auth check
   const { data: { user } } = await supabase.auth.getUser();

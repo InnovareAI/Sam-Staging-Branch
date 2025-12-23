@@ -150,7 +150,7 @@ export const columns: ColumnDef<ProspectData>[] = [
         header: "Quality",
         cell: ({ row }) => {
             const score = row.getValue("qualityScore") as number;
-            let colorClass = "text-gray-500";
+            let colorClass = "text-muted-foreground";
             if (score >= 80) colorClass = "text-green-500";
             else if (score >= 50) colorClass = "text-yellow-500";
             else if (score < 50) colorClass = "text-red-500";
@@ -198,7 +198,7 @@ export const columns: ColumnDef<ProspectData>[] = [
             return (
                 <div className="flex gap-2">
                     {p.linkedinUrl && <Linkedin className="h-4 w-4 text-blue-500" />}
-                    {p.email && <Mail className="h-4 w-4 text-gray-500" />}
+                    {p.email && <Mail className="h-4 w-4 text-muted-foreground" />}
                 </div>
             );
         }

@@ -21,10 +21,10 @@ export default function WorkspacePage({ params }: { params: Promise<{ workspaceI
   }, [router, workspaceId])
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <Loader2 size={32} className="animate-spin text-pink-500" />
-        <div className="text-white">Loading workspace...</div>
+        <Loader2 size={32} className="animate-spin text-primary" />
+        <div className="text-foreground">Loading workspace...</div>
       </div>
     </div>
   )

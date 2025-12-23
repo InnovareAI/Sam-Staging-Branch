@@ -205,7 +205,7 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
                   value={customEndpoint}
                   onChange={(e) => setCustomEndpoint(e.target.value)}
                   placeholder="https://your-api.example.com/v1/chat/completions"
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-surface-muted text-gray-900 dark:text-gray-100 text-sm"
                   disabled={loading || saving}
                 />
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -222,7 +222,7 @@ export default function LLMConfigModal({ isOpen, onClose, onSave }: LLMConfigMod
                   value={customApiKey}
                   onChange={(e) => setCustomApiKey(e.target.value)}
                   placeholder="sk-..."
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-mono"
+                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-surface-muted text-gray-900 dark:text-gray-100 text-sm font-mono"
                   disabled={loading || saving}
                 />
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">

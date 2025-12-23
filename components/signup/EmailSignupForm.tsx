@@ -229,7 +229,7 @@ export default function EmailSignupForm({ onSuccess, inviteToken }: EmailSignupF
             </Alert>
           )}
 
-          <Button type="submit" className="w-full bg-[#8907FF] hover:bg-[#6600FF] text-white" disabled={loading}>
+          <Button type="submit" className="w-full bg-[#8907FF] hover:bg-[#6600FF] text-foreground" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

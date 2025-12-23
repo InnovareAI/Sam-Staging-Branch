@@ -188,12 +188,12 @@ export default function ConversationHistory({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className={`bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col ${className}`}>
+      <div className={`bg-surface-muted rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col ${className}`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700">
           <div className="flex items-center space-x-3">
             <History className="text-purple-400" size={24} />
-            <h2 className="text-xl font-semibold text-white">Conversation History</h2>
+            <h2 className="text-xl font-semibold text-foreground">Conversation History</h2>
           </div>
           <div className="flex items-center space-x-2">
             {currentMessages.length > 0 && (
@@ -344,7 +344,7 @@ export default function ConversationHistory({
         {/* Save Dialog */}
         {showSaveDialog && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="bg-surface-muted rounded-lg p-6 w-full max-w-md mx-4">
               <h3 className="text-lg font-semibold text-white mb-4">Save Conversation</h3>
               
               <div className="space-y-4">

@@ -8,7 +8,7 @@
 // Workspace card skeleton
 export function WorkspaceCardSkeleton() {
   return (
-    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 animate-pulse">
+    <div className="bg-surface-muted rounded-lg p-4 border border-gray-700 animate-pulse">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gray-700 rounded-full" />
@@ -57,7 +57,7 @@ export function WorkspaceSelectorSkeleton() {
 // Campaign card skeleton
 export function CampaignCardSkeleton() {
   return (
-    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 animate-pulse">
+    <div className="bg-surface-muted rounded-lg p-4 border border-gray-700 animate-pulse">
       <div className="flex items-center justify-between mb-3">
         <div className="h-5 w-40 bg-gray-700 rounded" />
         <div className="h-6 w-20 bg-gray-700 rounded-full" />
@@ -97,7 +97,7 @@ export function DashboardStatsSkeleton() {
   return (
     <div className="grid grid-cols-4 gap-4 animate-pulse">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div key={i} className="bg-surface-muted rounded-lg p-4 border border-gray-700">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gray-700 rounded-lg" />
             <div className="flex-1">
@@ -127,10 +127,10 @@ export function TableRowSkeleton({ columns = 5 }: { columns?: number }) {
 // Table skeleton
 export function TableSkeleton({ rows = 5, columns = 5 }: { rows?: number; columns?: number }) {
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+    <div className="bg-surface-muted rounded-lg border border-gray-700 overflow-hidden">
       <table className="w-full">
         <thead>
-          <tr className="bg-gray-900 animate-pulse">
+          <tr className="bg-background animate-pulse">
             {Array.from({ length: columns }).map((_, i) => (
               <th key={i} className="px-4 py-3 text-left">
                 <div className="h-4 w-20 bg-gray-700 rounded" />
@@ -166,13 +166,13 @@ export function ContentSkeleton({ lines = 3 }: { lines?: number }) {
 // Full page loading skeleton
 export function PageSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-900 p-6 animate-pulse">
+    <div className="min-h-screen bg-background p-6 animate-pulse">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div className="h-8 w-48 bg-gray-800 rounded" />
+        <div className="h-8 w-48 bg-surface-muted rounded" />
         <div className="flex space-x-3">
-          <div className="h-10 w-10 bg-gray-800 rounded-full" />
-          <div className="h-10 w-32 bg-gray-800 rounded" />
+          <div className="h-10 w-10 bg-surface-muted rounded-full" />
+          <div className="h-10 w-32 bg-surface-muted rounded" />
         </div>
       </div>
 
@@ -182,11 +182,11 @@ export function PageSkeleton() {
       {/* Content */}
       <div className="mt-6 grid grid-cols-3 gap-6">
         <div className="col-span-2">
-          <div className="h-6 w-32 bg-gray-800 rounded mb-4" />
+          <div className="h-6 w-32 bg-surface-muted rounded mb-4" />
           <CampaignListSkeleton count={3} />
         </div>
         <div>
-          <div className="h-6 w-24 bg-gray-800 rounded mb-4" />
+          <div className="h-6 w-24 bg-surface-muted rounded mb-4" />
           <ContentSkeleton lines={8} />
         </div>
       </div>

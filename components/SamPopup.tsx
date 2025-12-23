@@ -35,21 +35,21 @@ export default function SamPopup({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop - More subtle, workspace-style */}
       <div 
-        className="absolute inset-0 bg-gray-900/90 backdrop-blur-md"
+        className="absolute inset-0 bg-background/90 backdrop-blur-md"
         onClick={onClose}
       />
       
       {/* Popup - Workspace panel styling */}
       <div className={`
         relative w-full ${sizeClasses[size]} mx-4 
-        bg-gray-800 rounded-lg border border-gray-600
+        bg-surface-muted rounded-lg border border-gray-600
         shadow-xl shadow-black/30
         transform transition-all duration-300 ease-out
         ${className}
       `}>
         {/* Header - Workspace panel style */}
         <div className="flex items-center justify-between p-6 border-b border-gray-600 bg-gray-700/50">
-          <h2 className="text-xl font-semibold text-white">{title}</h2>
+          <h2 className="text-xl font-semibold text-foreground">{title}</h2>
           {showCloseButton && (
             <button
               onClick={onClose}
@@ -210,7 +210,7 @@ export function SamInput({
         className={`
           w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600
           focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
-          disabled:bg-gray-800 disabled:cursor-not-allowed
+          disabled:bg-surface-muted disabled:cursor-not-allowed
           ${error ? 'border-red-500 focus:ring-red-500' : ''}
         `}
       />
@@ -253,7 +253,7 @@ export function SamSelect({
         className={`
           w-full px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600
           focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
-          disabled:bg-gray-800 disabled:cursor-not-allowed
+          disabled:bg-surface-muted disabled:cursor-not-allowed
           ${error ? 'border-red-500 focus:ring-red-500' : ''}
         `}
       >

@@ -322,9 +322,9 @@ export function ChatInterface() {
                                     style={{ objectPosition: 'center 30%' }}
                                 />
                             </div>
-                            <h3 className="text-2xl font-medium text-white">Meet Sam — Your Orchestration Agent</h3>
-                            <p className="text-lg text-white font-medium">What do you want to tackle today?</p>
-                            <p className="max-w-sm text-base text-gray-300">
+                            <h3 className="text-2xl font-medium text-foreground">Meet Sam — Your Orchestration Agent</h3>
+                            <p className="text-lg text-foreground font-medium">What do you want to tackle today?</p>
+                            <p className="max-w-sm text-base text-muted-foreground">
                                 Ready to help with prospect research, campaign management, or strategic analysis.
                             </p>
                         </div>
@@ -367,7 +367,7 @@ export function ChatInterface() {
                                                 className={cn(
                                                     "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border",
                                                     msg.role === 'user'
-                                                        ? "bg-white/10 border-white/20 text-white"
+                                                        ? "bg-white/10 border-white/20 text-foreground"
                                                         : "bg-surface border-border text-foreground"
                                                 )}
                                             >

@@ -128,7 +128,7 @@ export function WorkspaceSelector({ userEmail }: WorkspaceSelectorProps) {
               >
                 <div className="flex items-center gap-3">
                   <Building2 size={14} className="text-muted-foreground" />
-                  <span className="text-sm text-white">{workspace.name}</span>
+                  <span className="text-sm text-foreground">{workspace.name}</span>
                 </div>
                 {workspace.id === currentWorkspace?.id && (
                   <Check size={14} className="text-primary" />

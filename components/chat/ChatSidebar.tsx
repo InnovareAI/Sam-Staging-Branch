@@ -139,7 +139,7 @@ export function ChatSidebar() {
                                 className={cn(
                                     "group w-full rounded-xl border border-transparent px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                                     isActive
-                                        ? "bg-primary/15 text-white shadow-glow ring-1 ring-primary/35"
+                                        ? "bg-primary/15 text-foreground shadow-glow ring-1 ring-primary/35"
                                         : "text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground"
                                 )}
                             >
@@ -148,7 +148,7 @@ export function ChatSidebar() {
                                         className={cn(
                                             "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
                                             isActive
-                                                ? "bg-primary/25 text-white"
+                                                ? "bg-primary/25 text-foreground"
                                                 : "bg-surface-highlight text-muted-foreground group-hover:text-foreground"
                                         )}
                                     >
@@ -156,7 +156,7 @@ export function ChatSidebar() {
                                     </span>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
-                                            <p className="text-sm font-semibold leading-tight text-foreground group-hover:text-white">
+                                            <p className="text-sm font-semibold leading-tight text-foreground">
                                                 {item.label}
                                             </p>
                                             {'badge' in item && item.badge && (
@@ -183,11 +183,11 @@ export function ChatSidebar() {
                     <div className="rounded-xl border border-border/60 bg-surface-highlight/40 px-4 py-4">
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/25 text-sm font-semibold text-white">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/25 text-sm font-semibold text-foreground">
                                     <User size={16} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="truncate text-sm font-medium text-white">
+                                    <p className="truncate text-sm font-medium text-foreground">
                                         {userName || 'Authenticated User'}
                                     </p>
                                     <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
@@ -197,7 +197,7 @@ export function ChatSidebar() {
                             <button
                                 type="button"
                                 onClick={handleLogout}
-                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-surface text-sm font-medium text-muted-foreground transition hover:bg-surface-highlight hover:text-white"
+                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-surface text-sm font-medium text-muted-foreground transition hover:bg-surface-highlight hover:text-foreground"
                             >
                                 <LogOut size={16} />
                                 Sign Out

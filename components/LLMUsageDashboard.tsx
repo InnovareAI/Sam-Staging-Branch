@@ -63,7 +63,7 @@ export default function LLMUsageDashboard({ onConfigureClick }: LLMUsageDashboar
 
   if (loading) {
     return (
-      <div className="p-6 bg-white dark:bg-gray-900 rounded-lg border">
+      <div className="p-6 bg-white dark:bg-background rounded-lg border">
         <div className="animate-pulse space-y-4">
           <div className="h-4 bg-gray-200 rounded w-1/4"></div>
           <div className="grid grid-cols-3 gap-4">
@@ -78,7 +78,7 @@ export default function LLMUsageDashboard({ onConfigureClick }: LLMUsageDashboar
 
   if (!stats) {
     return (
-      <div className="p-6 bg-white dark:bg-gray-900 rounded-lg border text-center">
+      <div className="p-6 bg-white dark:bg-background rounded-lg border text-center">
         <p className="text-gray-500">No usage data available</p>
       </div>
     );
@@ -136,19 +136,19 @@ export default function LLMUsageDashboard({ onConfigureClick }: LLMUsageDashboar
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="p-4 bg-white dark:bg-surface-muted rounded-lg border">
           <div className="text-sm text-gray-500 mb-1">Total Conversations</div>
           <div className="text-2xl font-bold">{formatNumber(stats.totalRequests)}</div>
           <div className="text-xs text-gray-500 mt-1">AI interactions</div>
         </div>
         
-        <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="p-4 bg-white dark:bg-surface-muted rounded-lg border">
           <div className="text-sm text-gray-500 mb-1">Total Tokens</div>
           <div className="text-2xl font-bold">{formatNumber(stats.totalTokens)}</div>
           <div className="text-xs text-gray-500 mt-1">Processed</div>
         </div>
         
-        <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border">
+        <div className="p-4 bg-white dark:bg-surface-muted rounded-lg border">
           <div className="text-sm text-gray-500 mb-1">Reliability</div>
           <div className={`text-2xl font-bold ${stats.errorRate > 5 ? 'text-red-600' : 'text-green-600'}`}>
             {(100 - stats.errorRate).toFixed(1)}%
@@ -159,11 +159,11 @@ export default function LLMUsageDashboard({ onConfigureClick }: LLMUsageDashboar
 
       {/* Usage by Model */}
       {stats.byModel.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+        <div className="bg-white dark:bg-surface-muted rounded-lg border p-6">
           <h3 className="text-lg font-semibold mb-4">Usage by Model</h3>
           <div className="space-y-3">
             {stats.byModel.map(model => (
-              <div key={model.modelId} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-md">
+              <div key={model.modelId} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-background rounded-md">
                 <div className="flex-1">
                   <div className="font-medium">{model.modelName}</div>
                   <div className="text-xs text-gray-500">{model.provider}</div>
@@ -193,7 +193,7 @@ export default function LLMUsageDashboard({ onConfigureClick }: LLMUsageDashboar
 
       {/* Usage Over Time (Simple Bar Chart) */}
       {stats.byDay.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border p-6">
+        <div className="bg-white dark:bg-surface-muted rounded-lg border p-6">
           <h3 className="text-lg font-semibold mb-4">Usage Over Time</h3>
           <div className="space-y-2">
             {stats.byDay.slice(-14).map(day => {
@@ -206,7 +206,7 @@ export default function LLMUsageDashboard({ onConfigureClick }: LLMUsageDashboar
                     {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </div>
                   
-                  <div className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-full h-6 relative overflow-hidden">
+                  <div className="flex-1 bg-gray-100 dark:bg-background rounded-full h-6 relative overflow-hidden">
                     <div
                       className="bg-blue-500 h-full rounded-full transition-all"
                       style={{ width: `${width}%` }}
@@ -245,7 +245,7 @@ export default function LLMUsageDashboard({ onConfigureClick }: LLMUsageDashboar
         <button
           onClick={loadUsage}
           disabled={loading}
-          className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
+          className="px-4 py-2 text-sm border rounded-md hover:bg-gray-50 dark:hover:bg-surface-muted"
         >
           {loading ? 'Refreshing...' : 'Refresh Data'}
         </button>
