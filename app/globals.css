@@ -3,11 +3,228 @@
 @tailwind utilities;
 
 @layer base {
+
+  /* BASE VARIABLES (shared) */
   :root {
     --font-sans: 'Inter', sans-serif;
+    --radius: 1rem;
+  }
 
+  /* ==============================================
+     LIGHT THEME 1: Classic White/Gray (Clean & Professional)
+     ============================================== */
+  .light,
+  :root:not(.dark):not(.dark-black):not(.night-sky):not(.light-warm):not(.light-cool) {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+    --header-foreground: 0 0% 35%;
+    /* Slate gray header */
+
+    --surface: 0 0% 98%;
+    --surface-muted: 0 0% 96%;
+    --surface-highlight: 0 0% 94%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+
+    --primary: 267 83% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 20%;
+
+    --accent: 199 90% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --border-strong: 0 0% 82%;
+    --input: 0 0% 90%;
+    --ring: 267 83% 55%;
+
+    --chart-1: 267 83% 55%;
+    --chart-2: 199 90% 45%;
+    --chart-3: 47 95% 53%;
+    --chart-4: 161 94% 35%;
+    --chart-5: 12 88% 55%;
+
+    --gray-50: 0 0% 98%;
+    --gray-100: 0 0% 96%;
+    --gray-200: 0 0% 92%;
+    --gray-300: 0 0% 84%;
+    --gray-400: 0 0% 70%;
+    --gray-500: 0 0% 55%;
+    --gray-600: 0 0% 42%;
+    --gray-700: 0 0% 32%;
+    --gray-800: 0 0% 22%;
+    --gray-900: 0 0% 14%;
+    --gray-950: 0 0% 8%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 267 83% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 267 83% 55%;
+  }
+
+  /* ==============================================
+     LIGHT THEME 2: Warm Cream/Ivory (Softer Feel)
+     ============================================== */
+  .light-warm {
+    --background: 40 50% 95%;
+    /* Visible cream/ivory background */
+    --foreground: 30 10% 12%;
+    --header-foreground: 25 45% 35%;
+    /* Warm brown/sienna header */
+
+    --surface: 38 45% 92%;
+    --surface-muted: 36 40% 89%;
+    --surface-highlight: 34 35% 86%;
+
+    --card: 40 50% 98%;
+    /* Cream-tinted card */
+    --card-foreground: 30 10% 12%;
+    --popover: 40 50% 98%;
+    --popover-foreground: 30 10% 12%;
+
+    --muted: 36 20% 92%;
+    --muted-foreground: 30 8% 48%;
+
+    --primary: 267 83% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 38 18% 88%;
+    --secondary-foreground: 30 10% 22%;
+
+    --accent: 199 90% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 35 18% 86%;
+    --border-strong: 32 14% 78%;
+    --input: 35 18% 86%;
+    --ring: 267 83% 55%;
+
+    --chart-1: 267 83% 55%;
+    --chart-2: 199 90% 45%;
+    --chart-3: 47 95% 53%;
+    --chart-4: 161 94% 35%;
+    --chart-5: 12 88% 55%;
+
+    --gray-50: 40 25% 98%;
+    --gray-100: 38 22% 95%;
+    --gray-200: 36 18% 90%;
+    --gray-300: 34 14% 82%;
+    --gray-400: 32 10% 68%;
+    --gray-500: 30 8% 54%;
+    --gray-600: 28 10% 42%;
+    --gray-700: 26 12% 32%;
+    --gray-800: 24 14% 22%;
+    --gray-900: 22 16% 14%;
+    --gray-950: 20 18% 8%;
+
+    --sidebar-background: 40 50% 96%;
+    /* Cream-tinted sidebar */
+    --sidebar-foreground: 30 10% 12%;
+    --sidebar-primary: 267 83% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 38 45% 90%;
+    --sidebar-accent-foreground: 30 10% 12%;
+    --sidebar-border: 35 40% 82%;
+    --sidebar-ring: 267 83% 55%;
+  }
+
+  /* ==============================================
+     LIGHT THEME 3: Cool Blue-Gray (Modern Tech)
+     ============================================== */
+  .light-cool {
+    --background: 200 60% 93%;
+    /* More saturated ice blue background */
+    /* Visible ice blue background */
+    --foreground: 220 40% 13%;
+    --header-foreground: 205 70% 40%;
+    /* Ice blue header */
+
+    --surface: 200 50% 90%;
+    --surface-muted: 200 45% 87%;
+    --surface-highlight: 200 40% 84%;
+
+    --card: 200 50% 96%;
+    /* Ice blue tinted card */
+    /* Ice blue tinted card */
+    --card-foreground: 220 40% 13%;
+    --popover: 200 50% 96%;
+    --popover-foreground: 220 40% 13%;
+
+    --muted: 220 15% 91%;
+    --muted-foreground: 220 15% 45%;
+
+    --primary: 267 83% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 18% 88%;
+    --secondary-foreground: 220 40% 20%;
+
+    --accent: 199 90% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 18% 85%;
+    --border-strong: 220 15% 78%;
+    --input: 220 18% 85%;
+    --ring: 267 83% 55%;
+
+    --chart-1: 267 83% 55%;
+    --chart-2: 199 90% 45%;
+    --chart-3: 47 95% 53%;
+    --chart-4: 161 94% 35%;
+    --chart-5: 12 88% 55%;
+
+    --gray-50: 220 20% 98%;
+    --gray-100: 220 18% 94%;
+    --gray-200: 220 16% 88%;
+    --gray-300: 220 14% 78%;
+    --gray-400: 220 12% 65%;
+    --gray-500: 220 14% 52%;
+    --gray-600: 220 18% 42%;
+    --gray-700: 220 22% 32%;
+    --gray-800: 220 28% 22%;
+    --gray-900: 220 35% 14%;
+    --gray-950: 220 40% 8%;
+
+    --sidebar-background: 200 50% 96%;
+    /* Ice blue tinted sidebar */
+    --sidebar-foreground: 220 40% 13%;
+    --sidebar-primary: 267 83% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 45% 90%;
+    --sidebar-accent-foreground: 220 40% 13%;
+    --sidebar-border: 200 40% 85%;
+    --sidebar-ring: 267 83% 55%;
+  }
+
+  /* ==============================================
+     DARK THEME (Original - Deep Blue with Purple accents)
+     ============================================== */
+  .dark {
     --background: 229 65% 5%;
     --foreground: 214 32% 92%;
+    --header-foreground: 0 0% 100%;
+    /* White header for dark mode */
 
     --surface: 225 48% 8%;
     --surface-muted: 224 44% 12%;
@@ -37,7 +254,6 @@
     --border-strong: 222 30% 28%;
     --input: 222 35% 22%;
     --ring: 267 83% 65%;
-    --radius: 1rem;
 
     --chart-1: 267 83% 65%;
     --chart-2: 199 90% 52%;
@@ -56,6 +272,7 @@
     --gray-800: 224 45% 20%;
     --gray-900: 227 60% 12%;
     --gray-950: 229 65% 6%;
+
     --sidebar-background: 225 48% 8%;
     --sidebar-foreground: 214 32% 92%;
     --sidebar-primary: 267 83% 65%;
@@ -66,16 +283,178 @@
     --sidebar-ring: 267 83% 65%;
   }
 
+  /* ==============================================
+     DARK THEME 2: True Black (OLED-Friendly)
+     ============================================== */
+  .dark-black {
+    --background: 0 0% 0%;
+    /* Pure black */
+    --foreground: 0 0% 95%;
+    --header-foreground: 0 0% 100%;
+
+    --surface: 0 0% 5%;
+    --surface-muted: 0 0% 8%;
+    --surface-highlight: 0 0% 12%;
+
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 95%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+
+    --primary: 267 83% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 95%;
+
+    --accent: 199 90% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 74% 47%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 18%;
+    --border-strong: 0 0% 25%;
+    --input: 0 0% 18%;
+    --ring: 267 83% 65%;
+
+    --chart-1: 267 83% 65%;
+    --chart-2: 199 90% 52%;
+    --chart-3: 47 95% 63%;
+    --chart-4: 161 94% 40%;
+    --chart-5: 12 88% 62%;
+
+    --gray-50: 0 0% 98%;
+    --gray-100: 0 0% 93%;
+    --gray-200: 0 0% 87%;
+    --gray-300: 0 0% 78%;
+    --gray-400: 0 0% 68%;
+    --gray-500: 0 0% 56%;
+    --gray-600: 0 0% 45%;
+    --gray-700: 0 0% 34%;
+    --gray-800: 0 0% 20%;
+    --gray-900: 0 0% 12%;
+    --gray-950: 0 0% 6%;
+
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 267 83% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 267 83% 65%;
+  }
+
+  /* ==============================================
+     DARK THEME 3: Night Sky (Deep Space with Comets)
+     ============================================== */
+  .night-sky {
+    --background: 230 45% 8%;
+    /* Deep space blue */
+    --foreground: 210 40% 96%;
+    --header-foreground: 210 100% 80%;
+    /* Soft blue glow */
+
+    --surface: 230 40% 10%;
+    --surface-muted: 230 35% 13%;
+    --surface-highlight: 230 30% 17%;
+
+    --card: 230 40% 10%;
+    --card-foreground: 210 40% 96%;
+    --popover: 230 40% 10%;
+    --popover-foreground: 210 40% 96%;
+
+    --muted: 230 28% 20%;
+    --muted-foreground: 210 25% 65%;
+
+    --primary: 267 83% 65%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 230 28% 22%;
+    --secondary-foreground: 210 40% 96%;
+
+    --accent: 199 90% 52%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 74% 47%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 230 25% 22%;
+    --border-strong: 230 22% 28%;
+    --input: 230 25% 22%;
+    --ring: 267 83% 65%;
+
+    --chart-1: 267 83% 65%;
+    --chart-2: 199 90% 52%;
+    --chart-3: 47 95% 63%;
+    --chart-4: 161 94% 40%;
+    --chart-5: 12 88% 62%;
+
+    --gray-50: 220 30% 98%;
+    --gray-100: 225 28% 93%;
+    --gray-200: 228 25% 87%;
+    --gray-300: 230 22% 78%;
+    --gray-400: 230 20% 68%;
+    --gray-500: 230 22% 56%;
+    --gray-600: 230 25% 45%;
+    --gray-700: 230 30% 34%;
+    --gray-800: 230 38% 20%;
+    --gray-900: 230 42% 12%;
+    --gray-950: 230 45% 6%;
+
+    --sidebar-background: 230 40% 10%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 267 83% 65%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 230 30% 17%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 230 25% 22%;
+    --sidebar-ring: 267 83% 65%;
+  }
+
   html {
     @apply h-full;
   }
 
   body {
     @apply min-h-screen bg-background font-sans text-foreground antialiased;
+  }
+
+  /* Light mode backgrounds */
+  .light body,
+  .light-warm body,
+  .light-cool body,
+  :root:not(.dark):not(.dark-black):not(.night-sky):not(.light-warm):not(.light-cool) body {
+    background-image:
+      radial-gradient(circle at 20% 10%, hsl(var(--primary) / 0.06), transparent 55%),
+      radial-gradient(circle at 80% 0%, hsl(var(--accent) / 0.04), transparent 50%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+  }
+
+  /* Dark mode background (original) */
+  .dark body {
     background-image:
       radial-gradient(circle at 20% 10%, hsl(var(--primary) / 0.12), transparent 55%),
       radial-gradient(circle at 80% 0%, hsl(var(--accent) / 0.08), transparent 50%),
       linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
+  }
+
+  /* True Black - minimal gradients for OLED */
+  .dark-black body {
+    background: hsl(var(--background));
+  }
+
+  /* Night Sky - deep space with subtle star-like gradients */
+  .night-sky body {
+    background-image:
+      radial-gradient(circle at 15% 20%, hsl(267 60% 25% / 0.15), transparent 40%),
+      radial-gradient(circle at 85% 15%, hsl(210 80% 30% / 0.10), transparent 35%),
+      radial-gradient(circle at 50% 80%, hsl(230 60% 20% / 0.08), transparent 45%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(230 50% 6%));
   }
 
   #__next,
@@ -90,16 +469,6 @@
   ::selection {
     background: hsl(var(--primary) / 0.28);
     color: hsl(var(--primary-foreground));
-  }
-  .dark {
-    --sidebar-background: 225 48% 8%;
-    --sidebar-foreground: 214 32% 92%;
-    --sidebar-primary: 267 83% 65%;
-    --sidebar-primary-foreground: 214 32% 96%;
-    --sidebar-accent: 224 40% 16%;
-    --sidebar-accent-foreground: 214 32% 92%;
-    --sidebar-border: 222 35% 22%;
-    --sidebar-ring: 267 83% 65%;
   }
 }
 
@@ -138,6 +507,7 @@
       opacity: 0;
       transform: translateX(-20px);
     }
+
     to {
       opacity: 1;
       transform: translateX(0);
@@ -147,11 +517,52 @@
   .animate-slide-in-left {
     animation: slideInLeft 0.4s ease-out;
   }
+
+  /* Night Sky comet animation */
+  @keyframes comet {
+    0% {
+      transform: translate(100vw, -50px) rotate(-45deg);
+      opacity: 0;
+    }
+
+    5% {
+      opacity: 0.4;
+    }
+
+    20% {
+      opacity: 0.2;
+    }
+
+    100% {
+      transform: translate(-100vw, 100vh) rotate(-45deg);
+      opacity: 0;
+    }
+  }
+
+  @keyframes comet-2 {
+    0% {
+      transform: translate(80vw, -30px) rotate(-50deg);
+      opacity: 0;
+    }
+
+    8% {
+      opacity: 0.3;
+    }
+
+    25% {
+      opacity: 0.15;
+    }
+
+    100% {
+      transform: translate(-80vw, 90vh) rotate(-50deg);
+      opacity: 0;
+    }
+  }
 }
 
 
 /* Ensure no logo shows in the auth forms */
-.cl-rootBox .cl-card > *:first-child {
+.cl-rootBox .cl-card>*:first-child {
   display: none !important;
 }
 
@@ -164,6 +575,7 @@ div[class*="cl-internal"]:has(svg) {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }

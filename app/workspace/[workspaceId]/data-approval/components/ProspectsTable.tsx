@@ -57,6 +57,16 @@ interface ProspectsTableProps {
     onCreateCampaign?: () => void;
     onDeleteSelected?: (ids: string[]) => void;
     title?: string;
+    // Pagination props (controlled by parent)
+    page?: number;
+    pageSize?: number;
+    totalPages?: number;
+    totalCount?: number;
+    hasNextPage?: boolean;
+    hasPrevPage?: boolean;
+    onNextPage?: () => void;
+    onPrevPage?: () => void;
+    onPageSizeChange?: (size: number) => void;
 }
 
 export const columns: ColumnDef<ProspectData>[] = [
@@ -132,7 +142,7 @@ export const columns: ColumnDef<ProspectData>[] = [
                 <ChevronsUpDown className="ml-2 h-4 w-4" />
             </Button>
         ),
-        cell: ({ row }) => <div className="text-sm text-gray-400">{row.getValue("campaignTag") || '-'}</div>
+        cell: ({ row }) => <div className="text-sm text-muted-foreground">{row.getValue("campaignTag") || '-'}</div>
     },
     {
         accessorKey: "qualityScore",
@@ -270,7 +280,11 @@ export const columns: ColumnDef<ProspectData>[] = [
     }
 ];
 
-export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDetails, onImportClick, onAddToCampaign, onCreateCampaign, onDeleteSelected, title }: ProspectsTableProps) {
+export function ProspectsTable({
+    data, onApprove, onReject, onDelete, onViewDetails, onImportClick, onAddToCampaign, onCreateCampaign, onDeleteSelected, title,
+    // Pagination props (optional - use internal if not provided)
+    page, pageSize: externalPageSize, totalPages, totalCount, hasNextPage, hasPrevPage, onNextPage, onPrevPage, onPageSizeChange
+}: ProspectsTableProps) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
     const [globalFilter, setGlobalFilter] = React.useState('');
@@ -512,7 +526,7 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                         <Button
                             onClick={onCreateCampaign}
                             variant="outline"
-                            className="border-gray-700 hover:bg-gray-800 text-gray-300"
+                            className="border-border hover:bg-surface-muted text-foreground"
                         >
                             <Plus className="mr-2 h-4 w-4" />
                             Create Campaign
@@ -522,7 +536,7 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                     <Button
                         onClick={downloadCSV}
                         variant="outline"
-                        className="border-gray-700 hover:bg-gray-800 text-gray-300"
+                        className="border-border hover:bg-surface-muted text-foreground"
                         disabled={table.getFilteredRowModel().rows.length === 0}
                     >
                         <Download className="mr-2 h-4 w-4" />
@@ -567,7 +581,7 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                                 )}
                             </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-80 p-4 bg-gray-900 border-gray-800">
+                        <PopoverContent className="w-80 p-4 bg-card border-border">
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <h4 className="font-medium text-sm">Quality Score (&gt;= {minQuality})</h4>
@@ -671,7 +685,7 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                 </div>
                 <div className="rounded-md border max-h-[600px] overflow-auto relative">
                     <Table>
-                        <TableHeader className="sticky top-0 z-10 bg-gray-900 shadow-sm">
+                        <TableHeader className="sticky top-0 z-10 bg-surface-muted shadow-sm">
                             {table.getHeaderGroups().map((headerGroup) => (
                                 <TableRow key={headerGroup.id}>
                                     {headerGroup.headers.map((header) => {
@@ -809,34 +823,44 @@ export function ProspectsTable({ data, onApprove, onReject, onDelete, onViewDeta
                     <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Rows per page</span>
                         <Select
-                            value={`${table.getState().pagination.pageSize}`}
+                            value={`${onPageSizeChange ? (externalPageSize || 50) : table.getState().pagination.pageSize}`}
                             onValueChange={(value) => {
-                                table.setPageSize(Number(value))
+                                if (onPageSizeChange) {
+                                    onPageSizeChange(Number(value));
+                                } else {
+                                    table.setPageSize(Number(value));
+                                }
                             }}
                         >
                             <SelectTrigger className="h-8 w-[70px]">
-                                <SelectValue placeholder={table.getState().pagination.pageSize} />
+                                <SelectValue placeholder={externalPageSize || table.getState().pagination.pageSize} />
                             </SelectTrigger>
                             <SelectContent side="top">
-                                {[10, 25, 50, 100].map((pageSize) => (
-                                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                                        {pageSize}
+                                {[10, 25, 50, 100].map((ps) => (
+                                    <SelectItem key={ps} value={`${ps}`}>
+                                        {ps}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
+                        {/* Show page info when externally controlled */}
+                        {page && totalPages && (
+                            <span className="text-sm text-muted-foreground mx-2">
+                                Page {page} of {totalPages}
+                            </span>
+                        )}
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => table.previousPage()}
-                            disabled={!table.getCanPreviousPage()}>
+                            onClick={() => onPrevPage ? onPrevPage() : table.previousPage()}
+                            disabled={onPrevPage ? !hasPrevPage : !table.getCanPreviousPage()}>
                             Previous
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => table.nextPage()}
-                            disabled={!table.getCanNextPage()}>
+                            onClick={() => onNextPage ? onNextPage() : table.nextPage()}
+                            disabled={onNextPage ? !hasNextPage : !table.getCanNextPage()}>
                             Next
                         </Button>
                     </div>

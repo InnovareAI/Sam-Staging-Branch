@@ -135,91 +135,58 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
 
     // Memoized keys that are stable across re-renders
     const LOCAL_STORAGE_KEY = useMemo(() => `sam_prospect_data_${workspaceId}`, [workspaceId]);
-    const FILTER_STATE_KEY = useMemo(() => `sam_prospect_filters_${workspaceId}`, [workspaceId]);
+    const FILTER_KEY = useMemo(() => `sam_prospect_filters_${workspaceId}`, [workspaceId]);
 
-    // Track hydration state to prevent saving defaults
-    const hasHydratedRef = useRef(false);
-    const hasSavedOnceRef = useRef(false);
-
-    // Start with defaults - will hydrate from localStorage in useEffect
-    const [filterState, setFilterState] = useState({
-        page: 1,
-        pageSize: 50,
-        sessionId: undefined as string | undefined,
-        search: '',
-        status: 'all'
-    });
-
-    // Hydrate from localStorage ONCE on mount (client-side only)
-    useEffect(() => {
-        if (hasHydratedRef.current) return; // Already hydrated
-        hasHydratedRef.current = true;
-
+    // Read saved filters from localStorage (only during initial render)
+    const getSavedFilters = useCallback(() => {
+        if (typeof window === 'undefined') return null;
         try {
-            const saved = localStorage.getItem(FILTER_STATE_KEY);
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                console.log('📦 Restored filter state from localStorage:', parsed);
-                setFilterState({
-                    page: parsed.page || 1,
-                    pageSize: parsed.pageSize || 50,
-                    sessionId: parsed.sessionId || undefined,
-                    search: parsed.search || '',
-                    status: parsed.status || 'all'
-                });
-            } else {
-                console.log('📦 No saved filter state, using defaults');
-            }
-        } catch (e) {
-            console.warn('Failed to load filter state from localStorage', e);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);  // Only run once on mount
+            const saved = localStorage.getItem(`sam_prospect_filters_${workspaceId}`);
+            return saved ? JSON.parse(saved) : null;
+        } catch { return null; }
+    }, [workspaceId]);
 
-    // Destructure for easier access
-    const page = filterState.page;
-    const pageSize = filterState.pageSize;
-    const selectedSessionId = filterState.sessionId;
-    const searchQuery = filterState.search;
-    const statusFilter = filterState.status;
+    // Initialize state from localStorage (lazy initialization)
+    const savedFilters = useMemo(() => getSavedFilters(), [getSavedFilters]);
 
-    // State setters that update the combined state
-    const setPage = useCallback((p: number | ((prev: number) => number)) => {
-        setFilterState(prev => ({ ...prev, page: typeof p === 'function' ? p(prev.page) : p }));
-    }, []);
-    const setPageSize = useCallback((s: number) => {
-        setFilterState(prev => ({ ...prev, pageSize: s, page: 1 })); // Reset page on size change
-    }, []);
-    const setSelectedSessionId = useCallback((id: string | undefined) => {
-        setFilterState(prev => ({ ...prev, sessionId: id, page: 1 })); // Reset page on session change
-    }, []);
-    const setSearchQuery = useCallback((q: string) => {
-        setFilterState(prev => ({ ...prev, search: q }));
-    }, []);
-    const setStatusFilter = useCallback((s: string) => {
-        setFilterState(prev => ({ ...prev, status: s, page: 1 })); // Reset page on filter change
-    }, []);
+    const [page, setPage] = useState(() => savedFilters?.page || 1);
+    const [pageSize, setPageSize] = useState(() => savedFilters?.pageSize || 50);
+    const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>(() => savedFilters?.sessionId);
+    const [searchQuery, setSearchQuery] = useState(() => savedFilters?.search || '');
+    const [statusFilter, setStatusFilter] = useState(() => savedFilters?.status || 'all');
 
-    // Persist filter state to localStorage when it changes
-    // Skip until we've hydrated AND saved at least once (to avoid saving defaults)
+    // Debounced save to localStorage (run 500ms after last state change)
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const hasMountedRef = useRef(false);
+
     useEffect(() => {
-        // Wait until we've hydrated from localStorage before saving
-        if (!hasHydratedRef.current) return;
-
-        // Skip the first save after hydration (that's just restoring state)
-        if (!hasSavedOnceRef.current) {
-            hasSavedOnceRef.current = true;
+        // Skip saving on first render (we just read from localStorage)
+        if (!hasMountedRef.current) {
+            hasMountedRef.current = true;
+            console.log('📦 Filter state initialized:', { page, pageSize, sessionId: selectedSessionId, search: searchQuery, status: statusFilter });
             return;
         }
 
-        try {
-            localStorage.setItem(FILTER_STATE_KEY, JSON.stringify(filterState));
-            console.log('💾 Saved filter state to localStorage:', filterState);
-        } catch (e) {
-            console.warn('Failed to save filter state to localStorage', e);
+        // Debounce saves
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filterState]);  // Save whenever filterState changes
+        saveTimeoutRef.current = setTimeout(() => {
+            const state = { page, pageSize, sessionId: selectedSessionId, search: searchQuery, status: statusFilter };
+            try {
+                localStorage.setItem(FILTER_KEY, JSON.stringify(state));
+                console.log('💾 Saved filter state:', state);
+            } catch (e) {
+                console.warn('Failed to save filter state', e);
+            }
+        }, 500);
+
+        return () => {
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+        };
+    }, [page, pageSize, selectedSessionId, searchQuery, statusFilter, FILTER_KEY]);
 
     // Fetch paginated data
     const { data, isLoading, refetch, isFetching } = useQuery({
@@ -248,10 +215,10 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
         refetchOnWindowFocus: false
     });
 
-    // Extract data from query result
-    const prospects = data?.prospects || [];
-    const sessions = data?.sessions || [];
-    const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false };
+    // Extract data from query result with stable references (memoized to prevent infinite loops)
+    const prospects = useMemo(() => data?.prospects || [], [data?.prospects]);
+    const sessions = useMemo(() => data?.sessions || [], [data?.sessions]);
+    const pagination = useMemo(() => data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false }, [data?.pagination]);
 
     const [stats, setStats] = useState({ total: 0, approved: 0, rejected: 0, pending: 0, lists: 0 });
     const [showImportModal, setShowImportModal] = useState(false);
@@ -783,6 +750,16 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                             }}
                             onCreateCampaign={() => setShowCreateCampaignModal(true)}
                             title="Prospect Database"
+                            // Pagination props (controlled by parent for state persistence)
+                            page={page}
+                            pageSize={pageSize}
+                            totalPages={pagination.totalPages}
+                            totalCount={pagination.total}
+                            hasNextPage={pagination.hasNext}
+                            hasPrevPage={pagination.hasPrev}
+                            onNextPage={handleNextPage}
+                            onPrevPage={handlePrevPage}
+                            onPageSizeChange={handlePageSizeChange}
                         />
                     </>
                 )}

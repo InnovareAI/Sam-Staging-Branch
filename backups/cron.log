@@ -12170,3 +12170,56 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main 35da199c] 🔄 Auto-backup: auto-backup-20251223_120000
+ Committer: Thorsten Linz <tvonlinz@mac.lan>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 25 files changed, 13471 insertions(+), 447 deletions(-)
+ create mode 100644 app/api/prospect-approval/enrich/route.ts
+ create mode 100644 app/api/prospect-approval/workspace-prospects/route.ts
+ create mode 100644 lib/linkedin.ts
+ create mode 100644 lib/unipile.ts
+ create mode 100644 scripts/js/apply-linkedin-safety-migrations.mjs
+ create mode 100644 scripts/js/check-all-rpcs.mjs
+ create mode 100644 scripts/js/discover-tables.mjs
+ create mode 100644 scripts/js/quick-verify-safety.mjs
+ create mode 100644 scripts/js/test-exec-rpc.mjs
+ create mode 100644 scripts/js/try-rpc-migration.mjs
+ create mode 100644 scripts/js/verify-platform.mjs
+ create mode 100644 scripts/js/verify-safety-schema.mjs
+ create mode 100644 sql/functions/quota-management.sql
+ create mode 100644 sql/migrations/065-create-linkedin-searches-table.sql
+ create mode 100644 sql/migrations/066-add-unipile-account-id-to-searches.sql
+ create mode 100644 sql/migrations/067-add-workspace-id-to-searches.sql
+ create mode 100644 supabase/migrations/20251223000000_linkedin_safety_core.sql
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251223_120000[0m
+[0;32m📅 Timestamp: Tue Dec 23 12:00:01 CET 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+

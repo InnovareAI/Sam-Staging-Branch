@@ -3,6 +3,7 @@ import './globals.css'
 import { DemoProvider } from '@/lib/contexts/DemoContext'
 import ToastContainer from '@/components/ToastContainer'
 import { Providers } from './providers'
+import { NightSkyEffect } from '@/components/ui/night-sky-effect'
 
 export const metadata: Metadata = {
   title: 'SAM AI - Sales Assistant',
@@ -21,8 +22,9 @@ export default function RootLayout({
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
       </head>
-      <body className="bg-background text-foreground antialiased">
+      <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
         <Providers>
+          <NightSkyEffect />
           <DemoProvider>
             {children}
             <ToastContainer />

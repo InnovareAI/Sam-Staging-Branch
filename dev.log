@@ -21268,3 +21268,59 @@ Sessions: [
  ✓ Compiled in 425ms (1201 modules)
  ✓ Compiled in 377ms (1201 modules)
  ✓ Compiled in 375ms (1201 modules)
+ ✓ Compiled in 367ms (1201 modules)
+ ✓ Compiled in 398ms (1201 modules)
+ ✓ Compiled in 441ms (1201 modules)
+ ✓ Compiled in 309ms (1201 modules)
+ ✓ Compiled in 407ms (1201 modules)
+ ✓ Compiled in 402ms (1201 modules)
+ ✓ Compiled in 1755ms (1201 modules)
+ ✓ Compiled in 420ms (1203 modules)
+ ✓ Compiled in 250ms (538 modules)
+ ✓ Compiled in 1701ms (1203 modules)
+ ✓ Compiled in 279ms (538 modules)
+ ✓ Compiled in 322ms (1203 modules)
+ ✓ Compiled in 463ms (1203 modules)
+ ⨯ ./components/app-sidebar.tsx
+Error:   [31mx[0m Expected '</', got 'jsx text (
+  [31m|[0m       )'
+     ,-[[36;1;4m/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/components/app-sidebar.tsx[0m:226:1]
+ [2m223[0m |                   </div>
+ [2m224[0m |                 </div>
+ [2m225[0m |               </div>
+ [2m226[0m | [35;1m,[0m[35;1m-[0m[35;1m>[0m       </SidebarFooter>
+ [2m227[0m | [35;1m`[0m[35;1m-[0m[35;1m>[0m       <SidebarRail />
+ [2m228[0m |         </Sidebar>
+ [2m229[0m |       )
+ [2m230[0m |     }
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/app-sidebar.tsx
+./app/workspace/[workspaceId]/layout.tsx
+ ✓ Compiled in 570ms (1215 modules)
+ ✓ Compiled in 394ms (1215 modules)
+ ✓ Compiled in 1763ms (1215 modules)
+ ✓ Compiled in 1825ms (1215 modules)
+ ✓ Compiled in 1866ms (1215 modules)
+ ✓ Compiled in 1834ms (1215 modules)
+ ✓ Compiled in 549ms (1215 modules)
+ ✓ Compiled in 1939ms (1215 modules)
+ ✓ Compiled in 1952ms (1215 modules)
+ ✓ Compiled in 2s (1215 modules)
+ ✓ Compiled in 425ms (1217 modules)
+ ✓ Compiled in 407ms (1217 modules)
+ ✓ Compiled in 255ms (545 modules)
+ ✓ Compiled in 409ms (1220 modules)
+ ✓ Compiled in 1862ms (1220 modules)
+ ✓ Compiled in 1869ms (1220 modules)
+ ✓ Compiled in 2.1s (1220 modules)
+ ✓ Compiled in 2.1s (1220 modules)
+ ✓ Compiled in 1908ms (1220 modules)
+ ✓ Compiled in 528ms (1220 modules)
+ ✓ Compiled in 382ms (1220 modules)
+ ✓ Compiled in 437ms (1220 modules)
+ ✓ Compiled in 443ms (1220 modules)

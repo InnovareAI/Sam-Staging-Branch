@@ -23,6 +23,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { createClient } from "@/app/lib/supabase"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 // Menu items matching ChatSidebar - from app/page.tsx
 const menuItems = [
@@ -139,7 +140,7 @@ export function AppSidebar({
             />
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-lg font-bold tracking-tight text-white">
+            <span className="text-lg font-bold tracking-tight" style={{ color: 'hsl(var(--header-foreground))' }}>
               SAM AI
             </span>
             <span className="text-xs text-muted-foreground">
@@ -164,7 +165,7 @@ export function AppSidebar({
                 className={cn(
                   "group w-full rounded-xl border border-transparent px-3 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                   isActive
-                    ? "bg-primary/15 text-white shadow-glow ring-1 ring-primary/35"
+                    ? "bg-primary/15 text-foreground shadow-glow ring-1 ring-primary/35"
                     : "text-muted-foreground hover:border-border/60 hover:bg-surface-highlight/60 hover:text-foreground"
                 )}
               >
@@ -173,14 +174,14 @@ export function AppSidebar({
                     className={cn(
                       "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
                       isActive
-                        ? "bg-primary/25 text-white"
+                        ? "bg-primary/25 text-foreground"
                         : "bg-surface-highlight text-muted-foreground group-hover:text-foreground"
                     )}
                   >
                     <IconComponent size={18} />
                   </span>
                   <div className="flex-1 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-semibold leading-tight text-foreground group-hover:text-white">
+                    <p className="text-sm font-semibold leading-tight text-foreground">
                       {item.label}
                     </p>
                     <p className="mt-1 text-xs leading-snug text-muted-foreground group-hover:text-muted-foreground/90">
@@ -201,16 +202,17 @@ export function AppSidebar({
           <div className="rounded-xl border border-border/60 bg-surface-highlight/40 px-4 py-4 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/25 text-sm font-semibold text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/25 text-sm font-semibold text-foreground">
                   <User size={16} />
                 </div>
                 <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                  <p className="truncate text-sm font-medium text-white">
+                  <p className="truncate text-sm font-medium text-foreground">
                     {user?.name || 'User'}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">{user?.email || ''}</p>
                   <p className="text-xs text-green-500">Active session</p>
                 </div>
+                <ThemeToggle />
               </div>
               <button
                 onClick={handleLogout}
