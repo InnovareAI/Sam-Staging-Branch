@@ -1949,7 +1949,7 @@ const KnowledgeBase: React.FC = () => {
     pricing: ['pricing', 'roi'],
     products: ['products', 'product'],
     sam_onboarding: ['sam-onboarding', 'sam_onboarding'],
-    collateral: ['collateral', 'sales-collateral', 'battlecards', 'one-pagers', 'decks', 'email-templates', 'snippets', 'templates', 'inquiry-responses'],
+    collateral: ['collateral', 'sales-collateral', 'battlecards', 'one-pagers', 'decks', 'email-templates', 'snippets', 'templates', 'inquiry-responses', 'conversation-snippets'],
     success: ['success', 'stories', 'success-stories', 'case-studies'],
     tone: ['tone', 'tone-of-voice', 'brand-voice']
   };

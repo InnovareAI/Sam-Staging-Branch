@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, Mic, Sparkles, Smile, Copy, Volume2, VolumeX, MessageSquare, AudioLines, FileText, X, Archive } from 'lucide-react';
+import { Send, Paperclip, Mic, Sparkles, Smile, Copy, Volume2, VolumeX, MessageSquare, AudioLines, FileText, X, Archive, BookmarkPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,6 +30,32 @@ export function ChatInterface() {
     const [copied, setCopied] = useState(false);
     const [pendingAttachments, setPendingAttachments] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
+    const [savedToKb, setSavedToKb] = useState<string | null>(null); // Track which message was saved
+
+    // Save conversation snippet to Knowledge Base
+    const saveToKnowledgeBase = async (message: SamThreadMessage) => {
+        try {
+            setSavedToKb(message.id);
+            const response = await fetch('/api/knowledge-base/documents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: `Conversation Snippet - ${new Date().toLocaleDateString()}`,
+                    content: message.content,
+                    category: 'conversation-snippets',
+                    source: 'chat',
+                    workspace_id: currentThread?.workspace_id,
+                }),
+            });
+
+            if (!response.ok) throw new Error('Failed to save to KB');
+
+            setTimeout(() => setSavedToKb(null), 2000);
+        } catch (error) {
+            console.error('Error saving to KB:', error);
+            setSavedToKb(null);
+        }
+    };
 
     // Voice recording state
     const [isRecording, setIsRecording] = useState(false);
