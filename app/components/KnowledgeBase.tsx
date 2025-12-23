@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Brain, Target, Users, Building2, TrendingUp, Plus, Settings, Upload, FileText, Package, MessageSquare, Cpu, Clock, AlertCircle, Mic, Briefcase, Trophy, GitBranch, Mail, Shield, UserCheck, MessageCircle, DollarSign, Zap, BarChart, Bot, HelpCircle, Globe, ArrowLeft, Trash2, Activity, CheckCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { useSamContext } from '@/components/chat/SamContextProvider';
 import SAMOnboarding from './SAMOnboarding';
 import KnowledgeBaseAnalytics from './KnowledgeBaseAnalytics';
 import ICPConfigEditable from './ICPConfigEditable';
@@ -1653,6 +1654,7 @@ function ChunkDrawer() {
 }
 
 const KnowledgeBase: React.FC = () => {
+  const { contextData } = useSamContext();
   const [activeSection, setActiveSection] = useState('overview');
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(true);
@@ -2334,6 +2336,11 @@ const KnowledgeBase: React.FC = () => {
   };
 
   const healthMetrics = [
+    {
+      label: 'SAM Readiness', // Changed label to match Context Panel conceptual model
+      value: contextData?.knowledge?.completeness || 17, // Synchronized with Context Panel
+      description: 'Overall knowledge readiness'
+    },
     {
       label: 'ICP Configuration',
       value: icpCount === null ? null : Math.min(95, 40 + (icpCount * 15)),
