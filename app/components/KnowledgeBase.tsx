@@ -2432,33 +2432,37 @@ const KnowledgeBase: React.FC = () => {
                   </button>
 
                   {/* Individual ICP Tabs */}
-                  {Object.values(icpProfiles).map((icp) => {
-                    // Calculate ICP-specific completion (simplified)
-                    const icpCompletion = Math.round(calculateCategoryScore(customerIntelSections));
-                    return (
-                      <button
-                        key={icp.id}
-                        onClick={() => setSelectedIcpId(icp.id)}
-                        className={cn(
-                          "flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-[1px]",
-                          selectedIcpId === icp.id
-                            ? "border-primary text-primary bg-primary/5"
-                            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-surface-muted"
-                        )}
-                      >
-                        <Target size={16} />
-                        <span>{icp.name || icp.icp_name || 'Unnamed ICP'}</span>
-                        <span className={cn(
-                          "ml-1 text-xs px-2 py-0.5 rounded-full",
-                          icpCompletion >= 70 ? "bg-green-500/20 text-green-400" :
-                            icpCompletion >= 40 ? "bg-yellow-500/20 text-yellow-400" :
-                              "bg-red-500/20 text-red-400"
-                        )}>
-                          {icpCompletion}%
-                        </span>
-                      </button>
-                    );
-                  })}
+                  {Object.values(icpProfiles)
+                    .sort((a, b) => (a.name || a.icp_name || '').localeCompare(b.name || b.icp_name || ''))
+                    .map((icp) => {
+                      // Calculate ICP-specific completion (simplified)
+                      const icpCompletion = Math.round(calculateCategoryScore(customerIntelSections));
+                      const fullName = icp.name || icp.icp_name || 'Unnamed ICP';
+                      return (
+                        <button
+                          key={icp.id}
+                          onClick={() => setSelectedIcpId(icp.id)}
+                          className={cn(
+                            "flex items-center gap-2 px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-[1px]",
+                            selectedIcpId === icp.id
+                              ? "border-primary text-primary bg-primary/5"
+                              : "border-transparent text-muted-foreground hover:text-foreground hover:bg-surface-muted"
+                          )}
+                          title={fullName}
+                        >
+                          <Target size={16} />
+                          <span>{fullName}</span>
+                          <span className={cn(
+                            "ml-1 text-xs px-2 py-0.5 rounded-full",
+                            icpCompletion >= 70 ? "bg-green-500/20 text-green-400" :
+                              icpCompletion >= 40 ? "bg-yellow-500/20 text-yellow-400" :
+                                "bg-red-500/20 text-red-400"
+                          )}>
+                            {icpCompletion}%
+                          </span>
+                        </button>
+                      );
+                    })}
 
                   {/* Add ICP Button */}
                   <button
