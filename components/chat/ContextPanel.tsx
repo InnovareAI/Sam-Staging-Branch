@@ -229,13 +229,23 @@ export function ContextPanel() {
                                         key={idx}
                                         onClick={() => {
                                             if (action.value === 'discovery') setActiveTab('discovery');
-                                            if (action.value === 'icp') setActiveTab('strategy');
+                                            if (action.value === 'strategy' || action.value === 'icp') setActiveTab('strategy');
+                                            if (action.value === 'knowledge') setActiveTab('knowledge');
+                                            if (action.value === 'stats' || action.value === 'pipeline') setActiveTab('stats');
+                                            if (action.value === 'research_competitors') triggerResearch('competitors');
+                                            if (action.value === 'research_trends') triggerResearch('trends');
+                                            if (action.value === 'research_news') triggerResearch('news');
                                         }}
                                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-medium text-slate-300 hover:bg-primary/20 hover:text-white transition-all"
                                     >
                                         {action.icon === 'Target' && <Target size={12} />}
                                         {action.icon === 'PenTool' && <PenTool size={12} />}
                                         {action.icon === 'Search' && <Search size={12} />}
+                                        {action.icon === 'Brain' && <Brain size={12} />}
+                                        {action.icon === 'Users' && <Users size={12} />}
+                                        {action.icon === 'BarChart3' && <BarChart3 size={12} />}
+                                        {action.icon === 'Zap' && <Zap size={12} />}
+                                        {action.icon === 'FileText' && <FileText size={12} />}
                                         {action.label}
                                     </button>
                                 ))}

@@ -112,6 +112,10 @@ export function SamContextProvider({ children }: { children: ReactNode }) {
                 insights: [
                     { type: 'strategy', content: "Sam is analyzing competitor pricing based on your query.", priority: 'medium' },
                     ...prev.insights.filter(i => i.type !== 'strategy')
+                ],
+                suggestedActions: [
+                    { label: "Update Pricing", value: "knowledge", icon: "Brain" },
+                    { label: "Competitor Analysis", value: "research_competitors", icon: "Users" }
                 ]
             }));
         } else if (lowerMessage.includes('lead') || lowerMessage.includes('prospect') || lowerMessage.includes('find')) {
@@ -127,6 +131,36 @@ export function SamContextProvider({ children }: { children: ReactNode }) {
             }));
         } else if (lowerMessage.includes('campaign') || lowerMessage.includes('stats') || lowerMessage.includes('performance')) {
             setActiveTab('stats');
+            setIntelligence(prev => ({
+                ...prev,
+                currentGoal: "Performance Optimization",
+                samStrategy: "Reviewing your campaign response rates and sentiment analysis.",
+                suggestedActions: [
+                    { label: "Analyze Pipeline", value: "pipeline", icon: "BarChart3" },
+                    { label: "Optimize Messaging", value: "strategy", icon: "Zap" }
+                ]
+            }));
+        } else if (lowerMessage.includes('competitor') || lowerMessage.includes('rival') || lowerMessage.includes('alternative')) {
+            setActiveTab('strategy');
+            setIntelligence(prev => ({
+                ...prev,
+                currentGoal: "Competitive Positioning",
+                samStrategy: "Differentiating your product against key rivals in the market.",
+                suggestedActions: [
+                    { label: "Research Rivals", value: "research_competitors", icon: "Users" },
+                    { label: "Value Prop Audit", value: "knowledge", icon: "Target" }
+                ]
+            }));
+        } else if (lowerMessage.includes('onboarding') || lowerMessage.includes('setup') || lowerMessage.includes('start')) {
+            setIntelligence(prev => ({
+                ...prev,
+                currentGoal: "Product Setup",
+                samStrategy: "Ensuring SAM has the foundational knowledge to act as your agent.",
+                suggestedActions: [
+                    { label: "Add Documents", value: "knowledge", icon: "FileText" },
+                    { label: "Verify ICP", value: "strategy", icon: "Target" }
+                ]
+            }));
         }
     }, []);
 
