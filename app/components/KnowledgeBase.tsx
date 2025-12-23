@@ -2492,36 +2492,17 @@ const KnowledgeBase: React.FC = () => {
 
                 {/* Row 1: SAM Readiness (Large) + Quick Upload (Medium) */}
                 <div className="col-span-12 lg:col-span-7 bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 shadow-xl">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center mb-4">
                     <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                       <Sparkles className="text-primary" size={20} />
                       SAM Readiness
                     </h3>
-                    <span className="text-3xl font-bold text-primary">{completionDisplay}</span>
                   </div>
 
-                  {/* Circular Progress Visualization */}
+                  {/* Large Readiness Number */}
                   <div className="flex items-center gap-6">
-                    <div className="relative w-32 h-32 flex-shrink-0">
-                      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-700" />
-                        <circle
-                          cx="50" cy="50" r="40" fill="none" strokeWidth="8" strokeLinecap="round"
-                          stroke="url(#progressGradient)"
-                          strokeDasharray={`${(knowledgeCompletion || 0) * 2.51} 251`}
-                          className="transition-all duration-1000"
-                        />
-                        <defs>
-                          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#3B82F6" />
-                            <stop offset="50%" stopColor="#8B5CF6" />
-                            <stop offset="100%" stopColor="#EC4899" />
-                          </linearGradient>
-                        </defs>
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Bot className="text-primary" size={28} />
-                      </div>
+                    <div className="flex-shrink-0">
+                      <span className="text-5xl font-bold text-primary">{Math.round(knowledgeCompletion || 0)}%</span>
                     </div>
 
                     {/* Category Breakdown Bars */}
@@ -2660,39 +2641,48 @@ const KnowledgeBase: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Row 3: SAM Activity Feed (Wide) + Execution Assets (Narrow) */}
-                {/* SAM Activity Feed */}
+                {/* Row 3: Campaign Insights (Wide) + Execution Assets (Narrow) */}
+                {/* Campaign Insights */}
                 <div className="col-span-12 lg:col-span-8 bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-sm rounded-2xl p-5 border border-slate-700/50 shadow-xl">
                   <h4 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Activity className="text-primary" size={16} />
-                    SAM Activity
-                    <span className="ml-2 w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                    <span className="text-xs text-muted-foreground font-normal">Live</span>
+                    <TrendingUp className="text-primary" size={16} />
+                    Campaign Insights
+                    <span className="ml-2 px-2 py-0.5 text-xs bg-primary/20 text-primary rounded-full">Coming Soon</span>
                   </h4>
-                  <div className="space-y-3 max-h-48 overflow-y-auto">
-                    {kbFeedback?.recent_activity?.slice(0, 5).map((activity: any, idx: number) => (
-                      <div key={idx} className="flex items-center gap-3 text-sm">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Bot size={14} className="text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-foreground text-sm truncate">{activity.message || 'SAM used knowledge for a campaign'}</p>
-                          <p className="text-xs text-muted-foreground">{activity.timestamp || 'Just now'}</p>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      SAM will analyze your campaigns and proactively surface:
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="flex items-start gap-2 p-3 bg-slate-800/50 rounded-lg">
+                        <BarChart size={16} className="text-cyan-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-foreground font-medium">Response Patterns</p>
+                          <p className="text-xs text-muted-foreground">Which ICPs respond best to which messaging</p>
                         </div>
                       </div>
-                    )) || (
-                        <>
-                          <div className="flex items-center gap-3 text-sm">
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                              <Bot size={14} className="text-primary" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-foreground">SAM ready to use your knowledge</p>
-                              <p className="text-xs text-muted-foreground">Upload content to see activity</p>
-                            </div>
-                          </div>
-                        </>
-                      )}
+                      <div className="flex items-start gap-2 p-3 bg-slate-800/50 rounded-lg">
+                        <AlertCircle size={16} className="text-yellow-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-foreground font-medium">Knowledge Gaps</p>
+                          <p className="text-xs text-muted-foreground">Missing content SAM needs for better campaigns</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2 p-3 bg-slate-800/50 rounded-lg">
+                        <MessageSquare size={16} className="text-green-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-foreground font-medium">Top Performing Hooks</p>
+                          <p className="text-xs text-muted-foreground">Openers that get the best reply rates</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2 p-3 bg-slate-800/50 rounded-lg">
+                        <Brain size={16} className="text-purple-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-foreground font-medium">Strategy Suggestions</p>
+                          <p className="text-xs text-muted-foreground">Proactive recommendations to improve conversion</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
