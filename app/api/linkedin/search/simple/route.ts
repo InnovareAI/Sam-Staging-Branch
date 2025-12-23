@@ -3,6 +3,9 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/app/lib/supabase';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
+import { unipileRequest } from '@/lib/unipile';
+import { checkSearchQuota, saveSearchResults } from '@/lib/linkedin';
+import { logger } from '@/lib/logging';
 
 // Extend function timeout to 60 seconds for pagination across many pages
 export const maxDuration = 60;
@@ -382,51 +385,40 @@ export async function POST(request: NextRequest) {
         console.warn('   Recommendation: Upgrade to Sales Navigator for full filtering');
       }
 
-      if (warnings.length > 0) {
-        console.warn('⚠️  DATA QUALITY WARNINGS:', warnings);
-      }
-    }
+      // Use selected account for the search
+      const linkedinAccount = {
+        unipile_account_id: selectedAccount.id,
+        account_name: selectedAccount.name || selectedAccount.connection_params?.im?.publicIdentifier,
+        account_identifier: selectedAccount.connection_params?.im?.email || selectedAccount.connection_params?.im?.username
+      };
 
-    // Use selected account for the search
-    const linkedinAccount = {
-      unipile_account_id: selectedAccount.id,
-      account_name: selectedAccount.name || selectedAccount.connection_params?.im?.publicIdentifier,
-      account_identifier: selectedAccount.connection_params?.im?.email || selectedAccount.connection_params?.im?.username
-    };
+      // Helper function to lookup parameter IDs from Unipile
+      // Supports LOCATION, COMPANY, INDUSTRY, SCHOOL, etc.
+      async function lookupParameterIds(
+        paramType: 'LOCATION' | 'COMPANY' | 'INDUSTRY' | 'SCHOOL',
+        keywords: string
+      ): Promise<string[] | null> {
+        try {
+          // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
+          const paramUrl = `https://${unipileDSN}/api/v1/linkedin/search/parameters`;
 
-    // Helper function to lookup parameter IDs from Unipile
-    // Supports LOCATION, COMPANY, INDUSTRY, SCHOOL, etc.
-    async function lookupParameterIds(
-      paramType: 'LOCATION' | 'COMPANY' | 'INDUSTRY' | 'SCHOOL',
-      keywords: string
-    ): Promise<string[] | null> {
-      try {
-        // UNIPILE_DSN format: "api6.unipile.com:13670" - already includes domain and port
-        const paramUrl = `https://${unipileDSN}/api/v1/linkedin/search/parameters`;
+          const params = new URLSearchParams({
+            account_id: linkedinAccount.unipile_account_id,
+            type: paramType,
+            keywords: keywords,
+            limit: '5' // Get top 5 matches
+          });
 
-        const params = new URLSearchParams({
-          account_id: linkedinAccount.unipile_account_id,
-          type: paramType,
-          keywords: keywords,
-          limit: '5' // Get top 5 matches
-        });
+          console.log(`🔍 Looking up ${paramType} IDs for: "${keywords}"`);
+          console.log(`🔍 Request URL: ${paramUrl}?${params}`);
 
-        console.log(`🔍 Looking up ${paramType} IDs for: "${keywords}"`);
-        console.log(`🔍 Request URL: ${paramUrl}?${params}`);
+          const response = await fetch(`${paramUrl}?${params}`, {
+            headers: {
+              'X-API-KEY': process.env.UNIPILE_API_KEY!,
+              'Accept': 'application/json'
+            }
+          });
 
-        const response = await fetch(`${paramUrl}?${params}`, {
-          headers: {
-            'X-API-KEY': process.env.UNIPILE_API_KEY!,
-            'Accept': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`❌ ${paramType} lookup failed: ${response.status}`);
-          console.error(`❌ Error body:`, errorText);
-
-          // If we get a 404, the account might not support parameter lookup
           if (response.status === 404) {
             console.warn(`⚠️ ${paramType} lookup endpoint not available - account may not support this feature`);
           }
@@ -770,100 +762,79 @@ export async function POST(request: NextRequest) {
 
       console.log(`🔍 Fetching page ${pagesFetched + 1}... (current items: ${allItems.length})`);
 
-      const response = await fetch(`${unipileUrl}?${pageParams}`, {
-        method: 'POST',
-        headers: {
-          'X-API-KEY': process.env.UNIPILE_API_KEY!,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(unipilePayload)
-      });
+      try {
+        const searchResults = await unipileRequest(`/api/v1/linkedin/search?${pageParams}`, {
+          method: 'POST',
+          body: JSON.stringify(unipilePayload)
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ UNIPILE API ERROR on page', pagesFetched + 1);
-        console.error('❌ Status:', response.status, response.statusText);
-        console.error('❌ Error Body:', errorText);
+        const items = searchResults.items || [];
+        totalAvailable = searchResults.paging?.total_count || totalAvailable;
 
-        // If we already have some results, return what we have
+        // Transform results
+        const pageItems = items.map((item: any) => ({
+          ...item,
+          fullName: item.name || `${item.first_name || ''} ${item.last_name || ''}`.trim(),
+          linkedinUrl: item.profile_url || item.profile_link
+        }));
+
+        allItems = allItems.concat(pageItems);
+        pagesFetched++;
+
+        console.log(`✅ Page ${pagesFetched}: Got ${pageItems.length} results (total: ${allItems.length}/${totalAvailable})`);
+
+        // Update cursor - Note: Unipile cursor is often at ROOT level OR inside paging
+        currentCursor = searchResults.cursor || searchResults.paging?.cursor || null;
+
+        // Stop conditions
+        const effectiveMaxPages = Math.min(max_pages, 50);
+        if (!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= effectiveMaxPages) {
+          break;
+        }
+
+        // Delay between pages
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+      } catch (err: any) {
+        if (err.message === 'LINKEDIN_COMMERCIAL_LIMIT') {
+          console.error('🛑 Stopping search due to LinkedIn Commercial Use Limit');
+          warnings.push('LinkedIn Commercial Use Limit reached. Results may be truncated.');
+          break;
+        }
+
+        console.error('❌ UNIPILE API ERROR on page', pagesFetched + 1, err.message);
+
         if (allItems.length > 0) {
           console.warn(`⚠️ Error on page ${pagesFetched + 1}, returning ${allItems.length} results collected so far`);
           break;
         }
-
-        // Parse error if it's JSON
-        let errorDetails = errorText;
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorDetails = errorJson.message || errorJson.error || errorText;
-        } catch {
-          // Not JSON, use raw text
-        }
-
-        return NextResponse.json({
-          success: false,
-          error: `LinkedIn search failed: ${response.status}`,
-          details: errorDetails,
-          debug: {
-            url: `${unipileUrl}?${pageParams}`,
-            payload: unipilePayload,
-            status: response.status
-          }
-        }, { status: 500 });
+        throw err;
       }
-
-      const pageData = await response.json();
-      pagesFetched++;
-      totalAvailable = pageData.paging?.total_count || totalAvailable;
-
-      // Add items from this page
-      const pageItems = pageData.items || [];
-      allItems = allItems.concat(pageItems);
-
-      console.log(`✅ Page ${pagesFetched}: Got ${pageItems.length} results (total: ${allItems.length}/${totalAvailable})`);
-
-      // Update cursor for next page
-      // CRITICAL FIX: Cursor is at ROOT level of response, NOT inside paging object
-      // Response structure: { cursor: "...", items: [...], paging: {start, page_count, total_count} }
-      currentCursor = pageData.cursor || null;
-
-      // DEBUG: Log pagination details - ROOT level cursor + paging object
-      console.log('🔵 PAGINATION DEBUG - Root cursor:', pageData.cursor ? 'PRESENT' : 'NULL');
-      console.log('🔵 PAGINATION DEBUG - Paging object:', JSON.stringify(pageData.paging, null, 2));
-      console.log('🔵 PAGINATION DEBUG:', {
-        cursor: currentCursor ? currentCursor.substring(0, 50) + '...' : 'NO CURSOR',
-        hasCursor: !!currentCursor,
-        totalItems: allItems.length,
-        totalAvailableFromAPI: totalAvailable,
-        effectiveMax: effectiveMaxResults,
-        reachedMax: allItems.length >= effectiveMaxResults,
-        fetchAllEnabled: fetch_all,
-        pagesFetched,
-        willContinue: !(!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= 50)
-      });
-
-      // Stop conditions:
-      // 1. No more pages (no cursor)
-      // 2. Reached target_count limit
-      // 3. Not in fetch_all mode (only fetch first page)
-      // 4. Reached max_pages limit (configurable, default 10, max safety 50)
-      const effectiveMaxPages = Math.min(max_pages, 50); // Safety cap at 50
-      if (!currentCursor || allItems.length >= effectiveMaxResults || !fetch_all || pagesFetched >= effectiveMaxPages) {
-        if (pagesFetched >= effectiveMaxPages && currentCursor) {
-          console.log(`⚠️ Stopped at page ${pagesFetched} due to max_pages limit (more results available)`);
-        }
-        break;
-      }
-
-      // Rate limiting: wait 200ms between requests (reduced from 500ms for faster pagination)
-      await new Promise(resolve => setTimeout(resolve, 200));
-
     } while (true);
 
     // Trim to max results if we fetched more
     if (allItems.length > effectiveMaxResults) {
       allItems = allItems.slice(0, effectiveMaxResults);
+    }
+
+    // Save to database for quota tracking and history
+    if (allItems.length > 0) {
+      try {
+        await saveSearchResults(supabaseAdmin(), {
+          user_id: user.id,
+          workspace_id: workspaceId!, // Use verified workspaceId
+          unipile_account_id: linkedinAccount.unipile_account_id,
+          search_query: keywords || (search_criteria as any)?.url || 'LinkedIn Search',
+          search_params: unipilePayload,
+          api_type: api,
+          category: 'people',
+          results_count: allItems.length,
+          prospects: allItems.slice(0, 50), // Store sample prospects only
+          cursor: currentCursor || undefined
+        });
+      } catch (persistenceError) {
+        console.error('⚠️ Search persistence failed (non-blocking):', persistenceError);
+      }
     }
 
     console.log('🔵 ═══════════════════════════════════════════════════');

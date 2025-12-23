@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
     Sheet,
     SheetContent,
@@ -10,8 +11,9 @@ import {
 import { ProspectData } from "./types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, Linkedin, MapPin, Building, Star, Phone, Globe, Calendar, User, CheckCircle, XCircle, Trash2, Upload } from "lucide-react";
+import { Mail, Linkedin, MapPin, Building, Star, Phone, Globe, Calendar, User, CheckCircle, XCircle, Trash2, Upload, RefreshCw, Search, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { toastSuccess, toastError, toastInfo } from '@/lib/toast';
 
 interface ProspectDetailsSheetProps {
     prospect: ProspectData | null;
@@ -21,10 +23,90 @@ interface ProspectDetailsSheetProps {
     onReject?: (ids: string[]) => void;
     onDelete?: (id: string) => void;
     onAddToCampaign?: (ids: string[]) => void;
+    workspaceId?: string;
 }
 
-export function ProspectDetailsSheet({ prospect, open, onOpenChange, onApprove, onReject, onDelete, onAddToCampaign }: ProspectDetailsSheetProps) {
+export function ProspectDetailsSheet({ prospect, open, onOpenChange, onApprove, onReject, onDelete, onAddToCampaign, workspaceId }: ProspectDetailsSheetProps) {
+    const [isEnrichingEmail, setIsEnrichingEmail] = useState(false);
+    const [isRefreshingProfile, setIsRefreshingProfile] = useState(false);
+
     if (!prospect) return null;
+
+    const handleFindEmail = async () => {
+        if (!workspaceId) {
+            toastError('Workspace ID required for enrichment');
+            return;
+        }
+
+        setIsEnrichingEmail(true);
+        try {
+            const response = await fetch('/api/prospect-approval/enrich', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prospect_id: prospect.id,
+                    action: 'find_email',
+                    workspace_id: workspaceId
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                if (data.status === 'already_enriched') {
+                    toastInfo(`Email already exists: ${data.email}`);
+                } else if (data.email) {
+                    toastSuccess(`Found email: ${data.email}` + (data.industry ? ` | Industry: ${data.industry}` : ''));
+                } else if (data.industry) {
+                    toastSuccess(`Found industry: ${data.industry}`);
+                } else {
+                    toastSuccess('Enrichment data saved.');
+                }
+            } else if (data.status === 'not_found') {
+                toastInfo('No public email or industry found on this profile.');
+            } else {
+                toastError(data.error || data.message || 'Failed to start email lookup');
+            }
+        } catch (error) {
+            console.error('Find email error:', error);
+            toastError('Failed to start email lookup');
+        } finally {
+            setIsEnrichingEmail(false);
+        }
+    };
+
+    const handleRefreshProfile = async () => {
+        if (!workspaceId) {
+            toastError('Workspace ID required for enrichment');
+            return;
+        }
+
+        setIsRefreshingProfile(true);
+        try {
+            const response = await fetch('/api/prospect-approval/enrich', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prospect_id: prospect.id,
+                    action: 'refresh_profile',
+                    workspace_id: workspaceId
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                toastSuccess('Profile refresh queued. Data will update shortly.');
+            } else {
+                toastError(data.error || 'Failed to start profile refresh');
+            }
+        } catch (error) {
+            console.error('Refresh profile error:', error);
+            toastError('Failed to start profile refresh');
+        } finally {
+            setIsRefreshingProfile(false);
+        }
+    };
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -75,7 +157,23 @@ export function ProspectDetailsSheet({ prospect, open, onOpenChange, onApprove, 
                             <div className="flex items-center gap-3 text-sm">
                                 <Mail className="w-4 h-4 text-muted-foreground" />
                                 <span className="font-medium text-muted-foreground w-20">Email:</span>
-                                <span>{prospect.email || 'N/A'}</span>
+                                <span className="flex-1">{prospect.email || 'N/A'}</span>
+                                {!prospect.email && workspaceId && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={handleFindEmail}
+                                        disabled={isEnrichingEmail}
+                                        className="h-7 text-xs"
+                                    >
+                                        {isEnrichingEmail ? (
+                                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                        ) : (
+                                            <Search className="w-3 h-3 mr-1" />
+                                        )}
+                                        Enrich
+                                    </Button>
+                                )}
                             </div>
                             <div className="flex items-center gap-3 text-sm">
                                 <Phone className="w-4 h-4 text-muted-foreground" />
@@ -182,6 +280,38 @@ export function ProspectDetailsSheet({ prospect, open, onOpenChange, onApprove, 
                         <Upload className="w-4 h-4 mr-2" />
                         Add to Campaign
                     </Button>
+                    <Separator />
+                    {/* Enrichment Buttons */}
+                    {workspaceId && (
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={handleFindEmail}
+                                disabled={isEnrichingEmail || !!prospect.email}
+                                className="flex-1"
+                                variant="outline"
+                            >
+                                {isEnrichingEmail ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Search className="w-4 h-4 mr-2" />
+                                )}
+                                {prospect.email ? 'Enriched' : 'Find Email/Industry'}
+                            </Button>
+                            <Button
+                                onClick={handleRefreshProfile}
+                                disabled={isRefreshingProfile || !prospect.linkedinUrl}
+                                className="flex-1"
+                                variant="outline"
+                            >
+                                {isRefreshingProfile ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="w-4 h-4 mr-2" />
+                                )}
+                                Refresh Profile
+                            </Button>
+                        </div>
+                    )}
                     <Separator />
                     <div className="flex gap-2">
                         <Button

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/app/lib/supabase-client';
 import { ProspectStats } from './ProspectStats';
@@ -28,78 +28,97 @@ function calculateQualityScore(prospect: Partial<ProspectData>): number {
     return Math.min(score, 100);
 }
 
-// Fetch function
-async function fetchApprovalSessions(workspaceId?: string): Promise<ProspectData[]> {
-    try {
-        const url = workspaceId
-            ? `/api/prospect-approval/sessions/list?workspace_id=${workspaceId}`
-            : '/api/prospect-approval/sessions/list';
+// Pagination state type
+interface PaginationState {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+}
 
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch sessions');
+// Session summary type for list filtering
+interface SessionSummary {
+    id: string;
+    name: string;
+    count: number;
+}
+
+// Fetch function - uses unified paginated API
+async function fetchWorkspaceProspects(
+    workspaceId: string,
+    page: number = 1,
+    limit: number = 50,
+    sessionId?: string,
+    status?: string,
+    search?: string
+): Promise<{ prospects: ProspectData[]; sessions: SessionSummary[]; pagination: PaginationState }> {
+    try {
+        const params = new URLSearchParams({
+            page: String(page),
+            limit: String(limit),
+            status: status || 'all'
+        });
+        if (sessionId) params.set('session_id', sessionId);
+        if (search) params.set('search', search);
+
+        const response = await fetch(`/api/prospect-approval/workspace-prospects?${params}`);
+        if (!response.ok) throw new Error('Failed to fetch prospects');
 
         const data = await response.json();
-        if (!data.success || !data.sessions || data.sessions.length === 0) {
-            return [];
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to fetch prospects');
         }
 
-        // Limit to recent sessions for performance
-        const recentSessions = data.sessions.slice(0, 10);
-
-        // Optimize: Fetch prospects for all sessions in parallel
-        const prospectPromises = recentSessions.map(async (session: any) => {
-            const response = await fetch(
-                `/api/prospect-approval/prospects?session_id=${session.id}&page=1&limit=1000&status=all`
-            );
-            if (!response.ok) return [];
-
-            const prospectsData = await response.json();
-            if (!prospectsData.success || !prospectsData.prospects) return [];
-
-            return prospectsData.prospects
-                .filter((p: any) => p.approval_status !== 'transferred_to_campaign')
-                .map((p: any) => {
-                    const prospect: ProspectData = {
-                        id: p.prospect_id,
-                        name: p.name,
-                        title: p.title || '',
-                        company: p.company?.name || '',
-                        industry: p.company?.industry || '',
-                        location: p.location || '',
-                        email: p.contact?.email || '',
-                        linkedinUrl: p.contact?.linkedin_url || '',
-                        phone: p.contact?.phone || '',
-                        connectionDegree: p.connection_degree ? `${p.connection_degree}${p.connection_degree === 1 ? 'st' : p.connection_degree === 2 ? 'nd' : 'rd'}` : undefined,
-                        source: p.source || 'linkedin',
-                        enrichmentScore: p.enrichment_score || 0,
-                        confidence: (p.enrichment_score || 80) / 100,
-                        approvalStatus: (p.approval_status || 'pending') as 'pending' | 'approved' | 'rejected',
-                        campaignName: session.campaign_name || `Session-${session.id.slice(0, 8)}`,
-                        campaignTag: session.campaign_tag || session.campaign_name || session.prospect_source || 'linkedin',
-                        sessionId: session.id,
-                        uploaded: false,
-                        qualityScore: 0,
-                        createdAt: p.created_at ? new Date(p.created_at) : session.created_at ? new Date(session.created_at) : new Date(),
-                        researchedBy: session.user_email || session.user_name || 'Unknown',
-                        researchedByInitials: session.user_initials || 'U',
-                        linkedinUserId: p.linkedin_user_id || p.contact?.linkedin_user_id || undefined
-                    };
-                    prospect.qualityScore = calculateQualityScore(prospect);
-                    return prospect;
-                });
+        // Map API response to ProspectData format
+        const prospects: ProspectData[] = (data.prospects || []).map((p: any) => {
+            const prospect: ProspectData = {
+                id: p.id,
+                name: p.name || 'Unknown',
+                title: p.title || '',
+                company: p.company || '',
+                industry: '',
+                location: p.location || '',
+                email: p.email || '',
+                linkedinUrl: p.linkedinUrl || '',
+                phone: p.phone || '',
+                connectionDegree: p.connectionDegree,
+                source: p.source || 'linkedin',
+                enrichmentScore: p.qualityScore || 0,
+                confidence: (p.qualityScore || 80) / 100,
+                approvalStatus: (p.approvalStatus || 'pending') as 'pending' | 'approved' | 'rejected',
+                campaignName: p.campaignName || 'Unknown',
+                campaignTag: p.campaignTag || 'Unknown',
+                sessionId: p.sessionId,
+                uploaded: false,
+                qualityScore: p.qualityScore || 0,
+                createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
+                researchedBy: 'Unknown',
+                researchedByInitials: 'U',
+                linkedinUserId: p.linkedinUserId
+            };
+            // Recalculate quality score with our logic
+            prospect.qualityScore = calculateQualityScore(prospect);
+            return prospect;
         });
 
-        const results = await Promise.all(prospectPromises);
-        const allProspects = results.flat();
-
-        // Sort by newest
-        return allProspects.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        return {
+            prospects,
+            sessions: data.sessions || [],
+            pagination: data.pagination || { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
+        };
 
     } catch (error) {
-        console.error('Failed to fetch approval sessions:', error);
-        return [];
+        console.error('Failed to fetch workspace prospects:', error);
+        return {
+            prospects: [],
+            sessions: [],
+            pagination: { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
+        };
     }
 }
+
 import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 import ImportProspectsModal from '@/components/ImportProspectsModal';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -114,45 +133,125 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
     const queryClient = useQueryClient();
     const router = useRouter();
 
-    const LOCAL_STORAGE_KEY = `sam_prospect_data_${workspaceId}`;
+    // Memoized keys that are stable across re-renders
+    const LOCAL_STORAGE_KEY = useMemo(() => `sam_prospect_data_${workspaceId}`, [workspaceId]);
+    const FILTER_STATE_KEY = useMemo(() => `sam_prospect_filters_${workspaceId}`, [workspaceId]);
 
-    // Initialize from LocalStorage if available to show data immediately
+    // Track hydration state to prevent saving defaults
+    const hasHydratedRef = useRef(false);
+    const hasSavedOnceRef = useRef(false);
+
+    // Start with defaults - will hydrate from localStorage in useEffect
+    const [filterState, setFilterState] = useState({
+        page: 1,
+        pageSize: 50,
+        sessionId: undefined as string | undefined,
+        search: '',
+        status: 'all'
+    });
+
+    // Hydrate from localStorage ONCE on mount (client-side only)
     useEffect(() => {
+        if (hasHydratedRef.current) return; // Already hydrated
+        hasHydratedRef.current = true;
+
         try {
-            const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                // Restore Date objects
-                const restored = parsed.map((p: any) => ({
-                    ...p,
-                    createdAt: new Date(p.createdAt)
-                }));
-                // Only set if query cache is empty to avoid overwriting fresh data
-                if (!queryClient.getQueryData(['prospect-hub-data', workspaceId])) {
-                    queryClient.setQueryData(['prospect-hub-data', workspaceId], restored);
-                }
+            const saved = localStorage.getItem(FILTER_STATE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                console.log('📦 Restored filter state from localStorage:', parsed);
+                setFilterState({
+                    page: parsed.page || 1,
+                    pageSize: parsed.pageSize || 50,
+                    sessionId: parsed.sessionId || undefined,
+                    search: parsed.search || '',
+                    status: parsed.status || 'all'
+                });
+            } else {
+                console.log('📦 No saved filter state, using defaults');
             }
         } catch (e) {
-            console.error('Failed to load prospects from cache', e);
+            console.warn('Failed to load filter state from localStorage', e);
         }
-    }, [workspaceId, queryClient]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);  // Only run once on mount
 
-    const { data: prospects = [], isLoading, refetch, isFetching } = useQuery({
-        queryKey: ['prospect-hub-data', workspaceId],
+    // Destructure for easier access
+    const page = filterState.page;
+    const pageSize = filterState.pageSize;
+    const selectedSessionId = filterState.sessionId;
+    const searchQuery = filterState.search;
+    const statusFilter = filterState.status;
+
+    // State setters that update the combined state
+    const setPage = useCallback((p: number | ((prev: number) => number)) => {
+        setFilterState(prev => ({ ...prev, page: typeof p === 'function' ? p(prev.page) : p }));
+    }, []);
+    const setPageSize = useCallback((s: number) => {
+        setFilterState(prev => ({ ...prev, pageSize: s, page: 1 })); // Reset page on size change
+    }, []);
+    const setSelectedSessionId = useCallback((id: string | undefined) => {
+        setFilterState(prev => ({ ...prev, sessionId: id, page: 1 })); // Reset page on session change
+    }, []);
+    const setSearchQuery = useCallback((q: string) => {
+        setFilterState(prev => ({ ...prev, search: q }));
+    }, []);
+    const setStatusFilter = useCallback((s: string) => {
+        setFilterState(prev => ({ ...prev, status: s, page: 1 })); // Reset page on filter change
+    }, []);
+
+    // Persist filter state to localStorage when it changes
+    // Skip until we've hydrated AND saved at least once (to avoid saving defaults)
+    useEffect(() => {
+        // Wait until we've hydrated from localStorage before saving
+        if (!hasHydratedRef.current) return;
+
+        // Skip the first save after hydration (that's just restoring state)
+        if (!hasSavedOnceRef.current) {
+            hasSavedOnceRef.current = true;
+            return;
+        }
+
+        try {
+            localStorage.setItem(FILTER_STATE_KEY, JSON.stringify(filterState));
+            console.log('💾 Saved filter state to localStorage:', filterState);
+        } catch (e) {
+            console.warn('Failed to save filter state to localStorage', e);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filterState]);  // Save whenever filterState changes
+
+    // Fetch paginated data
+    const { data, isLoading, refetch, isFetching } = useQuery({
+        queryKey: ['prospect-hub-data', workspaceId, page, pageSize, selectedSessionId, searchQuery, statusFilter],
         queryFn: async () => {
-            const data = await fetchApprovalSessions(workspaceId);
-            // Cache successful fetch
-            try {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-            } catch (e) {
-                console.error('Failed to cache prospects', e);
+            const result = await fetchWorkspaceProspects(
+                workspaceId,
+                page,
+                pageSize,
+                selectedSessionId,
+                statusFilter,
+                searchQuery || undefined
+            );
+            // Cache successful fetch (only first page for quick load)
+            if (page === 1) {
+                try {
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(result.prospects));
+                } catch (e) {
+                    console.error('Failed to cache prospects', e);
+                }
             }
-            return data;
+            return result;
         },
         enabled: !!workspaceId,
-        staleTime: 5 * 60 * 1000, // 5 minutes cache
-        refetchOnWindowFocus: false // Prevent annoying refetches
+        staleTime: 2 * 60 * 1000, // 2 minutes cache
+        refetchOnWindowFocus: false
     });
+
+    // Extract data from query result
+    const prospects = data?.prospects || [];
+    const sessions = data?.sessions || [];
+    const pagination = data?.pagination || { page: 1, limit: 50, total: 0, totalPages: 0, hasNext: false, hasPrev: false };
 
     const [stats, setStats] = useState({ total: 0, approved: 0, rejected: 0, pending: 0, lists: 0 });
     const [showImportModal, setShowImportModal] = useState(false);
@@ -179,21 +278,128 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
         prospects?: ProspectData[]
     } | null>(null);
 
+    // Update stats when pagination data changes
     useEffect(() => {
-        if (prospects) {
-            // Count unique lists (sessionIds)
-            const uniqueSessions = new Set(prospects.map(p => p.sessionId).filter(Boolean));
+        if (pagination) {
             setStats({
-                total: prospects.length,
+                total: pagination.total,
                 approved: prospects.filter(p => p.approvalStatus === 'approved').length,
                 rejected: prospects.filter(p => p.approvalStatus === 'rejected').length,
                 pending: prospects.filter(p => p.approvalStatus === 'pending').length,
-                lists: uniqueSessions.size,
+                lists: sessions.length,
             });
         }
-    }, [prospects]);
+    }, [pagination, prospects, sessions]);
 
-    // Real-time subscription (keep existing)
+    // Initialize from LocalStorage for instant first paint (optional)
+    useEffect(() => {
+        if (page === 1 && !prospects.length && !isLoading) {
+            try {
+                const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    const restored = parsed.map((p: any) => ({
+                        ...p,
+                        createdAt: new Date(p.createdAt)
+                    }));
+                    queryClient.setQueryData(
+                        ['prospect-hub-data', workspaceId, 1, pageSize, undefined, '', 'all'],
+                        { prospects: restored, sessions: [], pagination: { page: 1, limit: pageSize, total: restored.length, totalPages: 1, hasNext: false, hasPrev: false } }
+                    );
+                }
+            } catch (e) {
+                console.error('Failed to load prospects from cache', e);
+            }
+        }
+    }, [workspaceId, queryClient, page, pageSize, prospects.length, isLoading]);
+
+    // Pagination handlers
+    const handleNextPage = () => {
+        if (pagination.hasNext) setPage(p => p + 1);
+    };
+    const handlePrevPage = () => {
+        if (pagination.hasPrev) setPage(p => p - 1);
+    };
+    const handlePageSizeChange = (newSize: number) => {
+        setPageSize(newSize);
+        // Note: setPageSize already resets page to 1 in combined state
+    };
+
+    // Debounced refetch for real-time updates
+    const refetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const debouncedRefetch = useCallback(() => {
+        // Clear any pending refetch
+        if (refetchTimeoutRef.current) {
+            clearTimeout(refetchTimeoutRef.current);
+        }
+        // Schedule refetch after 500ms debounce
+        refetchTimeoutRef.current = setTimeout(() => {
+            console.log('🔄 Executing debounced refetch');
+            refetch();
+        }, 500);
+    }, [refetch]);
+
+    // Real-time subscription for prospect changes
+    useEffect(() => {
+        // Subscribe to changes on workspace_prospects table (new architecture)
+        const workspaceProspectsChannel = supabase
+            .channel('workspace-prospects-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // INSERT, UPDATE, DELETE
+                    schema: 'public',
+                    table: 'workspace_prospects',
+                    filter: `workspace_id=eq.${workspaceId}`
+                },
+                (payload) => {
+                    console.log('🔄 Realtime: workspace_prospects change', payload.eventType);
+                    debouncedRefetch();
+                }
+            )
+            .subscribe();
+
+        // Subscribe to changes on prospect_approval_data table (legacy architecture)
+        const approvalDataChannel = supabase
+            .channel('approval-data-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'prospect_approval_data'
+                },
+                (payload) => {
+                    console.log('🔄 Realtime: prospect_approval_data change', payload.eventType);
+                    debouncedRefetch();
+                }
+            )
+            .subscribe();
+
+        // Subscribe to decisions changes for status updates
+        const decisionsChannel = supabase
+            .channel('decisions-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'prospect_approval_decisions'
+                },
+                (payload) => {
+                    console.log('🔄 Realtime: decision change', payload.eventType);
+                    debouncedRefetch();
+                }
+            )
+            .subscribe();
+
+        // Cleanup subscriptions on unmount
+        return () => {
+            supabase.removeChannel(workspaceProspectsChannel);
+            supabase.removeChannel(approvalDataChannel);
+            supabase.removeChannel(decisionsChannel);
+        };
+    }, [workspaceId, debouncedRefetch]);
 
     const handleDataCollected = (newProspects: ProspectData[], source: string) => {
         toastSuccess(`Imported ${newProspects.length} prospects from ${source}`);
@@ -650,6 +856,7 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                     setShowAddToCampaignModal(true);
                     setIsSheetOpen(false);
                 }}
+                workspaceId={workspaceId}
             />
         </div>
     );
