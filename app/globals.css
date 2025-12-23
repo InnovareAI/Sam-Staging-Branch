@@ -354,15 +354,15 @@
      DARK THEME 3: Night Sky (Deep Space with Comets)
      ============================================== */
   .night-sky {
-    --background: 230 45% 8%;
-    /* Deep space blue */
+    --background: 220 55% 5%;
+    /* Deep navy space */
     --foreground: 210 40% 96%;
-    --header-foreground: 210 100% 80%;
-    /* Soft blue glow */
+    --header-foreground: 200 100% 75%;
+    /* Cyan glow */
 
-    --surface: 230 40% 10%;
-    --surface-muted: 230 35% 13%;
-    --surface-highlight: 230 30% 17%;
+    --surface: 220 50% 8%;
+    --surface-muted: 220 45% 11%;
+    --surface-highlight: 220 40% 15%;
 
     --card: 230 40% 10%;
     --card-foreground: 210 40% 96%;
@@ -407,14 +407,14 @@
     --gray-900: 230 42% 12%;
     --gray-950: 230 45% 6%;
 
-    --sidebar-background: 230 40% 10%;
+    --sidebar-background: 220 50% 6%;
     --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 267 83% 65%;
+    --sidebar-primary: 200 90% 55%;
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 230 30% 17%;
+    --sidebar-accent: 220 45% 12%;
     --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 230 25% 22%;
-    --sidebar-ring: 267 83% 65%;
+    --sidebar-border: 220 40% 18%;
+    --sidebar-ring: 200 90% 55%;
   }
 
   html {
