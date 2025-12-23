@@ -12238,3 +12238,61 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main b684c8da] 🔄 Auto-backup: auto-backup-20251223_180000
+ Committer: Thorsten Linz <tvonlinz@mac.lan>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 20 files changed, 3988 insertions(+), 306 deletions(-)
+ create mode 100644 app/api/cron/extract-conversation-insights/route.ts
+ create mode 100644 app/api/linkedin/discover-decision-makers/route.ts
+ create mode 100644 scripts/reprocess-legacy-docs.mjs
+ create mode 100644 supabase/migrations/20251223164500_migrate_vectors_to_768.sql
+ create mode 100644 supabase/migrations/20251223170000_insight_tracking_system.sql
+ create mode 100644 temp_verify_kb.cjs
+ create mode 100644 test_upload_and_save.cjs
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251223_180000[0m
+[0;32m📅 Timestamp: Tue Dec 23 18:00:01 CET 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║          SAM AI - Automated Backup System             ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32mBackup started: Wed Dec 24 00:00:00 CET 2025[0m
+[0;32mBackup name: auto-backup-20251224_000000[0m
+
+[1;33m📦 Step 1: Backing up to Airtable...[0m
+
+/Users/tvonlinz/Dev_Master/InnovareAI/Sam-New-Sep-7/scripts/auto-backup.sh: line 76: node: command not found
+[0;31m❌ Airtable backup failed (non-critical)[0m
+
+[1;33m📝 Step 2: Creating Git snapshot...[0m
+

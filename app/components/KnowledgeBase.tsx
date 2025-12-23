@@ -1654,8 +1654,9 @@ function ChunkDrawer() {
 }
 
 const KnowledgeBase: React.FC = () => {
-  const { contextData } = useSamContext();
+  const { contextData, isLoadingContext } = useSamContext();
   const [activeSection, setActiveSection] = useState('overview');
+
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(true);
   const [documentsError, setDocumentsError] = useState<string | null>(null);
@@ -2338,7 +2339,7 @@ const KnowledgeBase: React.FC = () => {
   const healthMetrics = [
     {
       label: 'SAM Readiness', // Changed label to match Context Panel conceptual model
-      value: contextData?.knowledge?.completeness || 17, // Synchronized with Context Panel
+      value: isLoadingContext ? null : (contextData?.knowledge?.completeness ?? 0), // Synchronized with Context Panel
       description: 'Overall knowledge readiness'
     },
     {
@@ -2522,7 +2523,7 @@ const KnowledgeBase: React.FC = () => {
                   {/* Large Readiness Number */}
                   <div className="flex items-center gap-6">
                     <div className="flex-shrink-0">
-                      <span className="text-5xl font-bold text-primary">{Math.round(knowledgeCompletion || 0)}%</span>
+                      <span className="text-5xl font-bold text-primary">{isLoadingContext ? '...' : Math.round(contextData?.knowledge?.completeness ?? 0)}%</span>
                     </div>
 
                     {/* Category Breakdown Bars */}
@@ -2531,33 +2532,33 @@ const KnowledgeBase: React.FC = () => {
                         <span className="text-xs text-muted-foreground w-24">Foundation</span>
                         <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
                           <div className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all"
-                            style={{ width: `${Math.round(calculateCategoryScore(foundationSections) * 2)}%` }} />
+                            style={{ width: `${contextData?.knowledge?.categoryScores?.foundation || 0}%` }} />
                         </div>
-                        <span className="text-xs text-foreground w-8">{Math.round(calculateCategoryScore(foundationSections))}%</span>
+                        <span className="text-xs text-foreground w-8">{Math.round(contextData?.knowledge?.categoryScores?.foundation || 0)}%</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-24">GTM Strategy</span>
                         <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
                           <div className="h-full bg-gradient-to-r from-purple-400 to-violet-500 rounded-full transition-all"
-                            style={{ width: `${Math.round(calculateCategoryScore(gtmStrategySections) * 4)}%` }} />
+                            style={{ width: `${contextData?.knowledge?.categoryScores?.gtm || 0}%` }} />
                         </div>
-                        <span className="text-xs text-foreground w-8">{Math.round(calculateCategoryScore(gtmStrategySections))}%</span>
+                        <span className="text-xs text-foreground w-8">{Math.round(contextData?.knowledge?.categoryScores?.gtm || 0)}%</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-24">Customer Intel</span>
                         <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
                           <div className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all"
-                            style={{ width: `${Math.round(calculateCategoryScore(customerIntelSections) * 6.67)}%` }} />
+                            style={{ width: `${contextData?.knowledge?.categoryScores?.customer || 0}%` }} />
                         </div>
-                        <span className="text-xs text-foreground w-8">{Math.round(calculateCategoryScore(customerIntelSections))}%</span>
+                        <span className="text-xs text-foreground w-8">{Math.round(contextData?.knowledge?.categoryScores?.customer || 0)}%</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-24">Execution</span>
                         <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
                           <div className="h-full bg-gradient-to-r from-orange-400 to-amber-500 rounded-full transition-all"
-                            style={{ width: `${Math.round(calculateCategoryScore(executionAssetsSections) * 10)}%` }} />
+                            style={{ width: `${contextData?.knowledge?.categoryScores?.execution || 0}%` }} />
                         </div>
-                        <span className="text-xs text-foreground w-8">{Math.round(calculateCategoryScore(executionAssetsSections))}%</span>
+                        <span className="text-xs text-foreground w-8">{Math.round(contextData?.knowledge?.categoryScores?.execution || 0)}%</span>
                       </div>
                     </div>
                   </div>

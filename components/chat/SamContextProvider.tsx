@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 
 // Types for context data
@@ -183,6 +183,13 @@ export function SamContextProvider({ children }: { children: ReactNode }) {
             setIsLoadingContext(false);
         }
     }, [workspaceId]);
+
+    // Initial fetch when workspaceId becomes available
+    useEffect(() => {
+        if (workspaceId) {
+            refreshContext();
+        }
+    }, [workspaceId, refreshContext]);
 
     return (
         <SamContext.Provider value={{
