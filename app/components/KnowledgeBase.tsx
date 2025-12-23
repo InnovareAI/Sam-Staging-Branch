@@ -2016,29 +2016,40 @@ const KnowledgeBase: React.FC = () => {
     return docCount >= 2 ? 100 : 70;
   };
 
-  // Critical sections (75% total) - ONE complete set = 75%
-  // This is what users MUST have to unlock full campaigns
-  const criticalSections = [
-    { id: 'products', weight: 18.75, label: 'Products/Services' },
-    { id: 'icp', weight: 18.75, label: 'ICP/Target Profile' },
-    { id: 'messaging', weight: 18.75, label: 'Messaging/Value Prop' },
-    { id: 'pricing', weight: 18.75, label: 'Pricing' }
+  // Foundation (50% total) - Core knowledge SAM needs to operate
+  // Company, Product, Target Market, Value Proposition
+  const foundationSections = [
+    { id: 'company', weight: 12.5, label: 'Company Profile' },
+    { id: 'products', weight: 12.5, label: 'Product/Service' },
+    { id: 'icp', weight: 12.5, label: 'Target Market' },
+    { id: 'messaging', weight: 12.5, label: 'Value Proposition' }
   ];
 
-  // Bonus sections (25% total) - Everything else is bonus to reach 100%
-  const importantSections = [
-    { id: 'objections', weight: 5, label: 'Objection Handling' },
-    { id: 'success', weight: 5, label: 'Success Stories' },
-    { id: 'competition', weight: 5, label: 'Competitive Intel' }
+  // GTM Strategy (25% total) - How you go to market
+  const gtmStrategySections = [
+    { id: 'competition', weight: 8.33, label: 'Competitive Landscape' },
+    { id: 'pricing', weight: 8.33, label: 'Pricing & Business Model' },
+    { id: 'buying', weight: 8.34, label: 'GTM Channels' }
   ];
 
-  const supportingSections = [
-    { id: 'company', weight: 2, label: 'Company Info' },
-    { id: 'buying', weight: 2, label: 'Buying Process' },
-    { id: 'personas', weight: 2, label: 'Buyer Personas' },
-    { id: 'compliance', weight: 2, label: 'Compliance' },
-    { id: 'tone', weight: 2, label: 'Brand Voice' }
+  // Customer Intelligence (15% total) - Understanding buyers
+  const customerIntelSections = [
+    { id: 'personas', weight: 5, label: 'Buyer Personas' },
+    { id: 'objections', weight: 5, label: 'Pain Points & Triggers' },
+    { id: 'success', weight: 5, label: 'Success Stories' }
   ];
+
+  // Execution Assets (10% total) - Ready-to-use content
+  const executionAssetsSections = [
+    { id: 'tone', weight: 3.33, label: 'Brand Voice' },
+    { id: 'collateral', weight: 3.34, label: 'Templates & Snippets' },
+    { id: 'compliance', weight: 3.33, label: 'Compliance & Guidelines' }
+  ];
+
+  // Backwards compatibility aliases
+  const criticalSections = foundationSections;
+  const importantSections = gtmStrategySections;
+  const supportingSections = [...customerIntelSections, ...executionAssetsSections];
 
   const calculateCategoryScore = (sections: typeof criticalSections) => {
     return sections.reduce((total, section) => {
@@ -2071,20 +2082,25 @@ const KnowledgeBase: React.FC = () => {
 
   const getSamImpact = (sectionId: string): string => {
     const impacts: Record<string, string> = {
-      'products': 'SAM can explain features, benefits, and use cases',
-      'icp': 'SAM can qualify prospects and personalize outreach',
-      'messaging': 'SAM can articulate value propositions clearly',
-      'pricing': 'SAM can discuss ROI, pricing, and business cases',
-      'objections': 'SAM can handle concerns and objections confidently',
-      'success': 'SAM can share relevant case studies and proof points',
-      'competition': 'SAM can differentiate you vs. competitors',
-      'company': 'SAM can introduce your company professionally',
-      'buying': 'SAM can guide prospects through your sales process',
+      // Foundation
+      'company': 'SAM can introduce your business professionally',
+      'products': 'SAM can explain your offering and value',
+      'icp': 'SAM can qualify and personalize for your ideal customers',
+      'messaging': 'SAM can articulate your value proposition clearly',
+      // GTM Strategy
+      'competition': 'SAM can differentiate you vs. alternatives',
+      'pricing': 'SAM can discuss pricing, ROI, and business cases',
+      'buying': 'SAM can guide based on your sales channels',
+      // Customer Intelligence
       'personas': 'SAM can tailor conversations to buyer roles',
-      'compliance': 'SAM can address security and compliance questions',
-      'tone': 'SAM can match your brand voice and style'
+      'objections': 'SAM can address common concerns proactively',
+      'success': 'SAM can share relevant proof points and cases',
+      // Execution Assets
+      'tone': 'SAM can match your brand voice and style',
+      'collateral': 'SAM can use your templates and snippets',
+      'compliance': 'SAM can follow your guidelines and policies'
     };
-    return impacts[sectionId] || 'SAM can have more effective conversations';
+    return impacts[sectionId] || 'SAM can operate more effectively';
   };
 
   const generateRecommendations = () => {
@@ -2264,23 +2280,27 @@ const KnowledgeBase: React.FC = () => {
   };
 
   const defaultActionDescriptions: Record<string, string> = {
-    buying: 'Map customer journey',
-    company: 'Update company info',
-    competition: 'Update battlecards',
-    compliance: 'Manage regulations',
+    // Foundation
+    company: 'Define your business profile',
+    products: 'Document your offering',
+    icp: 'Define your ideal customers',
+    messaging: 'Craft your value proposition',
+    // GTM Strategy
+    competition: 'Map competitive landscape',
+    pricing: 'Set pricing and business model',
+    buying: 'Define your GTM channels',
+    // Customer Intelligence
+    personas: 'Define buyer roles',
+    objections: 'Document pain points',
+    success: 'Share proof points',
+    // Execution Assets
+    tone: 'Set brand voice',
+    collateral: 'Upload templates & snippets',
+    compliance: 'Set guidelines',
+    // Other
     documents: 'Upload files',
-    icp: 'Manage customer profiles',
-    inquiry_responses: 'Handle questions',
-    messaging: 'Update templates',
-    metrics: 'Track success KPIs',
-    objections: 'Handle concerns',
-    personas: 'Define user roles',
-    pricing: 'Manage pricing info',
-    products: 'Add documentation',
-    sam_onboarding: 'Train SAM AI',
-    collateral: 'Upload battlecards, decks, email templates & snippets',
-    success: 'Share case studies',
-    tone: 'Set voice guidelines'
+    sam_onboarding: 'Train SAM',
+    metrics: 'Track success KPIs'
   };
 
   const getQuickActionDescription = (sectionId: string) => {
@@ -2335,23 +2355,28 @@ const KnowledgeBase: React.FC = () => {
 
   const sections = [
     { id: 'overview', label: 'Overview', icon: Brain },
-    { id: 'analytics', label: 'Usage Analytics', icon: Activity }, // Kept in sections array for routing but excluded from quick actions
-    { id: 'buying', label: 'Buying Process', icon: GitBranch },
-    { id: 'company', label: 'Company Info', icon: Briefcase },
-    { id: 'competition', label: 'Competition', icon: TrendingUp },
-    { id: 'compliance', label: 'Compliance', icon: Shield },
-    { id: 'documents', label: 'Documents', icon: FileText },
-    { id: 'icp', label: 'ICP Config', icon: Target },
-    { id: 'messaging', label: 'Messaging', icon: MessageSquare },
-    { id: 'metrics', label: 'Success Metrics', icon: BarChart },
-    { id: 'objections', label: 'Objections', icon: MessageCircle },
-    { id: 'personas', label: 'Personas & Roles', icon: UserCheck },
-    { id: 'pricing', label: 'Pricing', icon: DollarSign },
-    { id: 'products', label: 'Products', icon: Package },
-    { id: 'sam_onboarding', label: 'SAM Onboarding', icon: Bot },
-    { id: 'collateral', label: 'Sales Collateral', icon: Briefcase },
+    { id: 'analytics', label: 'Usage Analytics', icon: Activity },
+    // Foundation
+    { id: 'company', label: 'Company Profile', icon: Briefcase },
+    { id: 'products', label: 'Product/Service', icon: Package },
+    { id: 'icp', label: 'Target Market', icon: Target },
+    { id: 'messaging', label: 'Value Proposition', icon: MessageSquare },
+    // GTM Strategy
+    { id: 'competition', label: 'Competitive Landscape', icon: TrendingUp },
+    { id: 'pricing', label: 'Pricing & Model', icon: DollarSign },
+    { id: 'buying', label: 'GTM Channels', icon: GitBranch },
+    // Customer Intelligence
+    { id: 'personas', label: 'Buyer Personas', icon: UserCheck },
+    { id: 'objections', label: 'Pain Points', icon: MessageCircle },
     { id: 'success', label: 'Success Stories', icon: Trophy },
-    { id: 'tone', label: 'Tone of Voice', icon: Mic }
+    // Execution Assets
+    { id: 'tone', label: 'Brand Voice', icon: Mic },
+    { id: 'collateral', label: 'Templates & Snippets', icon: Briefcase },
+    { id: 'compliance', label: 'Compliance', icon: Shield },
+    // Other
+    { id: 'documents', label: 'Documents', icon: FileText },
+    { id: 'sam_onboarding', label: 'SAM Onboarding', icon: Bot },
+    { id: 'metrics', label: 'Success Metrics', icon: BarChart }
   ];
 
   const getSectionLabel = (sectionId: string) => {

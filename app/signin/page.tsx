@@ -147,9 +147,9 @@ function SignInForm() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="mx-auto flex justify-center">
-            <img 
-              src="/SAM.jpg" 
-              alt="Sam AI" 
+            <img
+              src="/SAM.jpg"
+              alt="Sam AI"
               className="w-20 h-20 rounded-full object-cover"
               style={{ objectPosition: 'center 30%' }}
             />
