@@ -61,3 +61,8 @@ UI_BACKUP_COMPLETE.tsx
 .claude/settings.json
 # Force rebuild Sat Oct 18 23:50:31 PST 2025
 tsconfig.tsbuildinfo
+
+# Logs and Backups
+*.log
+backups/
+dev.log
