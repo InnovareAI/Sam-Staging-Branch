@@ -78,23 +78,46 @@ All icons have consistent styling with colored rings:
 ## 4. Context Panel API
 
 ### Real Data Integration
-The `/api/sam/context` endpoint now fetches real data:
+The `/api/sam/context` endpoint now fetches real data with parallel queries:
 
 ```typescript
-// Knowledge: From supabaseKnowledge.checkKBCompleteness()
-// ICPs: From supabaseKnowledge.getICPs()
-// Campaigns: From campaigns + campaign_prospects tables
+// Parallel fetching for performance:
+const [kbCompleteness, icps, products, competitors] = await Promise.all([...])
+
+// Knowledge documents from knowledge_base table
+// Category scores calculated from document counts
 ```
 
-**Stats returned:**
-- `campaign.active` - Count of active/running campaigns
-- `campaign.total` - Total campaigns in workspace
-- `campaign.totalSent` - Prospects with sent/replied/meeting_booked status
-- `campaign.replied` - Prospects that replied
-- `campaign.meetings` - Meetings booked
-- `campaign.responseRate` - Calculated percentage
+**Data returned:**
+- `knowledge.completeness` - Overall KB completeness %
+- `knowledge.categoryScores` - Foundation, GTM, Customer, Execution scores
+- `knowledge.products` - Product list with descriptions
+- `knowledge.competitors` - Competitor list with strengths
+- `knowledge.documents` - Recent KB documents
+- `strategy.allICPs` - All ICP definitions
+- `stats.campaign.*` - Real campaign metrics
+
+**Performance optimization:** Workspace ID cached in cookie (`lastWorkspaceId`) for instant rewrites.
 
 **File:** `app/api/sam/context/route.ts`
+
+## 4b. AI Intelligence System
+
+### Context Panel Features
+- **AI Command Center** - Dynamic goal & strategy display
+- **Suggested Actions** - Clickable action buttons based on context
+- **Insights Panel** - Gaps, suggestions, strategy tips
+- **Discovery Panel** - Lead discovery integration
+- **Research Triggers** - Competitor, trends, news research with KB save
+
+### Save to Knowledge Base
+- Chat messages can be saved to KB via bookmark icon
+- Research results can be saved directly from context panel
+
+**Files:**
+- `components/chat/ContextPanel.tsx`
+- `components/chat/ChatInterface.tsx`
+- `components/chat/DiscoveryPanel.tsx`
 
 ## 5. LLM Configuration
 
