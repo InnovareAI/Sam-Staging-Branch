@@ -276,7 +276,7 @@ export async function POST(req: NextRequest) {
       .eq('status', 'pending')
       .lte('scheduled_for', now)
       .order('scheduled_for', { ascending: true })
-      .limit(50); // Get up to 50 to find a sendable one
+      .limit(1000); // Get up to 1000 to find a sendable one
 
     if (fetchError) {
       console.error('❌ Queue fetch error:', fetchError);

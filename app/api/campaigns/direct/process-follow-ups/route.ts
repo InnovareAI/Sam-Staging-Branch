@@ -127,7 +127,18 @@ export async function POST(req: NextRequest) {
         }
 
         const campaign = prospect.campaigns as any;
-        const linkedinAccount = campaign.workspace_accounts as any;
+        const linkedinAccount = campaign?.workspace_accounts as any;
+
+        if (!linkedinAccount || !linkedinAccount.unipile_account_id) {
+          console.warn(`⚠️ Skipping follow-up for ${prospect.first_name}: No LinkedIn account connected to campaign ${campaign?.id}`);
+          results.push({
+            prospectId: prospect.id,
+            name: `${prospect.first_name} ${prospect.last_name}`,
+            status: 'error_no_account'
+          });
+          continue;
+        }
+
         const unipileAccountId = linkedinAccount.unipile_account_id;
 
         // Check if connection was accepted by checking network_distance

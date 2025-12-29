@@ -348,6 +348,13 @@ export async function POST(request: NextRequest) {
     console.log(`🎯 Using LinkedIn API: ${api}`);
     console.log(`📧 Account email: ${selectedAccount.connection_params?.im?.email || selectedAccount.connection_params?.im?.username}`);
 
+    // Use selected account for the search - DEFINED HERE TO FIX SCOPING ERROR
+    const linkedinAccount = {
+      unipile_account_id: selectedAccount.id,
+      account_name: selectedAccount.name || selectedAccount.connection_params?.im?.publicIdentifier,
+      account_identifier: selectedAccount.connection_params?.im?.email || selectedAccount.connection_params?.im?.username
+    };
+
     // ⚠️ VALIDATION: Check if search criteria requires Sales Navigator features
     const unsupportedCriteria = [];
     const warnings = [];
@@ -387,13 +394,6 @@ export async function POST(request: NextRequest) {
         console.warn('⚠️  UNSUPPORTED CRITERIA (will be ignored):', unsupportedCriteria);
         console.warn('   Recommendation: Upgrade to Sales Navigator for full filtering');
       }
-
-      // Use selected account for the search
-      const linkedinAccount = {
-        unipile_account_id: selectedAccount.id,
-        account_name: selectedAccount.name || selectedAccount.connection_params?.im?.publicIdentifier,
-        account_identifier: selectedAccount.connection_params?.im?.email || selectedAccount.connection_params?.im?.username
-      };
 
       // Helper function to lookup parameter IDs from Unipile
       // Supports LOCATION, COMPANY, INDUSTRY, SCHOOL, etc.

@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       .in('status', ['pending', 'approved', 'ready_to_message'])
       .not('linkedin_url', 'is', null)
       .in('campaigns.status', ['active', 'scheduled'])
-      .limit(10); // Process 10 prospects per run
+      .limit(100); // Process 100 prospects per run
 
     if (queryError) {
       console.error('❌ Error querying prospects:', queryError);

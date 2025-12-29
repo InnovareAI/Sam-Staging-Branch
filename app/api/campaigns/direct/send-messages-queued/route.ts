@@ -199,17 +199,19 @@ export async function POST(req: NextRequest) {
     }
 
     const linkedinAccount = campaign.workspace_accounts as any;
-    const unipileAccountId = linkedinAccount?.unipile_account_id;
 
-    if (!unipileAccountId) {
+    if (!linkedinAccount || !linkedinAccount.unipile_account_id) {
+      console.error('❌ No LinkedIn account configuration found for campaign:', campaignId);
       return NextResponse.json({
         success: false,
-        error: 'No LinkedIn account configured for this campaign'
+        error: 'No LinkedIn account configured for this campaign. Please connect a LinkedIn account in workspace settings.'
       }, { status: 400 });
     }
 
+    const unipileAccountId = linkedinAccount.unipile_account_id;
+
     console.log(`📋 Campaign: ${campaign.name} (Messenger)`);
-    console.log(`👤 LinkedIn Account: ${linkedinAccount.account_name} (${unipileAccountId})`);
+    console.log(`👤 LinkedIn Account: ${linkedinAccount.account_name || 'Unnamed Account'} (${unipileAccountId})`);
 
     // 2. Fetch pending prospects
     const { data: prospects, error: prospectsError } = await supabase
