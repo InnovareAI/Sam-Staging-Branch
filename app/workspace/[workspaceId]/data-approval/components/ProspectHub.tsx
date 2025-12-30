@@ -900,7 +900,6 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                                         setShowAddToCampaignModal(true);
                                     }}
                                     onCreateCampaign={() => setShowCreateCampaignModal(true)}
-                                    title="Prospect Database"
                                     // Pagination props (controlled by parent for state persistence)
                                     page={page}
                                     pageSize={pageSize}
