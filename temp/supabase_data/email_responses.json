@@ -1,0 +1,963 @@
+[
+  {
+    "id": "104748b3-59f3-4423-85a3-8602deac8819",
+    "workspace_id": null,
+    "campaign_id": null,
+    "prospect_id": null,
+    "from_email": "prospect@example.com",
+    "from_name": "Test Prospect",
+    "to_email": "hello@sam.innovareai.com",
+    "subject": "Re: Your outreach about AI solutions",
+    "message_id": "test-1759800208",
+    "text_body": "Hi, I'm interested in learning more about your AI platform. Can we schedule a call?",
+    "html_body": "<p>Hi, I'm interested in learning more about your AI platform. Can we schedule a call?</p>",
+    "stripped_text": "Hi, I'm interested in learning more about your AI platform. Can we schedule a call?",
+    "has_attachments": false,
+    "attachments": [],
+    "received_at": "2025-10-07T01:23:28+00:00",
+    "processed": true,
+    "processed_at": "2025-11-03T05:38:31.762325+00:00",
+    "sentiment": null,
+    "intent": null,
+    "requires_response": true,
+    "ai_summary": null,
+    "ai_suggested_response": null,
+    "raw_email": {
+      "To": "hello@sam.innovareai.com",
+      "Date": "2025-10-07T01:23:28Z",
+      "From": "prospect@example.com",
+      "ToFull": [
+        {
+          "Name": "SAM AI",
+          "Email": "hello@sam.innovareai.com",
+          "MailboxHash": ""
+        }
+      ],
+      "Subject": "Re: Your outreach about AI solutions",
+      "FromFull": {
+        "Name": "Test Prospect",
+        "Email": "prospect@example.com"
+      },
+      "FromName": "Test Prospect",
+      "HtmlBody": "<p>Hi, I'm interested in learning more about your AI platform. Can we schedule a call?</p>",
+      "TextBody": "Hi, I'm interested in learning more about your AI platform. Can we schedule a call?",
+      "MessageID": "test-1759800208",
+      "Attachments": [],
+      "StrippedTextReply": "Hi, I'm interested in learning more about your AI platform. Can we schedule a call?"
+    },
+    "created_at": "2025-10-07T01:23:29.98834+00:00",
+    "updated_at": "2025-11-03T05:38:31.762325+00:00"
+  },
+  {
+    "id": "27b04aa8-c3c1-4a76-8875-e811a16d8151",
+    "workspace_id": null,
+    "campaign_id": null,
+    "prospect_id": null,
+    "from_email": "test@example.com",
+    "from_name": "Test User",
+    "to_email": "hello@sam.innovareai.com",
+    "subject": "Webhook Test",
+    "message_id": "test-1759802810",
+    "text_body": "This is a webhook test",
+    "html_body": "<p>This is a webhook test</p>",
+    "stripped_text": "This is a webhook test",
+    "has_attachments": false,
+    "attachments": [],
+    "received_at": "2025-10-07T02:06:50+00:00",
+    "processed": true,
+    "processed_at": "2025-11-03T05:38:31.762325+00:00",
+    "sentiment": null,
+    "intent": null,
+    "requires_response": true,
+    "ai_summary": null,
+    "ai_suggested_response": null,
+    "raw_email": {
+      "Cc": "",
+      "To": "hello@sam.innovareai.com",
+      "Bcc": "",
+      "Tag": "",
+      "Date": "2025-10-07T02:06:50.000Z",
+      "From": "test@example.com",
+      "CcFull": [],
+      "ToFull": [
+        {
+          "Name": "Sam",
+          "Email": "hello@sam.innovareai.com",
+          "MailboxHash": ""
+        }
+      ],
+      "BccFull": [],
+      "Headers": [],
+      "ReplyTo": "",
+      "Subject": "Webhook Test",
+      "FromFull": {
+        "Name": "Test User",
+        "Email": "test@example.com"
+      },
+      "FromName": "Test User",
+      "HtmlBody": "<p>This is a webhook test</p>",
+      "TextBody": "This is a webhook test",
+      "MessageID": "test-1759802810",
+      "Attachments": [],
+      "MailboxHash": "",
+      "OriginalRecipient": "hello@sam.innovareai.com",
+      "StrippedTextReply": "This is a webhook test"
+    },
+    "created_at": "2025-10-07T02:06:52.051792+00:00",
+    "updated_at": "2025-11-03T05:38:31.762325+00:00"
+  },
+  {
+    "id": "70eb3ae2-743d-4714-93d5-a9db7f748fbf",
+    "workspace_id": null,
+    "campaign_id": null,
+    "prospect_id": null,
+    "from_email": "tl@innovareai.com",
+    "from_name": "Thorsten Linz (InnovareAI)",
+    "to_email": "hello@sam.innovareai.com",
+    "subject": "test 4",
+    "message_id": "63963a33-0d79-4cee-a862-1dbbc79b8ae8",
+    "text_body": "\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\n",
+    "html_body": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n</body>\n</html>\n",
+    "stripped_text": "",
+    "has_attachments": false,
+    "attachments": [],
+    "received_at": "2025-10-07T02:15:08+00:00",
+    "processed": true,
+    "processed_at": "2025-11-03T05:38:31.762325+00:00",
+    "sentiment": null,
+    "intent": null,
+    "requires_response": true,
+    "ai_summary": null,
+    "ai_suggested_response": null,
+    "raw_email": {
+      "Cc": "",
+      "To": "hello@sam.innovareai.com",
+      "Bcc": "",
+      "Tag": "",
+      "Date": "Tue, 7 Oct 2025 10:15:08 +0800",
+      "From": "tl@innovareai.com",
+      "CcFull": [],
+      "ToFull": [
+        {
+          "Name": "",
+          "Email": "hello@sam.innovareai.com",
+          "MailboxHash": ""
+        }
+      ],
+      "BccFull": [],
+      "Headers": [
+        {
+          "Name": "Return-Path",
+          "Value": "<tl@innovareai.com>"
+        },
+        {
+          "Name": "Received",
+          "Value": "by p-pm-inboundg03c-aws-useast1c.inbound.postmarkapp.com (Postfix, from userid 996)\tid 7B05E405287; Tue,  7 Oct 2025 02:15:28 +0000 (UTC)"
+        },
+        {
+          "Name": "X-Spam-Checker-Version",
+          "Value": "SpamAssassin 3.4.0 (2014-02-07) on\tp-pm-inboundg03c-aws-useast1c"
+        },
+        {
+          "Name": "X-Spam-Status",
+          "Value": "No"
+        },
+        {
+          "Name": "X-Spam-Score",
+          "Value": "-0.1"
+        },
+        {
+          "Name": "X-Spam-Tests",
+          "Value": "DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,\tRCVD_IN_DNSWL_NONE,RCVD_IN_MSPIKE_H2,RCVD_IN_VALIDITY_RPBL_BLOCKED,\tRCVD_IN_VALIDITY_SAFE_BLOCKED,RCVD_IN_ZEN_BLOCKED_OPENDNS,SPF_HELO_NONE,\tSPF_PASS,URIBL_DBL_BLOCKED_OPENDNS,URIBL_ZEN_BLOCKED_OPENDNS"
+        },
+        {
+          "Name": "Received-SPF",
+          "Value": "pass (innovareai.com: Sender is authorized to use 'tl@innovareai.com' in 'mfrom' identity (mechanism 'include:_spf.google.com' matched)) receiver=p-pm-inboundg03c-aws-useast1c; identity=mailfrom; envelope-from=\"tl@innovareai.com\"; helo=mail-pf1-f175.google.com; client-ip=209.85.210.175"
+        },
+        {
+          "Name": "Received",
+          "Value": "from mail-pf1-f175.google.com (mail-pf1-f175.google.com [209.85.210.175])\t(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))\t(No client certificate requested)\tby p-pm-inboundg03c-aws-useast1c.inbound.postmarkapp.com (Postfix) with ESMTPS id 3F09D405124\tfor <hello@sam.innovareai.com>; Tue,  7 Oct 2025 02:15:28 +0000 (UTC)"
+        },
+        {
+          "Name": "Received",
+          "Value": "by mail-pf1-f175.google.com with SMTP id d2e1a72fcca58-78f3bfe3f69so1921071b3a.2        for <hello@sam.innovareai.com>; Mon, 06 Oct 2025 19:15:28 -0700 (PDT)"
+        },
+        {
+          "Name": "DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=innovareai.com; s=google; t=1759803327; x=1760408127; darn=sam.innovareai.com;        h=mime-version:subject:message-id:to:from:date:from:to:cc:subject         :date:message-id:reply-to;        bh=5HOH7vTljdixs6Q3nG8j1AmlcAkpxjkEnH7ilzjlhdM=;        b=PGhX0PN4S8lTz1RZMbX+/V427kG5USHmqW4Xin0aQWrXKGjO+sYf2Oso3xg8kzh46H         HlC8wi7tT9PW1n5NhneXfhkESGU8fF9mmkFezPEJo4VyNezXm2pqAHJxrhq7A/OQoC6N         IRHqxgOijZqUPlC5zVM7ln2MBuJ06yyXgUNVA="
+        },
+        {
+          "Name": "X-Google-DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=1e100.net; s=20230601; t=1759803327; x=1760408127;        h=mime-version:subject:message-id:to:from:date:x-gm-message-state         :from:to:cc:subject:date:message-id:reply-to;        bh=5HOH7vTljdixs6Q3nG8j1AmlcAkpxjkEnH7ilzjlhdM=;        b=k1Y6zpxEIOoeaDxmUBf0m37fjtk//c5MQlfkb5n7Z2SE0UITLnzvwq5RgG0Sf4tlCy         lzx5yIFtydHpANYkwJKFWt+7mL46nzr6xPQzbZQLhPN3t2EMWx02aYUS/WytnyVYnFYM         +lmlxlDoc9P4TUexoktXpwVEBMWXzZTrwaIr5NFmmoeBkiSmp3SO3gHGkF3UXhq/Dlyo         zSaUuNY/bkojKfxWbeBJtET8c0GIfs0kHfBH+jgJdQ9YorcdxtvzxkdXq1OcqDfa/197         ar2J+dbqfOcB9Fn5TKqirQVy/yCcWtQqelNzCkHizBNmLDqXxTr/YJpgdcnLcmmJjemF         NKkA=="
+        },
+        {
+          "Name": "X-Gm-Message-State",
+          "Value": "AOJu0YyHoDFuRvDKMoSD7ndBLBTQJjGvHhZbfxAR8fiVlLXQ/F4ZUqAW\t4Hm8Di+fsXGjZnFw/ch5Pw20ynvdWx/5Qh+2peumgWPw5JpgGREqvS5kyzvGAitnyUffWcgWSBw\tc+YcwKBXw8xzGil7uYndyVTkV5OUY/NMe01D/yxEgeyr2ZyvKbZYcnG/4ul2VKy5fQ/Mqgs5gC1\t23afx/ClcQqUk5OY12pzFxaUmuOPNFfwsx5SDyLpraw0u+H7Y="
+        },
+        {
+          "Name": "X-Gm-Gg",
+          "Value": "ASbGncvE8W0VVulMbZ0o/AVno6eBiz/C9UXCu1qT3T13VLImBUt4ud0/R6QMR9sxik8\tyGBuCBV1RHD4iK0wvIZA7OC/DEapg5AXgANS10NpfPeR2b+w+1liZMyF6W3PKTsMzaJBb1GEELP\tDL+puF2xKxUGohtH4hLvQzOOY/nd0dSCY9q07b/fJJYvcDC2xUZgpkK8Kz3FkdLPhB3bZZMCjul\tQvgDfLvgOjeXeaWLsbCCCSn+gdQH5J4exNzYpWn5la7G0sDviGUWII/oZKiUnSKqevReV1m5rBu\tQ1LpzhhTsgCsaAuJakH2vG7oazeWterCxoYJc+imTs8PCEbdRVZ00VWuTcoGfgU5PI/jmisLwWU\tx1f+XL5b9mUobwv6QX41JQvCz5G72Xu3vPQ3wRS5Z4mn6bx9+0KCbyXkVWiIpILjPcWtrqDa4AO\t03cWe7EytlFNHrLKejCry+FQ0cyQ=="
+        },
+        {
+          "Name": "X-Google-Smtp-Source",
+          "Value": "AGHT+IFrgSH4ktt0cwbtPh+Y6CjYkvltVH8z1Nu8IuGHO5SydzjLGfI+DUBhGRzu+nJVobHKvKjsIQ=="
+        },
+        {
+          "Name": "X-Received",
+          "Value": "by 2002:a05:6a00:2ea9:b0:781:1916:c5fb with SMTP id d2e1a72fcca58-78c98d5cc3fmr18234709b3a.14.1759803326956;        Mon, 06 Oct 2025 19:15:26 -0700 (PDT)"
+        },
+        {
+          "Name": "Received",
+          "Value": "from [2001:4456:c70:f600:8000:f405:100:0] ([2001:4456:c70:f600:286c:5177:196e:bcd9])        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-78b01fb1902sm14047812b3a.31.2025.10.06.19.15.26        for <hello@sam.innovareai.com>        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);        Mon, 06 Oct 2025 19:15:26 -0700 (PDT)"
+        },
+        {
+          "Name": "Message-ID",
+          "Value": "<6a867d3f-ff80-4281-bf29-7ab9467c3cc4@Spark>"
+        },
+        {
+          "Name": "X-Readdle-Message-ID",
+          "Value": "6a867d3f-ff80-4281-bf29-7ab9467c3cc4@Spark"
+        },
+        {
+          "Name": "MIME-Version",
+          "Value": "1.0"
+        }
+      ],
+      "ReplyTo": "",
+      "Subject": "test 4",
+      "FromFull": {
+        "Name": "Thorsten Linz (InnovareAI)",
+        "Email": "tl@innovareai.com",
+        "MailboxHash": ""
+      },
+      "FromName": "Thorsten Linz (InnovareAI)",
+      "HtmlBody": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n</body>\n</html>\n",
+      "TextBody": "\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\n",
+      "MessageID": "63963a33-0d79-4cee-a862-1dbbc79b8ae8",
+      "Attachments": [],
+      "MailboxHash": "",
+      "MessageStream": "inbound",
+      "OriginalRecipient": "hello@sam.innovareai.com",
+      "StrippedTextReply": ""
+    },
+    "created_at": "2025-10-07T02:15:32.285696+00:00",
+    "updated_at": "2025-11-03T05:38:31.762325+00:00"
+  },
+  {
+    "id": "5c4f03a7-23eb-4a2b-9d23-5efd2c580ff5",
+    "workspace_id": null,
+    "campaign_id": null,
+    "prospect_id": null,
+    "from_email": "tl@innovareai.com",
+    "from_name": "Thorsten Linz (InnovareAI)",
+    "to_email": "hello@sam.innovareai.com",
+    "subject": "Re: 🧪 Test SAM Inbound Email - Please Reply",
+    "message_id": "f5805dd9-0766-4308-9153-42cde91b69e6",
+    "text_body": "Test\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\nOn Oct 7, 2025 at 9:26 AM +0800, SAM AI <hello@sam.innovareai.com>, wrote:\n> SAM Inbound Email Test\n> Hi Thorsten,\n> This is a test email to verify SAM's inbound email processing system is working correctly.\n> 📧 Please reply to this email with any message.\n> Your reply will be:\n>\n> • ✅ Captured by Postmark inbound webhook\n> • ✅ Stored in the email_responses database table\n> • ✅ Available for AI analysis and response drafting\n>\n> Reply-To is set to: hello@sam.innovareai.com\n> Thanks!\n> SAM AI\n",
+    "html_body": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageBodySection\">\n<div dir=\"auto\">Test</div>\n</div>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n<div name=\"messageReplySection\">On Oct 7, 2025 at 9:26 AM +0800, SAM AI &lt;hello@sam.innovareai.com&gt;, wrote:<br />\n<blockquote type=\"cite\" style=\"border-left-color: grey; border-left-width: thin; border-left-style: solid; margin: 5px 5px;padding-left: 10px;\">\n<h2>SAM Inbound Email Test</h2>\n<p>Hi Thorsten,</p>\n<p>This is a test email to verify SAM's inbound email processing system is working correctly.</p>\n<p><strong>📧 Please reply to this email with any message.</strong></p>\n<p>Your reply will be:</p>\n<ul>\n<li>✅ Captured by Postmark inbound webhook</li>\n<li>✅ Stored in the email_responses database table</li>\n<li>✅ Available for AI analysis and response drafting</li>\n</ul>\n<p>Reply-To is set to: <code>hello@sam.innovareai.com</code></p>\n<p>Thanks!<br />\nSAM AI</p>\n</blockquote>\n</div>\n</body>\n</html>\n",
+    "stripped_text": "Test\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545",
+    "has_attachments": false,
+    "attachments": [],
+    "received_at": "2025-10-07T01:28:09+00:00",
+    "processed": true,
+    "processed_at": "2025-11-03T05:38:31.762325+00:00",
+    "sentiment": null,
+    "intent": null,
+    "requires_response": true,
+    "ai_summary": null,
+    "ai_suggested_response": null,
+    "raw_email": {
+      "Cc": "",
+      "To": "hello@sam.innovareai.com",
+      "Bcc": "",
+      "Tag": "",
+      "Date": "Tue, 7 Oct 2025 09:28:09 +0800",
+      "From": "tl@innovareai.com",
+      "CcFull": [],
+      "ToFull": [
+        {
+          "Name": "",
+          "Email": "hello@sam.innovareai.com",
+          "MailboxHash": ""
+        }
+      ],
+      "BccFull": [],
+      "Headers": [
+        {
+          "Name": "Return-Path",
+          "Value": "<tl@innovareai.com>"
+        },
+        {
+          "Name": "Received",
+          "Value": "by p-pm-inboundg03a-aws-useast1a.inbound.postmarkapp.com (Postfix, from userid 996)\tid 3863D453CA3; Tue,  7 Oct 2025 02:27:44 +0000 (UTC)"
+        },
+        {
+          "Name": "X-Spam-Checker-Version",
+          "Value": "SpamAssassin 3.4.0 (2014-02-07) on\tp-pm-inboundg03a-aws-useast1a"
+        },
+        {
+          "Name": "X-Spam-Status",
+          "Value": "No"
+        },
+        {
+          "Name": "X-Spam-Score",
+          "Value": "-0.1"
+        },
+        {
+          "Name": "X-Spam-Tests",
+          "Value": "DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,\tRCVD_IN_DNSWL_BLOCKED,RCVD_IN_MSPIKE_H3,RCVD_IN_MSPIKE_WL,\tRCVD_IN_VALIDITY_RPBL_BLOCKED,RCVD_IN_VALIDITY_SAFE_BLOCKED,\tRCVD_IN_ZEN_BLOCKED_OPENDNS,SPF_HELO_NONE,SPF_PASS,URIBL_DBL_BLOCKED_OPENDNS,\tURIBL_ZEN_BLOCKED_OPENDNS"
+        },
+        {
+          "Name": "Received-SPF",
+          "Value": "pass (innovareai.com: Sender is authorized to use 'tl@innovareai.com' in 'mfrom' identity (mechanism 'include:_spf.google.com' matched)) receiver=p-pm-inboundg03a-aws-useast1a; identity=mailfrom; envelope-from=\"tl@innovareai.com\"; helo=mail-ot1-f44.google.com; client-ip=209.85.210.44"
+        },
+        {
+          "Name": "Received",
+          "Value": "from mail-ot1-f44.google.com (mail-ot1-f44.google.com [209.85.210.44])\t(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))\t(No client certificate requested)\tby p-pm-inboundg03a-aws-useast1a.inbound.postmarkapp.com (Postfix) with ESMTPS id 0A4B5453CA2\tfor <hello@sam.innovareai.com>; Tue,  7 Oct 2025 02:27:44 +0000 (UTC)"
+        },
+        {
+          "Name": "Received",
+          "Value": "by mail-ot1-f44.google.com with SMTP id 46e09a7af769-7af791b28b9so3888971a34.2        for <hello@sam.innovareai.com>; Mon, 06 Oct 2025 19:27:43 -0700 (PDT)"
+        },
+        {
+          "Name": "DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=innovareai.com; s=google; t=1759804063; x=1760408863; darn=sam.innovareai.com;        h=mime-version:subject:references:in-reply-to:message-id:to:from:date         :from:to:cc:subject:date:message-id:reply-to;        bh=LwZz5AOeJORzA3+N97rRWDxvlX9O7IqqZLXh+vKd8Bk=;        b=J9qCFyoH2LOqbF8jt49O9IrkgkWvBb0vjPRAgCey+4ef9UlIeDyTWkEq9HhNR7gAn1         VdT/eDX9UVnGvbRUswPcGyMZcp6q2reS+26I0At2u21VWqYsQkD9SaKseGW+Keuyj1YU         Wln7yiJnTyuOnyxtXrHCFe1m5kc3iVBXVhMbw="
+        },
+        {
+          "Name": "X-Google-DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=1e100.net; s=20230601; t=1759804063; x=1760408863;        h=mime-version:subject:references:in-reply-to:message-id:to:from:date         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;        bh=LwZz5AOeJORzA3+N97rRWDxvlX9O7IqqZLXh+vKd8Bk=;        b=uxMsSTQtokTGuJCMcCIHC4jQbDPyPCRoyPcukVhIETiVgL/2hKEZ3XC7tFOpJBGZ4N         hW5JDEmo2ZyNFxjEmfVS/ztFVI7BZ/yB7bNXhGNioDKKXKZ5KjXVmHgg58hvy8kcz03b         wNwpLAhQ0rJN9ZCphutnKc2g5Il4A9X35YRMCWjgoLJvgmiUeNwh5ODQyhD9fs6cGDuC         9B4s4jH+2NJaz3hVbfrJZK8TY+O25MQB891MrTlsgHgI9mByfhoOu0cmBaG/OXqrXUwq         RbbxPOpSDlMjWeDDETc4+FMRprfHTW9THkNtXpDhlK1VMgJCmvMiybLgTROwmIJlD6tB         2m+A=="
+        },
+        {
+          "Name": "X-Gm-Message-State",
+          "Value": "AOJu0YySJc8dlzhvWQIrT9kyEbLBtLiwqFcrKY10TKz7xQcFFiTxce/g\twxlYmqL91Dp/Efw9CV7WMeOPQi5RUMhmvQY9pBhrx1Yzb1ktAdIhoUIyJD22dUoIuNK53R3x2Dr\tclHRYRtmHXSZ1SNNiotLBSVt2yob+C8LT7rYA1d7Vkg7UlAJJ8j8ts6uUCQ9qFt7vO6+HzoCgwS\tYQQ0hxsXiGIMxJeUCkUYl4pBK8pZm9x7x2hOkL3GqGLG5yjTE="
+        },
+        {
+          "Name": "X-Gm-Gg",
+          "Value": "ASbGnctiF2ZXol8aJMf2ewqmT5TJ9jG/yY3K8mwG17UNmH8hWbtGfzXuNT2b16eUa2H\tqG5oXV2yri/HBwUrr5BZ+WbGEcmaUN4Qnu6wdiGIZ0yhcNgLygQMmiClzz20LmBRjzjSIN3zQsl\tvcMPXuNzjjunrsYrSzUVXvnI9tZr4XGQd7ir/ANAFW4h41HdzMyTLKNe2L7yIH/Bv+OD4KqT9Iz\tHoAv2vHm+3Tj4TSsuw5sY5qH+BnQt5Wb2qnOpmCfrn0Zwg+KpJjDSkJts4OTytoJrkWxW7ybald\ttXFtHwNYwCHp1kIbjqZ6F2Ynqb1NbmchsJ7PDM4h4mKsvPfxFN4N2a3ynHpgnqnvgPckFqNRt5Z\tOPl96axfezeJi1+bGX1IqhZk5FESZ4fIFcLDzcIUbngcRmP5BnV/yVU2xypH/37BELtBlIa+ik/\t78EVWIIccA+p8NtcJOLUxK"
+        },
+        {
+          "Name": "X-Google-Smtp-Source",
+          "Value": "AGHT+IHD5Gn6tgnpTDtpFgZXa55rnJZAzDVRasdRmJC3Tk/jwpLIlvCeAW55JG/QECosEi4LGixbEg=="
+        },
+        {
+          "Name": "X-Received",
+          "Value": "by 2002:a05:6a00:3991:b0:77d:51e5:e5d1 with SMTP id d2e1a72fcca58-78c98cb783fmr16603724b3a.19.1759800497988;        Mon, 06 Oct 2025 18:28:17 -0700 (PDT)"
+        },
+        {
+          "Name": "Received",
+          "Value": "from [2001:4456:c70:f600:8000:f405:100:0] ([2001:4456:c70:f600:286c:5177:196e:bcd9])        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-78b01f9cbb4sm13850564b3a.10.2025.10.06.18.28.16        for <hello@sam.innovareai.com>        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);        Mon, 06 Oct 2025 18:28:17 -0700 (PDT)"
+        },
+        {
+          "Name": "Message-ID",
+          "Value": "<e0a5dfec-417d-4bbc-92d1-34f0a4d025fe@Spark>"
+        },
+        {
+          "Name": "In-Reply-To",
+          "Value": "<a2acff7b-d9fb-42a2-8041-f3d7e19cfabe@mtasv.net>"
+        },
+        {
+          "Name": "References",
+          "Value": "<a2acff7b-d9fb-42a2-8041-f3d7e19cfabe@mtasv.net>"
+        },
+        {
+          "Name": "X-Readdle-Message-ID",
+          "Value": "e0a5dfec-417d-4bbc-92d1-34f0a4d025fe@Spark"
+        },
+        {
+          "Name": "MIME-Version",
+          "Value": "1.0"
+        }
+      ],
+      "ReplyTo": "",
+      "Subject": "Re: 🧪 Test SAM Inbound Email - Please Reply",
+      "FromFull": {
+        "Name": "Thorsten Linz (InnovareAI)",
+        "Email": "tl@innovareai.com",
+        "MailboxHash": ""
+      },
+      "FromName": "Thorsten Linz (InnovareAI)",
+      "HtmlBody": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageBodySection\">\n<div dir=\"auto\">Test</div>\n</div>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n<div name=\"messageReplySection\">On Oct 7, 2025 at 9:26 AM +0800, SAM AI &lt;hello@sam.innovareai.com&gt;, wrote:<br />\n<blockquote type=\"cite\" style=\"border-left-color: grey; border-left-width: thin; border-left-style: solid; margin: 5px 5px;padding-left: 10px;\">\n<h2>SAM Inbound Email Test</h2>\n<p>Hi Thorsten,</p>\n<p>This is a test email to verify SAM's inbound email processing system is working correctly.</p>\n<p><strong>📧 Please reply to this email with any message.</strong></p>\n<p>Your reply will be:</p>\n<ul>\n<li>✅ Captured by Postmark inbound webhook</li>\n<li>✅ Stored in the email_responses database table</li>\n<li>✅ Available for AI analysis and response drafting</li>\n</ul>\n<p>Reply-To is set to: <code>hello@sam.innovareai.com</code></p>\n<p>Thanks!<br />\nSAM AI</p>\n</blockquote>\n</div>\n</body>\n</html>\n",
+      "TextBody": "Test\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\nOn Oct 7, 2025 at 9:26 AM +0800, SAM AI <hello@sam.innovareai.com>, wrote:\n> SAM Inbound Email Test\n> Hi Thorsten,\n> This is a test email to verify SAM's inbound email processing system is working correctly.\n> 📧 Please reply to this email with any message.\n> Your reply will be:\n>\n> • ✅ Captured by Postmark inbound webhook\n> • ✅ Stored in the email_responses database table\n> • ✅ Available for AI analysis and response drafting\n>\n> Reply-To is set to: hello@sam.innovareai.com\n> Thanks!\n> SAM AI\n",
+      "MessageID": "f5805dd9-0766-4308-9153-42cde91b69e6",
+      "Attachments": [],
+      "MailboxHash": "",
+      "MessageStream": "inbound",
+      "OriginalRecipient": "hello@sam.innovareai.com",
+      "StrippedTextReply": "Test\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545"
+    },
+    "created_at": "2025-10-07T02:27:45.152509+00:00",
+    "updated_at": "2025-11-03T05:38:31.762325+00:00"
+  },
+  {
+    "id": "17473210-1e95-4e77-a076-cb4b3225d390",
+    "workspace_id": null,
+    "campaign_id": null,
+    "prospect_id": null,
+    "from_email": "tl@innovareai.com",
+    "from_name": "Thorsten Linz (InnovareAI)",
+    "to_email": "hello@sam.innovareai.com",
+    "subject": "test",
+    "message_id": "370e9163-038e-4c3a-add8-63d9fa4cf5e8",
+    "text_body": "\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\n",
+    "html_body": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n</body>\n</html>\n",
+    "stripped_text": "",
+    "has_attachments": false,
+    "attachments": [],
+    "received_at": "2025-10-07T01:39:20+00:00",
+    "processed": true,
+    "processed_at": "2025-11-03T05:38:31.762325+00:00",
+    "sentiment": null,
+    "intent": null,
+    "requires_response": true,
+    "ai_summary": null,
+    "ai_suggested_response": null,
+    "raw_email": {
+      "Cc": "",
+      "To": "hello@sam.innovareai.com",
+      "Bcc": "",
+      "Tag": "",
+      "Date": "Tue, 7 Oct 2025 09:39:20 +0800",
+      "From": "tl@innovareai.com",
+      "CcFull": [],
+      "ToFull": [
+        {
+          "Name": "",
+          "Email": "hello@sam.innovareai.com",
+          "MailboxHash": ""
+        }
+      ],
+      "BccFull": [],
+      "Headers": [
+        {
+          "Name": "Return-Path",
+          "Value": "<tl@innovareai.com>"
+        },
+        {
+          "Name": "Received",
+          "Value": "by p-pm-inboundg03c-aws-useast1c.inbound.postmarkapp.com (Postfix, from userid 996)\tid 10D7C453CA3; Tue,  7 Oct 2025 02:29:50 +0000 (UTC)"
+        },
+        {
+          "Name": "X-Spam-Checker-Version",
+          "Value": "SpamAssassin 3.4.0 (2014-02-07) on\tp-pm-inboundg03c-aws-useast1c"
+        },
+        {
+          "Name": "X-Spam-Status",
+          "Value": "No"
+        },
+        {
+          "Name": "X-Spam-Score",
+          "Value": "-0.1"
+        },
+        {
+          "Name": "X-Spam-Tests",
+          "Value": "DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,\tRCVD_IN_DNSWL_BLOCKED,RCVD_IN_MSPIKE_H3,RCVD_IN_MSPIKE_WL,\tRCVD_IN_VALIDITY_RPBL_BLOCKED,RCVD_IN_VALIDITY_SAFE_BLOCKED,\tRCVD_IN_ZEN_BLOCKED_OPENDNS,SPF_HELO_NONE,SPF_PASS,URIBL_DBL_BLOCKED_OPENDNS,\tURIBL_ZEN_BLOCKED_OPENDNS"
+        },
+        {
+          "Name": "Received-SPF",
+          "Value": "pass (innovareai.com: Sender is authorized to use 'tl@innovareai.com' in 'mfrom' identity (mechanism 'include:_spf.google.com' matched)) receiver=p-pm-inboundg03c-aws-useast1c; identity=mailfrom; envelope-from=\"tl@innovareai.com\"; helo=mail-qt1-f181.google.com; client-ip=209.85.160.181"
+        },
+        {
+          "Name": "Received",
+          "Value": "from mail-qt1-f181.google.com (mail-qt1-f181.google.com [209.85.160.181])\t(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))\t(No client certificate requested)\tby p-pm-inboundg03c-aws-useast1c.inbound.postmarkapp.com (Postfix) with ESMTPS id DEFEE453CA1\tfor <hello@sam.innovareai.com>; Tue,  7 Oct 2025 02:29:49 +0000 (UTC)"
+        },
+        {
+          "Name": "Received",
+          "Value": "by mail-qt1-f181.google.com with SMTP id d75a77b69052e-4de584653cfso89318531cf.0        for <hello@sam.innovareai.com>; Mon, 06 Oct 2025 19:29:49 -0700 (PDT)"
+        },
+        {
+          "Name": "DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=innovareai.com; s=google; t=1759804189; x=1760408989; darn=sam.innovareai.com;        h=mime-version:subject:message-id:to:from:date:from:to:cc:subject         :date:message-id:reply-to;        bh=4CNMO+8ZILPEC/JXM6WmN98KRyJuj0lMCGmqKoYdIrA=;        b=nyfPj/i8ddTE9xlpuJQd1yViVDlSHocs2ifQnA/8bggnFh8321d45fskfdl9+FxE7S         PftjU+UiEnM3QXWk5eO6x9xV5vGQ41u65ZzPi7WdEoaGOGWrOimamc7cuFhTxCjxt1OU         4DorlL2t1ajopS/+xYix0VKOSMo3GGPRock2M="
+        },
+        {
+          "Name": "X-Google-DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=1e100.net; s=20230601; t=1759804189; x=1760408989;        h=mime-version:subject:message-id:to:from:date:x-gm-message-state         :from:to:cc:subject:date:message-id:reply-to;        bh=4CNMO+8ZILPEC/JXM6WmN98KRyJuj0lMCGmqKoYdIrA=;        b=juxFW5LWs4CHl9Osi0flG0BXj8qsIIn4coUoOiQZGNN7EhLHGvbTZD9j+mwSsce34c         8gBUH/qUrCrvtmG0kraPCw/nBDw6CvFdfeFYVit2x8/iLW6nOVx6HsGr7iCONQJsasHH         T5s2NdVJHsu6ApTGtMqF18rJCh8QpDDrkdqeCRIAMmpo3lLgV11T4ym+9s9/lDwo7gqP         5VWGzXnwytDRDnH/eh9SR1lsxZKHa9woeAW67gdo0NvVCxwufopOKxcvZEsqeR48FTQn         w72PkgmWEw6NakqPMWHsMv/I1xZXiggHQg0c0v1JvhnufZxX6FSE58p9XQ4dTvUxg/9f         lb2g=="
+        },
+        {
+          "Name": "X-Gm-Message-State",
+          "Value": "AOJu0Yx6Eh0cCfHGmBPTx3hzb9hkBRT9hKPwn4F40tgImRWgRm8s2kzw\tVbrmjeLMZ+KujuOcGnfBqkFoM5S5AvfdjMNSQfmF/vcVQ6goncxAY+l5mjXa3xCO1/lX03QA0Xt\tDCnx1g0ueBT1Tsqviekn7SAf1idSgjKnIXmylk9HhMJwrRkOL0QYUhpQw1o1uNPVqzyDLvyrmRY\tV4UIJbXomKB0TVpUFAZRn6Fn6SCo8+TELRjZ0m86m8casP73o="
+        },
+        {
+          "Name": "X-Gm-Gg",
+          "Value": "ASbGnctkvT3XwCc0y8+JxrYi63dSTh7tqu4cSXxeWhsP0XNnoH9ljyqAtcy56Ewabrw\t/XbKBgwZ1D5DqzbNC+yUn1qTj7EXu91B0DVC8tk0BZabklia0ZCHtgxSL2ekblqmpoe6L/EFfqK\temo43fsUdmwh8q2BokTFwaH7fkSFJzUeMH+vsC4n4KpXa32M9ueTmtGuRMuYyxhLPTxgEpF9Clg\t2iwVdDlwPzSdAT514T7wlSIYgVgIfgaT32UIfeYsz8NR6zjg1v4rlnBY6G0TNCYJGistohGkPD9\tBFIllTJWoIlzwDXNZJuWsSdpwc6Wd0O/nRYVPUykkSFji7a5CpBXaAkPOVQ+jSkJJF348QjHVS9\tMipDqYKQk+7dl4EalRdpnGcXw0eXljdKoY/CpJFhqDidTjIQsRK1HRmcXG5jZq6kKSTAiEQRDp4\tMyiPaMdPLQy1ijRYugCAKg"
+        },
+        {
+          "Name": "X-Google-Smtp-Source",
+          "Value": "AGHT+IEY3ZEVys7G7f+fsLUqatNmayi4uGnZXwOuCqG9IZ7HOXJ5OvVY0+Yq9LAmh79IIHXAI0NHeA=="
+        },
+        {
+          "Name": "X-Received",
+          "Value": "by 2002:a17:90b:17c3:b0:32e:9a24:2dd9 with SMTP id 98e67ed59e1d1-339c27164bcmr14274623a91.1.1759801168208;        Mon, 06 Oct 2025 18:39:28 -0700 (PDT)"
+        },
+        {
+          "Name": "Received",
+          "Value": "from [2001:4456:c70:f600:8000:f405:100:0] ([2001:4456:c70:f600:286c:5177:196e:bcd9])        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-339a6ff256dsm18075942a91.16.2025.10.06.18.39.27        for <hello@sam.innovareai.com>        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);        Mon, 06 Oct 2025 18:39:27 -0700 (PDT)"
+        },
+        {
+          "Name": "Message-ID",
+          "Value": "<eb606459-c5f3-499c-987e-5e9a8c17ca60@Spark>"
+        },
+        {
+          "Name": "X-Readdle-Message-ID",
+          "Value": "eb606459-c5f3-499c-987e-5e9a8c17ca60@Spark"
+        },
+        {
+          "Name": "MIME-Version",
+          "Value": "1.0"
+        }
+      ],
+      "ReplyTo": "",
+      "Subject": "test",
+      "FromFull": {
+        "Name": "Thorsten Linz (InnovareAI)",
+        "Email": "tl@innovareai.com",
+        "MailboxHash": ""
+      },
+      "FromName": "Thorsten Linz (InnovareAI)",
+      "HtmlBody": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n</body>\n</html>\n",
+      "TextBody": "\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\n",
+      "MessageID": "370e9163-038e-4c3a-add8-63d9fa4cf5e8",
+      "Attachments": [],
+      "MailboxHash": "",
+      "MessageStream": "inbound",
+      "OriginalRecipient": "hello@sam.innovareai.com",
+      "StrippedTextReply": ""
+    },
+    "created_at": "2025-10-07T02:29:50.750504+00:00",
+    "updated_at": "2025-11-03T05:38:31.762325+00:00"
+  },
+  {
+    "id": "c7bc0ccd-de19-49bd-9448-4805decaff45",
+    "workspace_id": null,
+    "campaign_id": null,
+    "prospect_id": null,
+    "from_email": "tl@innovareai.com",
+    "from_name": "Thorsten Linz (InnovareAI)",
+    "to_email": "hello@sam.innovareai.com",
+    "subject": "Re: 🧪 Test SAM Inbound Email - Please Reply",
+    "message_id": "2c06f2a3-35e4-46a6-9719-170acab2f788",
+    "text_body": "Test 2\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\nOn Oct 7, 2025 at 9:26 AM +0800, SAM AI <hello@sam.innovareai.com>, wrote:\n> SAM Inbound Email Test\n> Hi Thorsten,\n> This is a test email to verify SAM's inbound email processing system is working correctly.\n> 📧 Please reply to this email with any message.\n> Your reply will be:\n>\n> • ✅ Captured by Postmark inbound webhook\n> • ✅ Stored in the email_responses database table\n> • ✅ Available for AI analysis and response drafting\n>\n> Reply-To is set to: hello@sam.innovareai.com\n> Thanks!\n> SAM AI\n",
+    "html_body": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageBodySection\">\n<div dir=\"auto\">Test 2</div>\n</div>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n<div name=\"messageReplySection\">On Oct 7, 2025 at 9:26 AM +0800, SAM AI &lt;hello@sam.innovareai.com&gt;, wrote:<br />\n<blockquote type=\"cite\" style=\"border-left-color: grey; border-left-width: thin; border-left-style: solid; margin: 5px 5px;padding-left: 10px;\">\n<h2>SAM Inbound Email Test</h2>\n<p>Hi Thorsten,</p>\n<p>This is a test email to verify SAM's inbound email processing system is working correctly.</p>\n<p><strong>📧 Please reply to this email with any message.</strong></p>\n<p>Your reply will be:</p>\n<ul>\n<li>✅ Captured by Postmark inbound webhook</li>\n<li>✅ Stored in the email_responses database table</li>\n<li>✅ Available for AI analysis and response drafting</li>\n</ul>\n<p>Reply-To is set to: <code>hello@sam.innovareai.com</code></p>\n<p>Thanks!<br />\nSAM AI</p>\n</blockquote>\n</div>\n</body>\n</html>\n",
+    "stripped_text": "Test 2\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545",
+    "has_attachments": false,
+    "attachments": [],
+    "received_at": "2025-10-07T01:33:17+00:00",
+    "processed": true,
+    "processed_at": "2025-11-03T05:38:31.762325+00:00",
+    "sentiment": null,
+    "intent": null,
+    "requires_response": true,
+    "ai_summary": null,
+    "ai_suggested_response": null,
+    "raw_email": {
+      "Cc": "",
+      "To": "hello@sam.innovareai.com",
+      "Bcc": "",
+      "Tag": "",
+      "Date": "Tue, 7 Oct 2025 09:33:17 +0800",
+      "From": "tl@innovareai.com",
+      "CcFull": [],
+      "ToFull": [
+        {
+          "Name": "",
+          "Email": "hello@sam.innovareai.com",
+          "MailboxHash": ""
+        }
+      ],
+      "BccFull": [],
+      "Headers": [
+        {
+          "Name": "Return-Path",
+          "Value": "<tl@innovareai.com>"
+        },
+        {
+          "Name": "Received",
+          "Value": "by p-pm-inboundg04c-aws-useast1c.inbound.postmarkapp.com (Postfix, from userid 996)\tid 738BD4066FC; Tue,  7 Oct 2025 02:32:45 +0000 (UTC)"
+        },
+        {
+          "Name": "X-Spam-Checker-Version",
+          "Value": "SpamAssassin 3.4.0 (2014-02-07) on\tp-pm-inboundg04c-aws-useast1c"
+        },
+        {
+          "Name": "X-Spam-Status",
+          "Value": "No"
+        },
+        {
+          "Name": "X-Spam-Score",
+          "Value": "-0.1"
+        },
+        {
+          "Name": "X-Spam-Tests",
+          "Value": "DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,\tRCVD_IN_DNSWL_BLOCKED,RCVD_IN_MSPIKE_H3,RCVD_IN_MSPIKE_WL,\tRCVD_IN_VALIDITY_RPBL_BLOCKED,RCVD_IN_VALIDITY_SAFE_BLOCKED,\tRCVD_IN_ZEN_BLOCKED_OPENDNS,SPF_HELO_NONE,SPF_PASS,URIBL_DBL_BLOCKED_OPENDNS,\tURIBL_ZEN_BLOCKED_OPENDNS"
+        },
+        {
+          "Name": "Received-SPF",
+          "Value": "pass (innovareai.com: Sender is authorized to use 'tl@innovareai.com' in 'mfrom' identity (mechanism 'include:_spf.google.com' matched)) receiver=p-pm-inboundg04c-aws-useast1c; identity=mailfrom; envelope-from=\"tl@innovareai.com\"; helo=mail-ot1-f48.google.com; client-ip=209.85.210.48"
+        },
+        {
+          "Name": "Received",
+          "Value": "from mail-ot1-f48.google.com (mail-ot1-f48.google.com [209.85.210.48])\t(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))\t(No client certificate requested)\tby p-pm-inboundg04c-aws-useast1c.inbound.postmarkapp.com (Postfix) with ESMTPS id 405984066F9\tfor <hello@sam.innovareai.com>; Tue,  7 Oct 2025 02:32:45 +0000 (UTC)"
+        },
+        {
+          "Name": "Received",
+          "Value": "by mail-ot1-f48.google.com with SMTP id 46e09a7af769-7bd8909c682so3546524a34.3        for <hello@sam.innovareai.com>; Mon, 06 Oct 2025 19:32:45 -0700 (PDT)"
+        },
+        {
+          "Name": "DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=innovareai.com; s=google; t=1759804364; x=1760409164; darn=sam.innovareai.com;        h=mime-version:subject:references:in-reply-to:message-id:to:from:date         :from:to:cc:subject:date:message-id:reply-to;        bh=91PvfcrpKOj/M/YdQXDW/px5xWkoI2aLZ98vK7JJ18w=;        b=XFnla8JzwmBcr3xuLLe4bPiDRy/Brb1mNvzFXQeHtJMBEboV/PcXCfQo+dJK+REB2x         BgOVTmVSEH0ziFO5ENWWasZvSC3vMrzYEi8OoSIEhVHsVibsEyLEAl8RNS/E3BUQ1Osx         GB3iZBHWjzNb2JqL9IyFVAAxOPH+xfbxGHa4c="
+        },
+        {
+          "Name": "X-Google-DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=1e100.net; s=20230601; t=1759804364; x=1760409164;        h=mime-version:subject:references:in-reply-to:message-id:to:from:date         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;        bh=91PvfcrpKOj/M/YdQXDW/px5xWkoI2aLZ98vK7JJ18w=;        b=oYchzZ2Ta+Ngz9Pd9kJvDZU/D6xwcnh2Lgg0PAooGJ8A2uFqIXLlMYtYVRKVrxWsFy         dqylGBb5Ef8Pfxwgl2Cgb0hSkJXBLM2nyVE64OSTOaF5psnF1hF8pJz3lgbSVbT3IH+t         8SsGjqCegNYtbFGnxQnJz3+WGtEG++I0vmspZItCm2z+rhveb1lehea/a87P7HSi5HLy         s8TgsL71ZH8NHhwVYBoL8Gjwz18fjwpr/kt2ZkBeP8W7qT8+NoGaZXyYDXH+kEfaSozJ         LqVIKuWnboOZDwpLVtwKGdGtY9cl3L+KcA65Wp8Xc24VJENSj1N/2PlP9pfk3wemLYr2         QfNA=="
+        },
+        {
+          "Name": "X-Gm-Message-State",
+          "Value": "AOJu0YxcYEIQj+u7cEHIhgw0vDuKekoK9Qmv5+VeAFZe2kMbznhF068Y\thpGYFTIp7pA32czNM6EKGG2FAtdGXNYpammzBTcNTKTr++ZF0/ha5YKUtFmpxwPjptGVVf+IxMn\t+1GHO5PBUZMCdaij1jOIeKAhS1qzco1HbSzAzvs7CToe7tIS68UjXlDZRrjEzuKW6eDa4jc1x1t\tkxTIZ1fK0894A+BVmS+wi5eottKDEE0Fm1gsCxlKMQiUj88Hc="
+        },
+        {
+          "Name": "X-Gm-Gg",
+          "Value": "ASbGncvPaTolO2ecEvBp9fjgBzHX+7b2XsAFtDGhSKe1QO1dHBgGtC1jNs42CHaZO+i\tkcMRbnNy4iEnnuVyzrdGRVXL3Cl+Qf9C89YpegXlDb2+f8rBCbabFEfkaoIFmRlGekz9T6BPpmR\tW54tudNaH5MA6nre7eieF8cQ8VSTPXgihg3uRtbBI36HLh8yAIiOviGgRZ94gxBfs+KiBEoTn0j\tlNcH2zXS9UA5dgn1H4LeDbL5wzApV1AX74oYXX56hlZqmn5WvqF7mdo31ImybgtZiXR9skBP5qd\tBM6GjkRlprZt4Am2UhIixSqPpC7N+4sRU4cVzZGK4yETtcsJQUGFpFI2PS+EwHs91qaxQZivkt2\tIzzzUt9A9WNTdpaBdfo3cvPqGDOC2Q1kO7yCnQRmXFTN1MIWmVuQSd4TFJWnKz21jvk/4dNw1Xm\txTWaK67fpDDS2RKmSsppMH0FXnS9wTuiE="
+        },
+        {
+          "Name": "X-Google-Smtp-Source",
+          "Value": "AGHT+IHPybiWB/6o1cuYZkoEjfJPvOJW9PuQWX/Qc8qpdBbnfw9VutVjyciNKYGgz7kbApzEyf3dKw=="
+        },
+        {
+          "Name": "X-Received",
+          "Value": "by 2002:a05:6a21:3284:b0:313:7ef8:85ab with SMTP id adf61e73a8af0-32b61e58236mr19705839637.19.1759800805838;        Mon, 06 Oct 2025 18:33:25 -0700 (PDT)"
+        },
+        {
+          "Name": "Received",
+          "Value": "from [2001:4456:c70:f600:8000:f405:100:0] ([2001:4456:c70:f600:286c:5177:196e:bcd9])        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-78b01f9daf3sm13934192b3a.8.2025.10.06.18.33.24        for <hello@sam.innovareai.com>        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);        Mon, 06 Oct 2025 18:33:25 -0700 (PDT)"
+        },
+        {
+          "Name": "Message-ID",
+          "Value": "<10b0fd86-8b2e-410e-81b8-13f2bb9cfdfa@Spark>"
+        },
+        {
+          "Name": "In-Reply-To",
+          "Value": "<a2acff7b-d9fb-42a2-8041-f3d7e19cfabe@mtasv.net>"
+        },
+        {
+          "Name": "References",
+          "Value": "<a2acff7b-d9fb-42a2-8041-f3d7e19cfabe@mtasv.net>"
+        },
+        {
+          "Name": "X-Readdle-Message-ID",
+          "Value": "10b0fd86-8b2e-410e-81b8-13f2bb9cfdfa@Spark"
+        },
+        {
+          "Name": "MIME-Version",
+          "Value": "1.0"
+        }
+      ],
+      "ReplyTo": "",
+      "Subject": "Re: 🧪 Test SAM Inbound Email - Please Reply",
+      "FromFull": {
+        "Name": "Thorsten Linz (InnovareAI)",
+        "Email": "tl@innovareai.com",
+        "MailboxHash": ""
+      },
+      "FromName": "Thorsten Linz (InnovareAI)",
+      "HtmlBody": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageBodySection\">\n<div dir=\"auto\">Test 2</div>\n</div>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n<div name=\"messageReplySection\">On Oct 7, 2025 at 9:26 AM +0800, SAM AI &lt;hello@sam.innovareai.com&gt;, wrote:<br />\n<blockquote type=\"cite\" style=\"border-left-color: grey; border-left-width: thin; border-left-style: solid; margin: 5px 5px;padding-left: 10px;\">\n<h2>SAM Inbound Email Test</h2>\n<p>Hi Thorsten,</p>\n<p>This is a test email to verify SAM's inbound email processing system is working correctly.</p>\n<p><strong>📧 Please reply to this email with any message.</strong></p>\n<p>Your reply will be:</p>\n<ul>\n<li>✅ Captured by Postmark inbound webhook</li>\n<li>✅ Stored in the email_responses database table</li>\n<li>✅ Available for AI analysis and response drafting</li>\n</ul>\n<p>Reply-To is set to: <code>hello@sam.innovareai.com</code></p>\n<p>Thanks!<br />\nSAM AI</p>\n</blockquote>\n</div>\n</body>\n</html>\n",
+      "TextBody": "Test 2\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\nOn Oct 7, 2025 at 9:26 AM +0800, SAM AI <hello@sam.innovareai.com>, wrote:\n> SAM Inbound Email Test\n> Hi Thorsten,\n> This is a test email to verify SAM's inbound email processing system is working correctly.\n> 📧 Please reply to this email with any message.\n> Your reply will be:\n>\n> • ✅ Captured by Postmark inbound webhook\n> • ✅ Stored in the email_responses database table\n> • ✅ Available for AI analysis and response drafting\n>\n> Reply-To is set to: hello@sam.innovareai.com\n> Thanks!\n> SAM AI\n",
+      "MessageID": "2c06f2a3-35e4-46a6-9719-170acab2f788",
+      "Attachments": [],
+      "MailboxHash": "",
+      "MessageStream": "inbound",
+      "OriginalRecipient": "hello@sam.innovareai.com",
+      "StrippedTextReply": "Test 2\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545"
+    },
+    "created_at": "2025-10-07T02:32:46.234473+00:00",
+    "updated_at": "2025-11-03T05:38:31.762325+00:00"
+  },
+  {
+    "id": "f18bbe8b-aa82-42b8-ba55-d8c9882bc224",
+    "workspace_id": null,
+    "campaign_id": null,
+    "prospect_id": null,
+    "from_email": "tl@innovareai.com",
+    "from_name": "Thorsten Linz (InnovareAI)",
+    "to_email": "hello@sam.innovareai.com",
+    "subject": "Re: 🔄 Final Test - Reply to This",
+    "message_id": "f0a5a4d6-83fe-4d3e-93f9-4b943bc851d0",
+    "text_body": "Test\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\nOn Oct 7, 2025 at 9:44 AM +0800, hello@sam.innovareai.com, wrote:\n>\n> Final Inbound Test\n>\n> Hi Thorsten,\n>\n> Domain is now configured in Postmark. Please reply to this email to test the complete flow.\n>\n> When you reply, check Postmark Activity log immediately to see if it appears.\n>\n> Sam\n",
+    "html_body": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageBodySection\">\n<div dir=\"auto\">Test</div>\n</div>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n<div name=\"messageReplySection\">On Oct 7, 2025 at 9:44 AM +0800, hello@sam.innovareai.com, wrote:<br />\n<blockquote type=\"cite\" style=\"border-left-color: grey; border-left-width: thin; border-left-style: solid; margin: 5px 5px;padding-left: 10px;\"><br />\n<div><b>Final Inbound Test</b><br />\n<br />\nHi Thorsten,<br />\n<br />\nDomain is now configured in Postmark. Please reply to this email to test the complete flow.<br />\n<br />\nWhen you reply, check Postmark Activity log immediately to see if it appears.<br />\n<br />\nSam</div>\n</blockquote>\n</div>\n</body>\n</html>\n",
+    "stripped_text": "Test\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545",
+    "has_attachments": false,
+    "attachments": [],
+    "received_at": "2025-10-07T01:46:04+00:00",
+    "processed": true,
+    "processed_at": "2025-11-03T05:38:31.762325+00:00",
+    "sentiment": null,
+    "intent": null,
+    "requires_response": true,
+    "ai_summary": null,
+    "ai_suggested_response": null,
+    "raw_email": {
+      "Cc": "",
+      "To": "hello@sam.innovareai.com",
+      "Bcc": "",
+      "Tag": "",
+      "Date": "Tue, 7 Oct 2025 09:46:04 +0800",
+      "From": "tl@innovareai.com",
+      "CcFull": [],
+      "ToFull": [
+        {
+          "Name": "",
+          "Email": "hello@sam.innovareai.com",
+          "MailboxHash": ""
+        }
+      ],
+      "BccFull": [],
+      "Headers": [
+        {
+          "Name": "Return-Path",
+          "Value": "<tl@innovareai.com>"
+        },
+        {
+          "Name": "Received",
+          "Value": "by p-pm-inboundg02a-aws-useast1a.inbound.postmarkapp.com (Postfix, from userid 996)\tid 8D97B405153; Tue,  7 Oct 2025 02:38:02 +0000 (UTC)"
+        },
+        {
+          "Name": "X-Spam-Checker-Version",
+          "Value": "SpamAssassin 3.4.0 (2014-02-07) on\tp-pm-inboundg02a-aws-useast1a"
+        },
+        {
+          "Name": "X-Spam-Status",
+          "Value": "No"
+        },
+        {
+          "Name": "X-Spam-Score",
+          "Value": "-0.1"
+        },
+        {
+          "Name": "X-Spam-Tests",
+          "Value": "DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,\tRCVD_IN_DNSWL_BLOCKED,RCVD_IN_MSPIKE_H2,RCVD_IN_VALIDITY_RPBL_BLOCKED,\tRCVD_IN_VALIDITY_SAFE_BLOCKED,RCVD_IN_ZEN_BLOCKED_OPENDNS,SPF_HELO_NONE,\tSPF_PASS,URIBL_DBL_BLOCKED_OPENDNS,URIBL_ZEN_BLOCKED_OPENDNS"
+        },
+        {
+          "Name": "Received-SPF",
+          "Value": "pass (innovareai.com: Sender is authorized to use 'tl@innovareai.com' in 'mfrom' identity (mechanism 'include:_spf.google.com' matched)) receiver=p-pm-inboundg02a-aws-useast1a; identity=mailfrom; envelope-from=\"tl@innovareai.com\"; helo=mail-vs1-f44.google.com; client-ip=209.85.217.44"
+        },
+        {
+          "Name": "Received",
+          "Value": "from mail-vs1-f44.google.com (mail-vs1-f44.google.com [209.85.217.44])\t(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))\t(No client certificate requested)\tby p-pm-inboundg02a-aws-useast1a.inbound.postmarkapp.com (Postfix) with ESMTPS id 55B1F453B34\tfor <hello@sam.innovareai.com>; Tue,  7 Oct 2025 02:38:02 +0000 (UTC)"
+        },
+        {
+          "Name": "Received",
+          "Value": "by mail-vs1-f44.google.com with SMTP id ada2fe7eead31-5d3fb34ba53so4833246137.1        for <hello@sam.innovareai.com>; Mon, 06 Oct 2025 19:38:02 -0700 (PDT)"
+        },
+        {
+          "Name": "DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=innovareai.com; s=google; t=1759804682; x=1760409482; darn=sam.innovareai.com;        h=mime-version:subject:references:in-reply-to:message-id:to:from:date         :from:to:cc:subject:date:message-id:reply-to;        bh=Xc+IKLph2gvuawrggkCD+yH5cZR/yhNoclmXwWkNWtc=;        b=WVtwhbY2kdD6oEhB61ewZ3iXwu4bb2wRNhCwGm4vsSBm2AjJZ5WYJLG7gjtBFCmfUN         4dKqaPbZKjX40Gjt40zgoTcgeu2zE2mzOJ8rRq1HEsx8Qx5yK6US0kautTraa5YaeKbE         R+70b3TkxNVtYHANUgV9Ds7zOs1RK4R8Fbj6I="
+        },
+        {
+          "Name": "X-Google-DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=1e100.net; s=20230601; t=1759804682; x=1760409482;        h=mime-version:subject:references:in-reply-to:message-id:to:from:date         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;        bh=Xc+IKLph2gvuawrggkCD+yH5cZR/yhNoclmXwWkNWtc=;        b=nl9odHP/TLI4nEdFZYG6RJWg+2J7wuI97Slo6NTqNqTyrIo7khtJiPQhqGUGCQGDst         +UfpJ7KnfZtC0cCWKW2qCK3IBNuh/9BLhucAQIM5NIcdXhI/387Kpy9A5q+Ad8njrxbY         hiaE+Mh9Jde2QU7M3hMxFw2EK99btD15aihoF5DrX+aL25ckjBFeKLRiENaQna8xZbjV         U8kiSbps31p/6gXZEiTufUYYmcRFn2JWD012P2E+qAsPLP7J5eZ6D8SzVHE7pDoTg/vM         qeZKvEpVLSKCurZLEPJHpbLVElEwfZIyGQaA2zezo7DNrU6wxTMoTAG+aVgJDOcemk6i         SPbQ=="
+        },
+        {
+          "Name": "X-Gm-Message-State",
+          "Value": "AOJu0YytcXPOWcK3G8URP3ED5lfvDTITloH72c4Qk3J67sNkspLNcLh+\tPINGQ3o7ZY6UmKH6fU6RnOVFD0FBzhXgbjKvYd/RajkhcX3KbrqonyG36906kq6n6t9jWYjHVXD\tWYJiZW7H6fO5lTbd+jxlioMO3ceaIor9smt6qKr0tTeNE7fzaMmial8cUIVxtEfHeT8MADfB0g/\t/GHpOyauHCEOh+f8KUyo3Ltm3EO6DI2ydjSmqcQFaq+IuIyxU="
+        },
+        {
+          "Name": "X-Gm-Gg",
+          "Value": "ASbGncsiXkwz5SkA0FbgkBgKpRVt0XW6ovY/LtbKW2QQz5o7S13tjlFP9cJ2Yy8HtP5\tfvYYLFFQmUIFnUKPSLffef9iyjLVpHR4ARw+FqvfaxPIClI/0aZEzThxOupbWovHK2rToOuN9g5\t66d0vYtD3z5WqG6nmY6p4415WedmIrfJ/mefDER4VSstEGwXg61QDKz+sZnyjBvKdoaDqFcwzRp\tpdIS34zgEAeOQ51L8OA0nohMQV9hhAJg/j3PgT4Zg1OlyJqgsvVTsOsnttYEHNvx3i/uQ21TsQF\tloNBC8RjCMJqqEX3flcx4ookP3uHd2agFZl1GFIx7xNYC2XYwXh8eB09kv7MQV8xEnHkthl4kuu\tbc3eyTiwxLVzq701vPPGdfptVJm6RH3deVdUgl/kEDm3+sqsDHJ8QYdmZUscL+YOqHxBZiFCHT5\t0WwaUR5O7IVZ9tSspj9Xll/qVr7Q=="
+        },
+        {
+          "Name": "X-Google-Smtp-Source",
+          "Value": "AGHT+IHtBXB4621NXRQc3b2wlltCHq7Ba4OdKPOF/whRetxBNKmUTg2qZZnnaQ0L7UiBKW/2HjVVIg=="
+        },
+        {
+          "Name": "X-Received",
+          "Value": "by 2002:a17:903:2f4c:b0:278:9051:8ea5 with SMTP id d9443c01a7336-28e9a5ff636mr180064845ad.21.1759801572040;        Mon, 06 Oct 2025 18:46:12 -0700 (PDT)"
+        },
+        {
+          "Name": "Received",
+          "Value": "from [2001:4456:c70:f600:8000:f405:100:0] ([2001:4456:c70:f600:286c:5177:196e:bcd9])        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-339c4a0d531sm12100116a91.4.2025.10.06.18.46.10        for <hello@sam.innovareai.com>        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);        Mon, 06 Oct 2025 18:46:11 -0700 (PDT)"
+        },
+        {
+          "Name": "Message-ID",
+          "Value": "<57fd612f-84ca-4999-9aef-6f86744b05e8@Spark>"
+        },
+        {
+          "Name": "In-Reply-To",
+          "Value": "<c3457876-df4c-46b3-b651-57f7af432d23@mtasv.net>"
+        },
+        {
+          "Name": "References",
+          "Value": "<c3457876-df4c-46b3-b651-57f7af432d23@mtasv.net>"
+        },
+        {
+          "Name": "X-Readdle-Message-ID",
+          "Value": "57fd612f-84ca-4999-9aef-6f86744b05e8@Spark"
+        },
+        {
+          "Name": "MIME-Version",
+          "Value": "1.0"
+        }
+      ],
+      "ReplyTo": "",
+      "Subject": "Re: 🔄 Final Test - Reply to This",
+      "FromFull": {
+        "Name": "Thorsten Linz (InnovareAI)",
+        "Email": "tl@innovareai.com",
+        "MailboxHash": ""
+      },
+      "FromName": "Thorsten Linz (InnovareAI)",
+      "HtmlBody": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageBodySection\">\n<div dir=\"auto\">Test</div>\n</div>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n<div name=\"messageReplySection\">On Oct 7, 2025 at 9:44 AM +0800, hello@sam.innovareai.com, wrote:<br />\n<blockquote type=\"cite\" style=\"border-left-color: grey; border-left-width: thin; border-left-style: solid; margin: 5px 5px;padding-left: 10px;\"><br />\n<div><b>Final Inbound Test</b><br />\n<br />\nHi Thorsten,<br />\n<br />\nDomain is now configured in Postmark. Please reply to this email to test the complete flow.<br />\n<br />\nWhen you reply, check Postmark Activity log immediately to see if it appears.<br />\n<br />\nSam</div>\n</blockquote>\n</div>\n</body>\n</html>\n",
+      "TextBody": "Test\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\nOn Oct 7, 2025 at 9:44 AM +0800, hello@sam.innovareai.com, wrote:\n>\n> Final Inbound Test\n>\n> Hi Thorsten,\n>\n> Domain is now configured in Postmark. Please reply to this email to test the complete flow.\n>\n> When you reply, check Postmark Activity log immediately to see if it appears.\n>\n> Sam\n",
+      "MessageID": "f0a5a4d6-83fe-4d3e-93f9-4b943bc851d0",
+      "Attachments": [],
+      "MailboxHash": "",
+      "MessageStream": "inbound",
+      "OriginalRecipient": "hello@sam.innovareai.com",
+      "StrippedTextReply": "Test\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545"
+    },
+    "created_at": "2025-10-07T02:38:03.551911+00:00",
+    "updated_at": "2025-11-03T05:38:31.762325+00:00"
+  },
+  {
+    "id": "0bc9ce3a-10cd-463b-b9b7-de542b8ad736",
+    "workspace_id": null,
+    "campaign_id": null,
+    "prospect_id": null,
+    "from_email": "tl@innovareai.com",
+    "from_name": "Thorsten Linz (InnovareAI)",
+    "to_email": "hello@sam.innovareai.com",
+    "subject": "Re: ✅ SAM Inbound Email System - LIVE TEST",
+    "message_id": "0ca51162-3538-444d-b174-e5424ab4bae5",
+    "text_body": "Test 2\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\nOn Oct 7, 2025 at 9:32 AM +0800, Sam <hello@sam.innovareai.com>, wrote:\n> System is Live! 🎉\n> Hi Thorsten,\n> The inbound email system is now fully operational:\n>\n> • ✅ MX record verified: sam.innovareai.com → inbound.postmarkapp.com\n> • ✅ Webhook active: https://app.meet-sam.com/api/webhooks/postmark-inbound\n> • ✅ Database ready: email_responses table\n>\n> 📧 Please reply to this email to test the full flow!\n> Your reply will be automatically captured and stored in the database.\n> Sam\n",
+    "html_body": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageBodySection\">\n<div dir=\"auto\">Test 2</div>\n</div>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n<div name=\"messageReplySection\">On Oct 7, 2025 at 9:32 AM +0800, Sam &lt;hello@sam.innovareai.com&gt;, wrote:<br />\n<blockquote type=\"cite\" style=\"border-left-color: grey; border-left-width: thin; border-left-style: solid; margin: 5px 5px;padding-left: 10px;\">\n<h2>System is Live! 🎉</h2>\n<p>Hi Thorsten,</p>\n<p>The inbound email system is now fully operational:</p>\n<ul>\n<li>✅ MX record verified: <code>sam.innovareai.com → inbound.postmarkapp.com</code></li>\n<li>✅ Webhook active: <code>https://app.meet-sam.com/api/webhooks/postmark-inbound</code></li>\n<li>✅ Database ready: <code>email_responses</code> table</li>\n</ul>\n<p><strong>📧 Please reply to this email to test the full flow!</strong></p>\n<p>Your reply will be automatically captured and stored in the database.</p>\n<p>Sam</p>\n</blockquote>\n</div>\n</body>\n</html>\n",
+    "stripped_text": "Test 2\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545",
+    "has_attachments": false,
+    "attachments": [],
+    "received_at": "2025-10-07T01:36:00+00:00",
+    "processed": true,
+    "processed_at": "2025-11-03T05:38:31.762325+00:00",
+    "sentiment": null,
+    "intent": null,
+    "requires_response": true,
+    "ai_summary": null,
+    "ai_suggested_response": null,
+    "raw_email": {
+      "Cc": "",
+      "To": "hello@sam.innovareai.com",
+      "Bcc": "",
+      "Tag": "",
+      "Date": "Tue, 7 Oct 2025 09:36:00 +0800",
+      "From": "tl@innovareai.com",
+      "CcFull": [],
+      "ToFull": [
+        {
+          "Name": "",
+          "Email": "hello@sam.innovareai.com",
+          "MailboxHash": ""
+        }
+      ],
+      "BccFull": [],
+      "Headers": [
+        {
+          "Name": "Return-Path",
+          "Value": "<tl@innovareai.com>"
+        },
+        {
+          "Name": "Received",
+          "Value": "by p-pm-inboundg05c-aws-useast1c.inbound.postmarkapp.com (Postfix, from userid 996)\tid 41253406C94; Tue,  7 Oct 2025 02:43:23 +0000 (UTC)"
+        },
+        {
+          "Name": "X-Spam-Checker-Version",
+          "Value": "SpamAssassin 3.4.0 (2014-02-07) on\tp-pm-inboundg05c-aws-useast1c"
+        },
+        {
+          "Name": "X-Spam-Status",
+          "Value": "No"
+        },
+        {
+          "Name": "X-Spam-Score",
+          "Value": "-0.1"
+        },
+        {
+          "Name": "X-Spam-Tests",
+          "Value": "DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HTML_MESSAGE,\tRCVD_IN_DNSWL_BLOCKED,RCVD_IN_MSPIKE_H2,RCVD_IN_VALIDITY_RPBL_BLOCKED,\tRCVD_IN_VALIDITY_SAFE_BLOCKED,RCVD_IN_ZEN_BLOCKED_OPENDNS,SPF_HELO_NONE,\tSPF_PASS,URIBL_DBL_BLOCKED_OPENDNS,URIBL_ZEN_BLOCKED_OPENDNS"
+        },
+        {
+          "Name": "Received-SPF",
+          "Value": "pass (innovareai.com: Sender is authorized to use 'tl@innovareai.com' in 'mfrom' identity (mechanism 'include:_spf.google.com' matched)) receiver=p-pm-inboundg05c-aws-useast1c; identity=mailfrom; envelope-from=\"tl@innovareai.com\"; helo=mail-vk1-f171.google.com; client-ip=209.85.221.171"
+        },
+        {
+          "Name": "Received",
+          "Value": "from mail-vk1-f171.google.com (mail-vk1-f171.google.com [209.85.221.171])\t(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))\t(No client certificate requested)\tby p-pm-inboundg05c-aws-useast1c.inbound.postmarkapp.com (Postfix) with ESMTPS id 168D7406C93\tfor <hello@sam.innovareai.com>; Tue,  7 Oct 2025 02:43:23 +0000 (UTC)"
+        },
+        {
+          "Name": "Received",
+          "Value": "by mail-vk1-f171.google.com with SMTP id 71dfb90a1353d-54aa789f9b5so4344336e0c.1        for <hello@sam.innovareai.com>; Mon, 06 Oct 2025 19:43:23 -0700 (PDT)"
+        },
+        {
+          "Name": "DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=innovareai.com; s=google; t=1759805002; x=1760409802; darn=sam.innovareai.com;        h=mime-version:subject:references:in-reply-to:message-id:to:from:date         :from:to:cc:subject:date:message-id:reply-to;        bh=6bkVNdLfWTG9992Z5V0SEH4yL4ZaDT0ep4R9BH2yjIs=;        b=IKUL7SxBW9deYsHcc80s3N5q506l3Xl4M5Bp/M890+VPFB+97IPBEAHFdIu5NIIxkX         oj/hPxSKF9PXgqZbAF/X2qqHUjqVVgKB8rxC4zPQhzWk02VsUt0t3n+0qv6DM2myxYD3         XukYlHeysIBivOkCPEsrE0/UVvDyR0fEmwQJA="
+        },
+        {
+          "Name": "X-Google-DKIM-Signature",
+          "Value": "v=1; a=rsa-sha256; c=relaxed/relaxed;        d=1e100.net; s=20230601; t=1759805002; x=1760409802;        h=mime-version:subject:references:in-reply-to:message-id:to:from:date         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;        bh=6bkVNdLfWTG9992Z5V0SEH4yL4ZaDT0ep4R9BH2yjIs=;        b=s93bRpzrBKVWam8RhKIW3NPNxGxV2csPGk1FzwN0Nx4tCVqjiosmeyojHcffxT/bq/         o3Co9yAQdGxGMgo3IdOeX7tmXueqhzSEksJ46yg4DdKFhoqNE3njHJyYNy/jDu7pGLLV         Otd7nWdc7KjH5zFAEeDBhoy9okXF9h/FKiNpJYSubmMQ/+f/cm6l/GoTD2wNubYwOPEO         Cy1DPD7gk228eYhyptKkVc5Q8+eEPoseMlP1S/l1OdtReRypb9TXNlyalgiHd/5feO/c         qkFBpV/8hHQgLhi/gL7SsSpkFTF/vcQX4biKQp1WAk4Sxpkw/wTS+/ALcsz4d8qvlTNh         DnxQ=="
+        },
+        {
+          "Name": "X-Gm-Message-State",
+          "Value": "AOJu0YxYw7SFRHqLnM9yOPtF5sbDWYKNrm8du1Lcr7sXirwcY7tQDZLd\tj/thRCvgIudkD7UprEqx1HhGWczmml4AoVciGO/KzpbCWVX0RVxqr2J/cHRtVVT2SdNpoQQeRsD\tf6I+eIhQUNHH3Z+Qyh3xR8iEFhxogT+HvEb2qW68xY+Kh4SY1vCt8wH//oNfmrPlpXlRq+DSe3i\tcCv3qVBeH+JqBUM72uNIirOLGGL+qxR2lqI1tutNmBkPD6bWY="
+        },
+        {
+          "Name": "X-Gm-Gg",
+          "Value": "ASbGncue68KrjooSYt9qYtxnGpgBiOK2KuYFuHlmv+/JxvLaqufNw3hEiWeOvx5K6ul\tNyX1Q2Vol3tL6nOTIQOBRg+ckPIM9aki0/mVuWndvnEnYqiEA0JL3YbvadwLYK+kLv5VtIA6Vlf\t0bvP9xcvFfF3ieVxH3njWAMCLgeQmxOYxOjRIRIzj045bEun056aYSWUqUYft1hv28Qq1g1Fm5k\t0rlkIZCswF14+VtVonVQo0Ob7tFISKjy2YzzOXb1oqZsiOgBETPOu8PzUU4SiW1ciry5RLLhtGV\toCTPz/8tkyurBVhewswGSUhuCmn3RmIFk3K5kU8S53hM6vfpGfv/yuvfy4L8zvCz0hSZGEdxp63\tSiQY596N2Yt1pe0/CYAwRJUetEFHaF5qk0O494F2UWdh6wQFRMD85UHxhxwfhxzSvVL1Vuz6b0v\tGyognkYgvW0BwJJ1M3FXl0"
+        },
+        {
+          "Name": "X-Google-Smtp-Source",
+          "Value": "AGHT+IELvcwj0IBwNNEDEazySMGkJ/R23rzgS3vBynmjGe7tDspOzOIJCrQRgW8v0EWOiHakHLuS4A=="
+        },
+        {
+          "Name": "X-Received",
+          "Value": "by 2002:a17:902:d60f:b0:25c:8745:4a58 with SMTP id d9443c01a7336-28e9a5cbf34mr163583025ad.3.1759800968048;        Mon, 06 Oct 2025 18:36:08 -0700 (PDT)"
+        },
+        {
+          "Name": "Received",
+          "Value": "from [2001:4456:c70:f600:8000:f405:100:0] ([2001:4456:c70:f600:286c:5177:196e:bcd9])        by smtp.gmail.com with ESMTPSA id d9443c01a7336-28e8d128132sm147784315ad.44.2025.10.06.18.36.07        for <hello@sam.innovareai.com>        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);        Mon, 06 Oct 2025 18:36:07 -0700 (PDT)"
+        },
+        {
+          "Name": "Message-ID",
+          "Value": "<72e03c5c-0b01-46e0-a1cb-26d0c263e957@Spark>"
+        },
+        {
+          "Name": "In-Reply-To",
+          "Value": "<53f4c232-8291-4fe4-b793-46ede6304268@mtasv.net>"
+        },
+        {
+          "Name": "References",
+          "Value": "<53f4c232-8291-4fe4-b793-46ede6304268@mtasv.net>"
+        },
+        {
+          "Name": "X-Readdle-Message-ID",
+          "Value": "72e03c5c-0b01-46e0-a1cb-26d0c263e957@Spark"
+        },
+        {
+          "Name": "MIME-Version",
+          "Value": "1.0"
+        }
+      ],
+      "ReplyTo": "",
+      "Subject": "Re: ✅ SAM Inbound Email System - LIVE TEST",
+      "FromFull": {
+        "Name": "Thorsten Linz (InnovareAI)",
+        "Email": "tl@innovareai.com",
+        "MailboxHash": ""
+      },
+      "FromName": "Thorsten Linz (InnovareAI)",
+      "HtmlBody": "<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<title></title>\n</head>\n<body>\n<div name=\"messageBodySection\">\n<div dir=\"auto\">Test 2</div>\n</div>\n<div name=\"messageSignatureSection\"><br />\n<div><span>Best Regards,</span></div>\n<div><span>Thorsten Linz</span></div>\n<div><br />\n&#160;</div>\n<div><span>CEO &amp; Co-Founder</span></div>\n<div><span>InnovareAI - Your AI Infrastructure Company</span></div>\n<div><br />\nBook a meeting with me here:&#160;<a href=\"https://calendar.app.google/cLo33kG7YKt4WHGY8\">https://calendar.app.google/cLo33kG7YKt4WHGY8</a></div>\n<div><br /></div>\n<div>Innovare, Inc. | <a href=\"www.innovareai.com\">www.innovareai.com</a> | <span style=\"color: rgb(39, 39, 40);\"><a href=\"mailto:tl@innovareai.com\">tl@innovareai.com</a></span></div>\n<div><span>650 California Ave | San Francisco, CA 94108 | (650) 468-0545</span></div>\n</div>\n<div name=\"messageReplySection\">On Oct 7, 2025 at 9:32 AM +0800, Sam &lt;hello@sam.innovareai.com&gt;, wrote:<br />\n<blockquote type=\"cite\" style=\"border-left-color: grey; border-left-width: thin; border-left-style: solid; margin: 5px 5px;padding-left: 10px;\">\n<h2>System is Live! 🎉</h2>\n<p>Hi Thorsten,</p>\n<p>The inbound email system is now fully operational:</p>\n<ul>\n<li>✅ MX record verified: <code>sam.innovareai.com → inbound.postmarkapp.com</code></li>\n<li>✅ Webhook active: <code>https://app.meet-sam.com/api/webhooks/postmark-inbound</code></li>\n<li>✅ Database ready: <code>email_responses</code> table</li>\n</ul>\n<p><strong>📧 Please reply to this email to test the full flow!</strong></p>\n<p>Your reply will be automatically captured and stored in the database.</p>\n<p>Sam</p>\n</blockquote>\n</div>\n</body>\n</html>\n",
+      "TextBody": "Test 2\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545\nOn Oct 7, 2025 at 9:32 AM +0800, Sam <hello@sam.innovareai.com>, wrote:\n> System is Live! 🎉\n> Hi Thorsten,\n> The inbound email system is now fully operational:\n>\n> • ✅ MX record verified: sam.innovareai.com → inbound.postmarkapp.com\n> • ✅ Webhook active: https://app.meet-sam.com/api/webhooks/postmark-inbound\n> • ✅ Database ready: email_responses table\n>\n> 📧 Please reply to this email to test the full flow!\n> Your reply will be automatically captured and stored in the database.\n> Sam\n",
+      "MessageID": "0ca51162-3538-444d-b174-e5424ab4bae5",
+      "Attachments": [],
+      "MailboxHash": "",
+      "MessageStream": "inbound",
+      "OriginalRecipient": "hello@sam.innovareai.com",
+      "StrippedTextReply": "Test 2\n\nBest Regards,\nThorsten Linz\n\n\nCEO & Co-Founder\nInnovareAI - Your AI Infrastructure Company\n\nBook a meeting with me here: https://calendar.app.google/cLo33kG7YKt4WHGY8\n\nInnovare, Inc. | www.innovareai.com | tl@innovareai.com\n650 California Ave | San Francisco, CA 94108 | (650) 468-0545"
+    },
+    "created_at": "2025-10-07T02:43:23.989184+00:00",
+    "updated_at": "2025-11-03T05:38:31.762325+00:00"
+  }
+]

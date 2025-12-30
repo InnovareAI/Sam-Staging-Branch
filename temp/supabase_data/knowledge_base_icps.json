@@ -1,0 +1,1232 @@
+[
+  {
+    "id": "5d4d8f8f-096a-482c-826d-e0a6ac148e2f",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "title": "Recruiters",
+    "description": "Recruitment agencies and independent recruiters needing both candidate sourcing and business development automation",
+    "industry": "Recruitment, Staffing, HR Services",
+    "company_size": "1-50 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Candidate pipeline management",
+      "Client acquisition alongside recruiting",
+      "Scaling outreach without more headcount",
+      "Personalization at volume"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-3 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Agency Owner, BD Lead",
+      "sam_value_angle": "Candidate pipeline + BD automation in one tool"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:11:20.90896+00:00",
+    "updated_at": "2025-11-28T09:15:12.879596+00:00"
+  },
+  {
+    "id": "b4f3de19-df0c-445c-ad44-4200b45038bb",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "title": "Business Consultants & Coaches",
+    "description": "Independent consultants and business coaches seeking client acquisition through thought leadership and personal brand amplification",
+    "industry": "Professional Services, Consulting, Coaching",
+    "company_size": "1-10 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Finding new clients consistently",
+      "Building personal brand at scale",
+      "Time spent on manual outreach",
+      "Converting LinkedIn connections to clients"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Owner/Founder",
+      "sam_value_angle": "Personal brand amplification, thought leadership engagement"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "created_at": "2025-11-28T09:11:20.90896+00:00",
+    "updated_at": "2025-12-23T15:11:01.318276+00:00"
+  },
+  {
+    "id": "ba3f62ff-2b52-4a90-90aa-89ba290c76e3",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "title": "Early Stage Startups (Pre-seed to Series A)",
+    "description": "Founder-led startups needing to punch above their weight in sales without hiring SDRs",
+    "industry": "Technology, SaaS, Startups",
+    "company_size": "1-20 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Founder time stretched thin",
+      "No budget for SDR team",
+      "Need quick wins to show traction",
+      "Inconsistent pipeline"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Founder/CEO",
+      "sam_value_angle": "Founder time savings, punch above your weight"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:11:20.90896+00:00",
+    "updated_at": "2025-11-28T09:15:12.879596+00:00"
+  },
+  {
+    "id": "013dbd67-f688-41fc-94b3-e80fb3bcb789",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "title": "SME Manufacturing",
+    "description": "Small and medium manufacturing companies looking to modernize sales without disrupting existing processes",
+    "industry": "Manufacturing, Industrial, B2B",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Traditional sales methods not scaling",
+      "Difficulty reaching new markets",
+      "Long sales cycles",
+      "Technical buyer communication"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "4-8 weeks",
+      "service_tier": "managed",
+      "decision_maker": "Sales Director, Owner",
+      "sam_value_angle": "Modernize sales without disrupting existing process"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:11:20.90896+00:00",
+    "updated_at": "2025-11-28T09:15:12.879596+00:00"
+  },
+  {
+    "id": "f29f000c-809e-49c5-a55a-82d6b4d1310f",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "title": "SME Technology",
+    "description": "Tech-savvy SMEs looking to scale outbound without hiring additional SDRs",
+    "industry": "Technology, SaaS, IT Services",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Scaling outbound is expensive",
+      "SDR hiring and training overhead",
+      "Need consistent pipeline",
+      "Want data-driven approach"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "managed",
+      "decision_maker": "VP Sales, Revenue Leader",
+      "sam_value_angle": "Scale outbound without hiring SDRs"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:11:20.90896+00:00",
+    "updated_at": "2025-11-28T09:15:12.879596+00:00"
+  },
+  {
+    "id": "729d74fc-f147-4ea2-b15f-3bf6ce82af5b",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "title": "Marketing & Creative Agencies",
+    "description": "Marketing, advertising, and creative agencies focused on systematic new business development",
+    "industry": "Marketing, Advertising, Creative Services",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Feast or famine pipeline",
+      "Time spent on pitches that dont convert",
+      "Relationship-heavy sales process",
+      "Differentiating from competitors"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Agency Owner, New Business Director",
+      "sam_value_angle": "Win more pitches, systematic new business",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:11:20.90896+00:00",
+    "updated_at": "2025-11-28T09:15:12.879596+00:00"
+  },
+  {
+    "id": "432fb2bc-1b4d-4e9e-94e9-0824590b1b58",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "title": "Software & Dev Agencies",
+    "description": "Software development agencies and dev shops needing technical credibility in outreach",
+    "industry": "Software Development, IT Services, Technology",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Project-based revenue uncertainty",
+      "Technical buyers hard to engage",
+      "Competing with offshore pricing",
+      "Demonstrating expertise at scale"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Founder, Head of Sales",
+      "sam_value_angle": "Technical credibility in outreach, dev-friendly automation",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:11:20.90896+00:00",
+    "updated_at": "2025-11-28T09:15:12.879596+00:00"
+  },
+  {
+    "id": "3543e5e8-bdf4-46c2-aefd-9fcf0d260e6c",
+    "workspace_id": "04666209-fce8-4d71-8eaf-01278edfc73b",
+    "title": "Business Consultants & Coaches",
+    "description": "Independent consultants and business coaches seeking client acquisition through thought leadership and personal brand amplification",
+    "industry": "Professional Services, Consulting, Coaching",
+    "company_size": "1-10 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Finding new clients consistently",
+      "Building personal brand at scale",
+      "Time spent on manual outreach",
+      "Converting LinkedIn connections to clients"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Owner/Founder",
+      "sam_value_angle": "Personal brand amplification, thought leadership engagement"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "54a93b48-44d9-4d42-a991-f32aad07a3e7",
+    "workspace_id": "2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c",
+    "title": "Business Consultants & Coaches",
+    "description": "Independent consultants and business coaches seeking client acquisition through thought leadership and personal brand amplification",
+    "industry": "Professional Services, Consulting, Coaching",
+    "company_size": "1-10 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Finding new clients consistently",
+      "Building personal brand at scale",
+      "Time spent on manual outreach",
+      "Converting LinkedIn connections to clients"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Owner/Founder",
+      "sam_value_angle": "Personal brand amplification, thought leadership engagement"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "0d454adf-9dd3-4d47-b5d2-49944ca2f9b9",
+    "workspace_id": "7f0341da-88db-476b-ae0a-fc0da5b70861",
+    "title": "Business Consultants & Coaches",
+    "description": "Independent consultants and business coaches seeking client acquisition through thought leadership and personal brand amplification",
+    "industry": "Professional Services, Consulting, Coaching",
+    "company_size": "1-10 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Finding new clients consistently",
+      "Building personal brand at scale",
+      "Time spent on manual outreach",
+      "Converting LinkedIn connections to clients"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Owner/Founder",
+      "sam_value_angle": "Personal brand amplification, thought leadership engagement"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "955a0d43-efe9-435f-a6dc-2faa0eb0c9ac",
+    "workspace_id": "96c03b38-a2f4-40de-9e16-43098599e1d4",
+    "title": "Business Consultants & Coaches",
+    "description": "Independent consultants and business coaches seeking client acquisition through thought leadership and personal brand amplification",
+    "industry": "Professional Services, Consulting, Coaching",
+    "company_size": "1-10 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Finding new clients consistently",
+      "Building personal brand at scale",
+      "Time spent on manual outreach",
+      "Converting LinkedIn connections to clients"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Owner/Founder",
+      "sam_value_angle": "Personal brand amplification, thought leadership engagement"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "04ba5fbd-dba2-4f14-a15d-7b8f60942590",
+    "workspace_id": "cd57981a-e63b-401c-bde1-ac71752c2293",
+    "title": "Business Consultants & Coaches",
+    "description": "Independent consultants and business coaches seeking client acquisition through thought leadership and personal brand amplification",
+    "industry": "Professional Services, Consulting, Coaching",
+    "company_size": "1-10 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Finding new clients consistently",
+      "Building personal brand at scale",
+      "Time spent on manual outreach",
+      "Converting LinkedIn connections to clients"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Owner/Founder",
+      "sam_value_angle": "Personal brand amplification, thought leadership engagement"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "a695a360-a726-4bee-a52c-1474ff1771e5",
+    "workspace_id": "04666209-fce8-4d71-8eaf-01278edfc73b",
+    "title": "Recruiters",
+    "description": "Recruitment agencies and independent recruiters needing both candidate sourcing and business development automation",
+    "industry": "Recruitment, Staffing, HR Services",
+    "company_size": "1-50 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Candidate pipeline management",
+      "Client acquisition alongside recruiting",
+      "Scaling outreach without more headcount",
+      "Personalization at volume"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-3 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Agency Owner, BD Lead",
+      "sam_value_angle": "Candidate pipeline + BD automation in one tool"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "4ca06df0-ade6-4a69-9d0c-8b3c6d56e443",
+    "workspace_id": "2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c",
+    "title": "Recruiters",
+    "description": "Recruitment agencies and independent recruiters needing both candidate sourcing and business development automation",
+    "industry": "Recruitment, Staffing, HR Services",
+    "company_size": "1-50 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Candidate pipeline management",
+      "Client acquisition alongside recruiting",
+      "Scaling outreach without more headcount",
+      "Personalization at volume"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-3 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Agency Owner, BD Lead",
+      "sam_value_angle": "Candidate pipeline + BD automation in one tool"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "9255f102-dbb4-461c-bf3a-715a0e1e9e49",
+    "workspace_id": "7f0341da-88db-476b-ae0a-fc0da5b70861",
+    "title": "Recruiters",
+    "description": "Recruitment agencies and independent recruiters needing both candidate sourcing and business development automation",
+    "industry": "Recruitment, Staffing, HR Services",
+    "company_size": "1-50 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Candidate pipeline management",
+      "Client acquisition alongside recruiting",
+      "Scaling outreach without more headcount",
+      "Personalization at volume"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-3 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Agency Owner, BD Lead",
+      "sam_value_angle": "Candidate pipeline + BD automation in one tool"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "a53c3113-79e5-48f3-a60c-fcdcbe9d2b77",
+    "workspace_id": "96c03b38-a2f4-40de-9e16-43098599e1d4",
+    "title": "Recruiters",
+    "description": "Recruitment agencies and independent recruiters needing both candidate sourcing and business development automation",
+    "industry": "Recruitment, Staffing, HR Services",
+    "company_size": "1-50 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Candidate pipeline management",
+      "Client acquisition alongside recruiting",
+      "Scaling outreach without more headcount",
+      "Personalization at volume"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-3 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Agency Owner, BD Lead",
+      "sam_value_angle": "Candidate pipeline + BD automation in one tool"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "f1be27e9-1748-4ea1-b83f-8886dd57b0d8",
+    "workspace_id": "cd57981a-e63b-401c-bde1-ac71752c2293",
+    "title": "Recruiters",
+    "description": "Recruitment agencies and independent recruiters needing both candidate sourcing and business development automation",
+    "industry": "Recruitment, Staffing, HR Services",
+    "company_size": "1-50 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Candidate pipeline management",
+      "Client acquisition alongside recruiting",
+      "Scaling outreach without more headcount",
+      "Personalization at volume"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-3 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Agency Owner, BD Lead",
+      "sam_value_angle": "Candidate pipeline + BD automation in one tool"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "ab3d4c85-ea19-4e6e-838a-d175355776ac",
+    "workspace_id": "04666209-fce8-4d71-8eaf-01278edfc73b",
+    "title": "Early Stage Startups (Pre-seed to Series A)",
+    "description": "Founder-led startups needing to punch above their weight in sales without hiring SDRs",
+    "industry": "Technology, SaaS, Startups",
+    "company_size": "1-20 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Founder time stretched thin",
+      "No budget for SDR team",
+      "Need quick wins to show traction",
+      "Inconsistent pipeline"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Founder/CEO",
+      "sam_value_angle": "Founder time savings, punch above your weight"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "6394ef3c-fcb5-4005-9bf6-80e0bf9135f2",
+    "workspace_id": "2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c",
+    "title": "Early Stage Startups (Pre-seed to Series A)",
+    "description": "Founder-led startups needing to punch above their weight in sales without hiring SDRs",
+    "industry": "Technology, SaaS, Startups",
+    "company_size": "1-20 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Founder time stretched thin",
+      "No budget for SDR team",
+      "Need quick wins to show traction",
+      "Inconsistent pipeline"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Founder/CEO",
+      "sam_value_angle": "Founder time savings, punch above your weight"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "0c52cd86-8c2f-4701-872d-a810294f3994",
+    "workspace_id": "7f0341da-88db-476b-ae0a-fc0da5b70861",
+    "title": "Early Stage Startups (Pre-seed to Series A)",
+    "description": "Founder-led startups needing to punch above their weight in sales without hiring SDRs",
+    "industry": "Technology, SaaS, Startups",
+    "company_size": "1-20 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Founder time stretched thin",
+      "No budget for SDR team",
+      "Need quick wins to show traction",
+      "Inconsistent pipeline"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Founder/CEO",
+      "sam_value_angle": "Founder time savings, punch above your weight"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "27b40741-c0ef-48f0-8f1a-de48ed9bef2b",
+    "workspace_id": "96c03b38-a2f4-40de-9e16-43098599e1d4",
+    "title": "Early Stage Startups (Pre-seed to Series A)",
+    "description": "Founder-led startups needing to punch above their weight in sales without hiring SDRs",
+    "industry": "Technology, SaaS, Startups",
+    "company_size": "1-20 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Founder time stretched thin",
+      "No budget for SDR team",
+      "Need quick wins to show traction",
+      "Inconsistent pipeline"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Founder/CEO",
+      "sam_value_angle": "Founder time savings, punch above your weight"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "a9020faf-3789-46d2-ac5b-c53a876635de",
+    "workspace_id": "cd57981a-e63b-401c-bde1-ac71752c2293",
+    "title": "Early Stage Startups (Pre-seed to Series A)",
+    "description": "Founder-led startups needing to punch above their weight in sales without hiring SDRs",
+    "industry": "Technology, SaaS, Startups",
+    "company_size": "1-20 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Founder time stretched thin",
+      "No budget for SDR team",
+      "Need quick wins to show traction",
+      "Inconsistent pipeline"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 199,
+      "buying_cycle": "1-2 weeks",
+      "service_tier": "self-service",
+      "decision_maker": "Founder/CEO",
+      "sam_value_angle": "Founder time savings, punch above your weight"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "f617a3ad-fa01-4f5c-b14c-fe2ef1177ed2",
+    "workspace_id": "04666209-fce8-4d71-8eaf-01278edfc73b",
+    "title": "SME Manufacturing",
+    "description": "Small and medium manufacturing companies looking to modernize sales without disrupting existing processes",
+    "industry": "Manufacturing, Industrial, B2B",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Traditional sales methods not scaling",
+      "Difficulty reaching new markets",
+      "Long sales cycles",
+      "Technical buyer communication"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "4-8 weeks",
+      "service_tier": "managed",
+      "decision_maker": "Sales Director, Owner",
+      "sam_value_angle": "Modernize sales without disrupting existing process"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "8c2cacf8-2b27-41d9-a7d2-7a66e48e1bb2",
+    "workspace_id": "2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c",
+    "title": "SME Manufacturing",
+    "description": "Small and medium manufacturing companies looking to modernize sales without disrupting existing processes",
+    "industry": "Manufacturing, Industrial, B2B",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Traditional sales methods not scaling",
+      "Difficulty reaching new markets",
+      "Long sales cycles",
+      "Technical buyer communication"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "4-8 weeks",
+      "service_tier": "managed",
+      "decision_maker": "Sales Director, Owner",
+      "sam_value_angle": "Modernize sales without disrupting existing process"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "4cd5e5b4-3406-436d-8d76-a1587d12a39f",
+    "workspace_id": "7f0341da-88db-476b-ae0a-fc0da5b70861",
+    "title": "SME Manufacturing",
+    "description": "Small and medium manufacturing companies looking to modernize sales without disrupting existing processes",
+    "industry": "Manufacturing, Industrial, B2B",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Traditional sales methods not scaling",
+      "Difficulty reaching new markets",
+      "Long sales cycles",
+      "Technical buyer communication"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "4-8 weeks",
+      "service_tier": "managed",
+      "decision_maker": "Sales Director, Owner",
+      "sam_value_angle": "Modernize sales without disrupting existing process"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "cba65a16-0d2e-4f08-a47e-31a8014e219c",
+    "workspace_id": "96c03b38-a2f4-40de-9e16-43098599e1d4",
+    "title": "SME Manufacturing",
+    "description": "Small and medium manufacturing companies looking to modernize sales without disrupting existing processes",
+    "industry": "Manufacturing, Industrial, B2B",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Traditional sales methods not scaling",
+      "Difficulty reaching new markets",
+      "Long sales cycles",
+      "Technical buyer communication"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "4-8 weeks",
+      "service_tier": "managed",
+      "decision_maker": "Sales Director, Owner",
+      "sam_value_angle": "Modernize sales without disrupting existing process"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "1713275b-0815-47ff-afe9-67d470d86f27",
+    "workspace_id": "cd57981a-e63b-401c-bde1-ac71752c2293",
+    "title": "SME Manufacturing",
+    "description": "Small and medium manufacturing companies looking to modernize sales without disrupting existing processes",
+    "industry": "Manufacturing, Industrial, B2B",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Traditional sales methods not scaling",
+      "Difficulty reaching new markets",
+      "Long sales cycles",
+      "Technical buyer communication"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "4-8 weeks",
+      "service_tier": "managed",
+      "decision_maker": "Sales Director, Owner",
+      "sam_value_angle": "Modernize sales without disrupting existing process"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "72b6d6c1-e9e8-4aa1-8ee6-7184236bbb9c",
+    "workspace_id": "04666209-fce8-4d71-8eaf-01278edfc73b",
+    "title": "SME Technology",
+    "description": "Tech-savvy SMEs looking to scale outbound without hiring additional SDRs",
+    "industry": "Technology, SaaS, IT Services",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Scaling outbound is expensive",
+      "SDR hiring and training overhead",
+      "Need consistent pipeline",
+      "Want data-driven approach"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "managed",
+      "decision_maker": "VP Sales, Revenue Leader",
+      "sam_value_angle": "Scale outbound without hiring SDRs"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "ab8431ff-b0da-436e-9248-d7c49441d4b6",
+    "workspace_id": "2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c",
+    "title": "SME Technology",
+    "description": "Tech-savvy SMEs looking to scale outbound without hiring additional SDRs",
+    "industry": "Technology, SaaS, IT Services",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Scaling outbound is expensive",
+      "SDR hiring and training overhead",
+      "Need consistent pipeline",
+      "Want data-driven approach"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "managed",
+      "decision_maker": "VP Sales, Revenue Leader",
+      "sam_value_angle": "Scale outbound without hiring SDRs"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "bad038ee-5fda-4bf5-a1da-d54c1f05f24b",
+    "workspace_id": "7f0341da-88db-476b-ae0a-fc0da5b70861",
+    "title": "SME Technology",
+    "description": "Tech-savvy SMEs looking to scale outbound without hiring additional SDRs",
+    "industry": "Technology, SaaS, IT Services",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Scaling outbound is expensive",
+      "SDR hiring and training overhead",
+      "Need consistent pipeline",
+      "Want data-driven approach"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "managed",
+      "decision_maker": "VP Sales, Revenue Leader",
+      "sam_value_angle": "Scale outbound without hiring SDRs"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "25d1798b-3932-4db8-a3c1-191e48f98acd",
+    "workspace_id": "96c03b38-a2f4-40de-9e16-43098599e1d4",
+    "title": "SME Technology",
+    "description": "Tech-savvy SMEs looking to scale outbound without hiring additional SDRs",
+    "industry": "Technology, SaaS, IT Services",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Scaling outbound is expensive",
+      "SDR hiring and training overhead",
+      "Need consistent pipeline",
+      "Want data-driven approach"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "managed",
+      "decision_maker": "VP Sales, Revenue Leader",
+      "sam_value_angle": "Scale outbound without hiring SDRs"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "96eb3cc7-b583-400d-a8d3-b8f3f8e66fd6",
+    "workspace_id": "cd57981a-e63b-401c-bde1-ac71752c2293",
+    "title": "SME Technology",
+    "description": "Tech-savvy SMEs looking to scale outbound without hiring additional SDRs",
+    "industry": "Technology, SaaS, IT Services",
+    "company_size": "20-200 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Scaling outbound is expensive",
+      "SDR hiring and training overhead",
+      "Need consistent pipeline",
+      "Want data-driven approach"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "price_point": 599,
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "managed",
+      "decision_maker": "VP Sales, Revenue Leader",
+      "sam_value_angle": "Scale outbound without hiring SDRs"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "2582d0d3-16de-423e-86e5-6c2db43d97b8",
+    "workspace_id": "04666209-fce8-4d71-8eaf-01278edfc73b",
+    "title": "Marketing & Creative Agencies",
+    "description": "Marketing, advertising, and creative agencies focused on systematic new business development",
+    "industry": "Marketing, Advertising, Creative Services",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Feast or famine pipeline",
+      "Time spent on pitches that dont convert",
+      "Relationship-heavy sales process",
+      "Differentiating from competitors"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Agency Owner, New Business Director",
+      "sam_value_angle": "Win more pitches, systematic new business",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "b3b26f7e-f7df-444d-a36b-a8cbae89f16e",
+    "workspace_id": "2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c",
+    "title": "Marketing & Creative Agencies",
+    "description": "Marketing, advertising, and creative agencies focused on systematic new business development",
+    "industry": "Marketing, Advertising, Creative Services",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Feast or famine pipeline",
+      "Time spent on pitches that dont convert",
+      "Relationship-heavy sales process",
+      "Differentiating from competitors"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Agency Owner, New Business Director",
+      "sam_value_angle": "Win more pitches, systematic new business",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "2b062ac3-01b4-421c-a2da-0b2f75966520",
+    "workspace_id": "7f0341da-88db-476b-ae0a-fc0da5b70861",
+    "title": "Marketing & Creative Agencies",
+    "description": "Marketing, advertising, and creative agencies focused on systematic new business development",
+    "industry": "Marketing, Advertising, Creative Services",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Feast or famine pipeline",
+      "Time spent on pitches that dont convert",
+      "Relationship-heavy sales process",
+      "Differentiating from competitors"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Agency Owner, New Business Director",
+      "sam_value_angle": "Win more pitches, systematic new business",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "17f7b351-d09d-4ad1-bdcb-40fbf077e8d7",
+    "workspace_id": "96c03b38-a2f4-40de-9e16-43098599e1d4",
+    "title": "Marketing & Creative Agencies",
+    "description": "Marketing, advertising, and creative agencies focused on systematic new business development",
+    "industry": "Marketing, Advertising, Creative Services",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Feast or famine pipeline",
+      "Time spent on pitches that dont convert",
+      "Relationship-heavy sales process",
+      "Differentiating from competitors"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Agency Owner, New Business Director",
+      "sam_value_angle": "Win more pitches, systematic new business",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "3bca0947-9e8d-4d4b-843b-6e85b643783f",
+    "workspace_id": "cd57981a-e63b-401c-bde1-ac71752c2293",
+    "title": "Marketing & Creative Agencies",
+    "description": "Marketing, advertising, and creative agencies focused on systematic new business development",
+    "industry": "Marketing, Advertising, Creative Services",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Feast or famine pipeline",
+      "Time spent on pitches that dont convert",
+      "Relationship-heavy sales process",
+      "Differentiating from competitors"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Agency Owner, New Business Director",
+      "sam_value_angle": "Win more pitches, systematic new business",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "763aa951-d03c-43dd-a7dc-06c1ca664fb3",
+    "workspace_id": "04666209-fce8-4d71-8eaf-01278edfc73b",
+    "title": "Software & Dev Agencies",
+    "description": "Software development agencies and dev shops needing technical credibility in outreach",
+    "industry": "Software Development, IT Services, Technology",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Project-based revenue uncertainty",
+      "Technical buyers hard to engage",
+      "Competing with offshore pricing",
+      "Demonstrating expertise at scale"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Founder, Head of Sales",
+      "sam_value_angle": "Technical credibility in outreach, dev-friendly automation",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "3794eede-42c3-4597-be8d-4b59f9e9024b",
+    "workspace_id": "2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c",
+    "title": "Software & Dev Agencies",
+    "description": "Software development agencies and dev shops needing technical credibility in outreach",
+    "industry": "Software Development, IT Services, Technology",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Project-based revenue uncertainty",
+      "Technical buyers hard to engage",
+      "Competing with offshore pricing",
+      "Demonstrating expertise at scale"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Founder, Head of Sales",
+      "sam_value_angle": "Technical credibility in outreach, dev-friendly automation",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "13d586bf-8476-4609-a528-aca8e9c71ea5",
+    "workspace_id": "7f0341da-88db-476b-ae0a-fc0da5b70861",
+    "title": "Software & Dev Agencies",
+    "description": "Software development agencies and dev shops needing technical credibility in outreach",
+    "industry": "Software Development, IT Services, Technology",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Project-based revenue uncertainty",
+      "Technical buyers hard to engage",
+      "Competing with offshore pricing",
+      "Demonstrating expertise at scale"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Founder, Head of Sales",
+      "sam_value_angle": "Technical credibility in outreach, dev-friendly automation",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "335a322a-c709-40f2-8ecd-5bc57fbb5b10",
+    "workspace_id": "96c03b38-a2f4-40de-9e16-43098599e1d4",
+    "title": "Software & Dev Agencies",
+    "description": "Software development agencies and dev shops needing technical credibility in outreach",
+    "industry": "Software Development, IT Services, Technology",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Project-based revenue uncertainty",
+      "Technical buyers hard to engage",
+      "Competing with offshore pricing",
+      "Demonstrating expertise at scale"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Founder, Head of Sales",
+      "sam_value_angle": "Technical credibility in outreach, dev-friendly automation",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  },
+  {
+    "id": "39d514f9-fd96-43aa-8134-e2614093a4ed",
+    "workspace_id": "cd57981a-e63b-401c-bde1-ac71752c2293",
+    "title": "Software & Dev Agencies",
+    "description": "Software development agencies and dev shops needing technical credibility in outreach",
+    "industry": "Software Development, IT Services, Technology",
+    "company_size": "10-100 employees",
+    "revenue_range": null,
+    "geography": null,
+    "pain_points": [
+      "Project-based revenue uncertainty",
+      "Technical buyers hard to engage",
+      "Competing with offshore pricing",
+      "Demonstrating expertise at scale"
+    ],
+    "buying_process": null,
+    "metadata": {
+      "buying_cycle": "2-4 weeks",
+      "service_tier": "both",
+      "decision_maker": "Founder, Head of Sales",
+      "sam_value_angle": "Technical credibility in outreach, dev-friendly automation",
+      "price_point_managed": 599,
+      "price_point_self_service": 199
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-11-28T09:16:35.505361+00:00",
+    "updated_at": "2025-11-28T09:16:35.505361+00:00"
+  }
+]

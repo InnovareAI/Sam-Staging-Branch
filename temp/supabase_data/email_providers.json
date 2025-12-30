@@ -1,0 +1,38 @@
+[
+  {
+    "id": "b81ddfc4-b105-46c0-a7bb-13d80525f9b6",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "provider_type": "smtp",
+    "provider_name": "Custom SMTP",
+    "email_address": "tvonlinz@icloud.com",
+    "status": "disconnected",
+    "config": {
+      "host": "smtp.mail.me.com ",
+      "port": 587,
+      "use_ssl": true,
+      "use_tls": false,
+      "password": "uahr-zcey-tunz-rcst",
+      "username": "tvonlinz@icloud.com"
+    },
+    "created_at": "2025-11-22T21:30:41.167287",
+    "updated_at": "2025-11-22T21:30:41.167287"
+  },
+  {
+    "id": "b5b0140c-8681-44bb-9f96-82e9dbb3be51",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "provider_type": "smtp",
+    "provider_name": "Custom SMTP",
+    "email_address": "tvonlinz@icloud.com",
+    "status": "disconnected",
+    "config": {
+      "host": "smtp.mail.me.com",
+      "port": 587,
+      "use_ssl": false,
+      "use_tls": true,
+      "password": "uahr-zcey-tunz-rcst",
+      "username": "smtp.mail.me.com"
+    },
+    "created_at": "2025-11-22T21:31:30.583238",
+    "updated_at": "2025-11-22T21:31:30.583238"
+  }
+]

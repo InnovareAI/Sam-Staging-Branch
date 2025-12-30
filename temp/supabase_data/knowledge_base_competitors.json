@@ -1,0 +1,94 @@
+[
+  {
+    "id": "6237d9d7-e562-4619-a992-f80872296697",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "name": "Outreach.io",
+    "description": "Enterprise sales engagement platform",
+    "website": null,
+    "market_share": null,
+    "market_position": null,
+    "strengths": [
+      "Mature platform",
+      "CRM integrations",
+      "Enterprise features"
+    ],
+    "weaknesses": [
+      "Expensive",
+      "Complex",
+      "No ICP guidance"
+    ],
+    "opportunities": [],
+    "threats": [],
+    "pricing_info": null,
+    "product_comparison": null,
+    "metadata": {
+      "differentiation": "SAM provides strategy + execution, not just tools"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-10-08T12:46:17.225676+00:00",
+    "updated_at": "2025-10-08T12:46:17.225676+00:00"
+  },
+  {
+    "id": "bb969c14-5a21-4813-a16c-c072d6ea1e21",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "name": "Apollo.io",
+    "description": "Sales intelligence platform",
+    "website": null,
+    "market_share": null,
+    "market_position": null,
+    "strengths": [
+      "Large database",
+      "Affordable",
+      "Email automation"
+    ],
+    "weaknesses": [
+      "Generic templates",
+      "No strategy",
+      "Variable quality"
+    ],
+    "opportunities": [],
+    "threats": [],
+    "pricing_info": null,
+    "product_comparison": null,
+    "metadata": {
+      "differentiation": "SAM is a consultant, Apollo is just a tool"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-10-08T12:46:17.225676+00:00",
+    "updated_at": "2025-10-08T12:46:17.225676+00:00"
+  },
+  {
+    "id": "37821b15-30fd-4ff4-8f1b-73db7355a7f1",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "name": "Clay",
+    "description": "Data enrichment and workflow automation",
+    "website": null,
+    "market_share": null,
+    "market_position": null,
+    "strengths": [
+      "Powerful enrichment",
+      "Flexible workflows"
+    ],
+    "weaknesses": [
+      "Steep learning curve",
+      "Technical",
+      "Time-consuming"
+    ],
+    "opportunities": [],
+    "threats": [],
+    "pricing_info": null,
+    "product_comparison": null,
+    "metadata": {
+      "differentiation": "SAM is conversational, Clay requires workflow building"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-10-08T12:46:17.225676+00:00",
+    "updated_at": "2025-10-08T12:46:17.225676+00:00"
+  }
+]

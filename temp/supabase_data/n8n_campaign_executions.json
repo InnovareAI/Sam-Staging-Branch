@@ -1,0 +1,31 @@
+[
+  {
+    "id": "346bbff9-c090-4faf-aba2-81407aef2d11",
+    "workspace_n8n_workflow_id": null,
+    "campaign_approval_session_id": null,
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "n8n_execution_id": "final-test-1762166826",
+    "n8n_workflow_id": "aVG6LC4ZFRMN7Bw6",
+    "campaign_name": "FINAL TEST - System Complete",
+    "campaign_type": "linkedin_only",
+    "execution_config": {},
+    "total_prospects": 5,
+    "processed_prospects": 0,
+    "successful_outreach": 5,
+    "failed_outreach": 0,
+    "responses_received": 0,
+    "execution_status": "completed",
+    "current_step": "initializing",
+    "progress_percentage": 100,
+    "campaign_results": {},
+    "performance_metrics": {},
+    "error_details": null,
+    "estimated_completion_time": null,
+    "estimated_duration_minutes": null,
+    "actual_duration_minutes": null,
+    "started_at": null,
+    "completed_at": null,
+    "created_at": "2025-11-03T10:47:07.714+00:00",
+    "updated_at": "2025-11-03T10:47:07.714+00:00"
+  }
+]

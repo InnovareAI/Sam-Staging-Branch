@@ -7,15 +7,23 @@ const __dirname = path.dirname(__filename)
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+      {
+        protocol: 'https',
+        hostname: 'app.meet-sam.com',
+      }
+    ],
   },
+  // Enable Turbopack support while maintaining webpack fallback if needed
+  turbopack: {},
   // For Netlify deployment with standalone output
   output: 'standalone',
   // Set correct workspace root to silence warning
   outputFileTracingRoot: __dirname,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },

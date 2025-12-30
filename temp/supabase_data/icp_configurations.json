@@ -1,0 +1,149 @@
+[
+  {
+    "id": "acaadd0a-ac63-41c0-9cb7-c65a9025eeaf",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "name": "B2B SaaS Demand Generation",
+    "display_name": "Primary ICP — B2B SaaS Revenue Leaders",
+    "description": "High-growth SaaS companies seeking autonomous outbound orchestration.",
+    "market_niche": "sam-demo",
+    "industry_vertical": "technology",
+    "status": "active",
+    "priority": "primary",
+    "target_profile": {
+      "geographic_focus": {
+        "primary_markets": [
+          "United States",
+          "Canada",
+          "United Kingdom"
+        ],
+        "regional_preferences": [
+          "Major Tech Hubs"
+        ]
+      },
+      "company_demographics": {
+        "growth_stages": [
+          "Series B",
+          "Series C",
+          "Growth"
+        ],
+        "revenue_ranges": [
+          "$20M-$200M"
+        ],
+        "employee_count_ranges": [
+          "200-1500"
+        ],
+        "market_valuation_ranges": [
+          "$100M-$2B"
+        ]
+      },
+      "industry_segmentation": {
+        "primary_industries": [
+          "B2B SaaS",
+          "Revenue Technology"
+        ],
+        "secondary_industries": [
+          "RevOps Agencies"
+        ]
+      },
+      "technology_requirements": {
+        "preferred_platforms": [
+          "Slack",
+          "G Suite"
+        ],
+        "required_tech_stack": [
+          "Salesforce",
+          "HubSpot"
+        ],
+        "security_requirements": [
+          "SOC2",
+          "GDPR"
+        ]
+      }
+    },
+    "decision_makers": {
+      "authority_patterns": {
+        "budget_authority_levels": {
+          "over_50k": [
+            "CRO",
+            "CFO"
+          ]
+        }
+      },
+      "decision_hierarchies": {
+        "approval_workflows": [
+          "CRO + COO sign-off after pilot"
+        ]
+      },
+      "primary_decision_makers": {
+        "c_level": [
+          "CRO",
+          "VP Sales",
+          "VP Revenue Operations"
+        ]
+      }
+    },
+    "pain_points": {
+      "buying_signals": {
+        "explicit_signals": [
+          "Hiring SDRs",
+          "Funding announcements"
+        ],
+        "implicit_signals": [
+          "LinkedIn job churn"
+        ]
+      },
+      "operational_pain_points": {
+        "low_response_rates": [
+          "Sequences feel generic"
+        ],
+        "sales_process_inefficiencies": [
+          "Manual prospecting across tools"
+        ]
+      }
+    },
+    "buying_process": {
+      "discovery_research": {
+        "problem_recognition": [
+          "Pipeline shortfall",
+          "SDR burnout"
+        ]
+      },
+      "evaluation_selection": {
+        "vendor_evaluation_criteria": [
+          "Automation depth",
+          "Control & compliance"
+        ]
+      }
+    },
+    "messaging_strategy": {
+      "proof_points": [
+        "65% faster campaign launch",
+        "3× meeting volume"
+      ],
+      "language_tone": "Consultative, data-backed",
+      "value_propositions": [
+        "Autonomous prospecting with guardrails",
+        "Faster go-to-market experiments"
+      ]
+    },
+    "success_metrics": {
+      "pipeline_metrics": [
+        "Meetings booked",
+        "Conversion to SQL"
+      ],
+      "efficiency_metrics": [
+        "Hours saved per campaign"
+      ]
+    },
+    "advanced_classification": {
+      "competitive_edge": [
+        "Blends MCP integrations + human approvals"
+      ],
+      "persona_adaptation": [
+        "CRO vs RevOps messaging"
+      ]
+    },
+    "created_at": "2025-09-30T06:03:58.291+00:00",
+    "updated_at": "2025-09-30T06:03:58.291+00:00"
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "07786cc4-e0aa-42df-ab73-b303c4eac5ae",
+    "clerk_org_id": "1f54866a-3783-45ed-b523-da61fa7bbb8b",
+    "name": "Sendingcell",
+    "slug": "sendingcell",
+    "logo_url": null,
+    "created_at": "2025-09-22T22:07:38.184698+00:00",
+    "updated_at": "2025-09-22T22:07:38.184698+00:00",
+    "billing_type": "direct",
+    "master_billing_email": null,
+    "stripe_customer_id": null
+  },
+  {
+    "id": "91768a00-35cf-4633-ae4c-092585dd67fb",
+    "clerk_org_id": "c3a67ed5-b806-4c72-b860-63463b496164",
+    "name": "InnovareAI",
+    "slug": "innovareai",
+    "logo_url": null,
+    "created_at": "2025-09-22T22:07:38.300243+00:00",
+    "updated_at": "2025-09-22T22:07:38.300243+00:00",
+    "billing_type": "direct",
+    "master_billing_email": null,
+    "stripe_customer_id": null
+  },
+  {
+    "id": "2dbd8ab1-0af4-405e-8be1-b2e25df6b68f",
+    "clerk_org_id": "3f358eba-09da-4e2d-8692-a5b79e2dbad1",
+    "name": "WT Matchmaker",
+    "slug": "wt-matchmaker",
+    "logo_url": null,
+    "created_at": "2025-09-22T22:09:46.33569+00:00",
+    "updated_at": "2025-09-22T22:09:46.33569+00:00",
+    "billing_type": "direct",
+    "master_billing_email": null,
+    "stripe_customer_id": null
+  },
+  {
+    "id": "714fc10b-762d-44e1-9239-6dc3c4f95622",
+    "clerk_org_id": "2a5235dc-6935-49a6-8df3-22c5d91e1fd8",
+    "name": "3cubed",
+    "slug": "3cubed",
+    "logo_url": null,
+    "created_at": "2025-09-22T22:07:38.25219+00:00",
+    "updated_at": "2025-10-05T16:48:07.323438+00:00",
+    "billing_type": "master_account",
+    "master_billing_email": "billing@3cubed.com",
+    "stripe_customer_id": null
+  }
+]

@@ -1,0 +1,2579 @@
+[
+  {
+    "id": "7fe1f6a7-a7f0-4122-b7a1-54287252f09d",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "552ee9f3-71a4-49d5-a176-1204687e881f",
+    "analysis_type": "seeded_content",
+    "model_used": "manual-seed",
+    "tags": [
+      "ICP",
+      "targeting",
+      "playbook"
+    ],
+    "categories": [
+      "ICP",
+      "targeting",
+      "playbook"
+    ],
+    "key_insights": [
+      "Ideal prospects operate revenue teams of 15+ sellers and feel hiring pressure.",
+      "Best-fit verticals: B2B SaaS, GTM agencies, RevOps consultancies, enterprise marketplaces.",
+      "Buying signals include rapid SDR turnover, multi-channel outreach gaps, and heavy manual research."
+    ],
+    "summary": "Defines the ideal customer profile for SAM AI including verticals, signals, and decision makers.",
+    "relevance_score": 0.92,
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "SAM ICP Master Guide"
+    },
+    "created_at": "2025-09-30T06:03:59.175+00:00"
+  },
+  {
+    "id": "ccdcc0ac-827c-4829-b466-0b37c7ec52cc",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "c6a1fdcd-69d9-4f2d-9448-96e579f7c89f",
+    "analysis_type": "seeded_content",
+    "model_used": "manual-seed",
+    "tags": [
+      "product",
+      "features",
+      "architecture"
+    ],
+    "categories": [
+      "product",
+      "features",
+      "architecture"
+    ],
+    "key_insights": [
+      "SAM runs a consultant orchestrator that assigns work to specialized agents (prospecting, KB curation, messaging, approval).",
+      "Channels: LinkedIn (via Unipile MCP), email (ReachInbox + Google/Microsoft), enrichment (Bright Data, Apify, Google CSE).",
+      "Compliance: workspace isolation, Netlify + Supabase stack, optional HITL checkpoints at every stage."
+    ],
+    "summary": "Explains SAM AI’s orchestrated agent stack, channels, and compliance posture.",
+    "relevance_score": 0.92,
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "SAM Product Overview"
+    },
+    "created_at": "2025-09-30T06:04:00.46+00:00"
+  },
+  {
+    "id": "0a45393f-770f-4a14-b87d-8a64b02b8323",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "9433b5fc-cd3f-4f92-a40b-793566881bf4",
+    "analysis_type": "seeded_content",
+    "model_used": "manual-seed",
+    "tags": [
+      "messaging",
+      "linkedin",
+      "email"
+    ],
+    "categories": [
+      "messaging",
+      "linkedin",
+      "email"
+    ],
+    "key_insights": [
+      "Each sequence begins with a consultant-style connect request referencing KB insights.",
+      "Follow-ups blend ICP-specific pains (research debt, SDR turnover) with social proof.",
+      "Messaging adapts to vertical (SaaS vs agency) by switching case studies and metrics."
+    ],
+    "summary": "Provides the default LinkedIn + email outreach cadence and personalization levers.",
+    "relevance_score": 0.92,
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "SAM Messaging Framework"
+    },
+    "created_at": "2025-09-30T06:04:01.131+00:00"
+  },
+  {
+    "id": "0bfe71dd-7ac1-4bdd-a985-da0a769f0138",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "b97fb5e1-b83c-42fe-a0dd-68d97a0c99d9",
+    "analysis_type": "seeded_content",
+    "model_used": "manual-seed",
+    "tags": [
+      "objections",
+      "sales",
+      "enablement"
+    ],
+    "categories": [
+      "objections",
+      "sales",
+      "enablement"
+    ],
+    "key_insights": [
+      "Primary objections: “We already use Apollo,” “AI feels risky,” “Need HITL,” “Data privacy.”",
+      "Talk tracks convert objection into benefit, then cite KB upload or case study.",
+      "Always include fallback step: schedule 20-min GTM audit with Sam orchestrator."
+    ],
+    "summary": "List of common buying objections with talk tracks and KB references.",
+    "relevance_score": 0.92,
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "SAM Objection Handling Matrix"
+    },
+    "created_at": "2025-09-30T06:04:01.669+00:00"
+  },
+  {
+    "id": "3cd66d03-88b8-4556-ad7f-316c91167a5e",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "bba22e82-78d2-440c-8dea-d4340e8730c2",
+    "analysis_type": "seeded_content",
+    "model_used": "manual-seed",
+    "tags": [
+      "pricing",
+      "roi",
+      "financial"
+    ],
+    "categories": [
+      "pricing",
+      "roi",
+      "financial"
+    ],
+    "key_insights": [
+      "Core plans: Starter $99, Pro $399, Enterprise $1,999+ with add-ons.",
+      "ROI framing: compare to SDR cost ($120k) and tooling stack consolidation.",
+      "Implementation: 1-week onboarding with ICP + KB + go-live review."
+    ],
+    "summary": "Breaks down plan tiers, ROI math, and implementation effort.",
+    "relevance_score": 0.92,
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "SAM Pricing & ROI Cheat Sheet"
+    },
+    "created_at": "2025-09-30T06:04:02.207+00:00"
+  },
+  {
+    "id": "9a19be1f-1e84-497f-9fbf-b31207159876",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "db2464ff-ba23-4108-b09c-b9ac0a77df49",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "InnovareAI",
+      "business growth",
+      "automation",
+      "AI solutions",
+      "workforce optimization",
+      "scalability",
+      "productivity",
+      "cost efficiency",
+      "digital transformation",
+      "business automation"
+    ],
+    "categories": [
+      "AI Products",
+      "Business Solutions",
+      "Automation Tools",
+      "Growth Strategy",
+      "Workforce Management"
+    ],
+    "key_insights": [
+      "Focus on business scaling without proportional headcount increase",
+      "AI-driven automation as a growth enabler",
+      "Cost-effective business expansion strategy",
+      "Productivity enhancement through intelligent automation",
+      "Alternative to traditional hiring for business growth"
+    ],
+    "summary": "InnovareAI product documentation presenting AI-powered solutions designed to help businesses scale operations and increase productivity without the need for proportional workforce expansion. The document likely outlines automation capabilities that enable growth through intelligent systems rather than traditional headcount increases.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "artificial intelligence",
+        "business automation",
+        "scalability solutions",
+        "workforce optimization",
+        "growth strategies"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:06:40.072Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-16T17:06:40.244+00:00"
+  },
+  {
+    "id": "0e3875e6-b921-4717-80b8-ac92ab58e5b8",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "8cb0c1a0-98bf-4602-9e99-164c428cdc2b",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "messaging framework",
+      "conversion optimization",
+      "marketing communications",
+      "value proposition",
+      "customer messaging",
+      "conversion strategy",
+      "brand messaging",
+      "marketing framework",
+      "persuasive communication",
+      "customer engagement"
+    ],
+    "categories": [
+      "Marketing Strategy",
+      "Conversion Optimization",
+      "Brand Communication",
+      "Customer Experience",
+      "Sales Enablement"
+    ],
+    "key_insights": [
+      "Framework for developing effective marketing messages",
+      "Strategies for improving conversion rates through messaging",
+      "Alignment between customer needs and value communication",
+      "Systematic approach to crafting persuasive content",
+      "Integration of messaging across customer touchpoints"
+    ],
+    "summary": "A comprehensive framework document that outlines strategies and methodologies for developing effective marketing messaging designed to drive customer conversions. The document likely covers principles for crafting compelling value propositions, aligning messaging with customer journey stages, and optimizing communication for maximum impact.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "messaging strategy",
+        "conversion rate optimization",
+        "value proposition development",
+        "customer communication",
+        "marketing frameworks"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:07:17.840Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-16T17:07:17.995+00:00"
+  },
+  {
+    "id": "1e6b3ab9-310a-4c0a-9cfb-bd420bdebe6f",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "0a8f34ae-10b6-40b4-89f9-f989e23584d0",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "messaging",
+      "templates",
+      "internal-communications",
+      "corporate-messaging",
+      "communication-guidelines",
+      "brand-voice",
+      "internal-use",
+      "standardization",
+      "messaging-framework"
+    ],
+    "categories": [
+      "Internal Communications",
+      "Messaging Standards",
+      "Corporate Templates",
+      "Brand Guidelines",
+      "Communication Resources"
+    ],
+    "key_insights": [
+      "Contains standardized messaging templates for internal organizational use",
+      "Likely provides pre-approved communication frameworks",
+      "Restricted to internal stakeholders only",
+      "Supports consistent brand voice and messaging across the organization",
+      "May include templates for various communication scenarios"
+    ],
+    "summary": "Internal document containing standardized messaging templates designed for organizational use. This resource provides pre-approved communication frameworks to ensure consistency in corporate messaging and brand voice across internal communications.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "corporate communications",
+        "messaging templates",
+        "internal resources",
+        "brand consistency",
+        "communication standards"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:15:47.813Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-16T17:15:47.966+00:00"
+  },
+  {
+    "id": "615e56f8-7a0a-4711-8bfa-dab0a3887be5",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "85004884-fff0-4762-985c-3204dc3d602e",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "pricing",
+      "diagnostic",
+      "culture-shift",
+      "pricing-model",
+      "organizational-culture",
+      "assessment-tool",
+      "consulting-services",
+      "diagnostic-framework",
+      "pricing-strategy",
+      "culture-assessment"
+    ],
+    "categories": [
+      "Pricing & Packages",
+      "Diagnostic Services",
+      "Culture Transformation",
+      "Service Offerings",
+      "Sales Tools"
+    ],
+    "key_insights": [
+      "Defines pricing structure for CultureShift diagnostic services",
+      "Provides framework for culture assessment offerings",
+      "Establishes value proposition for diagnostic tools",
+      "Supports sales and buying process with clear pricing model",
+      "Enables standardized approach to culture diagnostic pricing"
+    ],
+    "summary": "This document outlines the pricing model for CultureShift diagnostic services, providing a structured framework for assessing organizational culture. It serves as a key resource in the buying process, helping prospects understand the investment required for culture diagnostic assessments and related consulting services.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "pricing-models",
+        "culture-diagnostics",
+        "organizational-assessment",
+        "service-pricing",
+        "consulting-packages"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:54:43.897Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-16T17:54:44.084+00:00"
+  },
+  {
+    "id": "8c585153-440b-4de1-94b3-4c0337ad6f13",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "39b1963a-2511-4a4e-8d15-cd9a90064da7",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "buying-process",
+      "decision-making",
+      "framework",
+      "procurement",
+      "purchasing-strategy",
+      "stakeholder-analysis",
+      "evaluation-criteria",
+      "vendor-selection",
+      "business-process"
+    ],
+    "categories": [
+      "Sales Enablement",
+      "Customer Journey",
+      "Decision Framework",
+      "Procurement Process",
+      "Strategic Planning"
+    ],
+    "key_insights": [
+      "Structured approach to organizational buying decisions",
+      "Framework for evaluating purchasing options",
+      "Decision-making criteria and stakeholder involvement",
+      "Process stages from need identification to vendor selection",
+      "Risk assessment and evaluation methodologies"
+    ],
+    "summary": "A comprehensive framework document outlining the organizational buying process and decision-making methodology. This resource provides structured guidance for procurement decisions, stakeholder engagement, and vendor evaluation criteria.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "buying-process",
+        "decision-frameworks",
+        "procurement-methodology",
+        "stakeholder-management",
+        "vendor-evaluation"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:55:06.361Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-16T17:55:06.52+00:00"
+  },
+  {
+    "id": "2f960367-4b1d-446b-800e-7088f9efcf9a",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "28d1edfe-3022-469b-8144-2d5d5dec4b5d",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "buying-process",
+      "framework",
+      "sales-methodology",
+      "customer-journey",
+      "procurement",
+      "decision-making",
+      "sales-enablement",
+      "one-pager",
+      "reference-guide"
+    ],
+    "categories": [
+      "Sales Process",
+      "Customer Acquisition",
+      "Business Framework",
+      "Sales Strategy",
+      "Buyer Enablement"
+    ],
+    "key_insights": [
+      "Structured approach to understanding customer buying behavior",
+      "Framework for aligning sales activities with buyer journey stages",
+      "Reference tool for sales teams to navigate complex purchasing decisions",
+      "Condensed one-page format for quick reference and implementation",
+      "Systematic methodology for managing buyer relationships"
+    ],
+    "summary": "A concise one-page framework document that outlines the structured buying process, designed to help sales and business development teams understand and navigate customer purchasing decisions. This reference guide provides a systematic approach to aligning sales strategies with buyer journey stages.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "buying-process",
+        "sales-framework",
+        "customer-decision-journey",
+        "sales-methodology",
+        "buyer-behavior"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:55:34.415Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-16T17:55:34.567+00:00"
+  },
+  {
+    "id": "94cde4d1-b374-49e7-9c9b-4068d78106de",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "590e8e9b-3bec-4333-9554-7ede06e763e8",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "company-overview",
+      "true-people-consulting",
+      "TPC",
+      "vendor-information",
+      "supplier-profile",
+      "consulting-services",
+      "business-partner",
+      "procurement",
+      "vendor-evaluation"
+    ],
+    "categories": [
+      "Vendor Documentation",
+      "Company Profiles",
+      "Procurement Resources",
+      "Supplier Information",
+      "Consulting Services"
+    ],
+    "key_insights": [
+      "Company profile for potential consulting partner True People Consulting",
+      "Vendor documentation relevant to procurement and buying decisions",
+      "Reference material for evaluating consulting service providers",
+      "Foundational information for vendor assessment process"
+    ],
+    "summary": "Company overview document for True People Consulting (TPC), providing essential information about the consulting firm. This document serves as vendor documentation within the buying process, offering key details needed for procurement evaluation and supplier assessment.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "vendor-management",
+        "consulting-services",
+        "supplier-evaluation",
+        "procurement-documentation",
+        "business-partnerships"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:56:02.533Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-16T17:56:02.689+00:00"
+  },
+  {
+    "id": "77a076a2-3aae-474d-8680-3db8774d4bea",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "ab79a280-83e6-40ef-b08d-96925c9a5d2a",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "facilitation",
+      "client-onboarding",
+      "service-overview",
+      "futureflow",
+      "methodology",
+      "one-pager",
+      "sales-collateral",
+      "client-facing"
+    ],
+    "categories": [
+      "Sales Enablement",
+      "Service Offerings",
+      "Client Communications",
+      "Methodology Documentation"
+    ],
+    "key_insights": [
+      "Client-facing overview of FutureFlow Facilitation methodology",
+      "Designed for prospect education during buying process",
+      "Condensed format for quick comprehension",
+      "Likely explains service value proposition and process",
+      "Sales enablement tool for business development"
+    ],
+    "summary": "A one-page client-facing document that introduces and explains the FutureFlow Facilitation™ methodology. This sales collateral is designed to help prospects understand the service offering during the buying journey, providing a concise overview of the approach, benefits, and process.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "facilitation services",
+        "client education",
+        "sales process",
+        "service methodology",
+        "value proposition"
+      ],
+      "language": "en",
+      "complexity": "beginner",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:56:44.996Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-16T17:56:45.166+00:00"
+  },
+  {
+    "id": "28601f16-cb99-4ef4-9bd5-a4ff536c6fc5",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "11a22320-5e51-4490-ad8d-9a5ebc3eb8f0",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "strategic-partnership",
+      "sprint-model",
+      "agile-methodology",
+      "collaboration",
+      "project-delivery",
+      "partnership-framework",
+      "iterative-development",
+      "vendor-engagement",
+      "procurement-strategy"
+    ],
+    "categories": [
+      "Partnership Models",
+      "Agile Methodologies",
+      "Procurement Strategy",
+      "Project Management",
+      "Vendor Relations"
+    ],
+    "key_insights": [
+      "Outlines strategic partnership approach for vendor engagement",
+      "Defines sprint-based delivery model for project execution",
+      "Establishes framework for iterative collaboration",
+      "Provides structured approach to buying process partnerships",
+      "Likely includes timelines, milestones, and delivery expectations"
+    ],
+    "summary": "This document appears to outline a strategic partnership framework utilizing a sprint-based delivery model, designed to guide the buying process through structured, iterative collaboration with vendors or partners. It likely defines engagement models, delivery methodologies, and partnership expectations.",
+    "relevance_score": 0.92,
+    "metadata": {
+      "topics": [
+        "strategic-partnerships",
+        "agile-sprints",
+        "vendor-management",
+        "procurement-methodology",
+        "collaborative-frameworks"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:57:07.268Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-16T17:57:07.467+00:00"
+  },
+  {
+    "id": "0c91b74c-9409-4f92-b01d-aa93cc0e8bd9",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "1556facf-c069-473a-8721-821ac03d7e39",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "company-overview",
+      "true-people-consulting",
+      "TPC",
+      "organizational-information",
+      "corporate-profile",
+      "consulting-services",
+      "company-introduction"
+    ],
+    "categories": [
+      "Company Information",
+      "Corporate Documentation",
+      "Business Overview",
+      "Organizational Profile"
+    ],
+    "key_insights": [
+      "Primary company overview document for True People Consulting",
+      "Foundational reference material for understanding TPC's business",
+      "Core document for company-info knowledge base section",
+      "Likely contains mission, vision, services, and organizational structure"
+    ],
+    "summary": "Company overview document for True People Consulting (TPC) providing foundational information about the organization. This document serves as a primary reference for understanding TPC's business model, services, and organizational structure. Requires manual text extraction for complete analysis.",
+    "relevance_score": 1,
+    "metadata": {
+      "topics": [
+        "company-profile",
+        "consulting-services",
+        "organizational-overview",
+        "business-information"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:20:22.336Z",
+      "business_value": "critical"
+    },
+    "created_at": "2025-10-20T16:20:22.573+00:00"
+  },
+  {
+    "id": "68975722-17f3-49a3-b344-5876dfc1ec4e",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "4ebbeaf9-3f16-4840-a7f6-b51cf556bd45",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "strategic-partnership",
+      "sprint-methodology",
+      "client-playbook",
+      "engagement-framework",
+      "project-delivery",
+      "collaboration-guide",
+      "agile-process",
+      "client-onboarding",
+      "partnership-model",
+      "sprint-planning"
+    ],
+    "categories": [
+      "Client Engagement",
+      "Project Methodology",
+      "Partnership Framework",
+      "Process Documentation",
+      "Agile Delivery"
+    ],
+    "key_insights": [
+      "Defines strategic partnership approach for client engagements",
+      "Outlines sprint-based delivery methodology",
+      "Provides structured framework for client collaboration",
+      "Establishes expectations and processes for partnership success",
+      "Guides clients through agile project execution phases"
+    ],
+    "summary": "A comprehensive playbook designed to guide clients through strategic partnership engagements using sprint-based methodologies. This document likely outlines the framework for collaboration, defines roles and responsibilities, establishes sprint processes, and sets expectations for successful project delivery through an agile approach.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "client partnerships",
+        "sprint methodology",
+        "agile delivery",
+        "engagement processes",
+        "project frameworks",
+        "collaborative workflows"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:57:29.433Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-16T17:57:29.588+00:00"
+  },
+  {
+    "id": "65176e14-36f8-42d8-9777-a8d993958c7f",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "18566d1c-1abd-4145-a6bb-16889e95cebd",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "software-development",
+      "changelog",
+      "system-updates",
+      "api-routes",
+      "database-migrations",
+      "integration-documentation",
+      "october-2025",
+      "technical-documentation",
+      "version-control",
+      "code-changes"
+    ],
+    "categories": [
+      "Development Updates",
+      "Technical Documentation",
+      "System Maintenance",
+      "API Development",
+      "Database Management"
+    ],
+    "key_insights": [
+      "Comprehensive system update dated October 1, 2025 affecting multiple components",
+      "Extensive API route modifications across authentication, LinkedIn, LLM, email providers, and proxy systems",
+      "Database schema changes including LinkedIn proxy RLS fixes, proxy flags additions, and user profile updates",
+      "Integration documentation updates for LinkedIn dedicated IP and proxy rollout",
+      "Multiple documentation updates covering BYOK implementation, data approval, OAuth integration, and billing systems",
+      "Repetitive content structure suggests automated changelog generation",
+      "Focus areas include LinkedIn integration, proxy management, LLM preferences, and email provider configuration"
+    ],
+    "summary": "This document is an auto-generated changelog archive from October 1, 2025, detailing extensive system updates across API routes, database migrations, and integration documentation. It covers modifications to authentication, LinkedIn integration, LLM services, email providers, proxy diagnostics, and various implementation summaries including BYOK, data approval workflows, OAuth setup, and tenant-based billing systems.",
+    "relevance_score": 0.15,
+    "metadata": {
+      "topics": [
+        "API Development",
+        "Database Migrations",
+        "System Integration",
+        "LinkedIn Integration",
+        "Proxy Management",
+        "LLM Configuration",
+        "Email Provider Setup",
+        "OAuth Authentication",
+        "Billing Systems",
+        "Technical Documentation"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T06:00:25.388Z",
+      "business_value": "low"
+    },
+    "created_at": "2025-10-20T06:00:25.865+00:00"
+  },
+  {
+    "id": "340a46b5-b3d2-4d90-952e-9b2e18401dc0",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "9ea2ecae-3299-4a8f-aa31-d3ba0c7a3af3",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "brand-guidelines",
+      "visual-identity",
+      "corporate-branding",
+      "design-standards",
+      "brand-assets",
+      "marketing-materials",
+      "style-guide",
+      "brand-compliance",
+      "corporate-identity",
+      "design-system"
+    ],
+    "categories": [
+      "Brand & Marketing",
+      "Design Standards",
+      "Corporate Guidelines",
+      "Visual Identity"
+    ],
+    "key_insights": [
+      "Contains official brand visual identity standards and guidelines",
+      "Defines corporate design system and brand asset usage rules",
+      "Provides reference material for maintaining brand consistency",
+      "Critical resource for marketing, design, and communications teams",
+      "Ensures brand compliance across all company materials and touchpoints"
+    ],
+    "summary": "Official brand guidelines document containing visual identity standards, design specifications, and usage rules for company branding. This document serves as the authoritative reference for maintaining brand consistency across all corporate communications, marketing materials, and visual assets.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "brand-identity",
+        "visual-design",
+        "corporate-standards",
+        "marketing-guidelines",
+        "design-system",
+        "brand-compliance"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:14:57.509Z",
+      "business_value": "critical"
+    },
+    "created_at": "2025-10-20T16:14:57.668+00:00"
+  },
+  {
+    "id": "e94cf513-25f7-44dd-811b-32383aad8146",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "6c74b15a-999e-43c8-b75f-031288d8f5cd",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "pricing",
+      "facilitation",
+      "FutureFlow",
+      "business model",
+      "service pricing",
+      "commercial",
+      "rates",
+      "pricing strategy",
+      "facilitation services",
+      "trademark"
+    ],
+    "categories": [
+      "Pricing & Commercial",
+      "Service Offerings",
+      "Business Operations",
+      "Facilitation Services",
+      "Company Information"
+    ],
+    "key_insights": [
+      "Document contains proprietary FutureFlow Facilitation™ pricing structure",
+      "Represents commercial service offering with trademarked methodology",
+      "Likely includes tiered pricing or service packages",
+      "Critical for sales and business development activities",
+      "May contain competitive pricing information requiring confidential handling"
+    ],
+    "summary": "Official pricing model documentation for FutureFlow Facilitation™ services, outlining the commercial structure and rates for the company's facilitation offerings. This document serves as a reference for pricing strategy and client proposals.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "pricing strategy",
+        "facilitation services",
+        "commercial operations",
+        "service delivery",
+        "business model"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:20:45.736Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-20T16:20:45.951+00:00"
+  },
+  {
+    "id": "12b3f303-5072-483a-964c-acda1cc75918",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "f406998c-c70f-48fc-ad42-ea36a14c8b84",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "competitive-intelligence",
+      "sales-enablement",
+      "battlecards",
+      "competitor-analysis",
+      "objection-handling",
+      "win-strategies",
+      "market-positioning",
+      "sales-tools",
+      "competitive-advantage",
+      "product-comparison"
+    ],
+    "categories": [
+      "Competitive Intelligence",
+      "Sales Resources",
+      "Market Analysis",
+      "Strategic Planning"
+    ],
+    "key_insights": [
+      "Document contains competitive battlecards for sales team enablement",
+      "Likely includes competitor comparisons and positioning strategies",
+      "Provides tactical guidance for competitive selling situations",
+      "Contains objection handling and differentiation points",
+      "Supports sales team in competitive deal scenarios"
+    ],
+    "summary": "Competitive battlecards document designed to equip sales teams with strategic information about competitors, including positioning strategies, key differentiators, objection handling techniques, and win/loss insights. This resource enables sales professionals to effectively compete in the marketplace by understanding competitive landscapes and articulating unique value propositions.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "competitive-positioning",
+        "sales-strategy",
+        "market-intelligence",
+        "value-proposition",
+        "competitor-weaknesses",
+        "differentiation-strategy"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:21:56.016Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-20T16:21:56.179+00:00"
+  },
+  {
+    "id": "065ec393-5879-4fe5-89c7-49b58833a7be",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "f3cdf144-a594-47fc-81a4-447e790ac7d2",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "market analysis",
+      "competitive intelligence",
+      "executive summary",
+      "market research",
+      "competitive landscape",
+      "strategic analysis",
+      "market trends",
+      "competitor insights",
+      "business intelligence",
+      "market positioning"
+    ],
+    "categories": [
+      "Competitive Analysis",
+      "Market Research",
+      "Strategic Planning",
+      "Executive Reports",
+      "Business Intelligence"
+    ],
+    "key_insights": [
+      "Executive-level competitive market analysis",
+      "Strategic market positioning insights",
+      "Competitive landscape overview",
+      "Market trend identification",
+      "Strategic recommendations for competitive advantage"
+    ],
+    "summary": "Executive-level market analysis document providing strategic insights into competitive landscape, market trends, and positioning. Designed for senior leadership decision-making regarding competitive strategy and market opportunities.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "competitive analysis",
+        "market dynamics",
+        "strategic positioning",
+        "market intelligence",
+        "competitor benchmarking"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:22:15.257Z",
+      "business_value": "critical"
+    },
+    "created_at": "2025-10-20T16:22:15.412+00:00"
+  },
+  {
+    "id": "3a15fb85-0a13-49b7-9ce7-01f5dc56380f",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "1050bc75-5c27-4840-9e61-069d528eb4d0",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "competitive-analysis",
+      "market-landscape",
+      "competitor-positioning",
+      "market-research",
+      "strategic-intelligence",
+      "competitive-advantage",
+      "market-dynamics",
+      "industry-analysis"
+    ],
+    "categories": [
+      "Competitive Intelligence",
+      "Market Analysis",
+      "Strategic Planning",
+      "Business Intelligence"
+    ],
+    "key_insights": [
+      "Document likely contains comprehensive competitor positioning analysis",
+      "Expected to include market landscape overview and competitive dynamics",
+      "Probable strategic insights for competitive advantage",
+      "May include competitor strengths, weaknesses, and market share data"
+    ],
+    "summary": "Strategic document analyzing the competitive market landscape and positioning of key competitors. This report likely provides critical intelligence on market dynamics, competitor strategies, and positioning opportunities to inform business strategy and competitive advantage.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "competitive-positioning",
+        "market-analysis",
+        "competitor-intelligence",
+        "strategic-planning",
+        "market-dynamics"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:22:33.881Z",
+      "business_value": "critical"
+    },
+    "created_at": "2025-10-20T16:22:34.044+00:00"
+  },
+  {
+    "id": "b1f920f2-d558-4e2b-8748-dafb86c65426",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "80ca650b-bb62-4255-99f2-db7155a4dbda",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "SWOT analysis",
+      "competitive analysis",
+      "strategic planning",
+      "market positioning",
+      "business strategy",
+      "strengths",
+      "weaknesses",
+      "opportunities",
+      "threats",
+      "competitor intelligence"
+    ],
+    "categories": [
+      "Strategic Analysis",
+      "Competitive Intelligence",
+      "Business Planning",
+      "Market Analysis"
+    ],
+    "key_insights": [
+      "Comprehensive competitive positioning framework",
+      "Internal strengths and weaknesses assessment",
+      "External market opportunities and threats evaluation",
+      "Strategic planning foundation for competitive advantage",
+      "Risk and opportunity identification in competitive landscape"
+    ],
+    "summary": "A SWOT (Strengths, Weaknesses, Opportunities, Threats) analysis document focused on competitive positioning. This strategic planning tool evaluates internal capabilities and external market factors to inform competitive strategy and decision-making.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "competitive strategy",
+        "market analysis",
+        "strategic planning",
+        "business assessment",
+        "competitive positioning"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:22:50.894Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-20T16:22:51.064+00:00"
+  },
+  {
+    "id": "5e7d195b-1216-4537-b873-f78ed076ade4",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "e968693f-5c15-4b05-aaa5-82f55617f4f2",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "win-loss-analysis",
+      "competitive-intelligence",
+      "sales-enablement",
+      "deal-analysis",
+      "competitive-strategy",
+      "customer-feedback",
+      "sales-methodology",
+      "market-positioning",
+      "competitor-analysis",
+      "revenue-optimization"
+    ],
+    "categories": [
+      "Competitive Analysis",
+      "Sales Strategy",
+      "Business Intelligence",
+      "Performance Metrics",
+      "Customer Insights"
+    ],
+    "key_insights": [
+      "Framework for analyzing won and lost sales opportunities",
+      "Methodology for understanding competitive positioning",
+      "Process for gathering actionable competitive intelligence",
+      "System for identifying patterns in deal outcomes",
+      "Approach to improving win rates through data-driven insights"
+    ],
+    "summary": "A strategic framework document focused on win-loss analysis methodology, designed to help organizations systematically evaluate won and lost deals to extract competitive insights, understand market positioning, and improve sales effectiveness against competitors.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "competitive-analysis",
+        "sales-operations",
+        "deal-review",
+        "market-intelligence",
+        "performance-improvement"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:23:09.865Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-20T16:23:10.018+00:00"
+  },
+  {
+    "id": "112d3b90-555d-4225-b388-2f37c81c968c",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "2b0ada67-94a8-44bc-8106-32a911bec8e0",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "AI compliance",
+      "TPC",
+      "regulatory requirements",
+      "artificial intelligence",
+      "governance",
+      "risk management",
+      "AI ethics",
+      "compliance framework",
+      "AI regulations",
+      "policy guidelines"
+    ],
+    "categories": [
+      "Compliance",
+      "Artificial Intelligence",
+      "Regulatory Affairs",
+      "Risk Management",
+      "Corporate Governance"
+    ],
+    "key_insights": [
+      "Document addresses AI compliance requirements for TPC organization",
+      "Likely contains regulatory frameworks and guidelines for AI implementation",
+      "May include risk assessment and mitigation strategies for AI systems",
+      "Potentially covers ethical considerations and governance structures",
+      "Expected to outline compliance monitoring and reporting procedures"
+    ],
+    "summary": "This document appears to be a comprehensive compliance guide for AI implementation within TPC. It likely addresses regulatory requirements, governance frameworks, ethical considerations, and risk management strategies specific to artificial intelligence systems and their deployment.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "AI governance",
+        "regulatory compliance",
+        "risk assessment",
+        "ethical AI",
+        "compliance monitoring",
+        "policy frameworks"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:24:13.815Z",
+      "business_value": "critical"
+    },
+    "created_at": "2025-10-20T16:24:13.963+00:00"
+  },
+  {
+    "id": "2777a3c2-acb5-419c-8a4a-ace208f2dfb1",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "b3166ade-c347-4592-819f-c8b84eb41168",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "regulatory compliance",
+      "compliance overview",
+      "regulatory framework",
+      "compliance requirements",
+      "governance",
+      "risk management",
+      "regulatory standards",
+      "compliance policies"
+    ],
+    "categories": [
+      "Compliance",
+      "Regulatory Affairs",
+      "Risk Management",
+      "Governance",
+      "Legal & Regulatory"
+    ],
+    "key_insights": [
+      "Document provides comprehensive regulatory and compliance overview",
+      "Likely contains framework for organizational compliance requirements",
+      "May include industry-specific regulatory standards and guidelines",
+      "Potential reference material for compliance officers and legal teams",
+      "Could outline compliance monitoring and reporting procedures"
+    ],
+    "summary": "This document appears to be a comprehensive regulatory and compliance overview that likely outlines key compliance requirements, regulatory frameworks, and governance standards applicable to the organization. It serves as a foundational reference for understanding compliance obligations and implementing appropriate controls.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "regulatory compliance",
+        "compliance frameworks",
+        "governance standards",
+        "risk mitigation",
+        "regulatory requirements"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:23:54.412Z",
+      "business_value": "critical"
+    },
+    "created_at": "2025-10-20T16:23:54.588+00:00"
+  },
+  {
+    "id": "70ee71a5-10f9-43fb-a203-9d2ca77bbb34",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "db9e7ec3-77f5-421e-9c47-9bb09464f5bd",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "client_onboarding",
+      "welcome_guide",
+      "orientation",
+      "new_client",
+      "getting_started",
+      "client_relations",
+      "onboarding_process",
+      "client_experience",
+      "introduction"
+    ],
+    "categories": [
+      "Client Services",
+      "Onboarding",
+      "Documentation",
+      "Client Relations",
+      "Process Guides"
+    ],
+    "key_insights": [
+      "Provides structured introduction for new clients",
+      "Establishes expectations and communication protocols",
+      "Outlines key processes and procedures for client engagement",
+      "Serves as reference material throughout client relationship",
+      "Reduces onboarding friction and improves client experience"
+    ],
+    "summary": "A comprehensive orientation guide designed to welcome new clients and provide essential information about processes, expectations, communication channels, and key resources needed to establish a successful working relationship.",
+    "relevance_score": 0.92,
+    "metadata": {
+      "topics": [
+        "client_onboarding",
+        "welcome_procedures",
+        "orientation_materials",
+        "client_communication",
+        "service_introduction"
+      ],
+      "language": "en",
+      "complexity": "beginner",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:50:37.153Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-20T16:50:37.371+00:00"
+  },
+  {
+    "id": "84420fa6-89c5-4277-9ee7-3f6590e8072f",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "ca938cf8-f24c-4f27-8d0c-781da554e5c0",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "ideal_client_profile",
+      "market_intelligence",
+      "client_research",
+      "target_audience",
+      "competitive_analysis",
+      "internal_documentation",
+      "strategic_planning",
+      "customer_insights",
+      "market_research",
+      "business_development"
+    ],
+    "categories": [
+      "Market Research",
+      "Strategic Planning",
+      "Client Intelligence",
+      "Business Development",
+      "Internal Documentation"
+    ],
+    "key_insights": [
+      "Contains confidential client profiling information",
+      "Likely includes market segmentation and targeting strategies",
+      "Internal use designation suggests proprietary competitive intelligence",
+      "May contain demographic, psychographic, and behavioral client data",
+      "Probable inclusion of market positioning and opportunity analysis"
+    ],
+    "summary": "Internal strategic document containing ideal client profiles and market intelligence analysis. This confidential dossier likely outlines target customer characteristics, market opportunities, competitive landscape insights, and strategic recommendations for business development and client acquisition efforts.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "client_profiling",
+        "market_analysis",
+        "competitive_intelligence",
+        "business_strategy",
+        "target_market_identification"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:51:43.570Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-20T16:51:43.752+00:00"
+  },
+  {
+    "id": "25fdfcb6-a657-4827-89cb-5f9597e0fbf8",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "fbd2ecd2-b151-43ab-a584-46489e895ee6",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "objection_handling",
+      "FAQ",
+      "role_based",
+      "sales_enablement",
+      "customer_communication",
+      "framework",
+      "response_templates",
+      "stakeholder_management",
+      "sales_methodology",
+      "conversation_guide"
+    ],
+    "categories": [
+      "Sales Training",
+      "Objection Handling",
+      "Customer Communication",
+      "Sales Enablement",
+      "Stakeholder Engagement"
+    ],
+    "key_insights": [
+      "Provides role-specific objection handling strategies",
+      "Structured FAQ framework for different stakeholder types",
+      "Systematic approach to addressing customer concerns",
+      "Enables consistent messaging across sales team",
+      "Tailored responses based on decision-maker roles"
+    ],
+    "summary": "A comprehensive framework document that provides role-based frequently asked questions and objection handling strategies. This resource equips sales teams with structured approaches to address concerns from different stakeholder types, ensuring consistent and effective customer communication across various decision-maker roles.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "objection_handling",
+        "sales_methodology",
+        "stakeholder_communication",
+        "FAQ_management",
+        "role_based_selling"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:52:05.882Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-20T16:52:06.049+00:00"
+  },
+  {
+    "id": "bd2d9578-55cb-4f87-bc1e-3a620248cd5e",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "e6038a93-b1da-4a7c-abcb-d1852ae048ac",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "true-people-consulting",
+      "company-update",
+      "consulting",
+      "company-information"
+    ],
+    "categories": [
+      "Company Information",
+      "Updates",
+      "Consulting Services"
+    ],
+    "key_insights": [
+      "Unable to extract - manual processing required"
+    ],
+    "summary": "Company update document from True People Consulting. Content requires manual extraction and analysis.",
+    "relevance_score": 0.85,
+    "metadata": {
+      "topics": [
+        "consulting",
+        "company-updates"
+      ],
+      "language": "unknown",
+      "complexity": "unknown",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:30:34.619Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:30:34.792+00:00"
+  },
+  {
+    "id": "f099856a-cb68-41c8-90ed-21960aa2d151",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "04a73538-13a2-4755-b540-42c44339c45f",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "messaging templates",
+      "internal communications",
+      "corporate messaging",
+      "communication guidelines",
+      "brand voice",
+      "template library",
+      "internal use",
+      "standardized messaging"
+    ],
+    "categories": [
+      "Internal Communications",
+      "Messaging Standards",
+      "Templates & Resources",
+      "Brand Guidelines",
+      "Corporate Communications"
+    ],
+    "key_insights": [
+      "Contains standardized messaging templates for internal organizational use",
+      "Likely includes pre-approved communication formats and language",
+      "Serves as a reference guide for consistent internal messaging",
+      "May contain confidential or proprietary communication frameworks",
+      "Provides structure for various internal communication scenarios"
+    ],
+    "summary": "Internal messaging template library containing standardized communication formats and guidelines for organizational use. This resource provides pre-approved messaging frameworks to ensure consistency and compliance in internal communications.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "internal communications",
+        "messaging templates",
+        "communication standards",
+        "corporate guidelines",
+        "template management"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:33:16.038Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:33:16.214+00:00"
+  },
+  {
+    "id": "c0f78e21-3381-4541-895d-95246b48f3c5",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "fc1ef571-da15-4a68-9e8b-856d3b4da6a8",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "messaging",
+      "conversion",
+      "framework",
+      "marketing",
+      "communication",
+      "customer-engagement",
+      "value-proposition",
+      "copywriting",
+      "conversion-optimization",
+      "brand-messaging"
+    ],
+    "categories": [
+      "Marketing Strategy",
+      "Conversion Optimization",
+      "Brand Communication",
+      "Customer Messaging",
+      "Sales Enablement"
+    ],
+    "key_insights": [
+      "Framework for developing effective messaging strategies",
+      "Conversion-focused communication principles",
+      "Structured approach to customer messaging",
+      "Integration of messaging with conversion goals",
+      "Strategic framework for brand communication"
+    ],
+    "summary": "A strategic framework document focused on developing effective messaging strategies that drive conversions. This resource likely provides structured methodologies for crafting customer-centric communication that aligns with business objectives and optimizes conversion rates across various touchpoints.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "messaging strategy",
+        "conversion optimization",
+        "customer communication",
+        "value proposition development",
+        "marketing frameworks"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:33:39.304Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:33:39.446+00:00"
+  },
+  {
+    "id": "5977e95c-e312-49b6-93b0-28388eb8e92d",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "a54f9c88-0fd1-4528-854c-e90d90071ab5",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "ideal_client_profile",
+      "market_intelligence",
+      "customer_personas",
+      "target_audience",
+      "market_research",
+      "client_segmentation",
+      "competitive_intelligence",
+      "internal_documentation",
+      "strategic_planning",
+      "customer_insights"
+    ],
+    "categories": [
+      "Customer Research",
+      "Market Analysis",
+      "Persona Development",
+      "Strategic Intelligence",
+      "Business Development"
+    ],
+    "key_insights": [
+      "Contains proprietary ideal client profile definitions",
+      "Includes market intelligence for strategic positioning",
+      "Internal-use documentation for team alignment",
+      "Likely contains demographic and psychographic data",
+      "Strategic resource for sales and marketing alignment"
+    ],
+    "summary": "Internal strategic document defining ideal client profiles and market intelligence. This dossier serves as a comprehensive reference for understanding target customers, market positioning, and competitive landscape. Designed for internal stakeholder use to ensure consistent customer targeting and messaging.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "ideal_customer_profiles",
+        "market_segmentation",
+        "competitive_analysis",
+        "customer_intelligence",
+        "business_strategy"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:35:50.557Z",
+      "business_value": "critical"
+    },
+    "created_at": "2025-10-21T13:35:50.709+00:00"
+  },
+  {
+    "id": "3a4e652a-3860-4d11-bdba-e3ba27ed0ef7",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "803fb941-fe2b-46d5-8844-d14e2a3cefcf",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "facilitation",
+      "client-facing",
+      "service-offering",
+      "FutureFlow",
+      "one-pager",
+      "sales-material",
+      "pricing-document",
+      "professional-services"
+    ],
+    "categories": [
+      "Service Offerings",
+      "Client Communications",
+      "Sales Collateral",
+      "Facilitation Services",
+      "Pricing Materials"
+    ],
+    "key_insights": [
+      "Client-facing document for FutureFlow Facilitation service",
+      "Likely contains service description and value proposition",
+      "Designed as concise one-page overview for prospects",
+      "Part of pricing and sales enablement materials",
+      "Trademarked service offering (™ indicates proprietary methodology)"
+    ],
+    "summary": "A one-page client-facing document describing the FutureFlow Facilitation™ service offering. This sales collateral is designed to provide prospects with a concise overview of the facilitation service, likely including methodology, benefits, and pricing information.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "facilitation services",
+        "service pricing",
+        "client engagement",
+        "professional services",
+        "sales enablement"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:39:21.751Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:39:22.051+00:00"
+  },
+  {
+    "id": "562d694c-55ad-412d-8591-5e23c74ff69c",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "60756384-cf06-4b02-8a68-63828c59974f",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "strategic partnership",
+      "sprint model",
+      "agile methodology",
+      "partnership framework",
+      "project delivery",
+      "pricing model",
+      "engagement model",
+      "collaboration framework"
+    ],
+    "categories": [
+      "Pricing & Engagement Models",
+      "Strategic Partnerships",
+      "Project Delivery Frameworks",
+      "Agile Methodologies",
+      "Business Models"
+    ],
+    "key_insights": [
+      "Document likely outlines sprint-based engagement models for strategic partnerships",
+      "May contain pricing structures for agile/sprint-based project delivery",
+      "Potentially defines partnership tiers and collaboration frameworks",
+      "Could include sprint duration, deliverables, and cost structures",
+      "Likely addresses flexible engagement models for long-term partnerships"
+    ],
+    "summary": "This document appears to outline a strategic partnership framework utilizing a sprint-based delivery model. It likely details pricing structures, engagement terms, and collaborative approaches for agile project execution within partnership contexts. The content is relevant to understanding how sprint methodologies are applied to partnership pricing and project delivery.",
+    "relevance_score": 0.92,
+    "metadata": {
+      "topics": [
+        "sprint methodology",
+        "partnership models",
+        "pricing frameworks",
+        "agile delivery",
+        "engagement structures"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:39:54.563Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:39:54.706+00:00"
+  },
+  {
+    "id": "db87478e-23de-4f03-b18b-a1626fd80d44",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "c0fbb95e-40c0-4bdf-8c23-17dae7e8cf31",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "pricing",
+      "diagnostic",
+      "culture-shift",
+      "pricing-model",
+      "organizational-culture",
+      "assessment",
+      "consulting-services",
+      "business-model",
+      "revenue-structure"
+    ],
+    "categories": [
+      "Pricing & Revenue",
+      "Service Offerings",
+      "Diagnostic Tools",
+      "Organizational Culture",
+      "Business Strategy"
+    ],
+    "key_insights": [
+      "Defines pricing structure for CultureShift diagnostic services",
+      "Likely contains tiered pricing or package options for cultural assessments",
+      "Establishes value proposition for organizational culture diagnostics",
+      "May include pricing variables based on organization size or scope",
+      "Provides framework for monetizing culture assessment services"
+    ],
+    "summary": "This document outlines the pricing model for CultureShift diagnostic services, which appear to focus on organizational culture assessment and transformation. It likely details pricing tiers, service packages, and the commercial structure for delivering culture diagnostic tools and consulting services to organizations.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "pricing strategy",
+        "organizational diagnostics",
+        "culture assessment",
+        "service packaging",
+        "value-based pricing"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:40:16.614Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:40:16.768+00:00"
+  },
+  {
+    "id": "895add57-ed61-4b16-9b42-277ee4e05e11",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "f32e803d-2a80-4484-a95d-186782cddf46",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "market analysis",
+      "ROI",
+      "return on investment",
+      "pricing strategy",
+      "financial analysis",
+      "market research",
+      "business case",
+      "value proposition",
+      "competitive analysis",
+      "investment justification"
+    ],
+    "categories": [
+      "Financial Analysis",
+      "Market Intelligence",
+      "Pricing Strategy",
+      "Business Planning",
+      "ROI Analysis"
+    ],
+    "key_insights": [
+      "Document focuses on market dynamics and return on investment metrics",
+      "Likely contains pricing justification and market positioning data",
+      "Relevant for understanding financial value and market competitiveness",
+      "May include cost-benefit analysis and investment scenarios",
+      "Supports pricing decision-making with market-based evidence"
+    ],
+    "summary": "This document titled 'Market and ROI.pdf' appears to be a comprehensive analysis combining market research with return on investment calculations. It likely provides financial justification and market positioning insights relevant to pricing strategies, helping stakeholders understand the business value and competitive landscape for pricing decisions.",
+    "relevance_score": 0.92,
+    "metadata": {
+      "topics": [
+        "market analysis",
+        "ROI calculation",
+        "pricing economics",
+        "competitive positioning",
+        "financial modeling",
+        "value assessment"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:46:41.292Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:46:41.49+00:00"
+  },
+  {
+    "id": "4d4555a7-e21a-4bb0-bc2c-c85212b4247f",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "ca6275cc-14a9-4b32-b900-3fe4f9610bb7",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "consulting",
+      "organizational culture",
+      "leadership development",
+      "change management",
+      "strategic planning",
+      "future of work",
+      "human-centered design",
+      "organizational development",
+      "culture transformation",
+      "executive facilitation"
+    ],
+    "categories": [
+      "Consulting Services",
+      "Organizational Development",
+      "Leadership & Culture",
+      "Strategic Planning",
+      "Change Management"
+    ],
+    "key_insights": [
+      "True People Consulting (TPC) specializes in culture-first strategy for modern work environments",
+      "Core service offerings include CultureShift Diagnostic™, PulseOps™, FutureFlow Sprint™, and Strategic Partnership Retainer",
+      "Focus on building 'breathable, high-performing systems' that align people, purpose, and practice",
+      "Target clients are forward-thinking organizations experiencing growth, evolution, or transformation",
+      "Methodology combines cultural intelligence, systems strategy, and leadership foresight",
+      "Services address organizational challenges including cultural fracture, leadership misalignment, and overwhelming change",
+      "Offers real-time cultural intelligence and executive facilitation services",
+      "Provides exclusive strategic partnership retainers for select organizations"
+    ],
+    "summary": "True People Consulting (TPC) is a consulting firm specializing in culture-first organizational strategy for modern workplaces. They help organizations build high-performing systems through services including cultural diagnostics, real-time organizational intelligence, executive facilitation, and strategic partnerships. Their approach focuses on aligning people, purpose, and practice using human-centered frameworks and cultural intelligence.",
+    "relevance_score": 0.98,
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "leadership development",
+        "strategic consulting",
+        "change management",
+        "future of work",
+        "systems thinking",
+        "executive coaching"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:47:11.412Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:47:11.584+00:00"
+  },
+  {
+    "id": "d41c5db1-8a0c-4380-bb97-6d4e3a2c361f",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "df43ae17-13d5-4ce5-9901-be76d3f79945",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "artificial-intelligence",
+      "workplace-culture",
+      "leadership-strategy",
+      "organizational-development",
+      "future-of-work",
+      "employee-engagement",
+      "digital-transformation",
+      "human-resources",
+      "change-management",
+      "generational-workforce",
+      "cultural-health",
+      "business-strategy"
+    ],
+    "categories": [
+      "Leadership & Management",
+      "Organizational Culture",
+      "Technology & Innovation",
+      "Human Resources",
+      "Strategic Planning"
+    ],
+    "key_insights": [
+      "AI is a tool, not a strategy - culture and human systems determine organizational success",
+      "Employee disengagement costs the global economy $8.8 trillion annually (9% of global GDP)",
+      "AI augments human work rather than replacing it - Stanford/MIT study shows 14% productivity improvement",
+      "Millennials and Gen Z prioritize flexibility, wellness, and authenticity over traditional work structures",
+      "Organizations must build trust, flexibility, and cultural health to thrive alongside AI adoption",
+      "Five-step framework: vision clarity, cultural diagnostics, flexible redesign, responsible AI integration, and transparent communication",
+      "Psychological safety and cultural architecture are business imperatives, not optional benefits"
+    ],
+    "summary": "This thought leadership article argues that organizational culture, not AI technology, will determine which companies thrive in the future of work. The author presents data on employee disengagement costs ($8.8 trillion globally), challenges the notion that AI will replace workers, and emphasizes that AI should augment human capabilities. The piece addresses generational workforce shifts, provides a five-step framework for building future-ready culture, and stresses that trust, flexibility, and cultural health are essential foundations before AI adoption can succeed.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "organizational-culture",
+        "ai-strategy",
+        "leadership-development",
+        "workforce-transformation",
+        "employee-engagement",
+        "generational-dynamics"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:47:43.455Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:47:43.76+00:00"
+  },
+  {
+    "id": "8f6ad1a2-032f-4611-98cb-a16f869baf5d",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "d0ab24a5-26de-49f7-9a71-17ab72a4e84e",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "workplace-transformation",
+      "generational-workforce",
+      "future-of-work",
+      "organizational-culture",
+      "employee-engagement",
+      "workplace-renaissance",
+      "gen-z-millennials",
+      "leadership-evolution",
+      "purpose-driven-work",
+      "cultural-intelligence",
+      "ai-workplace-integration",
+      "employee-dignity",
+      "flexible-work",
+      "4-day-workweek",
+      "creator-economy"
+    ],
+    "categories": [
+      "Workplace Culture",
+      "Leadership & Management",
+      "Future of Work",
+      "Organizational Development",
+      "Employee Experience",
+      "Cultural Transformation"
+    ],
+    "key_insights": [
+      "We are currently experiencing a workplace renaissance driven by Gen Z and Millennials, not waiting for one in the future",
+      "Four key signals indicate workplace transformation: Tech-Human Fusion, Dignity Revolt, Purpose Economy, and New Leadership Archetypes",
+      "Modern workplace renaissance mirrors historical Renaissance patterns: new tools (AI), power shifts (decentralized work), and cultural hunger (purpose-driven work)",
+      "Leaders who dismiss cultural demands for flexibility and AI integration risk organizational irrelevance",
+      "Renaissance leadership focuses on experimentation, cultural health as infrastructure, human purpose, and measuring human flourishing",
+      "The creator economy, union resurgence, spiritual search, and 4-day workweek experiments are signs of systemic workplace reinvention",
+      "Organizations must adapt now rather than wait, as history is being written in real-time"
+    ],
+    "summary": "This thought leadership article argues that we are currently living through a workplace renaissance sparked by Gen Z and Millennials, drawing parallels to the historical Renaissance. The author identifies four clear signals of transformation: Tech-Human Fusion, the Dignity Revolt, the Purpose Economy, and New Leadership Archetypes. The piece challenges leaders to recognize ongoing workplace transformation rather than dismissing it, emphasizing that organizations must adapt immediately to avoid irrelevance. It highlights concrete examples like the creator economy, union resurgence, and 4-day workweek experiments as evidence of systemic change already underway.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "workplace culture",
+        "generational workforce dynamics",
+        "leadership transformation",
+        "organizational change",
+        "future of work",
+        "employee experience",
+        "cultural intelligence",
+        "purpose-driven business"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:48:16.982Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:48:17.253+00:00"
+  },
+  {
+    "id": "889bca02-897e-456c-b8ee-a187f4cd795d",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "5f4e5444-02f7-464e-a7dc-c109d034d222",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "burnout",
+      "workplace-culture",
+      "leadership",
+      "employee-wellbeing",
+      "organizational-health",
+      "mental-health",
+      "work-life-balance",
+      "cultural-transformation",
+      "human-centered-design",
+      "systemic-change",
+      "DEI",
+      "future-of-work",
+      "psychological-safety",
+      "personal-narrative",
+      "organizational-development"
+    ],
+    "categories": [
+      "Employee Wellbeing",
+      "Leadership & Culture",
+      "Organizational Health",
+      "Thought Leadership",
+      "Personal Stories"
+    ],
+    "key_insights": [
+      "Burnout is a systemic issue, not an individual failure - workplace infrastructures are designed in ways that harm employee wellbeing",
+      "The problem transcends industries - healthcare, tech, education, and corporate sectors all exhibit similar patterns of employee exhaustion and disconnection",
+      "True organizational transformation requires spiritual and cultural work, not just policy changes or wellness programs",
+      "Performance-based workplace cultures reward silence and conformity while eroding human authenticity and health",
+      "Building 'systems that breathe' requires leaders to prioritize human-centered design, psychological safety, and genuine accountability",
+      "The future of work must address the emotional and spiritual dimensions of human experience, not just technological advancement",
+      "Personal surrender and self-reflection are necessary precursors to building healthier organizational systems",
+      "Cultural health should be treated as infrastructure, not performance or optics"
+    ],
+    "summary": "A deeply personal account from cultural strategist Samantha Truman about her journey through severe burnout and what it revealed about systemic workplace dysfunction. The essay chronicles her experience across multiple industries, her physical and emotional collapse (heart failure, 190 pounds, loss of vitality), and her realization that workplace systems are designed to extract rather than sustain human wellbeing. Truman argues that burnout is not an individual problem but a structural one, calling for a fundamental reimagining of work culture that prioritizes human-centered systems, psychological safety, and spiritual health. She advocates for building 'systems that breathe' and positions the future of work as fundamentally spiritual work.",
+    "relevance_score": 0.72,
+    "metadata": {
+      "topics": [
+        "burnout",
+        "workplace culture",
+        "organizational health",
+        "leadership development",
+        "employee wellbeing",
+        "systemic change",
+        "cultural transformation",
+        "DEI",
+        "psychological safety",
+        "future of work"
+      ],
+      "language": "en",
+      "complexity": "intermediate-advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:49:03.609Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:49:03.906+00:00"
+  },
+  {
+    "id": "5883f164-011f-4496-a3eb-b82b06356a0e",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "17f64e98-6ba8-45ae-bd14-935c138d5df1",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "organizational-culture",
+      "consulting-industry",
+      "workplace-ethics",
+      "corporate-accountability",
+      "AI-ethics",
+      "psychological-safety",
+      "leadership-integrity",
+      "cultural-transformation",
+      "deloitte-scandal",
+      "workplace-renaissance",
+      "consulting-failures",
+      "corporate-values",
+      "integrity-systems",
+      "cultural-infrastructure"
+    ],
+    "categories": [
+      "Industry Analysis",
+      "Corporate Culture",
+      "Ethics & Compliance",
+      "Leadership & Management",
+      "Consulting Industry",
+      "Workplace Transformation"
+    ],
+    "key_insights": [
+      "The Deloitte AI hallucination scandal (AUD $440,000 report with fabricated citations) reveals systemic cultural failures, not just technical errors",
+      "Culture failures occur when organizations prioritize velocity and performance metrics over integrity and accountability",
+      "Psychological safety becomes 'quiet compliance' when people cannot question authority or push back against unrealistic timelines",
+      "Corporate values often become performance theater rather than behavioral standards - 'integrity' as brand attribute vs. actual behavior",
+      "Organizations need cultural infrastructure, not slogans - culture is the operating system that runs decisions",
+      "The 'Workplace Renaissance' represents a collective awakening that legacy organizational infrastructures are inadequate",
+      "Five critical actions: build cultural infrastructure, make integrity measurable, empower psychological safety with clarity, adopt micro-learning loops, hire consultants with conscience",
+      "When output eclipses origin and momentum outruns integrity, organizational failure becomes inevitable",
+      "Legacy firms should be gold standards for accountability, yet often fail when speed and volume override truth"
+    ],
+    "summary": "This Medium article analyzes the Deloitte scandal involving a $440,000 Australian government report containing AI-generated hallucinations and fabricated citations. The author, drawing from personal experience interviewing with Deloitte, argues this failure reflects deeper cultural problems in the consulting industry where performance metrics, surveillance, and output volume override integrity and accountability. The piece critiques how organizations treat culture as marketing rather than infrastructure, and calls for a 'Workplace Renaissance' with five specific leadership actions: building cultural infrastructure, making integrity measurable, empowering psychological safety, adopting micro-learning loops, and selecting consultants based on conscience rather than credentials. The article positions this scandal as symptomatic of broader systemic issues where speed and scale become more valued than substance and truth.",
+    "relevance_score": 0.72,
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "consulting industry ethics",
+        "AI governance",
+        "workplace transformation",
+        "corporate accountability",
+        "leadership practices"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:49:54.242Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:49:54.506+00:00"
+  },
+  {
+    "id": "f6d500e6-9667-4310-bc63-8d5cb842e190",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "d68d9871-9125-412e-b9ac-5adb9dc3c15c",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "leadership",
+      "organizational-culture",
+      "employee-retention",
+      "workplace-trust",
+      "accountability",
+      "future-of-work",
+      "generational-workforce",
+      "cultural-health",
+      "leadership-development",
+      "employee-engagement"
+    ],
+    "categories": [
+      "Leadership & Management",
+      "Organizational Culture",
+      "Human Resources",
+      "Workplace Trends",
+      "Employee Relations"
+    ],
+    "key_insights": [
+      "Only 27% of managers globally are engaged, and disengaged managers negatively impact entire teams (Gallup 2023)",
+      "63% of people trust their employer more than government, media, or NGOs, making workplace leadership critical to societal trust (Edelman 2024)",
+      "Two out of three Gen Z and Millennials plan to leave jobs by 2030 if leaders don't reflect their values (Deloitte 2024)",
+      "Poor leadership has consequences beyond business metrics - it affects employee health, dignity, and lives",
+      "Retention is shifting from a loyalty game to a cultural health game",
+      "Leadership accountability issues in workplaces mirror patterns seen in political governance",
+      "Three radical truths: leaders shape life trajectories, perfect leadership doesn't exist (adaptability matters), and leadership should be inspiring not just pressuring"
+    ],
+    "summary": "This thought leadership article examines the future of leadership through the lens of trust, culture, and retention. Drawing on 2023-2025 data from Gallup, Edelman, and Deloitte, the author argues that leadership behavior has profound impacts on employee lives and organizational health. The piece emphasizes that with only 27% of managers engaged globally and younger generations prepared to leave jobs that don't align with their values, leaders must prioritize accountability, cultural health, and authentic care over traditional hierarchical approaches. The author connects workplace leadership failures to broader societal trust issues, positioning effective leadership as essential not just for business success but for democratic and social stability.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "leadership philosophy",
+        "organizational culture",
+        "employee retention strategies",
+        "generational workforce dynamics",
+        "workplace accountability",
+        "trust in leadership",
+        "cultural health metrics"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:50:26.684Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:50:26.957+00:00"
+  },
+  {
+    "id": "3af97136-805d-4ef8-a987-46cadea088ec",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "a17ed9c4-2d88-4f03-841b-c3d16378a09b",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "return-to-office",
+      "remote-work",
+      "workplace-culture",
+      "employee-engagement",
+      "organizational-health",
+      "leadership-strategy",
+      "work-flexibility",
+      "cultural-transformation",
+      "future-of-work",
+      "employee-wellbeing",
+      "productivity",
+      "trust-building",
+      "workplace-policy"
+    ],
+    "categories": [
+      "Workplace Culture",
+      "Leadership & Management",
+      "Remote Work",
+      "Organizational Development",
+      "Employee Experience"
+    ],
+    "key_insights": [
+      "Return-to-office mandates are a distraction from deeper organizational issues like burnout, disengagement, and lack of trust",
+      "Research shows only 23% of employees worldwide are engaged, with toxic culture being 10.4x more predictive of attrition than pay",
+      "Remote workers demonstrate 13% higher productivity due to fewer interruptions",
+      "Four-day workweek pilots show productivity gains with 69% lower burnout and significant mental/physical health improvements",
+      "True organizational alignment comes from trust, clarity, accountability, and human-centered systems—not physical presence",
+      "Leaders cling to RTO because it feels tangible and measurable, creating an illusion of control",
+      "The real organizational rupture is cultural health and leadership's failure to adapt to post-pandemic realities",
+      "Successful organizations need flexible, equitable, breathable systems designed for autonomy and accountability"
+    ],
+    "summary": "This article challenges the return-to-office (RTO) trend, arguing that forcing employees back to physical offices is a false solution that doesn't address underlying organizational problems. The author presents research showing that RTO mandates don't solve issues like disengagement, burnout, or toxic culture—and may actually worsen them. Drawing on data from Gallup, MIT Sloan, Stanford, and global four-day workweek trials, the piece demonstrates that flexibility and trust drive better results than mandates. The article advocates for building human-centered systems focused on cultural health rather than reverting to outdated workplace models.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "workplace culture",
+        "remote work policy",
+        "employee engagement",
+        "organizational leadership",
+        "cultural transformation",
+        "work flexibility",
+        "productivity research"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:51:00.668Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:51:00.923+00:00"
+  },
+  {
+    "id": "b2f2cd59-9b6f-4041-a39e-35e611aad677",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "8405ea31-7222-46e7-aefa-34a9f019a213",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "organizational culture",
+      "workplace culture",
+      "leadership",
+      "AI transformation",
+      "employee wellbeing",
+      "psychological safety",
+      "cultural health",
+      "change management",
+      "future of work",
+      "health equity",
+      "systemic bias",
+      "employee engagement",
+      "toxic workplace",
+      "cultural transformation",
+      "curiosity in leadership"
+    ],
+    "categories": [
+      "Leadership & Management",
+      "Organizational Culture",
+      "Future of Work",
+      "Employee Experience",
+      "Change Management",
+      "Health & Wellbeing",
+      "Technology & AI"
+    ],
+    "key_insights": [
+      "By 2030, culture—not AI—will be the primary reason companies fail",
+      "Technology has never been the bottleneck; culture has always been the limiting factor",
+      "Organizations fail when people are too burned out, silenced, or mistrustful to commit to change",
+      "AI will amplify existing culture: if culture is broken, AI will scale the harm; if healthy, AI will amplify that health",
+      "Only 22% of organizations say they're culturally ready for AI adoption despite 54% of early-career employees prioritizing AI access",
+      "Toxic culture is the #1 predictor of attrition (10x more than pay) and costs the global economy $8.8 trillion annually",
+      "When psychological safety is missing, curiosity dies and people cannot ask critical questions",
+      "The Cultural Health Framework™ identifies five dimensions where curiosity either thrives or disappears",
+      "Systemic bias in institutions can calcify into 'truth' without curiosity and inquiry",
+      "Cultural health must be viewed holistically across institutional practices, individual experiences, and interpersonal relationships"
+    ],
+    "summary": "This thought leadership article argues that organizational culture, not artificial intelligence, will be the primary cause of company failures by 2030. Through three personal narratives (healthcare patient experience, consulting work on medical bias, and toxic workplace trauma), the author demonstrates how lack of curiosity and broken culture leads to organizational collapse. The piece introduces the Cultural Health Framework™ as a solution and warns that AI will merely amplify existing culture—scaling harm in toxic environments or amplifying health in positive ones. The author emphasizes that only 22% of organizations are culturally ready for AI adoption, despite technology's rapid advancement.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "leadership development",
+        "AI readiness",
+        "workplace transformation",
+        "employee experience",
+        "cultural health",
+        "psychological safety",
+        "systemic bias",
+        "change readiness"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:51:36.620Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:51:36.89+00:00"
+  },
+  {
+    "id": "a2fcaf6d-0fd9-4439-906a-3af804a18956",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "9c197f1a-9281-42a7-b1cf-5230cac464ec",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "workplace-culture",
+      "leadership-development",
+      "future-of-work",
+      "organizational-transformation",
+      "employee-wellbeing",
+      "psychological-safety",
+      "workplace-renaissance",
+      "cultural-strategy",
+      "burnout-prevention",
+      "human-centered-leadership",
+      "workplace-trends-2030",
+      "organizational-culture",
+      "trust-building",
+      "remote-work",
+      "creator-economy"
+    ],
+    "categories": [
+      "Leadership & Management",
+      "Organizational Culture",
+      "Future of Work",
+      "Employee Experience",
+      "Business Strategy",
+      "Workplace Transformation"
+    ],
+    "key_insights": [
+      "The workplace is entering a 'Renaissance' moment driven by post-pandemic shifts, technology democratization, and human hunger for meaning",
+      "Cruel work systems that drain energy and break trust are being rejected by younger generations who demand flexibility and purpose",
+      "Three converging forces: AI/automation democratizing knowledge, political/cultural upheaval forcing reinvention, and post-pandemic memory of flexible work",
+      "Renaissance-ready workplaces require psychological safety, trust infrastructure, time autonomy, and learning-oriented leadership",
+      "Organizations that ignore this transformation risk becoming relics while those embracing it can create truly alive workplaces",
+      "Cultural health tools like CultureShift Diagnostic™ and PulseOps™ make invisible organizational dynamics visible and actionable",
+      "The stakes are existential: leaders must choose between clinging to Dark Ages of cruel work or joining the workplace Renaissance"
+    ],
+    "summary": "This thought leadership article by Samantha Truman, founder of True People Consulting, argues that workplaces are entering a transformative 'Renaissance' period by 2030. Drawing parallels to the European Renaissance, she identifies three converging forces: technology democratization (AI, creator platforms), political/cultural upheaval, and post-pandemic memory of flexible work. The article critiques 'cruel work' systems that cause burnout and disengagement, citing WHO and Gallup data. Truman outlines non-negotiables for Renaissance workplaces: psychological safety, trust infrastructure, time autonomy, and learning-oriented leadership. She positions this as a pivotal choice for leaders between obsolescence and creating organizations that sustain human dignity, creativity, and flourishing.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "workplace culture transformation",
+        "leadership philosophy",
+        "organizational psychology",
+        "future work trends",
+        "employee engagement",
+        "cultural intelligence",
+        "business strategy"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:52:15.212Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:52:15.467+00:00"
+  },
+  {
+    "id": "ea046dee-869c-4ba9-ba58-9b5de9633d50",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "639742b2-b256-403b-b393-6e241d2b7779",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "health equity",
+      "healthcare access",
+      "social determinants of health",
+      "health disparities",
+      "DEI in healthcare",
+      "Medicaid",
+      "food insecurity",
+      "systemic inequality",
+      "healthcare policy",
+      "advocacy",
+      "personal narrative",
+      "immigrant experience",
+      "working-class health",
+      "maternal mortality",
+      "global health crisis"
+    ],
+    "categories": [
+      "External Content",
+      "Healthcare Industry",
+      "Social Impact",
+      "Thought Leadership",
+      "Personal Stories"
+    ],
+    "key_insights": [
+      "Personal narrative connecting lived experience of poverty and health inequity across multiple countries (Ukraine, Jamaica, Palestine, USA)",
+      "Social determinants of health account for up to 80% of health outcomes according to CDC",
+      "Geographic health disparities: people in wealthier California neighborhoods live 10-15 years longer than those in disinvested areas",
+      "Current political attacks on health equity initiatives including DEI program dismantling and removal of equity language from public health plans",
+      "Over 20 million people at risk of losing Medicaid coverage; Black women 3x more likely to die from pregnancy-related causes",
+      "Health equity framed as foundation of functioning healthcare system, not charity or luxury",
+      "Practical solutions proposed: expand Medicaid, invest in culturally competent care, reverse redlining, protect DEI initiatives"
+    ],
+    "summary": "A personal essay by Samantha Truman, founder of True People Consulting, arguing that health equity is not a political issue but a fundamental requirement for a just healthcare system. Drawing on her experiences growing up in Ukraine, Jamaica, and as a low-income worker in California, she illustrates how social determinants of health create stark disparities in outcomes. The article critiques current political efforts to dismantle DEI programs and equity initiatives while millions face Medicaid cuts and food insecurity, calling for systemic change and advocacy.",
+    "relevance_score": 0.35,
+    "metadata": {
+      "topics": [
+        "health equity",
+        "healthcare policy",
+        "social justice",
+        "DEI initiatives",
+        "immigrant experience",
+        "systemic inequality"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:52:48.912Z",
+      "business_value": "low"
+    },
+    "created_at": "2025-10-21T13:52:49.175+00:00"
+  },
+  {
+    "id": "deac8b84-fb09-49a5-bf35-41a26b814ece",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "e134a0ca-93d4-429f-b5a1-97779dced99a",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "leadership",
+      "organizational culture",
+      "employee engagement",
+      "psychological safety",
+      "authentic leadership",
+      "compassionate leadership",
+      "accountability",
+      "trust building",
+      "team performance",
+      "human-centered strategy"
+    ],
+    "categories": [
+      "Leadership Development",
+      "Organizational Culture",
+      "Management Philosophy",
+      "Employee Relations",
+      "Strategic Leadership"
+    ],
+    "key_insights": [
+      "Love in leadership is strategic, not soft - it builds resilience, trust, and loyalty more effectively than fear or control",
+      "Authentic leadership requires balancing truth-telling with care - truth without love is cruelty, love without truth is enabling",
+      "Care means raising standards and coaching people toward them, not lowering expectations",
+      "Psychological safety is the #1 predictor of high-performing teams and enables innovation",
+      "Leaders who set healthy boundaries reduce burnout for themselves and their teams",
+      "Human-centered strategy that prioritizes both human and business outcomes leads to 2.2x greater long-term success",
+      "Teams with candid leaders show 40% higher long-term commitment",
+      "Managers combining high expectations with active support double engagement odds"
+    ],
+    "summary": "This article by Samantha Truman from 'The Culture Room' explores the intersection of love and leadership, arguing that compassionate leadership is a strategic advantage rather than a weakness. The piece presents five research-backed lessons: the importance of honest feedback, accountability through care, building psychological safety, setting healthy boundaries, and implementing human-centered strategy. Each lesson is supported by academic research and organizational studies, demonstrating that leadership rooted in care, transparency, and empathy drives superior business outcomes including higher engagement, innovation, and long-term success.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "leadership styles",
+        "organizational psychology",
+        "team dynamics",
+        "workplace culture",
+        "management best practices",
+        "employee wellbeing"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:53:24.806Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:53:25.066+00:00"
+  },
+  {
+    "id": "fc3b910e-2bbf-4f59-b18c-deda0547e9d2",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "000f3e9e-c21e-454e-86b9-8e3de57a0482",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "workplace culture",
+      "leadership",
+      "fear-based management",
+      "employee wellbeing",
+      "organizational psychology",
+      "burnout",
+      "toxic workplace",
+      "employee retention",
+      "generational workforce",
+      "workplace transparency",
+      "human sustainability",
+      "performance management",
+      "emotional intelligence",
+      "workplace stress"
+    ],
+    "categories": [
+      "Leadership & Management",
+      "Organizational Culture",
+      "Employee Experience",
+      "Workplace Psychology",
+      "Human Resources"
+    ],
+    "key_insights": [
+      "Fear-based management creates short-term results but long-term organizational damage",
+      "77% of employees experience work-related stress with 60% reporting negative mental health impacts (APA 2023)",
+      "Millennials and Gen Z prioritize accountability and will leave fear-led environments",
+      "Organizations prioritizing human sustainability are 2.2x more likely to outperform financially (Deloitte 2023)",
+      "Radical transparency about workplace culture can reset employer-employee relationships",
+      "Passion, integrity, and care are strategic business advantages, not soft skills",
+      "Fear-based leadership is incompatible with sustainable high performance",
+      "The traditional 'Gordon Gekko' leadership model is becoming obsolete"
+    ],
+    "summary": "This article critiques fear-based management practices and argues that leadership grounded in fear destroys workplace culture, drains performance, and drives away talent. The author presents data showing that workplace stress affects 77% of employees and that organizations prioritizing human sustainability outperform competitors by 2.2x. The piece advocates for radical transparency in workplace expectations and demonstrates that sustainable high performance requires leadership based on passion, integrity, and genuine care rather than control and manipulation.",
+    "relevance_score": 0.92,
+    "metadata": {
+      "topics": [
+        "workplace culture transformation",
+        "leadership philosophy",
+        "employee mental health",
+        "generational workforce dynamics",
+        "organizational transparency",
+        "sustainable performance"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:53:57.838Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:53:58.125+00:00"
+  },
+  {
+    "id": "59e0ef54-a9f5-4ca8-8d9e-daee8230c1e4",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "b3f672d8-43db-497e-bfe3-f70d1950b6fa",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "workplace culture",
+      "leadership",
+      "employee engagement",
+      "organizational culture",
+      "cultural strategy",
+      "psychological safety",
+      "employee disengagement",
+      "leadership development",
+      "organizational health",
+      "culture transformation",
+      "diversity and inclusion",
+      "systemic bias",
+      "workplace equity"
+    ],
+    "categories": [
+      "Leadership & Management",
+      "Organizational Culture",
+      "Employee Engagement",
+      "Business Strategy",
+      "Workplace Transformation"
+    ],
+    "key_insights": [
+      "Workplace culture failures cost $8.8 trillion globally, representing 9% of world GDP",
+      "Only 32% of U.S. employees are engaged, with two-thirds essentially checked out",
+      "Leaders often miss the 'invisible architecture' of culture - unspoken rules, power dynamics, and systemic inequities",
+      "Culture isn't about perks or values posters - it's about the human systems where work and real life collide",
+      "Cultural 'taxes' disproportionately affect women, people of color, caregivers, and immigrants",
+      "Leaders focus on dashboards and metrics while missing the underlying cultural dynamics affecting performance",
+      "Effective cultural strategy requires reshaping the architecture itself, not just implementing surface-level initiatives"
+    ],
+    "summary": "This article examines why leaders fail to recognize the massive economic impact of workplace culture failures ($8.8T globally). Author Samantha Truman introduces the concept of 'invisible architecture' - the unspoken rules, power dynamics, and systemic inequities that shape employee experiences but remain hidden from traditional metrics. The piece argues that leaders miss these critical cultural elements by focusing on dashboards rather than the human systems underneath, resulting in widespread disengagement and performance issues. It calls for brave leadership that addresses root cultural causes rather than surface-level solutions.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "leadership effectiveness",
+        "employee engagement",
+        "workplace equity",
+        "cultural transformation",
+        "psychological safety",
+        "business performance"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:54:30.685Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:54:30.948+00:00"
+  },
+  {
+    "id": "73260b2f-3ba1-4e16-a2f4-b774f34ec507",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "562f5287-61a9-4aaf-982b-c620ab1532f0",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "organizational culture",
+      "leadership development",
+      "workplace culture",
+      "cultural health",
+      "strategic alignment",
+      "psychological safety",
+      "change management",
+      "performance management",
+      "employee engagement",
+      "organizational effectiveness"
+    ],
+    "categories": [
+      "Leadership & Management",
+      "Organizational Culture",
+      "Human Resources",
+      "Change Management",
+      "Strategic Planning"
+    ],
+    "key_insights": [
+      "Cultural health requires investment in five interconnected pillars, not just one or two isolated initiatives",
+      "Strategic clarity and alignment enable employees to connect daily work to organizational outcomes and make explicit trade-offs",
+      "Psychological safety is foundational to innovation - when it collapses, silence and fear become the dominant culture",
+      "Technology should integrate seamlessly into actual work patterns rather than being the flashiest option",
+      "Leadership resilience comes from modeling vulnerability and courage during uncertainty, not from slogans",
+      "Accountability and integrity must coexist - accountability without integrity breeds fear, integrity without accountability breeds drift",
+      "Cultural health is infrastructure, not decoration - it holds strategy, performance, and trust together",
+      "Organizations that will thrive into 2030 treat cultural health as strategy, not an afterthought"
+    ],
+    "summary": "This article presents a framework for building organizational cultural health through five essential pillars: Strategic Clarity & Alignment, Cohesion & Psychological Safety, Technology Experience & Empowerment, Change Agility & Leadership Enablement, and Accountability & Performance Integrity. The author argues that most organizations fail to sustain cultural change because they invest in only one or two pillars rather than all five. The piece emphasizes that cultural health is not optional decoration but critical infrastructure that determines whether strategy succeeds, people thrive, and performance endures.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "leadership frameworks",
+        "workplace transformation",
+        "strategic execution",
+        "employee experience"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:55:05.096Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:55:05.367+00:00"
+  },
+  {
+    "id": "f63d0b2e-3af9-4fc8-a0d6-f01e726a9ecf",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "8c1707e8-ddeb-454f-8f82-7943c9221433",
+    "analysis_type": "content_processing",
+    "model_used": "anthropic/claude-sonnet-4.5",
+    "tags": [
+      "workplace culture",
+      "psychological safety",
+      "toxic culture",
+      "organizational dysfunction",
+      "leadership accountability",
+      "employee wellbeing",
+      "trust erosion",
+      "workplace silence",
+      "cultural repair",
+      "organizational health"
+    ],
+    "categories": [
+      "Organizational Culture",
+      "Leadership & Management",
+      "Employee Experience",
+      "Workplace Psychology",
+      "Change Management"
+    ],
+    "key_insights": [
+      "Silence in organizations becomes a systemic problem that calcifies into toxic culture",
+      "Protecting power over people destroys trust and makes organizational values meaningless",
+      "Psychological safety directly impacts performance - when it craters, performance flatlines",
+      "Employees prioritize survival (rent, safety) over truth-telling in toxic environments",
+      "Cultural repair requires investigation, truth-telling, clarity, and strategic human-centered interventions",
+      "People will trade higher compensation for dignity and psychological safety at work",
+      "Institutional silence mirrors patterns seen in larger scandals - containment over accountability",
+      "Nonviolent communication workshops may be necessary as 'triage' in severely fractured teams"
+    ],
+    "summary": "This article examines how organizational silence and the protection of power over people creates toxic workplace cultures that destroy psychological safety. Using real-world examples including a consulting firm and a tech company, the author illustrates how whispers, unspoken tensions, and institutional cover-ups erode trust and flatten team performance. The piece outlines a recovery path involving investigation, truth-telling, clarity, and repair through strategic interventions. It argues that culture isn't an HR side project but fundamental infrastructure determining whether people thrive or collapse.",
+    "relevance_score": 0.88,
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "psychological safety",
+        "leadership ethics",
+        "workplace dysfunction",
+        "cultural transformation",
+        "employee trust",
+        "organizational accountability"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:55:36.310Z",
+      "business_value": "high"
+    },
+    "created_at": "2025-10-21T13:55:36.586+00:00"
+  }
+]

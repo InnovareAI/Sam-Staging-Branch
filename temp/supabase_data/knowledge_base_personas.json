@@ -1,0 +1,162 @@
+[
+  {
+    "id": "5d6b9f1b-7e78-49cc-a941-b2c2ce70e101",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "name": "Sarah - VP Sales",
+    "description": null,
+    "avatar_url": null,
+    "job_title": "VP Sales",
+    "seniority_level": "VP/Director",
+    "department": "Sales",
+    "age_range": null,
+    "location": null,
+    "goals": [
+      "Hit revenue targets",
+      "Scale sales process",
+      "Empower team"
+    ],
+    "challenges": [
+      "Manual processes",
+      "Inconsistent messaging",
+      "Low productivity"
+    ],
+    "motivations": [],
+    "frustrations": [],
+    "decision_criteria": [
+      "ROI",
+      "Easy adoption",
+      "Integration"
+    ],
+    "preferred_channels": [
+      "Email",
+      "LinkedIn"
+    ],
+    "content_preferences": null,
+    "metadata": {},
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-10-08T12:32:23.902929+00:00",
+    "updated_at": "2025-10-08T12:32:23.902929+00:00"
+  },
+  {
+    "id": "a5d78a40-3663-4940-85e0-72252ac3c4ab",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "name": "Mike - Founder",
+    "description": null,
+    "avatar_url": null,
+    "job_title": "Founder/CEO",
+    "seniority_level": "C-Level",
+    "department": "Executive",
+    "age_range": null,
+    "location": null,
+    "goals": [
+      "Generate pipeline",
+      "Prove traction",
+      "Build sales motion"
+    ],
+    "challenges": [
+      "No time",
+      "Limited budget",
+      "Not a salesperson"
+    ],
+    "motivations": [],
+    "frustrations": [],
+    "decision_criteria": [
+      "Price",
+      "Easy setup",
+      "Proven results"
+    ],
+    "preferred_channels": [
+      "Email",
+      "Founder communities"
+    ],
+    "content_preferences": null,
+    "metadata": {},
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-10-08T12:32:23.902929+00:00",
+    "updated_at": "2025-10-08T12:32:23.902929+00:00"
+  },
+  {
+    "id": "778cee6d-da22-48df-a36b-735d24242e02",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "name": "Sarah - VP Sales",
+    "description": null,
+    "avatar_url": null,
+    "job_title": "VP Sales",
+    "seniority_level": "VP/Director",
+    "department": "Sales",
+    "age_range": null,
+    "location": null,
+    "goals": [
+      "Hit revenue targets",
+      "Scale sales process",
+      "Empower team"
+    ],
+    "challenges": [
+      "Manual processes",
+      "Inconsistent messaging",
+      "Low productivity"
+    ],
+    "motivations": [],
+    "frustrations": [],
+    "decision_criteria": [
+      "ROI",
+      "Easy adoption",
+      "Integration"
+    ],
+    "preferred_channels": [
+      "Email",
+      "LinkedIn"
+    ],
+    "content_preferences": null,
+    "metadata": {},
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-10-08T12:46:16.948406+00:00",
+    "updated_at": "2025-10-08T12:46:16.948406+00:00"
+  },
+  {
+    "id": "eb2acb1b-2054-4704-96e3-b9096f425df2",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "name": "Mike - Founder",
+    "description": null,
+    "avatar_url": null,
+    "job_title": "Founder/CEO",
+    "seniority_level": "C-Level",
+    "department": "Executive",
+    "age_range": null,
+    "location": null,
+    "goals": [
+      "Generate pipeline",
+      "Prove traction",
+      "Build sales motion"
+    ],
+    "challenges": [
+      "No time",
+      "Limited budget",
+      "Not a salesperson"
+    ],
+    "motivations": [],
+    "frustrations": [],
+    "decision_criteria": [
+      "Price",
+      "Easy setup",
+      "Proven results"
+    ],
+    "preferred_channels": [
+      "Email",
+      "Founder communities"
+    ],
+    "content_preferences": null,
+    "metadata": {},
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-10-08T12:46:16.948406+00:00",
+    "updated_at": "2025-10-08T12:46:16.948406+00:00"
+  }
+]

@@ -507,27 +507,4 @@ async function enrichProspectProfiles(
   return prospects;
 }
 
-// Save search results to database
-async function saveSearchResults(supabase: any, data: any) {
-  try {
-    const { error } = await supabase
-      .from('linkedin_searches')
-      .insert({
-        user_id: data.user_id,
-        search_query: data.search_query,
-        search_params: data.search_params,
-        api_type: data.api_type,
-        category: data.category,
-        results_count: data.results_count,
-        prospects: data.prospects,
-        next_cursor: data.cursor,
-        searched_at: new Date().toISOString()
-      });
 
-    if (error) {
-      console.error('Failed to save search results:', error);
-    }
-  } catch (error) {
-    console.error('Error saving search results:', error);
-  }
-}

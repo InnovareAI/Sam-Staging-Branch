@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { createServerSupabaseClient } from '@/app/lib/supabase';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { NightSkyEffect } from "@/components/ui/night-sky-effect";
 import { SamContextProvider } from "@/components/chat/SamContextProvider";
 import { GlobalContextWrapper } from "@/components/chat/GlobalContextWrapper";
 import React from 'react';
@@ -68,9 +69,10 @@ export default async function WorkspaceLayout({
           currentPath={xPathname}
         />
         <SidebarInset>
-          <div className="flex flex-1 flex-col h-screen bg-[#020617] text-slate-50 overflow-hidden">
+          <div className="flex flex-1 flex-col h-screen bg-background text-foreground overflow-hidden relative">
+            <NightSkyEffect />
             {/* Main Content Area */}
-            <main className="flex-1 overflow-auto relative flex flex-col">
+            <main className="flex-1 overflow-auto relative flex flex-col z-10">
               {children}
             </main>
             <GlobalContextWrapper />

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "657d0fcb-7e58-447a-99aa-f37e3e953b5a",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "section_id": "stories",
+    "content_type": "text",
+    "title": "Case Study: SaaS Sales Team Tripled Meetings",
+    "content": {
+      "text": "GrowthLoop replaced three SDRs by running SAM across LinkedIn and email. Meetings up 3×, cost per opportunity down 58%, compliance maintained with approval queue."
+    },
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "Case Study: SaaS Sales Team Tripled Meetings"
+    },
+    "tags": [
+      "case-study",
+      "saas",
+      "proof"
+    ],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-09-30T06:03:58.386+00:00",
+    "updated_at": "2025-09-30T06:03:58.386+00:00"
+  },
+  {
+    "id": "df363388-1dbe-43fe-895e-6967f26c591f",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "section_id": "process",
+    "content_type": "text",
+    "title": "Standard SAM Onboarding Process",
+    "content": {
+      "text": "Week 1: ICP workshop, KB ingestion, LinkedIn auth. Week 2: pilot campaign review + adjustments. Week 3: multi-channel automation and analytics hand-off."
+    },
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "Standard SAM Onboarding Process"
+    },
+    "tags": [
+      "process",
+      "onboarding"
+    ],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-09-30T06:03:58.489+00:00",
+    "updated_at": "2025-09-30T06:03:58.489+00:00"
+  }
+]

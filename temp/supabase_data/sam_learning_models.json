@@ -1,0 +1,25 @@
+[
+  {
+    "id": "f1c789c1-68e9-46c0-804d-7c21203a3a24",
+    "user_id": "471bcb15-cc53-44f3-b5d2-4b97bb7a8b2f",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "model_version": 1,
+    "model_type": "prospect_approval",
+    "learned_preferences": [
+      "Prefer 1st-2nd degree connections over 3rd degree",
+      "High engagement score (>85) correlates with approval",
+      "VP/Director titles at B2B SaaS companies are ideal"
+    ],
+    "feature_weights": {
+      "title_match": 0.2,
+      "company_industry": 0.15,
+      "enrichment_score": 0.3,
+      "connection_degree": 0.35
+    },
+    "accuracy_score": 0.67,
+    "sessions_trained_on": 1,
+    "last_training_session": null,
+    "created_at": "2025-10-06T03:32:21.236238+00:00",
+    "updated_at": "2025-10-23T01:28:09.634866+00:00"
+  }
+]

@@ -1,0 +1,1705 @@
+[
+  {
+    "id": "a3b32b48-eb24-4075-bf28-8c878821ee7d",
+    "check_date": "2025-11-29T21:04:36.485+00:00",
+    "checks": [
+      {
+        "status": "warning",
+        "details": "9 queue items marked 'sent' but prospect status not updated",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [
+          "51f1936c-d3b4-462e-bec3-5d884a511960",
+          "1bb38ef8-5575-4ba4-be16-bc1612aeba67",
+          "b1713f3f-ba80-4e2e-998d-319c6e6d4baf",
+          "393b8951-32ed-4d15-b1ab-0df38e6d5171",
+          "416bed23-176c-4e77-8382-7e4c797660dd"
+        ],
+        "suggested_fix": "Run prospect status sync job",
+        "affected_records": 9
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Queue processing active. 0 items processed in last hour.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "fail",
+        "details": "100 prospects stuck in transitional state for >3 days",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [
+          "c2639f93-0e16-4772-a721-b15553d7091a",
+          "a127b8e4-0996-41d8-add7-ca5d193246ee",
+          "aee63a0b-70bb-4ee7-bfa8-14de8b5c0870",
+          "dd36832b-1efc-4639-bcc7-725168810ca3",
+          "f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90",
+          "e8a7b21f-6925-4c0c-9acf-ee52b87251c7",
+          "e3d5643b-c529-4a9d-b1ba-4608d348c2c1",
+          "f58be9d2-61fa-4338-8094-7ed9274a616e",
+          "1d560876-c8b6-47b1-a69e-e5c6ea378e1a",
+          "c2826451-a4b0-4141-b43c-11356ca52962"
+        ],
+        "suggested_fix": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('c2639f93-0e16-4772-a721-b15553d7091a','a127b8e4-0996-41d8-add7-ca5d193246ee','aee63a0b-70bb-4ee7-bfa8-14de8b5c0870','dd36832b-1efc-4639-bcc7-725168810ca3','f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90','e8a7b21f-6925-4c0c-9acf-ee52b87251c7','e3d5643b-c529-4a9d-b1ba-4608d348c2c1','f58be9d2-61fa-4338-8094-7ed9274a616e','1d560876-c8b6-47b1-a69e-e5c6ea378e1a','c2826451-a4b0-4141-b43c-11356ca52962','716afd52-c52e-4d13-8095-686d45fb0efc','7852d230-3a77-4e51-933c-568e0a9dfaa5','c6b848ee-710f-4ed6-9aa8-59e62355da07','a5198bd1-5367-458b-bd2e-3b1b67447081','f6d8aefb-6809-4fc7-ba17-a759d44a9437','ac2ee0ba-64de-47ba-b57d-5d71f1906ab6','fd9089d0-85c5-42aa-b431-e288375602d8','31126fd9-75a6-41f6-8370-1cbf78cab804','ffce3145-238e-4f57-88fa-0b3c2141a8dd','0cfec5e9-b33f-4624-ad21-cdd171692140','7a9b93cc-96f7-4c4e-a6b1-e8ecb7a21c96','8a65d9a1-360d-47f4-80f2-16652d7164ff','2b6991d4-4e09-4e2d-b4dd-e5345ae3cab7','b5e095a2-55a0-478b-8f82-09d3d23ed52f','ac52388e-dc16-4dbd-980c-e9bb243d3382','75ad4bc1-dd65-4b6c-add6-12c75be0ba4a','f9ff00ed-6815-4e79-adb4-01fe4ded9f46','a448ecb8-d89b-437e-b80a-4d84ca11e25b','0850424f-4f32-4d3b-90b7-be69e1b06e0c','6fbaabc4-eca5-454b-bff8-16773631873e','ae286de1-b475-4864-aa9d-aac7b90284b7','b651829d-bf02-4301-8c4c-2efab202b313','83dc2bfe-e275-4283-8c2f-c858f0b51061','c570e368-5294-4a2a-b47b-faa4ac61e641','a389bddc-cdeb-43f5-811b-0ee8bb649577','6e699439-3474-4589-9c00-dc1a1253d50e','4a3cde71-a8eb-4864-ad7e-748a2fcab5bd','c95f1bc0-1647-4a28-8799-fc4de3f130fe','fb95e529-b835-4b73-8291-2e045acab6d0','9412d24b-3e53-4bc1-88f8-4e9d0722ed5d','d452e646-a8b3-40a8-ae87-6459d14a7cca','e37b85a7-e0f2-4abf-b3c9-39007f17a273','d06ed86f-5563-4910-8970-f67ec495ac07','23e903b4-1f43-4543-9cac-b805ded7484f','19349f8e-f008-4d2f-a8c7-1b44c1f379b7','12143377-5181-49c4-ae4f-92cd0de681f8','faf249a9-bd06-469e-8d03-2e9ec063d4d4','30aa8431-b705-45c0-86a0-00d69a907267','6ac94ae2-f274-450b-a78f-914d300f74d2','9d81e29d-08ff-4a38-bfad-9525d16ede2f')",
+        "affected_records": 100
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "Found 1 critical and 1 warning issues.",
+    "recommendations": [
+      "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('c2639f93-0e16-4772-a721-b15553d7091a','a127b8e4-0996-41d8-add7-ca5d193246ee','aee63a0b-70bb-4ee7-bfa8-14de8b5c0870','dd36832b-1efc-4639-bcc7-725168810ca3','f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90','e8a7b21f-6925-4c0c-9acf-ee52b87251c7','e3d5643b-c529-4a9d-b1ba-4608d348c2c1','f58be9d2-61fa-4338-8094-7ed9274a616e','1d560876-c8b6-47b1-a69e-e5c6ea378e1a','c2826451-a4b0-4141-b43c-11356ca52962','716afd52-c52e-4d13-8095-686d45fb0efc','7852d230-3a77-4e51-933c-568e0a9dfaa5','c6b848ee-710f-4ed6-9aa8-59e62355da07','a5198bd1-5367-458b-bd2e-3b1b67447081','f6d8aefb-6809-4fc7-ba17-a759d44a9437','ac2ee0ba-64de-47ba-b57d-5d71f1906ab6','fd9089d0-85c5-42aa-b431-e288375602d8','31126fd9-75a6-41f6-8370-1cbf78cab804','ffce3145-238e-4f57-88fa-0b3c2141a8dd','0cfec5e9-b33f-4624-ad21-cdd171692140','7a9b93cc-96f7-4c4e-a6b1-e8ecb7a21c96','8a65d9a1-360d-47f4-80f2-16652d7164ff','2b6991d4-4e09-4e2d-b4dd-e5345ae3cab7','b5e095a2-55a0-478b-8f82-09d3d23ed52f','ac52388e-dc16-4dbd-980c-e9bb243d3382','75ad4bc1-dd65-4b6c-add6-12c75be0ba4a','f9ff00ed-6815-4e79-adb4-01fe4ded9f46','a448ecb8-d89b-437e-b80a-4d84ca11e25b','0850424f-4f32-4d3b-90b7-be69e1b06e0c','6fbaabc4-eca5-454b-bff8-16773631873e','ae286de1-b475-4864-aa9d-aac7b90284b7','b651829d-bf02-4301-8c4c-2efab202b313','83dc2bfe-e275-4283-8c2f-c858f0b51061','c570e368-5294-4a2a-b47b-faa4ac61e641','a389bddc-cdeb-43f5-811b-0ee8bb649577','6e699439-3474-4589-9c00-dc1a1253d50e','4a3cde71-a8eb-4864-ad7e-748a2fcab5bd','c95f1bc0-1647-4a28-8799-fc4de3f130fe','fb95e529-b835-4b73-8291-2e045acab6d0','9412d24b-3e53-4bc1-88f8-4e9d0722ed5d','d452e646-a8b3-40a8-ae87-6459d14a7cca','e37b85a7-e0f2-4abf-b3c9-39007f17a273','d06ed86f-5563-4910-8970-f67ec495ac07','23e903b4-1f43-4543-9cac-b805ded7484f','19349f8e-f008-4d2f-a8c7-1b44c1f379b7','12143377-5181-49c4-ae4f-92cd0de681f8','faf249a9-bd06-469e-8d03-2e9ec063d4d4','30aa8431-b705-45c0-86a0-00d69a907267','6ac94ae2-f274-450b-a78f-914d300f74d2','9d81e29d-08ff-4a38-bfad-9525d16ede2f')"
+    ],
+    "overall_status": "critical",
+    "duration_ms": 18413,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-11-29T21:04:36.5552+00:00"
+  },
+  {
+    "id": "51f1296a-088c-4f1d-a22f-93c646c975cd",
+    "check_date": "2025-11-29T21:06:21.186+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Queue processing active. 0 items processed in last hour.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "fail",
+        "details": "100 prospects stuck in transitional state for >3 days",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [
+          "c2639f93-0e16-4772-a721-b15553d7091a",
+          "a127b8e4-0996-41d8-add7-ca5d193246ee",
+          "aee63a0b-70bb-4ee7-bfa8-14de8b5c0870",
+          "dd36832b-1efc-4639-bcc7-725168810ca3",
+          "f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90",
+          "e8a7b21f-6925-4c0c-9acf-ee52b87251c7",
+          "e3d5643b-c529-4a9d-b1ba-4608d348c2c1",
+          "f58be9d2-61fa-4338-8094-7ed9274a616e",
+          "1d560876-c8b6-47b1-a69e-e5c6ea378e1a",
+          "c2826451-a4b0-4141-b43c-11356ca52962"
+        ],
+        "suggested_fix": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('c2639f93-0e16-4772-a721-b15553d7091a','a127b8e4-0996-41d8-add7-ca5d193246ee','aee63a0b-70bb-4ee7-bfa8-14de8b5c0870','dd36832b-1efc-4639-bcc7-725168810ca3','f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90','e8a7b21f-6925-4c0c-9acf-ee52b87251c7','e3d5643b-c529-4a9d-b1ba-4608d348c2c1','f58be9d2-61fa-4338-8094-7ed9274a616e','1d560876-c8b6-47b1-a69e-e5c6ea378e1a','c2826451-a4b0-4141-b43c-11356ca52962','716afd52-c52e-4d13-8095-686d45fb0efc','7852d230-3a77-4e51-933c-568e0a9dfaa5','c6b848ee-710f-4ed6-9aa8-59e62355da07','a5198bd1-5367-458b-bd2e-3b1b67447081','f6d8aefb-6809-4fc7-ba17-a759d44a9437','ac2ee0ba-64de-47ba-b57d-5d71f1906ab6','fd9089d0-85c5-42aa-b431-e288375602d8','31126fd9-75a6-41f6-8370-1cbf78cab804','ffce3145-238e-4f57-88fa-0b3c2141a8dd','0cfec5e9-b33f-4624-ad21-cdd171692140','7a9b93cc-96f7-4c4e-a6b1-e8ecb7a21c96','8a65d9a1-360d-47f4-80f2-16652d7164ff','2b6991d4-4e09-4e2d-b4dd-e5345ae3cab7','b5e095a2-55a0-478b-8f82-09d3d23ed52f','ac52388e-dc16-4dbd-980c-e9bb243d3382','75ad4bc1-dd65-4b6c-add6-12c75be0ba4a','f9ff00ed-6815-4e79-adb4-01fe4ded9f46','a448ecb8-d89b-437e-b80a-4d84ca11e25b','0850424f-4f32-4d3b-90b7-be69e1b06e0c','6fbaabc4-eca5-454b-bff8-16773631873e','ae286de1-b475-4864-aa9d-aac7b90284b7','b651829d-bf02-4301-8c4c-2efab202b313','83dc2bfe-e275-4283-8c2f-c858f0b51061','c570e368-5294-4a2a-b47b-faa4ac61e641','a389bddc-cdeb-43f5-811b-0ee8bb649577','6e699439-3474-4589-9c00-dc1a1253d50e','4a3cde71-a8eb-4864-ad7e-748a2fcab5bd','c95f1bc0-1647-4a28-8799-fc4de3f130fe','fb95e529-b835-4b73-8291-2e045acab6d0','9412d24b-3e53-4bc1-88f8-4e9d0722ed5d','d452e646-a8b3-40a8-ae87-6459d14a7cca','e37b85a7-e0f2-4abf-b3c9-39007f17a273','d06ed86f-5563-4910-8970-f67ec495ac07','23e903b4-1f43-4543-9cac-b805ded7484f','19349f8e-f008-4d2f-a8c7-1b44c1f379b7','12143377-5181-49c4-ae4f-92cd0de681f8','faf249a9-bd06-469e-8d03-2e9ec063d4d4','30aa8431-b705-45c0-86a0-00d69a907267','6ac94ae2-f274-450b-a78f-914d300f74d2','9d81e29d-08ff-4a38-bfad-9525d16ede2f')",
+        "affected_records": 100
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "Found 1 critical and 0 warning issues.",
+    "recommendations": [
+      "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('c2639f93-0e16-4772-a721-b15553d7091a','a127b8e4-0996-41d8-add7-ca5d193246ee','aee63a0b-70bb-4ee7-bfa8-14de8b5c0870','dd36832b-1efc-4639-bcc7-725168810ca3','f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90','e8a7b21f-6925-4c0c-9acf-ee52b87251c7','e3d5643b-c529-4a9d-b1ba-4608d348c2c1','f58be9d2-61fa-4338-8094-7ed9274a616e','1d560876-c8b6-47b1-a69e-e5c6ea378e1a','c2826451-a4b0-4141-b43c-11356ca52962','716afd52-c52e-4d13-8095-686d45fb0efc','7852d230-3a77-4e51-933c-568e0a9dfaa5','c6b848ee-710f-4ed6-9aa8-59e62355da07','a5198bd1-5367-458b-bd2e-3b1b67447081','f6d8aefb-6809-4fc7-ba17-a759d44a9437','ac2ee0ba-64de-47ba-b57d-5d71f1906ab6','fd9089d0-85c5-42aa-b431-e288375602d8','31126fd9-75a6-41f6-8370-1cbf78cab804','ffce3145-238e-4f57-88fa-0b3c2141a8dd','0cfec5e9-b33f-4624-ad21-cdd171692140','7a9b93cc-96f7-4c4e-a6b1-e8ecb7a21c96','8a65d9a1-360d-47f4-80f2-16652d7164ff','2b6991d4-4e09-4e2d-b4dd-e5345ae3cab7','b5e095a2-55a0-478b-8f82-09d3d23ed52f','ac52388e-dc16-4dbd-980c-e9bb243d3382','75ad4bc1-dd65-4b6c-add6-12c75be0ba4a','f9ff00ed-6815-4e79-adb4-01fe4ded9f46','a448ecb8-d89b-437e-b80a-4d84ca11e25b','0850424f-4f32-4d3b-90b7-be69e1b06e0c','6fbaabc4-eca5-454b-bff8-16773631873e','ae286de1-b475-4864-aa9d-aac7b90284b7','b651829d-bf02-4301-8c4c-2efab202b313','83dc2bfe-e275-4283-8c2f-c858f0b51061','c570e368-5294-4a2a-b47b-faa4ac61e641','a389bddc-cdeb-43f5-811b-0ee8bb649577','6e699439-3474-4589-9c00-dc1a1253d50e','4a3cde71-a8eb-4864-ad7e-748a2fcab5bd','c95f1bc0-1647-4a28-8799-fc4de3f130fe','fb95e529-b835-4b73-8291-2e045acab6d0','9412d24b-3e53-4bc1-88f8-4e9d0722ed5d','d452e646-a8b3-40a8-ae87-6459d14a7cca','e37b85a7-e0f2-4abf-b3c9-39007f17a273','d06ed86f-5563-4910-8970-f67ec495ac07','23e903b4-1f43-4543-9cac-b805ded7484f','19349f8e-f008-4d2f-a8c7-1b44c1f379b7','12143377-5181-49c4-ae4f-92cd0de681f8','faf249a9-bd06-469e-8d03-2e9ec063d4d4','30aa8431-b705-45c0-86a0-00d69a907267','6ac94ae2-f274-450b-a78f-914d300f74d2','9d81e29d-08ff-4a38-bfad-9525d16ede2f')"
+    ],
+    "overall_status": "critical",
+    "duration_ms": 27183,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-11-29T21:06:21.269601+00:00"
+  },
+  {
+    "id": "d67bb73a-e6c8-47f3-b5a1-3888256e1bfd",
+    "check_date": "2025-11-29T21:06:44.663+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Queue processing active. 0 items processed in last hour.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "fail",
+        "details": "100 prospects stuck in transitional state for >3 days",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [
+          "c2639f93-0e16-4772-a721-b15553d7091a",
+          "a127b8e4-0996-41d8-add7-ca5d193246ee",
+          "aee63a0b-70bb-4ee7-bfa8-14de8b5c0870",
+          "dd36832b-1efc-4639-bcc7-725168810ca3",
+          "f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90",
+          "e8a7b21f-6925-4c0c-9acf-ee52b87251c7",
+          "e3d5643b-c529-4a9d-b1ba-4608d348c2c1",
+          "f58be9d2-61fa-4338-8094-7ed9274a616e",
+          "1d560876-c8b6-47b1-a69e-e5c6ea378e1a",
+          "c2826451-a4b0-4141-b43c-11356ca52962"
+        ],
+        "suggested_fix": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('c2639f93-0e16-4772-a721-b15553d7091a','a127b8e4-0996-41d8-add7-ca5d193246ee','aee63a0b-70bb-4ee7-bfa8-14de8b5c0870','dd36832b-1efc-4639-bcc7-725168810ca3','f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90','e8a7b21f-6925-4c0c-9acf-ee52b87251c7','e3d5643b-c529-4a9d-b1ba-4608d348c2c1','f58be9d2-61fa-4338-8094-7ed9274a616e','1d560876-c8b6-47b1-a69e-e5c6ea378e1a','c2826451-a4b0-4141-b43c-11356ca52962','716afd52-c52e-4d13-8095-686d45fb0efc','7852d230-3a77-4e51-933c-568e0a9dfaa5','c6b848ee-710f-4ed6-9aa8-59e62355da07','a5198bd1-5367-458b-bd2e-3b1b67447081','f6d8aefb-6809-4fc7-ba17-a759d44a9437','ac2ee0ba-64de-47ba-b57d-5d71f1906ab6','fd9089d0-85c5-42aa-b431-e288375602d8','31126fd9-75a6-41f6-8370-1cbf78cab804','ffce3145-238e-4f57-88fa-0b3c2141a8dd','0cfec5e9-b33f-4624-ad21-cdd171692140','7a9b93cc-96f7-4c4e-a6b1-e8ecb7a21c96','8a65d9a1-360d-47f4-80f2-16652d7164ff','2b6991d4-4e09-4e2d-b4dd-e5345ae3cab7','b5e095a2-55a0-478b-8f82-09d3d23ed52f','ac52388e-dc16-4dbd-980c-e9bb243d3382','75ad4bc1-dd65-4b6c-add6-12c75be0ba4a','f9ff00ed-6815-4e79-adb4-01fe4ded9f46','a448ecb8-d89b-437e-b80a-4d84ca11e25b','0850424f-4f32-4d3b-90b7-be69e1b06e0c','6fbaabc4-eca5-454b-bff8-16773631873e','ae286de1-b475-4864-aa9d-aac7b90284b7','b651829d-bf02-4301-8c4c-2efab202b313','83dc2bfe-e275-4283-8c2f-c858f0b51061','c570e368-5294-4a2a-b47b-faa4ac61e641','a389bddc-cdeb-43f5-811b-0ee8bb649577','6e699439-3474-4589-9c00-dc1a1253d50e','4a3cde71-a8eb-4864-ad7e-748a2fcab5bd','c95f1bc0-1647-4a28-8799-fc4de3f130fe','fb95e529-b835-4b73-8291-2e045acab6d0','9412d24b-3e53-4bc1-88f8-4e9d0722ed5d','d452e646-a8b3-40a8-ae87-6459d14a7cca','e37b85a7-e0f2-4abf-b3c9-39007f17a273','d06ed86f-5563-4910-8970-f67ec495ac07','23e903b4-1f43-4543-9cac-b805ded7484f','19349f8e-f008-4d2f-a8c7-1b44c1f379b7','12143377-5181-49c4-ae4f-92cd0de681f8','faf249a9-bd06-469e-8d03-2e9ec063d4d4','30aa8431-b705-45c0-86a0-00d69a907267','6ac94ae2-f274-450b-a78f-914d300f74d2','9d81e29d-08ff-4a38-bfad-9525d16ede2f')",
+        "affected_records": 100
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "Found 1 critical and 0 warning issues.",
+    "recommendations": [
+      "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('c2639f93-0e16-4772-a721-b15553d7091a','a127b8e4-0996-41d8-add7-ca5d193246ee','aee63a0b-70bb-4ee7-bfa8-14de8b5c0870','dd36832b-1efc-4639-bcc7-725168810ca3','f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90','e8a7b21f-6925-4c0c-9acf-ee52b87251c7','e3d5643b-c529-4a9d-b1ba-4608d348c2c1','f58be9d2-61fa-4338-8094-7ed9274a616e','1d560876-c8b6-47b1-a69e-e5c6ea378e1a','c2826451-a4b0-4141-b43c-11356ca52962','716afd52-c52e-4d13-8095-686d45fb0efc','7852d230-3a77-4e51-933c-568e0a9dfaa5','c6b848ee-710f-4ed6-9aa8-59e62355da07','a5198bd1-5367-458b-bd2e-3b1b67447081','f6d8aefb-6809-4fc7-ba17-a759d44a9437','ac2ee0ba-64de-47ba-b57d-5d71f1906ab6','fd9089d0-85c5-42aa-b431-e288375602d8','31126fd9-75a6-41f6-8370-1cbf78cab804','ffce3145-238e-4f57-88fa-0b3c2141a8dd','0cfec5e9-b33f-4624-ad21-cdd171692140','7a9b93cc-96f7-4c4e-a6b1-e8ecb7a21c96','8a65d9a1-360d-47f4-80f2-16652d7164ff','2b6991d4-4e09-4e2d-b4dd-e5345ae3cab7','b5e095a2-55a0-478b-8f82-09d3d23ed52f','ac52388e-dc16-4dbd-980c-e9bb243d3382','75ad4bc1-dd65-4b6c-add6-12c75be0ba4a','f9ff00ed-6815-4e79-adb4-01fe4ded9f46','a448ecb8-d89b-437e-b80a-4d84ca11e25b','0850424f-4f32-4d3b-90b7-be69e1b06e0c','6fbaabc4-eca5-454b-bff8-16773631873e','ae286de1-b475-4864-aa9d-aac7b90284b7','b651829d-bf02-4301-8c4c-2efab202b313','83dc2bfe-e275-4283-8c2f-c858f0b51061','c570e368-5294-4a2a-b47b-faa4ac61e641','a389bddc-cdeb-43f5-811b-0ee8bb649577','6e699439-3474-4589-9c00-dc1a1253d50e','4a3cde71-a8eb-4864-ad7e-748a2fcab5bd','c95f1bc0-1647-4a28-8799-fc4de3f130fe','fb95e529-b835-4b73-8291-2e045acab6d0','9412d24b-3e53-4bc1-88f8-4e9d0722ed5d','d452e646-a8b3-40a8-ae87-6459d14a7cca','e37b85a7-e0f2-4abf-b3c9-39007f17a273','d06ed86f-5563-4910-8970-f67ec495ac07','23e903b4-1f43-4543-9cac-b805ded7484f','19349f8e-f008-4d2f-a8c7-1b44c1f379b7','12143377-5181-49c4-ae4f-92cd0de681f8','faf249a9-bd06-469e-8d03-2e9ec063d4d4','30aa8431-b705-45c0-86a0-00d69a907267','6ac94ae2-f274-450b-a78f-914d300f74d2','9d81e29d-08ff-4a38-bfad-9525d16ede2f')"
+    ],
+    "overall_status": "critical",
+    "duration_ms": 18678,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-11-29T21:06:44.739359+00:00"
+  },
+  {
+    "id": "33fc4902-6772-4a9f-be28-2f4ddee4c070",
+    "check_date": "2025-11-29T21:07:09.55+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Queue processing active. 0 items processed in last hour.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "fail",
+        "details": "100 prospects stuck in transitional state for >3 days",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [
+          "c2639f93-0e16-4772-a721-b15553d7091a",
+          "a127b8e4-0996-41d8-add7-ca5d193246ee",
+          "aee63a0b-70bb-4ee7-bfa8-14de8b5c0870",
+          "dd36832b-1efc-4639-bcc7-725168810ca3",
+          "f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90",
+          "e8a7b21f-6925-4c0c-9acf-ee52b87251c7",
+          "e3d5643b-c529-4a9d-b1ba-4608d348c2c1",
+          "f58be9d2-61fa-4338-8094-7ed9274a616e",
+          "1d560876-c8b6-47b1-a69e-e5c6ea378e1a",
+          "c2826451-a4b0-4141-b43c-11356ca52962"
+        ],
+        "suggested_fix": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('c2639f93-0e16-4772-a721-b15553d7091a','a127b8e4-0996-41d8-add7-ca5d193246ee','aee63a0b-70bb-4ee7-bfa8-14de8b5c0870','dd36832b-1efc-4639-bcc7-725168810ca3','f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90','e8a7b21f-6925-4c0c-9acf-ee52b87251c7','e3d5643b-c529-4a9d-b1ba-4608d348c2c1','f58be9d2-61fa-4338-8094-7ed9274a616e','1d560876-c8b6-47b1-a69e-e5c6ea378e1a','c2826451-a4b0-4141-b43c-11356ca52962','716afd52-c52e-4d13-8095-686d45fb0efc','7852d230-3a77-4e51-933c-568e0a9dfaa5','c6b848ee-710f-4ed6-9aa8-59e62355da07','a5198bd1-5367-458b-bd2e-3b1b67447081','f6d8aefb-6809-4fc7-ba17-a759d44a9437','ac2ee0ba-64de-47ba-b57d-5d71f1906ab6','fd9089d0-85c5-42aa-b431-e288375602d8','31126fd9-75a6-41f6-8370-1cbf78cab804','ffce3145-238e-4f57-88fa-0b3c2141a8dd','0cfec5e9-b33f-4624-ad21-cdd171692140','7a9b93cc-96f7-4c4e-a6b1-e8ecb7a21c96','8a65d9a1-360d-47f4-80f2-16652d7164ff','2b6991d4-4e09-4e2d-b4dd-e5345ae3cab7','b5e095a2-55a0-478b-8f82-09d3d23ed52f','ac52388e-dc16-4dbd-980c-e9bb243d3382','75ad4bc1-dd65-4b6c-add6-12c75be0ba4a','f9ff00ed-6815-4e79-adb4-01fe4ded9f46','a448ecb8-d89b-437e-b80a-4d84ca11e25b','0850424f-4f32-4d3b-90b7-be69e1b06e0c','6fbaabc4-eca5-454b-bff8-16773631873e','ae286de1-b475-4864-aa9d-aac7b90284b7','b651829d-bf02-4301-8c4c-2efab202b313','83dc2bfe-e275-4283-8c2f-c858f0b51061','c570e368-5294-4a2a-b47b-faa4ac61e641','a389bddc-cdeb-43f5-811b-0ee8bb649577','6e699439-3474-4589-9c00-dc1a1253d50e','4a3cde71-a8eb-4864-ad7e-748a2fcab5bd','c95f1bc0-1647-4a28-8799-fc4de3f130fe','fb95e529-b835-4b73-8291-2e045acab6d0','9412d24b-3e53-4bc1-88f8-4e9d0722ed5d','d452e646-a8b3-40a8-ae87-6459d14a7cca','e37b85a7-e0f2-4abf-b3c9-39007f17a273','d06ed86f-5563-4910-8970-f67ec495ac07','23e903b4-1f43-4543-9cac-b805ded7484f','19349f8e-f008-4d2f-a8c7-1b44c1f379b7','12143377-5181-49c4-ae4f-92cd0de681f8','faf249a9-bd06-469e-8d03-2e9ec063d4d4','30aa8431-b705-45c0-86a0-00d69a907267','6ac94ae2-f274-450b-a78f-914d300f74d2','9d81e29d-08ff-4a38-bfad-9525d16ede2f')",
+        "affected_records": 100
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "Found 1 critical and 0 warning issues.",
+    "recommendations": [
+      "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('c2639f93-0e16-4772-a721-b15553d7091a','a127b8e4-0996-41d8-add7-ca5d193246ee','aee63a0b-70bb-4ee7-bfa8-14de8b5c0870','dd36832b-1efc-4639-bcc7-725168810ca3','f3f6c383-d32b-4ad6-ba3c-8ccaccfcda90','e8a7b21f-6925-4c0c-9acf-ee52b87251c7','e3d5643b-c529-4a9d-b1ba-4608d348c2c1','f58be9d2-61fa-4338-8094-7ed9274a616e','1d560876-c8b6-47b1-a69e-e5c6ea378e1a','c2826451-a4b0-4141-b43c-11356ca52962','716afd52-c52e-4d13-8095-686d45fb0efc','7852d230-3a77-4e51-933c-568e0a9dfaa5','c6b848ee-710f-4ed6-9aa8-59e62355da07','a5198bd1-5367-458b-bd2e-3b1b67447081','f6d8aefb-6809-4fc7-ba17-a759d44a9437','ac2ee0ba-64de-47ba-b57d-5d71f1906ab6','fd9089d0-85c5-42aa-b431-e288375602d8','31126fd9-75a6-41f6-8370-1cbf78cab804','ffce3145-238e-4f57-88fa-0b3c2141a8dd','0cfec5e9-b33f-4624-ad21-cdd171692140','7a9b93cc-96f7-4c4e-a6b1-e8ecb7a21c96','8a65d9a1-360d-47f4-80f2-16652d7164ff','2b6991d4-4e09-4e2d-b4dd-e5345ae3cab7','b5e095a2-55a0-478b-8f82-09d3d23ed52f','ac52388e-dc16-4dbd-980c-e9bb243d3382','75ad4bc1-dd65-4b6c-add6-12c75be0ba4a','f9ff00ed-6815-4e79-adb4-01fe4ded9f46','a448ecb8-d89b-437e-b80a-4d84ca11e25b','0850424f-4f32-4d3b-90b7-be69e1b06e0c','6fbaabc4-eca5-454b-bff8-16773631873e','ae286de1-b475-4864-aa9d-aac7b90284b7','b651829d-bf02-4301-8c4c-2efab202b313','83dc2bfe-e275-4283-8c2f-c858f0b51061','c570e368-5294-4a2a-b47b-faa4ac61e641','a389bddc-cdeb-43f5-811b-0ee8bb649577','6e699439-3474-4589-9c00-dc1a1253d50e','4a3cde71-a8eb-4864-ad7e-748a2fcab5bd','c95f1bc0-1647-4a28-8799-fc4de3f130fe','fb95e529-b835-4b73-8291-2e045acab6d0','9412d24b-3e53-4bc1-88f8-4e9d0722ed5d','d452e646-a8b3-40a8-ae87-6459d14a7cca','e37b85a7-e0f2-4abf-b3c9-39007f17a273','d06ed86f-5563-4910-8970-f67ec495ac07','23e903b4-1f43-4543-9cac-b805ded7484f','19349f8e-f008-4d2f-a8c7-1b44c1f379b7','12143377-5181-49c4-ae4f-92cd0de681f8','faf249a9-bd06-469e-8d03-2e9ec063d4d4','30aa8431-b705-45c0-86a0-00d69a907267','6ac94ae2-f274-450b-a78f-914d300f74d2','9d81e29d-08ff-4a38-bfad-9525d16ede2f')"
+    ],
+    "overall_status": "critical",
+    "duration_ms": 18987,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-11-29T21:07:09.620195+00:00"
+  },
+  {
+    "id": "4ac8bbf3-bd01-4613-a3aa-578f0201b258",
+    "check_date": "2025-11-29T21:08:30.257+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Queue processing active. 0 items processed in last hour.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No stuck prospects detected",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "All checks passed",
+    "recommendations": [],
+    "overall_status": "healthy",
+    "duration_ms": 18168,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-11-29T21:08:30.322218+00:00"
+  },
+  {
+    "id": "cd011854-1b87-4fb4-8324-0eea68e94105",
+    "check_date": "2025-11-30T06:01:25.344+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Queue processing active. 0 items processed in last hour.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No stuck prospects detected",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "All checks passed",
+    "recommendations": [],
+    "overall_status": "healthy",
+    "duration_ms": 19254,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-11-30T06:01:25.414395+00:00"
+  },
+  {
+    "id": "d0a8fe8e-ff2a-4c72-8f79-65ff0c1abe2d",
+    "check_date": "2025-11-30T06:01:43.997+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Queue processing active. 0 items processed in last hour.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No stuck prospects detected",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "All checks passed",
+    "recommendations": [],
+    "overall_status": "healthy",
+    "duration_ms": 18198,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-11-30T06:01:44.069639+00:00"
+  },
+  {
+    "id": "422f9ab4-e785-44eb-bb0c-3ee62f092786",
+    "check_date": "2025-12-02T06:01:18.89+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "1 items overdue (scheduled >1h ago). Cron may be failing.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [
+          "ee51f466-f3eb-4a2c-b92f-b44497f5e785"
+        ],
+        "suggested_fix": "Check Netlify scheduled functions status and Netlify function logs",
+        "affected_records": 1
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "warning",
+        "details": "27 prospects stuck in transitional state for >3 days",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [
+          "a8253aae-5a4f-4670-8c26-284aebac034b",
+          "0fb6ad97-58d2-4d60-a1dc-0aa7572ba936",
+          "5565f572-057d-4c8d-b818-a1193200564a",
+          "153423d4-7c40-493a-b46c-dc6c799f4290",
+          "4f5121c6-bfe7-4b1b-86c0-20fc13f1a717",
+          "7d8ffb77-e50b-45cf-876d-ab4b83347c60",
+          "5d8f65ec-978e-49c3-b2e7-c3acd23ed84a",
+          "22cf834f-6fd0-44ea-94b7-247251ea5f39",
+          "0e3acc22-8708-4998-b85a-3a71a6024c03",
+          "3ce274fd-5a54-45c6-84a4-49b5e5deabd6"
+        ],
+        "suggested_fix": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','355026ca-394d-4436-bb31-1aa6d0a3a6de','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9')",
+        "affected_records": 27
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All follow-ups scheduled on different days",
+        "category": "messaging",
+        "check_name": "Same-Day Follow-up Check",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "System shows good overall health with no failed checks. However, 27 prospects are stuck in transitional states for over 3 days, indicating a workflow processing bottleneck that needs immediate attention to prevent campaign delays.",
+    "recommendations": [
+      "Execute the provided SQL fix to clear stuck prospects and restore normal campaign flow",
+      "Investigate root cause of workflow stalls - check for processing queue backlogs, failed background jobs, or integration timeouts",
+      "Implement automated monitoring to detect stuck prospects within 24 hours instead of 3+ days",
+      "Review campaign processing logic to add timeout handling and automatic state transitions",
+      "Set up alerts for transitional state duration exceeding 1 day to enable proactive intervention"
+    ],
+    "overall_status": "warning",
+    "duration_ms": 30546,
+    "fixes_proposed": [
+      {
+        "risk": "low",
+        "issue": "Stuck Prospects Detection",
+        "fix_type": "sql",
+        "fix_command": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','355026ca-394d-4436-bb31-1aa6d0a3a6de','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9')"
+      }
+    ],
+    "fixes_applied": [],
+    "created_at": "2025-12-02T06:01:18.965983+00:00"
+  },
+  {
+    "id": "073508b2-174f-459b-b5fe-59c306829d54",
+    "check_date": "2025-11-30T06:02:02.206+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Queue processing active. 0 items processed in last hour.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No stuck prospects detected",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "All checks passed",
+    "recommendations": [],
+    "overall_status": "healthy",
+    "duration_ms": 17889,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-11-30T06:02:02.278226+00:00"
+  },
+  {
+    "id": "30e5862f-db1e-40a9-a151-6b8fde23e7cb",
+    "check_date": "2025-11-30T07:00:20.932+00:00",
+    "checks": [
+      {
+        "status": "healthy",
+        "details": "Connected. Query latency: 137ms",
+        "metrics": {
+          "latency_ms": 137,
+          "workspace_count": 13
+        },
+        "check_name": "Database Connection"
+      },
+      {
+        "status": "healthy",
+        "details": "0 prospects processed. Success: N/A%, Failures: 0%",
+        "metrics": {
+          "sent": 0,
+          "total": 0,
+          "failed": 0,
+          "failure_rate": "0",
+          "success_rate": "N/A"
+        },
+        "check_name": "Campaign Execution (24h)"
+      },
+      {
+        "status": "healthy",
+        "details": "Queue healthy. 24h: 0 sent, 0 pending, 0 failed",
+        "metrics": {
+          "sent": 0,
+          "failed": 0,
+          "pending": 0,
+          "stuck_count": 0
+        },
+        "check_name": "Message Queue"
+      },
+      {
+        "status": "warning",
+        "details": "Could not check accounts: Unknown",
+        "check_name": "Unipile/LinkedIn Accounts"
+      },
+      {
+        "status": "healthy",
+        "details": "0 errors in last 24h",
+        "metrics": {
+          "error_count": 0,
+          "error_types": {}
+        },
+        "check_name": "Error Rate (24h)"
+      },
+      {
+        "status": "healthy",
+        "details": "0 stale campaigns, 0 stale prospects (>3 days)",
+        "metrics": {
+          "stale_campaigns": 0,
+          "stale_prospects": 0,
+          "stale_campaign_names": []
+        },
+        "check_name": "Stale Data"
+      }
+    ],
+    "ai_analysis": "System is operating normally with all core services healthy and no errors in the past 24 hours. However, there appears to be no campaign activity (0 prospects processed) and LinkedIn account connectivity cannot be verified.",
+    "recommendations": [
+      "Investigate and resolve the Unipile/LinkedIn accounts connectivity issue to ensure proper integration",
+      "Verify why no prospects were processed in the last 24 hours - check if campaigns are properly configured and active",
+      "Consider monitoring database query latency (137ms) to establish baseline performance metrics"
+    ],
+    "overall_status": "warning",
+    "duration_ms": 6487,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-11-30T07:00:21.027681+00:00"
+  },
+  {
+    "id": "fa64bf33-6092-4a3d-ae65-90f4141ed9bb",
+    "check_date": "2025-12-01T06:01:58.947+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "1 items overdue (scheduled >1h ago). Cron may be failing.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [
+          "5a13471e-e827-4fa4-84c3-04151bdd6c2a"
+        ],
+        "suggested_fix": "Check cron-job.org status and Netlify function logs",
+        "affected_records": 1
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "warning",
+        "details": "34 prospects stuck in transitional state for >3 days",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [
+          "a8253aae-5a4f-4670-8c26-284aebac034b",
+          "0fb6ad97-58d2-4d60-a1dc-0aa7572ba936",
+          "5565f572-057d-4c8d-b818-a1193200564a",
+          "153423d4-7c40-493a-b46c-dc6c799f4290",
+          "4f5121c6-bfe7-4b1b-86c0-20fc13f1a717",
+          "7d8ffb77-e50b-45cf-876d-ab4b83347c60",
+          "5d8f65ec-978e-49c3-b2e7-c3acd23ed84a",
+          "22cf834f-6fd0-44ea-94b7-247251ea5f39",
+          "0e3acc22-8708-4998-b85a-3a71a6024c03",
+          "3ce274fd-5a54-45c6-84a4-49b5e5deabd6"
+        ],
+        "suggested_fix": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','7af60cb9-089a-40cb-b68c-25be0faaa797','1fdb982b-0f72-405d-8928-8371fc7a6ef4','1aa7ccf9-156f-4ea2-9fd2-f4ba0d4b3159','355026ca-394d-4436-bb31-1aa6d0a3a6de','3b7cb1c6-3f78-4ad0-8d2c-f463abbfc1e7','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','cefa13d4-318b-4836-81a9-442414c93fd8','2c254684-21ad-4030-bd4f-d56328ec8fa2','cbee08db-68d2-43e9-b714-7f74870b26fd','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9')",
+        "affected_records": 34
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All follow-ups scheduled on different days",
+        "category": "messaging",
+        "check_name": "Same-Day Follow-up Check",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "System shows good overall health with no critical failures. However, 34 prospects are stuck in transitional states for over 3 days, indicating a workflow processing bottleneck that needs immediate attention to prevent campaign delays.",
+    "recommendations": [
+      "Execute the provided SQL fix to clear stuck prospects and restore campaign flow",
+      "Investigate root cause of workflow stalls - check for processing queue backlogs, failed background jobs, or external API timeouts",
+      "Implement automated timeout handling to prevent future prospect stalls beyond 24-48 hours",
+      "Add monitoring alerts for prospects stuck in transitional states for more than 1 day",
+      "Review campaign processing capacity and scaling requirements if volume is causing delays"
+    ],
+    "overall_status": "warning",
+    "duration_ms": 40668,
+    "fixes_proposed": [
+      {
+        "risk": "low",
+        "issue": "Stuck Prospects Detection",
+        "fix_type": "sql",
+        "fix_command": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','7af60cb9-089a-40cb-b68c-25be0faaa797','1fdb982b-0f72-405d-8928-8371fc7a6ef4','1aa7ccf9-156f-4ea2-9fd2-f4ba0d4b3159','355026ca-394d-4436-bb31-1aa6d0a3a6de','3b7cb1c6-3f78-4ad0-8d2c-f463abbfc1e7','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','cefa13d4-318b-4836-81a9-442414c93fd8','2c254684-21ad-4030-bd4f-d56328ec8fa2','cbee08db-68d2-43e9-b714-7f74870b26fd','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9')"
+      }
+    ],
+    "fixes_applied": [],
+    "created_at": "2025-12-01T06:01:59.021147+00:00"
+  },
+  {
+    "id": "fc980cec-3105-45dc-9ba2-83540cba1eb1",
+    "check_date": "2025-12-01T06:02:19.021+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "1 items overdue (scheduled >1h ago). Cron may be failing.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [
+          "5a13471e-e827-4fa4-84c3-04151bdd6c2a"
+        ],
+        "suggested_fix": "Check cron-job.org status and Netlify function logs",
+        "affected_records": 1
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "warning",
+        "details": "34 prospects stuck in transitional state for >3 days",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [
+          "a8253aae-5a4f-4670-8c26-284aebac034b",
+          "0fb6ad97-58d2-4d60-a1dc-0aa7572ba936",
+          "5565f572-057d-4c8d-b818-a1193200564a",
+          "153423d4-7c40-493a-b46c-dc6c799f4290",
+          "4f5121c6-bfe7-4b1b-86c0-20fc13f1a717",
+          "7d8ffb77-e50b-45cf-876d-ab4b83347c60",
+          "5d8f65ec-978e-49c3-b2e7-c3acd23ed84a",
+          "22cf834f-6fd0-44ea-94b7-247251ea5f39",
+          "0e3acc22-8708-4998-b85a-3a71a6024c03",
+          "3ce274fd-5a54-45c6-84a4-49b5e5deabd6"
+        ],
+        "suggested_fix": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','7af60cb9-089a-40cb-b68c-25be0faaa797','1fdb982b-0f72-405d-8928-8371fc7a6ef4','1aa7ccf9-156f-4ea2-9fd2-f4ba0d4b3159','355026ca-394d-4436-bb31-1aa6d0a3a6de','3b7cb1c6-3f78-4ad0-8d2c-f463abbfc1e7','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','cefa13d4-318b-4836-81a9-442414c93fd8','2c254684-21ad-4030-bd4f-d56328ec8fa2','cbee08db-68d2-43e9-b714-7f74870b26fd','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9')",
+        "affected_records": 34
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All follow-ups scheduled on different days",
+        "category": "messaging",
+        "check_name": "Same-Day Follow-up Check",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "System shows good overall health with no failed checks, but has 34 prospects stuck in transitional states for over 3 days, indicating a workflow processing bottleneck. This suggests either background job failures or timeout issues in the campaign processing pipeline.",
+    "recommendations": [
+      "Execute the provided SQL fix to clear stuck prospects and prevent data accumulation",
+      "Investigate root cause of workflow stalls - check background job queues, worker processes, and timeout configurations",
+      "Implement automated monitoring to detect and resolve stuck prospects before they accumulate",
+      "Review campaign processing timeouts and add retry mechanisms for failed transitions",
+      "Set up alerts for prospects stuck in transitional states beyond 24 hours"
+    ],
+    "overall_status": "warning",
+    "duration_ms": 40905,
+    "fixes_proposed": [
+      {
+        "risk": "low",
+        "issue": "Stuck Prospects Detection",
+        "fix_type": "sql",
+        "fix_command": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','7af60cb9-089a-40cb-b68c-25be0faaa797','1fdb982b-0f72-405d-8928-8371fc7a6ef4','1aa7ccf9-156f-4ea2-9fd2-f4ba0d4b3159','355026ca-394d-4436-bb31-1aa6d0a3a6de','3b7cb1c6-3f78-4ad0-8d2c-f463abbfc1e7','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','cefa13d4-318b-4836-81a9-442414c93fd8','2c254684-21ad-4030-bd4f-d56328ec8fa2','cbee08db-68d2-43e9-b714-7f74870b26fd','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9');"
+      }
+    ],
+    "fixes_applied": [],
+    "created_at": "2025-12-01T06:02:19.10454+00:00"
+  },
+  {
+    "id": "c0897a08-b414-4b6e-ba89-d19faae58124",
+    "check_date": "2025-12-01T06:02:30.053+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "1 items overdue (scheduled >1h ago). Cron may be failing.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [
+          "5a13471e-e827-4fa4-84c3-04151bdd6c2a"
+        ],
+        "suggested_fix": "Check cron-job.org status and Netlify function logs",
+        "affected_records": 1
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "warning",
+        "details": "34 prospects stuck in transitional state for >3 days",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [
+          "a8253aae-5a4f-4670-8c26-284aebac034b",
+          "0fb6ad97-58d2-4d60-a1dc-0aa7572ba936",
+          "5565f572-057d-4c8d-b818-a1193200564a",
+          "153423d4-7c40-493a-b46c-dc6c799f4290",
+          "4f5121c6-bfe7-4b1b-86c0-20fc13f1a717",
+          "7d8ffb77-e50b-45cf-876d-ab4b83347c60",
+          "5d8f65ec-978e-49c3-b2e7-c3acd23ed84a",
+          "22cf834f-6fd0-44ea-94b7-247251ea5f39",
+          "0e3acc22-8708-4998-b85a-3a71a6024c03",
+          "3ce274fd-5a54-45c6-84a4-49b5e5deabd6"
+        ],
+        "suggested_fix": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','7af60cb9-089a-40cb-b68c-25be0faaa797','1fdb982b-0f72-405d-8928-8371fc7a6ef4','1aa7ccf9-156f-4ea2-9fd2-f4ba0d4b3159','355026ca-394d-4436-bb31-1aa6d0a3a6de','3b7cb1c6-3f78-4ad0-8d2c-f463abbfc1e7','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','cefa13d4-318b-4836-81a9-442414c93fd8','2c254684-21ad-4030-bd4f-d56328ec8fa2','cbee08db-68d2-43e9-b714-7f74870b26fd','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9')",
+        "affected_records": 34
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All follow-ups scheduled on different days",
+        "category": "messaging",
+        "check_name": "Same-Day Follow-up Check",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "System shows good overall health with no critical failures. However, 34 prospects are stuck in transitional states for over 3 days, indicating a workflow processing bottleneck that needs immediate attention to prevent campaign delays.",
+    "recommendations": [
+      "Execute the suggested SQL fix to clear stuck prospects and restore normal campaign flow",
+      "Investigate root cause of workflow stalls - check background job processors, API timeouts, and database locks",
+      "Implement automated monitoring to detect stuck prospects within 1 day instead of 3+ days",
+      "Add timeout mechanisms to prospect processing workflows to prevent future accumulation",
+      "Review campaign prospect state machine logic for potential race conditions or missing error handling"
+    ],
+    "overall_status": "warning",
+    "duration_ms": 40893,
+    "fixes_proposed": [
+      {
+        "risk": "low",
+        "issue": "Stuck Prospects Detection",
+        "fix_type": "sql",
+        "fix_command": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','7af60cb9-089a-40cb-b68c-25be0faaa797','1fdb982b-0f72-405d-8928-8371fc7a6ef4','1aa7ccf9-156f-4ea2-9fd2-f4ba0d4b3159','355026ca-394d-4436-bb31-1aa6d0a3a6de','3b7cb1c6-3f78-4ad0-8d2c-f463abbfc1e7','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','cefa13d4-318b-4836-81a9-442414c93fd8','2c254684-21ad-4030-bd4f-d56328ec8fa2','cbee08db-68d2-43e9-b714-7f74870b26fd','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9');"
+      }
+    ],
+    "fixes_applied": [],
+    "created_at": "2025-12-01T06:02:30.130531+00:00"
+  },
+  {
+    "id": "4ca9be66-6eef-4d24-9203-c0a0fcb82c4d",
+    "check_date": "2025-12-01T07:00:58.756+00:00",
+    "checks": [
+      {
+        "status": "healthy",
+        "details": "Connected. Query latency: 138ms",
+        "metrics": {
+          "latency_ms": 138,
+          "workspace_count": 13
+        },
+        "check_name": "Database Connection"
+      },
+      {
+        "status": "healthy",
+        "details": "0 prospects processed. Success: N/A%, Failures: 0%",
+        "metrics": {
+          "sent": 0,
+          "total": 0,
+          "failed": 0,
+          "failure_rate": "0",
+          "success_rate": "N/A"
+        },
+        "check_name": "Campaign Execution (24h)"
+      },
+      {
+        "status": "healthy",
+        "details": "1 stuck items (>1h overdue). 24h: 0 sent, 5 pending, 0 failed",
+        "metrics": {
+          "sent": 0,
+          "failed": 0,
+          "pending": 5,
+          "stuck_count": 1
+        },
+        "check_name": "Message Queue"
+      },
+      {
+        "status": "warning",
+        "details": "Could not check accounts: Unknown",
+        "check_name": "Unipile/LinkedIn Accounts"
+      },
+      {
+        "status": "healthy",
+        "details": "0 errors in last 24h",
+        "metrics": {
+          "error_count": 0,
+          "error_types": {}
+        },
+        "check_name": "Error Rate (24h)"
+      },
+      {
+        "status": "healthy",
+        "details": "0 stale campaigns, 34 stale prospects (>3 days)",
+        "metrics": {
+          "stale_campaigns": 0,
+          "stale_prospects": 34,
+          "stale_campaign_names": []
+        },
+        "check_name": "Stale Data"
+      }
+    ],
+    "ai_analysis": "System is generally healthy with stable database connectivity and zero error rates. However, there are concerning signs of low activity with no campaign executions in 24 hours, stuck queue items, and LinkedIn account connectivity issues that need attention.",
+    "recommendations": [
+      "Investigate and resolve the 1 stuck message queue item that has been overdue for over 1 hour to prevent queue backlog",
+      "Troubleshoot the Unipile/LinkedIn accounts connection issue to restore account monitoring capabilities",
+      "Review why no prospects have been processed in the last 24 hours - verify campaign configurations and scheduling",
+      "Clean up the 34 stale prospects (>3 days old) to improve data hygiene and system performance"
+    ],
+    "overall_status": "warning",
+    "duration_ms": 7413,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-12-01T07:00:58.840474+00:00"
+  },
+  {
+    "id": "2b822f83-60a9-4648-b839-468aa496a279",
+    "check_date": "2025-12-02T06:01:50.817+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "1 items overdue (scheduled >1h ago). Cron may be failing.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [
+          "ee51f466-f3eb-4a2c-b92f-b44497f5e785"
+        ],
+        "suggested_fix": "Check Netlify scheduled functions status and Netlify function logs",
+        "affected_records": 1
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "warning",
+        "details": "27 prospects stuck in transitional state for >3 days",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [
+          "a8253aae-5a4f-4670-8c26-284aebac034b",
+          "0fb6ad97-58d2-4d60-a1dc-0aa7572ba936",
+          "5565f572-057d-4c8d-b818-a1193200564a",
+          "153423d4-7c40-493a-b46c-dc6c799f4290",
+          "4f5121c6-bfe7-4b1b-86c0-20fc13f1a717",
+          "7d8ffb77-e50b-45cf-876d-ab4b83347c60",
+          "5d8f65ec-978e-49c3-b2e7-c3acd23ed84a",
+          "22cf834f-6fd0-44ea-94b7-247251ea5f39",
+          "0e3acc22-8708-4998-b85a-3a71a6024c03",
+          "3ce274fd-5a54-45c6-84a4-49b5e5deabd6"
+        ],
+        "suggested_fix": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','355026ca-394d-4436-bb31-1aa6d0a3a6de','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9')",
+        "affected_records": 27
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All follow-ups scheduled on different days",
+        "category": "messaging",
+        "check_name": "Same-Day Follow-up Check",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "System shows good overall health with no failed checks. However, 27 prospects are stuck in transitional states for over 3 days, indicating a workflow processing bottleneck that needs immediate attention to prevent campaign delays.",
+    "recommendations": [
+      "Execute the provided SQL fix to clear stuck prospects and restore campaign flow",
+      "Investigate root cause of workflow stalls - check for processing queue backlogs, failed background jobs, or API timeouts",
+      "Implement automated monitoring to detect stuck prospects within 24 hours instead of 3+ days",
+      "Review campaign processing pipeline for bottlenecks and add timeout handling",
+      "Set up alerts for transitional state duration thresholds to prevent future accumulation"
+    ],
+    "overall_status": "warning",
+    "duration_ms": 29790,
+    "fixes_proposed": [
+      {
+        "risk": "low",
+        "issue": "Stuck Prospects Detection",
+        "fix_type": "sql",
+        "fix_command": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','355026ca-394d-4436-bb31-1aa6d0a3a6de','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9');"
+      }
+    ],
+    "fixes_applied": [],
+    "created_at": "2025-12-02T06:01:50.922894+00:00"
+  },
+  {
+    "id": "2471dc7c-9786-4b2a-a5a7-65adf5cda0f1",
+    "check_date": "2025-12-02T06:01:51.743+00:00",
+    "checks": [
+      {
+        "status": "pass",
+        "details": "All queue-prospect statuses consistent",
+        "category": "consistency",
+        "check_name": "Queue-Prospect Status Consistency",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "No orphaned queue records",
+        "category": "database",
+        "check_name": "Orphaned Queue Records",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "1 items overdue (scheduled >1h ago). Cron may be failing.",
+        "category": "cron",
+        "check_name": "Cron Job Execution",
+        "sample_ids": [
+          "ee51f466-f3eb-4a2c-b92f-b44497f5e785"
+        ],
+        "suggested_fix": "Check Netlify scheduled functions status and Netlify function logs",
+        "affected_records": 1
+      },
+      {
+        "status": "pass",
+        "details": "All sent messages have Unipile confirmation",
+        "category": "messaging",
+        "check_name": "Unipile Message Sync",
+        "affected_records": 0
+      },
+      {
+        "status": "warning",
+        "details": "27 prospects stuck in transitional state for >3 days",
+        "category": "database",
+        "check_name": "Stuck Prospects Detection",
+        "sample_ids": [
+          "a8253aae-5a4f-4670-8c26-284aebac034b",
+          "0fb6ad97-58d2-4d60-a1dc-0aa7572ba936",
+          "5565f572-057d-4c8d-b818-a1193200564a",
+          "153423d4-7c40-493a-b46c-dc6c799f4290",
+          "4f5121c6-bfe7-4b1b-86c0-20fc13f1a717",
+          "7d8ffb77-e50b-45cf-876d-ab4b83347c60",
+          "5d8f65ec-978e-49c3-b2e7-c3acd23ed84a",
+          "22cf834f-6fd0-44ea-94b7-247251ea5f39",
+          "0e3acc22-8708-4998-b85a-3a71a6024c03",
+          "3ce274fd-5a54-45c6-84a4-49b5e5deabd6"
+        ],
+        "suggested_fix": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','355026ca-394d-4436-bb31-1aa6d0a3a6de','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9')",
+        "affected_records": 27
+      },
+      {
+        "status": "pass",
+        "details": "All campaign states consistent",
+        "category": "consistency",
+        "check_name": "Campaign State Consistency",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All accepted connections have follow-ups scheduled",
+        "category": "messaging",
+        "check_name": "Follow-up Scheduling",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All follow-ups scheduled on different days",
+        "category": "messaging",
+        "check_name": "Same-Day Follow-up Check",
+        "sample_ids": [],
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "Duplicate check requires RPC function",
+        "category": "database",
+        "check_name": "Duplicate Records",
+        "suggested_fix": "CREATE FUNCTION find_duplicate_prospects()"
+      },
+      {
+        "status": "pass",
+        "details": "All timestamps valid",
+        "category": "database",
+        "check_name": "Timestamp Anomalies",
+        "affected_records": 0
+      },
+      {
+        "status": "pass",
+        "details": "All 0 accounts healthy",
+        "category": "messaging",
+        "check_name": "LinkedIn Account Health",
+        "affected_records": 0
+      }
+    ],
+    "ai_analysis": "System shows good overall health with no failed checks. However, 27 prospects are stuck in transitional states for over 3 days, indicating a workflow processing bottleneck that needs immediate attention to prevent campaign delays.",
+    "recommendations": [
+      "Execute the provided SQL fix to clear stuck prospects and mark them as failed with timeout errors",
+      "Investigate the root cause of workflow stalls by examining processing logs and queue health for the past week",
+      "Implement automated monitoring to detect stuck prospects within 24 hours instead of 3+ days",
+      "Review and optimize the prospect processing pipeline to prevent future bottlenecks",
+      "Set up alerts for transitional state duration thresholds to enable proactive intervention"
+    ],
+    "overall_status": "warning",
+    "duration_ms": 39052,
+    "fixes_proposed": [
+      {
+        "risk": "low",
+        "issue": "Stuck Prospects Detection",
+        "fix_type": "sql",
+        "fix_command": "UPDATE campaign_prospects SET status = 'failed', error_message = 'Timed out' WHERE id IN ('a8253aae-5a4f-4670-8c26-284aebac034b','0fb6ad97-58d2-4d60-a1dc-0aa7572ba936','5565f572-057d-4c8d-b818-a1193200564a','153423d4-7c40-493a-b46c-dc6c799f4290','4f5121c6-bfe7-4b1b-86c0-20fc13f1a717','7d8ffb77-e50b-45cf-876d-ab4b83347c60','5d8f65ec-978e-49c3-b2e7-c3acd23ed84a','22cf834f-6fd0-44ea-94b7-247251ea5f39','0e3acc22-8708-4998-b85a-3a71a6024c03','3ce274fd-5a54-45c6-84a4-49b5e5deabd6','6c5668ae-51aa-459a-83f8-868920cf1b81','5cf94ca3-5583-4e61-9689-dba7f20513c6','232063ea-4807-4735-a512-5b192152da7d','76881a4f-aeca-4802-9718-2a83ffdd1155','2b686601-86bb-49a5-ad13-d05a19ee1809','2fdb1f79-e68a-4fb9-b46b-08afce663d77','d7f1b5ab-06a7-46c5-93a8-5d67bbe8fc0b','8ceb0c78-f976-4c8a-be9a-9065ccb01aad','a6cdf7e9-142d-4216-accf-01bcd96c5002','b189578a-5c39-4cbf-99e3-cfcc388e6934','880fcf7b-9ff0-41ab-b206-af47d7acd0bb','355026ca-394d-4436-bb31-1aa6d0a3a6de','0071ecad-b8ba-41d3-b053-910c5b24669d','ba1a47ea-d3d7-480f-887f-f1fe9b4ea557','a08aba17-3cb2-41f9-8d77-b8c19b7e705b','47a430fa-2b7d-41f3-ae12-e5f01bfe0e52','2632e453-d79d-4561-9a25-64a7f81445f9')"
+      }
+    ],
+    "fixes_applied": [],
+    "created_at": "2025-12-02T06:01:51.821313+00:00"
+  },
+  {
+    "id": "bc3e6da3-c791-4808-9e08-eead8e3301ab",
+    "check_date": "2025-12-02T07:01:12.032+00:00",
+    "checks": [
+      {
+        "status": "healthy",
+        "details": "Connected. Query latency: 124ms",
+        "metrics": {
+          "latency_ms": 124,
+          "workspace_count": 13
+        },
+        "check_name": "Database Connection"
+      },
+      {
+        "status": "healthy",
+        "details": "35 prospects processed. Success: 100.0%, Failures: 0.0%",
+        "metrics": {
+          "sent": 35,
+          "total": 35,
+          "failed": 0,
+          "failure_rate": "0.0",
+          "success_rate": "100.0"
+        },
+        "check_name": "Campaign Execution (24h)"
+      },
+      {
+        "status": "healthy",
+        "details": "1 stuck items (>1h overdue). 24h: 35 sent, 34 pending, 0 failed",
+        "metrics": {
+          "sent": 35,
+          "failed": 0,
+          "pending": 34,
+          "stuck_count": 1
+        },
+        "check_name": "Message Queue"
+      },
+      {
+        "status": "warning",
+        "details": "Could not check accounts: Unknown",
+        "check_name": "Unipile/LinkedIn Accounts"
+      },
+      {
+        "status": "healthy",
+        "details": "0 errors in last 24h",
+        "metrics": {
+          "error_count": 0,
+          "error_types": {}
+        },
+        "check_name": "Error Rate (24h)"
+      },
+      {
+        "status": "healthy",
+        "details": "0 stale campaigns, 27 stale prospects (>3 days)",
+        "metrics": {
+          "stale_campaigns": 0,
+          "stale_prospects": 27,
+          "stale_campaign_names": []
+        },
+        "check_name": "Stale Data"
+      }
+    ],
+    "ai_analysis": "System is operating well with 100% campaign success rate and no errors in the last 24 hours. However, there are connectivity issues with LinkedIn account monitoring and some minor queue management concerns that should be addressed.",
+    "recommendations": [
+      "Investigate and resolve the Unipile/LinkedIn accounts connectivity issue to restore account monitoring capabilities",
+      "Review and clear the 1 stuck message queue item that has been overdue for more than 1 hour",
+      "Consider implementing automated cleanup for the 27 stale prospects (>3 days old) to maintain data hygiene"
+    ],
+    "overall_status": "warning",
+    "duration_ms": 6573,
+    "fixes_proposed": [],
+    "fixes_applied": [],
+    "created_at": "2025-12-02T07:01:12.111343+00:00"
+  }
+]

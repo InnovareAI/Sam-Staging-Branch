@@ -1,0 +1,44 @@
+[
+  {
+    "id": "dabe2662-fa9e-42cc-8242-a067b266d181",
+    "workspace_id": "c3100bea-82a6-4365-b159-6581f1be9be3",
+    "period_start": "2025-11-22T21:23:17.658+00:00",
+    "period_end": "2025-11-29T21:23:17.658+00:00",
+    "metrics": {
+      "period": {
+        "end": "2025-11-29T21:23:17.658Z",
+        "start": "2025-11-22T21:23:17.658Z"
+      },
+      "trends": {
+        "reply_trend": "stable",
+        "volume_trend": "stable",
+        "acceptance_trend": "stable"
+      },
+      "campaigns": {
+        "total": 0,
+        "active": 0,
+        "paused": 0,
+        "completed": 0
+      },
+      "prospects": {
+        "total": 0,
+        "replied": 0,
+        "accepted": 0,
+        "contacted": 0,
+        "new_this_period": 0,
+        "positive_replies": 0
+      },
+      "performance": {
+        "reply_rate": 0,
+        "positive_rate": 0,
+        "acceptance_rate": 0,
+        "avg_time_to_reply": 0,
+        "avg_time_to_accept": 0
+      },
+      "workspace_id": "c3100bea-82a6-4365-b159-6581f1be9be3",
+      "workspace_name": "Asphericon"
+    },
+    "ai_insights": [],
+    "created_at": "2025-11-29T21:23:18.186+00:00"
+  }
+]

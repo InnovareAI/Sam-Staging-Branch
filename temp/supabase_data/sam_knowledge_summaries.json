@@ -1,0 +1,1898 @@
+[
+  {
+    "id": "64f49e7a-c53b-4b73-88c2-d6e85cce3741",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "552ee9f3-71a4-49d5-a176-1204687e881f",
+    "section_id": "icp",
+    "total_chunks": 1,
+    "total_tokens": 959,
+    "tags": [
+      "ICP",
+      "targeting",
+      "playbook"
+    ],
+    "quick_summary": "Defines the ideal customer profile for SAM AI including verticals, signals, and decision makers.",
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "SAM ICP Master Guide"
+    },
+    "sam_ready": true,
+    "created_at": "2025-09-30T06:03:59.122+00:00",
+    "updated_at": "2025-09-30T06:03:59.122+00:00"
+  },
+  {
+    "id": "97ce960c-3115-4776-9b3a-6cf6a351ab08",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "c6a1fdcd-69d9-4f2d-9448-96e579f7c89f",
+    "section_id": "products",
+    "total_chunks": 2,
+    "total_tokens": 1119,
+    "tags": [
+      "product",
+      "features",
+      "architecture"
+    ],
+    "quick_summary": "Explains SAM AI’s orchestrated agent stack, channels, and compliance posture.",
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "SAM Product Overview"
+    },
+    "sam_ready": true,
+    "created_at": "2025-09-30T06:04:00.416+00:00",
+    "updated_at": "2025-09-30T06:04:00.416+00:00"
+  },
+  {
+    "id": "dcb7fd2e-3ff3-48bc-9c69-19997a4f672f",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "9433b5fc-cd3f-4f92-a40b-793566881bf4",
+    "section_id": "messaging",
+    "total_chunks": 1,
+    "total_tokens": 859,
+    "tags": [
+      "messaging",
+      "linkedin",
+      "email"
+    ],
+    "quick_summary": "Provides the default LinkedIn + email outreach cadence and personalization levers.",
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "SAM Messaging Framework"
+    },
+    "sam_ready": true,
+    "created_at": "2025-09-30T06:04:01.087+00:00",
+    "updated_at": "2025-09-30T06:04:01.087+00:00"
+  },
+  {
+    "id": "ee0a0e76-08c5-4d04-b913-c8a472a028e2",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "b97fb5e1-b83c-42fe-a0dd-68d97a0c99d9",
+    "section_id": "objections",
+    "total_chunks": 1,
+    "total_tokens": 885,
+    "tags": [
+      "objections",
+      "sales",
+      "enablement"
+    ],
+    "quick_summary": "List of common buying objections with talk tracks and KB references.",
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "SAM Objection Handling Matrix"
+    },
+    "sam_ready": true,
+    "created_at": "2025-09-30T06:04:01.611+00:00",
+    "updated_at": "2025-09-30T06:04:01.611+00:00"
+  },
+  {
+    "id": "42613fa3-4eb2-4c87-963a-976738e6ab97",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "bba22e82-78d2-440c-8dea-d4340e8730c2",
+    "section_id": "pricing",
+    "total_chunks": 1,
+    "total_tokens": 846,
+    "tags": [
+      "pricing",
+      "roi",
+      "financial"
+    ],
+    "quick_summary": "Breaks down plan tiers, ROI math, and implementation effort.",
+    "metadata": {
+      "seedGroup": "sam-demo",
+      "displayTitle": "SAM Pricing & ROI Cheat Sheet"
+    },
+    "sam_ready": true,
+    "created_at": "2025-09-30T06:04:02.162+00:00",
+    "updated_at": "2025-09-30T06:04:02.162+00:00"
+  },
+  {
+    "id": "13e34b76-babf-4b0b-9b28-b1d2e61973d5",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "document_id": "db2464ff-ba23-4108-b09c-b9ac0a77df49",
+    "section_id": "products",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "InnovareAI",
+      "business growth",
+      "automation",
+      "AI solutions",
+      "workforce optimization",
+      "scalability",
+      "productivity",
+      "cost efficiency",
+      "digital transformation",
+      "business automation"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "artificial intelligence",
+        "business automation",
+        "scalability solutions",
+        "workforce optimization",
+        "growth strategies"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:06:40.072Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-16T17:06:41.695+00:00",
+    "updated_at": "2025-10-16T17:06:41.769635+00:00"
+  },
+  {
+    "id": "14c88323-ceb9-4b0d-a0b6-b7dce70077f5",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "8cb0c1a0-98bf-4602-9e99-164c428cdc2b",
+    "section_id": "messaging",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "messaging framework",
+      "conversion optimization",
+      "marketing communications",
+      "value proposition",
+      "customer messaging",
+      "conversion strategy",
+      "brand messaging",
+      "marketing framework",
+      "persuasive communication",
+      "customer engagement"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "messaging strategy",
+        "conversion rate optimization",
+        "value proposition development",
+        "customer communication",
+        "marketing frameworks"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:07:17.840Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-16T17:07:19.094+00:00",
+    "updated_at": "2025-10-16T17:07:19.162714+00:00"
+  },
+  {
+    "id": "599a7009-3b77-458a-be92-c66fad6a5c03",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "0a8f34ae-10b6-40b4-89f9-f989e23584d0",
+    "section_id": "messaging",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "messaging",
+      "templates",
+      "internal-communications",
+      "corporate-messaging",
+      "communication-guidelines",
+      "brand-voice",
+      "internal-use",
+      "standardization",
+      "messaging-framework"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "corporate communications",
+        "messaging templates",
+        "internal resources",
+        "brand consistency",
+        "communication standards"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:15:47.813Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-16T17:15:49.14+00:00",
+    "updated_at": "2025-10-16T17:15:49.2066+00:00"
+  },
+  {
+    "id": "3cdc1c45-fc64-4cb2-96e8-b99df784b627",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "85004884-fff0-4762-985c-3204dc3d602e",
+    "section_id": "buying-process",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "pricing",
+      "diagnostic",
+      "culture-shift",
+      "pricing-model",
+      "organizational-culture",
+      "assessment-tool",
+      "consulting-services",
+      "diagnostic-framework",
+      "pricing-strategy",
+      "culture-assessment"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "pricing-models",
+        "culture-diagnostics",
+        "organizational-assessment",
+        "service-pricing",
+        "consulting-packages"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:54:43.897Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-16T17:54:45.328+00:00",
+    "updated_at": "2025-10-16T17:54:45.435676+00:00"
+  },
+  {
+    "id": "51365fcc-59c6-4093-b8a1-7ba040985ef8",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "39b1963a-2511-4a4e-8d15-cd9a90064da7",
+    "section_id": "buying-process",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "buying-process",
+      "decision-making",
+      "framework",
+      "procurement",
+      "purchasing-strategy",
+      "stakeholder-analysis",
+      "evaluation-criteria",
+      "vendor-selection",
+      "business-process"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "buying-process",
+        "decision-frameworks",
+        "procurement-methodology",
+        "stakeholder-management",
+        "vendor-evaluation"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:55:06.361Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-16T17:55:07.782+00:00",
+    "updated_at": "2025-10-16T17:55:07.855702+00:00"
+  },
+  {
+    "id": "24d04bb3-e073-454c-ab6f-72ddbb40f810",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "28d1edfe-3022-469b-8144-2d5d5dec4b5d",
+    "section_id": "buying-process",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "buying-process",
+      "framework",
+      "sales-methodology",
+      "customer-journey",
+      "procurement",
+      "decision-making",
+      "sales-enablement",
+      "one-pager",
+      "reference-guide"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "buying-process",
+        "sales-framework",
+        "customer-decision-journey",
+        "sales-methodology",
+        "buyer-behavior"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:55:34.415Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-16T17:55:35.789+00:00",
+    "updated_at": "2025-10-16T17:55:35.872389+00:00"
+  },
+  {
+    "id": "71fa5135-cfb1-488f-9685-d299a972f6f1",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "590e8e9b-3bec-4333-9554-7ede06e763e8",
+    "section_id": "buying-process",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "company-overview",
+      "true-people-consulting",
+      "TPC",
+      "vendor-information",
+      "supplier-profile",
+      "consulting-services",
+      "business-partner",
+      "procurement",
+      "vendor-evaluation"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "vendor-management",
+        "consulting-services",
+        "supplier-evaluation",
+        "procurement-documentation",
+        "business-partnerships"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:56:02.533Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-16T17:56:04.147+00:00",
+    "updated_at": "2025-10-16T17:56:04.228606+00:00"
+  },
+  {
+    "id": "41b10ed4-bb86-49c2-85db-e65e6c27f7a7",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "ab79a280-83e6-40ef-b08d-96925c9a5d2a",
+    "section_id": "buying-process",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "facilitation",
+      "client-onboarding",
+      "service-overview",
+      "futureflow",
+      "methodology",
+      "one-pager",
+      "sales-collateral",
+      "client-facing"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "facilitation services",
+        "client education",
+        "sales process",
+        "service methodology",
+        "value proposition"
+      ],
+      "language": "en",
+      "complexity": "beginner",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:56:44.996Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-16T17:56:46.574+00:00",
+    "updated_at": "2025-10-16T17:56:46.641308+00:00"
+  },
+  {
+    "id": "b6f261cd-d914-46e3-8ddc-d16a115ed620",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "11a22320-5e51-4490-ad8d-9a5ebc3eb8f0",
+    "section_id": "buying-process",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "strategic-partnership",
+      "sprint-model",
+      "agile-methodology",
+      "collaboration",
+      "project-delivery",
+      "partnership-framework",
+      "iterative-development",
+      "vendor-engagement",
+      "procurement-strategy"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "strategic-partnerships",
+        "agile-sprints",
+        "vendor-management",
+        "procurement-methodology",
+        "collaborative-frameworks"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:57:07.268Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-16T17:57:08.793+00:00",
+    "updated_at": "2025-10-16T17:57:08.879388+00:00"
+  },
+  {
+    "id": "9bc557ab-5792-42f7-812a-d0eca2202f40",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "4ebbeaf9-3f16-4840-a7f6-b51cf556bd45",
+    "section_id": "buying-process",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "strategic-partnership",
+      "sprint-methodology",
+      "client-playbook",
+      "engagement-framework",
+      "project-delivery",
+      "collaboration-guide",
+      "agile-process",
+      "client-onboarding",
+      "partnership-model",
+      "sprint-planning"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "client partnerships",
+        "sprint methodology",
+        "agile delivery",
+        "engagement processes",
+        "project frameworks",
+        "collaborative workflows"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-16T17:57:29.433Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-16T17:57:30.74+00:00",
+    "updated_at": "2025-10-16T17:57:30.813201+00:00"
+  },
+  {
+    "id": "247bf49c-03eb-46f1-834e-ebe0c690e622",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "9ea2ecae-3299-4a8f-aa31-d3ba0c7a3af3",
+    "section_id": "company-info",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "brand-guidelines",
+      "visual-identity",
+      "corporate-branding",
+      "design-standards",
+      "brand-assets",
+      "marketing-materials",
+      "style-guide",
+      "brand-compliance",
+      "corporate-identity",
+      "design-system"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "brand-identity",
+        "visual-design",
+        "corporate-standards",
+        "marketing-guidelines",
+        "design-system",
+        "brand-compliance"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:14:57.509Z",
+      "business_value": "critical"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:14:59.012+00:00",
+    "updated_at": "2025-10-20T16:14:59.085731+00:00"
+  },
+  {
+    "id": "6cd417fa-0b40-418d-b620-60e1d1d276a9",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "1556facf-c069-473a-8721-821ac03d7e39",
+    "section_id": "company-info",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "company-overview",
+      "true-people-consulting",
+      "TPC",
+      "organizational-information",
+      "corporate-profile",
+      "consulting-services",
+      "company-introduction"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "company-profile",
+        "consulting-services",
+        "organizational-overview",
+        "business-information"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:20:22.336Z",
+      "business_value": "critical"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:20:24.069+00:00",
+    "updated_at": "2025-10-20T16:20:24.139962+00:00"
+  },
+  {
+    "id": "888bc240-dfc0-4ce8-84be-06316447454d",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "6c74b15a-999e-43c8-b75f-031288d8f5cd",
+    "section_id": "company-info",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "pricing",
+      "facilitation",
+      "FutureFlow",
+      "business model",
+      "service pricing",
+      "commercial",
+      "rates",
+      "pricing strategy",
+      "facilitation services",
+      "trademark"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "pricing strategy",
+        "facilitation services",
+        "commercial operations",
+        "service delivery",
+        "business model"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:20:45.736Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:20:47.296+00:00",
+    "updated_at": "2025-10-20T16:20:47.367373+00:00"
+  },
+  {
+    "id": "c9f324c0-702c-4615-9daf-16c73583c648",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "f406998c-c70f-48fc-ad42-ea36a14c8b84",
+    "section_id": "competition",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "competitive-intelligence",
+      "sales-enablement",
+      "battlecards",
+      "competitor-analysis",
+      "objection-handling",
+      "win-strategies",
+      "market-positioning",
+      "sales-tools",
+      "competitive-advantage",
+      "product-comparison"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "competitive-positioning",
+        "sales-strategy",
+        "market-intelligence",
+        "value-proposition",
+        "competitor-weaknesses",
+        "differentiation-strategy"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:21:56.016Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:21:57.546+00:00",
+    "updated_at": "2025-10-20T16:21:57.614695+00:00"
+  },
+  {
+    "id": "f7d2aaf7-f257-4312-805b-b424bb62ca0f",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "f3cdf144-a594-47fc-81a4-447e790ac7d2",
+    "section_id": "competition",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "market analysis",
+      "competitive intelligence",
+      "executive summary",
+      "market research",
+      "competitive landscape",
+      "strategic analysis",
+      "market trends",
+      "competitor insights",
+      "business intelligence",
+      "market positioning"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "competitive analysis",
+        "market dynamics",
+        "strategic positioning",
+        "market intelligence",
+        "competitor benchmarking"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:22:15.257Z",
+      "business_value": "critical"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:22:16.933+00:00",
+    "updated_at": "2025-10-20T16:22:17.006078+00:00"
+  },
+  {
+    "id": "1135a246-5b00-45f3-8425-e1df7027f954",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "1050bc75-5c27-4840-9e61-069d528eb4d0",
+    "section_id": "competition",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "competitive-analysis",
+      "market-landscape",
+      "competitor-positioning",
+      "market-research",
+      "strategic-intelligence",
+      "competitive-advantage",
+      "market-dynamics",
+      "industry-analysis"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "competitive-positioning",
+        "market-analysis",
+        "competitor-intelligence",
+        "strategic-planning",
+        "market-dynamics"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:22:33.881Z",
+      "business_value": "critical"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:22:35.476+00:00",
+    "updated_at": "2025-10-20T16:22:35.589389+00:00"
+  },
+  {
+    "id": "4d856d71-6328-4787-806e-158e0d00aa8b",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "80ca650b-bb62-4255-99f2-db7155a4dbda",
+    "section_id": "competition",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "SWOT analysis",
+      "competitive analysis",
+      "strategic planning",
+      "market positioning",
+      "business strategy",
+      "strengths",
+      "weaknesses",
+      "opportunities",
+      "threats",
+      "competitor intelligence"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "competitive strategy",
+        "market analysis",
+        "strategic planning",
+        "business assessment",
+        "competitive positioning"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:22:50.894Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:22:52.442+00:00",
+    "updated_at": "2025-10-20T16:22:52.526757+00:00"
+  },
+  {
+    "id": "78aa3282-5785-48ff-a210-e8d1456da099",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "e968693f-5c15-4b05-aaa5-82f55617f4f2",
+    "section_id": "competition",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "win-loss-analysis",
+      "competitive-intelligence",
+      "sales-enablement",
+      "deal-analysis",
+      "competitive-strategy",
+      "customer-feedback",
+      "sales-methodology",
+      "market-positioning",
+      "competitor-analysis",
+      "revenue-optimization"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "competitive-analysis",
+        "sales-operations",
+        "deal-review",
+        "market-intelligence",
+        "performance-improvement"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:23:09.865Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:23:11.637+00:00",
+    "updated_at": "2025-10-20T16:23:11.712325+00:00"
+  },
+  {
+    "id": "bf6c736a-618b-4737-9985-fb7d276f9a23",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "b3166ade-c347-4592-819f-c8b84eb41168",
+    "section_id": "compliance",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "regulatory compliance",
+      "compliance overview",
+      "regulatory framework",
+      "compliance requirements",
+      "governance",
+      "risk management",
+      "regulatory standards",
+      "compliance policies"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "regulatory compliance",
+        "compliance frameworks",
+        "governance standards",
+        "risk mitigation",
+        "regulatory requirements"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:23:54.412Z",
+      "business_value": "critical"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:23:55.835+00:00",
+    "updated_at": "2025-10-20T16:23:55.902311+00:00"
+  },
+  {
+    "id": "558ab8b2-cc72-4756-a5e9-e4a18d5c73de",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "2b0ada67-94a8-44bc-8106-32a911bec8e0",
+    "section_id": "compliance",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "AI compliance",
+      "TPC",
+      "regulatory requirements",
+      "artificial intelligence",
+      "governance",
+      "risk management",
+      "AI ethics",
+      "compliance framework",
+      "AI regulations",
+      "policy guidelines"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "AI governance",
+        "regulatory compliance",
+        "risk assessment",
+        "ethical AI",
+        "compliance monitoring",
+        "policy frameworks"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:24:13.815Z",
+      "business_value": "critical"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:24:15.348+00:00",
+    "updated_at": "2025-10-20T16:24:15.41824+00:00"
+  },
+  {
+    "id": "8decc3ad-d0fa-4ff4-a6bb-a7df3018bda5",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "db9e7ec3-77f5-421e-9c47-9bb09464f5bd",
+    "section_id": "general",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "client_onboarding",
+      "welcome_guide",
+      "orientation",
+      "new_client",
+      "getting_started",
+      "client_relations",
+      "onboarding_process",
+      "client_experience",
+      "introduction"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "client_onboarding",
+        "welcome_procedures",
+        "orientation_materials",
+        "client_communication",
+        "service_introduction"
+      ],
+      "language": "en",
+      "complexity": "beginner",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:50:37.153Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:50:38.769+00:00",
+    "updated_at": "2025-10-20T16:50:38.839132+00:00"
+  },
+  {
+    "id": "09381b94-3833-4704-994f-fc7b04b2a300",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "ca938cf8-f24c-4f27-8d0c-781da554e5c0",
+    "section_id": "general",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "ideal_client_profile",
+      "market_intelligence",
+      "client_research",
+      "target_audience",
+      "competitive_analysis",
+      "internal_documentation",
+      "strategic_planning",
+      "customer_insights",
+      "market_research",
+      "business_development"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "client_profiling",
+        "market_analysis",
+        "competitive_intelligence",
+        "business_strategy",
+        "target_market_identification"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:51:43.570Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:51:45.343+00:00",
+    "updated_at": "2025-10-20T16:51:45.422516+00:00"
+  },
+  {
+    "id": "21e182d4-e137-4d68-ba1d-86e973dbb00b",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "fbd2ecd2-b151-43ab-a584-46489e895ee6",
+    "section_id": "objections",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "objection_handling",
+      "FAQ",
+      "role_based",
+      "sales_enablement",
+      "customer_communication",
+      "framework",
+      "response_templates",
+      "stakeholder_management",
+      "sales_methodology",
+      "conversation_guide"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "objection_handling",
+        "sales_methodology",
+        "stakeholder_communication",
+        "FAQ_management",
+        "role_based_selling"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-20T16:52:05.882Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-20T16:52:07.482+00:00",
+    "updated_at": "2025-10-20T16:52:07.557534+00:00"
+  },
+  {
+    "id": "fe73688d-daae-4936-ba36-d5fc26eaeea1",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "e6038a93-b1da-4a7c-abcb-d1852ae048ac",
+    "section_id": "company-info",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "true-people-consulting",
+      "company-update",
+      "consulting",
+      "company-information"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "consulting",
+        "company-updates"
+      ],
+      "language": "unknown",
+      "complexity": "unknown",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:30:34.619Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:30:36.042+00:00",
+    "updated_at": "2025-10-21T13:30:36.12422+00:00"
+  },
+  {
+    "id": "52f81f08-04cb-4735-a41e-89b6e8b928cc",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "04a73538-13a2-4755-b540-42c44339c45f",
+    "section_id": "messaging",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "messaging templates",
+      "internal communications",
+      "corporate messaging",
+      "communication guidelines",
+      "brand voice",
+      "template library",
+      "internal use",
+      "standardized messaging"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "internal communications",
+        "messaging templates",
+        "communication standards",
+        "corporate guidelines",
+        "template management"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:33:16.038Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:33:17.497+00:00",
+    "updated_at": "2025-10-21T13:33:17.575986+00:00"
+  },
+  {
+    "id": "f528b0c1-ead6-44dd-b4aa-99d93c75e731",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "fc1ef571-da15-4a68-9e8b-856d3b4da6a8",
+    "section_id": "messaging",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "messaging",
+      "conversion",
+      "framework",
+      "marketing",
+      "communication",
+      "customer-engagement",
+      "value-proposition",
+      "copywriting",
+      "conversion-optimization",
+      "brand-messaging"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "messaging strategy",
+        "conversion optimization",
+        "customer communication",
+        "value proposition development",
+        "marketing frameworks"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:33:39.304Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:33:40.591+00:00",
+    "updated_at": "2025-10-21T13:33:40.660121+00:00"
+  },
+  {
+    "id": "ea1aee97-0f3b-4191-b124-4637c30d07c0",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "a54f9c88-0fd1-4528-854c-e90d90071ab5",
+    "section_id": "personas",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "ideal_client_profile",
+      "market_intelligence",
+      "customer_personas",
+      "target_audience",
+      "market_research",
+      "client_segmentation",
+      "competitive_intelligence",
+      "internal_documentation",
+      "strategic_planning",
+      "customer_insights"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "ideal_customer_profiles",
+        "market_segmentation",
+        "competitive_analysis",
+        "customer_intelligence",
+        "business_strategy"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:35:50.557Z",
+      "business_value": "critical"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:36:01.799+00:00",
+    "updated_at": "2025-10-21T13:36:01.86906+00:00"
+  },
+  {
+    "id": "345f4cb9-b6c8-47d9-8447-91d5514b1316",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "803fb941-fe2b-46d5-8844-d14e2a3cefcf",
+    "section_id": "pricing",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "facilitation",
+      "client-facing",
+      "service-offering",
+      "FutureFlow",
+      "one-pager",
+      "sales-material",
+      "pricing-document",
+      "professional-services"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "facilitation services",
+        "service pricing",
+        "client engagement",
+        "professional services",
+        "sales enablement"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:39:21.751Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:39:23.434+00:00",
+    "updated_at": "2025-10-21T13:39:23.509176+00:00"
+  },
+  {
+    "id": "19de12e1-740f-4fcf-b978-82f3ef6fff67",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "60756384-cf06-4b02-8a68-63828c59974f",
+    "section_id": "pricing",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "strategic partnership",
+      "sprint model",
+      "agile methodology",
+      "partnership framework",
+      "project delivery",
+      "pricing model",
+      "engagement model",
+      "collaboration framework"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "sprint methodology",
+        "partnership models",
+        "pricing frameworks",
+        "agile delivery",
+        "engagement structures"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:39:54.563Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:39:55.936+00:00",
+    "updated_at": "2025-10-21T13:39:56.013182+00:00"
+  },
+  {
+    "id": "530aa8bb-2871-489d-9251-04d4d0163ed5",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "c0fbb95e-40c0-4bdf-8c23-17dae7e8cf31",
+    "section_id": "pricing",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "pricing",
+      "diagnostic",
+      "culture-shift",
+      "pricing-model",
+      "organizational-culture",
+      "assessment",
+      "consulting-services",
+      "business-model",
+      "revenue-structure"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "pricing strategy",
+        "organizational diagnostics",
+        "culture assessment",
+        "service packaging",
+        "value-based pricing"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:40:16.614Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:40:17.897+00:00",
+    "updated_at": "2025-10-21T13:40:17.978523+00:00"
+  },
+  {
+    "id": "cb563423-00e7-44b5-b296-3046568e3905",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "f32e803d-2a80-4484-a95d-186782cddf46",
+    "section_id": "pricing",
+    "total_chunks": 1,
+    "total_tokens": 639,
+    "tags": [
+      "market analysis",
+      "ROI",
+      "return on investment",
+      "pricing strategy",
+      "financial analysis",
+      "market research",
+      "business case",
+      "value proposition",
+      "competitive analysis",
+      "investment justification"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "market analysis",
+        "ROI calculation",
+        "pricing economics",
+        "competitive positioning",
+        "financial modeling",
+        "value assessment"
+      ],
+      "language": "en",
+      "complexity": "advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:46:41.292Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:46:42.706+00:00",
+    "updated_at": "2025-10-21T13:46:42.791634+00:00"
+  },
+  {
+    "id": "b03c5ef5-e2b7-4956-9c4b-9a14a881eb77",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "ca6275cc-14a9-4b32-b900-3fe4f9610bb7",
+    "section_id": "company-info",
+    "total_chunks": 57,
+    "total_tokens": 45263,
+    "tags": [
+      "consulting",
+      "organizational culture",
+      "leadership development",
+      "change management",
+      "strategic planning",
+      "future of work",
+      "human-centered design",
+      "organizational development",
+      "culture transformation",
+      "executive facilitation"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "leadership development",
+        "strategic consulting",
+        "change management",
+        "future of work",
+        "systems thinking",
+        "executive coaching"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:47:11.412Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:47:18.359+00:00",
+    "updated_at": "2025-10-21T13:47:18.439809+00:00"
+  },
+  {
+    "id": "12513770-f65b-408b-b2ba-5d9dd078296c",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "df43ae17-13d5-4ce5-9901-be76d3f79945",
+    "section_id": "company-info",
+    "total_chunks": 81,
+    "total_tokens": 64840,
+    "tags": [
+      "artificial-intelligence",
+      "workplace-culture",
+      "leadership-strategy",
+      "organizational-development",
+      "future-of-work",
+      "employee-engagement",
+      "digital-transformation",
+      "human-resources",
+      "change-management",
+      "generational-workforce",
+      "cultural-health",
+      "business-strategy"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "organizational-culture",
+        "ai-strategy",
+        "leadership-development",
+        "workforce-transformation",
+        "employee-engagement",
+        "generational-dynamics"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:47:43.455Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:47:52.639+00:00",
+    "updated_at": "2025-10-21T13:47:52.721463+00:00"
+  },
+  {
+    "id": "0e449ea1-a18c-471f-8069-40f07c9ff2d3",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "d0ab24a5-26de-49f7-9a71-17ab72a4e84e",
+    "section_id": "company-info",
+    "total_chunks": 87,
+    "total_tokens": 69250,
+    "tags": [
+      "workplace-transformation",
+      "generational-workforce",
+      "future-of-work",
+      "organizational-culture",
+      "employee-engagement",
+      "workplace-renaissance",
+      "gen-z-millennials",
+      "leadership-evolution",
+      "purpose-driven-work",
+      "cultural-intelligence",
+      "ai-workplace-integration",
+      "employee-dignity",
+      "flexible-work",
+      "4-day-workweek",
+      "creator-economy"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "workplace culture",
+        "generational workforce dynamics",
+        "leadership transformation",
+        "organizational change",
+        "future of work",
+        "employee experience",
+        "cultural intelligence",
+        "purpose-driven business"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:48:16.982Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:48:25.666+00:00",
+    "updated_at": "2025-10-21T13:48:25.74469+00:00"
+  },
+  {
+    "id": "d1f58cb2-6bcb-4320-9d29-23f9a3f142d6",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "5f4e5444-02f7-464e-a7dc-c109d034d222",
+    "section_id": "company-info",
+    "total_chunks": 109,
+    "total_tokens": 86972,
+    "tags": [
+      "burnout",
+      "workplace-culture",
+      "leadership",
+      "employee-wellbeing",
+      "organizational-health",
+      "mental-health",
+      "work-life-balance",
+      "cultural-transformation",
+      "human-centered-design",
+      "systemic-change",
+      "DEI",
+      "future-of-work",
+      "psychological-safety",
+      "personal-narrative",
+      "organizational-development"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "burnout",
+        "workplace culture",
+        "organizational health",
+        "leadership development",
+        "employee wellbeing",
+        "systemic change",
+        "cultural transformation",
+        "DEI",
+        "psychological safety",
+        "future of work"
+      ],
+      "language": "en",
+      "complexity": "intermediate-advanced",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:49:03.609Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:49:13.384+00:00",
+    "updated_at": "2025-10-21T13:49:13.473442+00:00"
+  },
+  {
+    "id": "abe9797e-dfd0-4365-b606-6b0aced87817",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "17f64e98-6ba8-45ae-bd14-935c138d5df1",
+    "section_id": "company-info",
+    "total_chunks": 87,
+    "total_tokens": 69461,
+    "tags": [
+      "organizational-culture",
+      "consulting-industry",
+      "workplace-ethics",
+      "corporate-accountability",
+      "AI-ethics",
+      "psychological-safety",
+      "leadership-integrity",
+      "cultural-transformation",
+      "deloitte-scandal",
+      "workplace-renaissance",
+      "consulting-failures",
+      "corporate-values",
+      "integrity-systems",
+      "cultural-infrastructure"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "consulting industry ethics",
+        "AI governance",
+        "workplace transformation",
+        "corporate accountability",
+        "leadership practices"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:49:54.242Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:50:02.662+00:00",
+    "updated_at": "2025-10-21T13:50:02.75427+00:00"
+  },
+  {
+    "id": "920f4c8f-07c4-4b6a-bd56-1f21c4799187",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "d68d9871-9125-412e-b9ac-5adb9dc3c15c",
+    "section_id": "company-info",
+    "total_chunks": 69,
+    "total_tokens": 55214,
+    "tags": [
+      "leadership",
+      "organizational-culture",
+      "employee-retention",
+      "workplace-trust",
+      "accountability",
+      "future-of-work",
+      "generational-workforce",
+      "cultural-health",
+      "leadership-development",
+      "employee-engagement"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "leadership philosophy",
+        "organizational culture",
+        "employee retention strategies",
+        "generational workforce dynamics",
+        "workplace accountability",
+        "trust in leadership",
+        "cultural health metrics"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:50:26.684Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:50:33.412+00:00",
+    "updated_at": "2025-10-21T13:50:33.491057+00:00"
+  },
+  {
+    "id": "402c5d13-ba89-4fd4-9bb0-92dfb8968a98",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "a17ed9c4-2d88-4f03-841b-c3d16378a09b",
+    "section_id": "company-info",
+    "total_chunks": 72,
+    "total_tokens": 57715,
+    "tags": [
+      "return-to-office",
+      "remote-work",
+      "workplace-culture",
+      "employee-engagement",
+      "organizational-health",
+      "leadership-strategy",
+      "work-flexibility",
+      "cultural-transformation",
+      "future-of-work",
+      "employee-wellbeing",
+      "productivity",
+      "trust-building",
+      "workplace-policy"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "workplace culture",
+        "remote work policy",
+        "employee engagement",
+        "organizational leadership",
+        "cultural transformation",
+        "work flexibility",
+        "productivity research"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:51:00.668Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:51:07.623+00:00",
+    "updated_at": "2025-10-21T13:51:07.727882+00:00"
+  },
+  {
+    "id": "307a93c0-59d4-4eb6-b04c-edc2d96273b2",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "8405ea31-7222-46e7-aefa-34a9f019a213",
+    "section_id": "company-info",
+    "total_chunks": 96,
+    "total_tokens": 77120,
+    "tags": [
+      "organizational culture",
+      "workplace culture",
+      "leadership",
+      "AI transformation",
+      "employee wellbeing",
+      "psychological safety",
+      "cultural health",
+      "change management",
+      "future of work",
+      "health equity",
+      "systemic bias",
+      "employee engagement",
+      "toxic workplace",
+      "cultural transformation",
+      "curiosity in leadership"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "leadership development",
+        "AI readiness",
+        "workplace transformation",
+        "employee experience",
+        "cultural health",
+        "psychological safety",
+        "systemic bias",
+        "change readiness"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:51:36.620Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:51:45.042+00:00",
+    "updated_at": "2025-10-21T13:51:45.129258+00:00"
+  },
+  {
+    "id": "5c112e3c-607a-44b7-b355-2a890e191397",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "9c197f1a-9281-42a7-b1cf-5230cac464ec",
+    "section_id": "company-info",
+    "total_chunks": 88,
+    "total_tokens": 70319,
+    "tags": [
+      "workplace-culture",
+      "leadership-development",
+      "future-of-work",
+      "organizational-transformation",
+      "employee-wellbeing",
+      "psychological-safety",
+      "workplace-renaissance",
+      "cultural-strategy",
+      "burnout-prevention",
+      "human-centered-leadership",
+      "workplace-trends-2030",
+      "organizational-culture",
+      "trust-building",
+      "remote-work",
+      "creator-economy"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "workplace culture transformation",
+        "leadership philosophy",
+        "organizational psychology",
+        "future work trends",
+        "employee engagement",
+        "cultural intelligence",
+        "business strategy"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:52:15.212Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:52:23.742+00:00",
+    "updated_at": "2025-10-21T13:52:23.819181+00:00"
+  },
+  {
+    "id": "15b7ced1-9f72-45f6-90d9-54f0b2f9be39",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "639742b2-b256-403b-b393-6e241d2b7779",
+    "section_id": "company-info",
+    "total_chunks": 85,
+    "total_tokens": 67616,
+    "tags": [
+      "health equity",
+      "healthcare access",
+      "social determinants of health",
+      "health disparities",
+      "DEI in healthcare",
+      "Medicaid",
+      "food insecurity",
+      "systemic inequality",
+      "healthcare policy",
+      "advocacy",
+      "personal narrative",
+      "immigrant experience",
+      "working-class health",
+      "maternal mortality",
+      "global health crisis"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "health equity",
+        "healthcare policy",
+        "social justice",
+        "DEI initiatives",
+        "immigrant experience",
+        "systemic inequality"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:52:48.912Z",
+      "business_value": "low"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:52:56.128+00:00",
+    "updated_at": "2025-10-21T13:52:56.216702+00:00"
+  },
+  {
+    "id": "de2407c4-b674-490b-b097-d281c230dbee",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "e134a0ca-93d4-429f-b5a1-97779dced99a",
+    "section_id": "company-info",
+    "total_chunks": 76,
+    "total_tokens": 60318,
+    "tags": [
+      "leadership",
+      "organizational culture",
+      "employee engagement",
+      "psychological safety",
+      "authentic leadership",
+      "compassionate leadership",
+      "accountability",
+      "trust building",
+      "team performance",
+      "human-centered strategy"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "leadership styles",
+        "organizational psychology",
+        "team dynamics",
+        "workplace culture",
+        "management best practices",
+        "employee wellbeing"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:53:24.806Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:53:32.776+00:00",
+    "updated_at": "2025-10-21T13:53:32.859633+00:00"
+  },
+  {
+    "id": "d3455bb5-662c-4a0c-ba05-e4e2ffe2c771",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "000f3e9e-c21e-454e-86b9-8e3de57a0482",
+    "section_id": "company-info",
+    "total_chunks": 74,
+    "total_tokens": 58950,
+    "tags": [
+      "workplace culture",
+      "leadership",
+      "fear-based management",
+      "employee wellbeing",
+      "organizational psychology",
+      "burnout",
+      "toxic workplace",
+      "employee retention",
+      "generational workforce",
+      "workplace transparency",
+      "human sustainability",
+      "performance management",
+      "emotional intelligence",
+      "workplace stress"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "workplace culture transformation",
+        "leadership philosophy",
+        "employee mental health",
+        "generational workforce dynamics",
+        "organizational transparency",
+        "sustainable performance"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:53:57.838Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:54:06.247+00:00",
+    "updated_at": "2025-10-21T13:54:06.328847+00:00"
+  },
+  {
+    "id": "d4acce91-0ba2-4d4c-a965-17d16019e5f5",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "b3f672d8-43db-497e-bfe3-f70d1950b6fa",
+    "section_id": "company-info",
+    "total_chunks": 79,
+    "total_tokens": 62931,
+    "tags": [
+      "workplace culture",
+      "leadership",
+      "employee engagement",
+      "organizational culture",
+      "cultural strategy",
+      "psychological safety",
+      "employee disengagement",
+      "leadership development",
+      "organizational health",
+      "culture transformation",
+      "diversity and inclusion",
+      "systemic bias",
+      "workplace equity"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "leadership effectiveness",
+        "employee engagement",
+        "workplace equity",
+        "cultural transformation",
+        "psychological safety",
+        "business performance"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:54:30.685Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:54:41.329+00:00",
+    "updated_at": "2025-10-21T13:54:41.411813+00:00"
+  },
+  {
+    "id": "f09eb987-0e11-4edf-b6d7-7da48827c819",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "562f5287-61a9-4aaf-982b-c620ab1532f0",
+    "section_id": "company-info",
+    "total_chunks": 74,
+    "total_tokens": 58880,
+    "tags": [
+      "organizational culture",
+      "leadership development",
+      "workplace culture",
+      "cultural health",
+      "strategic alignment",
+      "psychological safety",
+      "change management",
+      "performance management",
+      "employee engagement",
+      "organizational effectiveness"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "leadership frameworks",
+        "workplace transformation",
+        "strategic execution",
+        "employee experience"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:55:05.096Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:55:12.279+00:00",
+    "updated_at": "2025-10-21T13:55:12.368047+00:00"
+  },
+  {
+    "id": "f5d6c481-4291-438d-be28-39514127ac2b",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "document_id": "8c1707e8-ddeb-454f-8f82-7943c9221433",
+    "section_id": "company-info",
+    "total_chunks": 78,
+    "total_tokens": 62079,
+    "tags": [
+      "workplace culture",
+      "psychological safety",
+      "toxic culture",
+      "organizational dysfunction",
+      "leadership accountability",
+      "employee wellbeing",
+      "trust erosion",
+      "workplace silence",
+      "cultural repair",
+      "organizational health"
+    ],
+    "quick_summary": "Document processed and ready for SAM conversations",
+    "metadata": {
+      "topics": [
+        "organizational culture",
+        "psychological safety",
+        "leadership ethics",
+        "workplace dysfunction",
+        "cultural transformation",
+        "employee trust",
+        "organizational accountability"
+      ],
+      "language": "en",
+      "complexity": "intermediate",
+      "model_used": "anthropic/claude-sonnet-4.5",
+      "processed_at": "2025-10-21T13:55:36.310Z",
+      "business_value": "high"
+    },
+    "sam_ready": true,
+    "created_at": "2025-10-21T13:55:43.346+00:00",
+    "updated_at": "2025-10-21T13:55:43.425066+00:00"
+  }
+]

@@ -1,0 +1,390 @@
+[
+  {
+    "id": "c73f80af-4ef8-4a35-8911-8e44aa8cc95f",
+    "user_id": "6a927440-ebe1-49b4-ae5e-fbee5d27944d",
+    "unipile_account_id": "oOBepNc0QZauax2xo9aIMw",
+    "platform": "MAIL",
+    "account_name": "stan@cyberinsyts.com",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-11-23T02:56:55.170394+00:00",
+    "updated_at": "2025-11-23T02:56:55.170394+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "5b81ee67-4d41-4997-b5a4-e1432e060d12",
+    "account_metadata": {
+      "id": "oOBepNc0QZauax2xo9aIMw",
+      "name": "stan@cyberinsyts.com",
+      "type": "MAIL",
+      "groups": [],
+      "object": "Account",
+      "sources": [
+        {
+          "id": "oOBepNc0QZauax2xo9aIMw_MAILS",
+          "status": "OK"
+        }
+      ],
+      "created_at": "2025-11-23T02:56:40.974Z",
+      "connection_params": {
+        "mail": {
+          "imap_host": "imap.hostinger.com",
+          "imap_port": 993,
+          "imap_user": "stan@cyberinsyts.com",
+          "smtp_host": "smtp.hostinger.com",
+          "smtp_port": 465,
+          "smtp_user": "stan@cyberinsyts.com",
+          "test_smtp": true,
+          "imap_encryption": "default"
+        }
+      }
+    }
+  },
+  {
+    "id": "c49a0a9b-6cc6-4e9c-8cd8-b8df99675fb4",
+    "user_id": "a4c3ff4d-ac9c-4e84-9b35-967ce6ff8189",
+    "unipile_account_id": "rV0czB_nTLC8KSRb69_zRg",
+    "platform": "GOOGLE",
+    "account_name": "jf@innovareai.com",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-11-24T20:35:49.28663+00:00",
+    "updated_at": "2025-11-24T20:35:49.28663+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "cd57981a-e63b-401c-bde1-ac71752c2293",
+    "account_metadata": {
+      "id": "rV0czB_nTLC8KSRb69_zRg",
+      "name": "jf@innovareai.com",
+      "type": "GOOGLE_OAUTH",
+      "groups": [],
+      "object": "Account",
+      "sources": [
+        {
+          "id": "rV0czB_nTLC8KSRb69_zRg_MAILS",
+          "status": "OK"
+        }
+      ],
+      "created_at": "2025-11-24T20:35:23.614Z",
+      "connection_params": {
+        "mail": {
+          "id": "jf@innovareai.com",
+          "username": "jf@innovareai.com"
+        },
+        "calendar": {
+          "id": "jf@innovareai.com",
+          "username": "jf@innovareai.com"
+        }
+      }
+    }
+  },
+  {
+    "id": "8ea1a4d7-c6e5-4668-a439-9427c9221231",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "unipile_account_id": "-Y6jm1HIRXe3zwDkUz4Paw",
+    "platform": "GOOGLE",
+    "account_name": "tl@innovareai.com",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "disconnected",
+    "created_at": "2025-11-15T11:10:41.475843+00:00",
+    "updated_at": "2025-12-17T08:21:27.165+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "account_metadata": {
+      "id": "-Y6jm1HIRXe3zwDkUz4Paw",
+      "name": "tl@innovareai.com",
+      "type": "GOOGLE_OAUTH",
+      "groups": [],
+      "object": "Account",
+      "sources": [
+        {
+          "id": "-Y6jm1HIRXe3zwDkUz4Paw_MAILS",
+          "status": "OK"
+        }
+      ],
+      "created_at": "2025-11-15T11:10:27.375Z",
+      "connection_params": {
+        "mail": {
+          "id": "tl@innovareai.com",
+          "username": "tl@innovareai.com"
+        },
+        "calendar": {
+          "id": "tl@innovareai.com",
+          "username": "tl@innovareai.com"
+        }
+      }
+    }
+  },
+  {
+    "id": "a2c571ef-77e0-4e4d-9488-39594c5b04f6",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "unipile_account_id": "8n8TtEvoQBuhUNr84vICWw",
+    "platform": "MAIL",
+    "account_name": "tvonlinz@icloud.com",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "disconnected",
+    "created_at": "2025-11-22T22:11:25.167758+00:00",
+    "updated_at": "2025-12-17T08:21:27.211+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "account_metadata": {
+      "id": "8n8TtEvoQBuhUNr84vICWw",
+      "name": "tvonlinz@icloud.com",
+      "type": "MAIL",
+      "groups": [],
+      "object": "Account",
+      "sources": [
+        {
+          "id": "8n8TtEvoQBuhUNr84vICWw_MAILS",
+          "status": "OK"
+        }
+      ],
+      "created_at": "2025-11-22T22:11:10.864Z",
+      "connection_params": {
+        "mail": {
+          "imap_host": "imap.mail.me.com",
+          "imap_port": 993,
+          "imap_user": "tvonlinz@icloud.com",
+          "smtp_host": "smtp.mail.me.com",
+          "smtp_port": 587,
+          "smtp_user": "tvonlinz@icloud.com",
+          "test_smtp": true,
+          "imap_encryption": "default"
+        }
+      }
+    }
+  },
+  {
+    "id": "102ec481-d08a-4b84-967e-fa8c92d453d8",
+    "user_id": "1949f7fc-f354-47ba-98f1-ae0a7d3b1d5d",
+    "unipile_account_id": "ymtTx4xVQ6OVUFk83ctwtA",
+    "platform": "LINKEDIN",
+    "account_name": "Irish Maguad",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-11-18T13:54:24.384156+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "96c03b38-a2f4-40de-9e16-43098599e1d4",
+    "account_metadata": {}
+  },
+  {
+    "id": "9f53f2e4-93a5-4dd3-a968-c35df791cca0",
+    "user_id": "fb748f2e-dec1-496c-9470-6be1c23b7dfd",
+    "unipile_account_id": "I0XZxvzfSRuCL8nuFoUEuw",
+    "platform": "LINKEDIN",
+    "account_name": "Rony Chatterjee, PhD",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-12-17T07:22:05.632849+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "8a720935-db68-43e2-b16d-34383ec6c3e8",
+    "account_metadata": {}
+  },
+  {
+    "id": "1e52138a-7f3e-4e97-9e56-40a4c3d08d7a",
+    "user_id": "471bcb15-cc53-44f3-b5d2-4b97bb7a8b2f",
+    "unipile_account_id": "aroiwOeQQo2S8_-FqLjzNw",
+    "platform": "LINKEDIN",
+    "account_name": "Michelle Angelica  Gestuveo ",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-11-17T15:02:26.800302+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "04666209-fce8-4d71-8eaf-01278edfc73b",
+    "account_metadata": {}
+  },
+  {
+    "id": "386feaac-21ca-45c9-b098-126bf49baa86",
+    "user_id": "51a05157-0aa7-42b5-a6e5-acf43d436a4b",
+    "unipile_account_id": "gW6mCsj7RK-vp89UcDUC2w",
+    "platform": "LINKEDIN",
+    "account_name": "Sebastian Henkel",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-11-28T09:28:59.272271+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "c3100bea-82a6-4365-b159-6581f1be9be3",
+    "account_metadata": {}
+  },
+  {
+    "id": "14938e47-9c74-4449-84dc-dc7e6354f2f9",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "unipile_account_id": "nefy7jYjS5K6X3U7ORxHNQ",
+    "platform": "GOOGLE_OAUTH",
+    "account_name": "tl@innovareai.com",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "disconnected",
+    "created_at": "2025-10-07T11:46:30.778616+00:00",
+    "updated_at": "2025-12-17T08:21:27.487+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "account_metadata": {}
+  },
+  {
+    "id": "5645f3b6-0845-43e7-a615-18f8865b9b92",
+    "user_id": "6a927440-ebe1-49b4-ae5e-fbee5d27944d",
+    "unipile_account_id": "nGqBWgDmTkqnoMGA3Hbc9w",
+    "platform": "LINKEDIN",
+    "account_name": "Stan Bounev",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-12-10T18:52:38.959079+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "5b81ee67-4d41-4997-b5a4-e1432e060d12",
+    "account_metadata": {}
+  },
+  {
+    "id": "2162a64f-a45a-4de5-8b5e-0ea581a949f2",
+    "user_id": "d518b2c7-bf3c-4112-99c5-e6c76fe27615",
+    "unipile_account_id": "RFrEaJZOSGieognCTW0V6w",
+    "platform": "LINKEDIN",
+    "account_name": "Brian Neirby",
+    "account_email": "admin+cm1@innovareai.com",
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-11-28T09:38:08.610532+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "aa1a214c-02f0-4f3a-8849-92c7a50ee4f7",
+    "account_metadata": {}
+  },
+  {
+    "id": "c53d51a2-0727-4ad0-b746-ed7889d8eb97",
+    "user_id": "744649a8-d015-4ff7-9e41-983cc9ca7b79",
+    "unipile_account_id": "4nt1J-blSnGUPBjH2Nfjpg",
+    "platform": "LINKEDIN",
+    "account_name": "𝗖𝗵𝗮𝗿𝗶𝘀𝘀𝗮 𝗦𝗮𝗻𝗶𝗲𝗹",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-10-01T15:01:46.608493+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": "unknown",
+    "account_features": {},
+    "workspace_id": "7f0341da-88db-476b-ae0a-fc0da5b70861",
+    "account_metadata": {}
+  },
+  {
+    "id": "5b103dd8-fa2c-42ea-ab52-86a81718d584",
+    "user_id": "dbbddc37-8740-4614-b448-53e0bfff2290",
+    "unipile_account_id": "Ll1T0gRVTYmLM6kqN1cJcg",
+    "platform": "LINKEDIN",
+    "account_name": "ChonaM Lamberte",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-12-17T07:22:18.492794+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c",
+    "account_metadata": {}
+  },
+  {
+    "id": "42c94422-2072-46b1-8409-213d3077a33d",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "unipile_account_id": "jYXN8FeCTEukNSXDoaH3hA",
+    "platform": "LINKEDIN",
+    "account_name": "tl@innovareai.com",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-12-17T07:24:31.127555+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "account_metadata": {}
+  },
+  {
+    "id": "6dc49c30-0c8c-4b37-8805-4f6d7ba35b4b",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "unipile_account_id": "09Uv5wIaSFOiN2gru_svbA",
+    "platform": "LINKEDIN",
+    "account_name": "Thorsten Linz",
+    "account_email": null,
+    "linkedin_public_identifier": "tvonlinz",
+    "linkedin_profile_url": "https://www.linkedin.com/in/tvonlinz",
+    "connection_status": "active",
+    "created_at": "2025-12-17T08:41:26.308157+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": "sales_navigator",
+    "account_features": {
+      "premium": true,
+      "sales_navigator": true
+    },
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "account_metadata": {
+      "username": "Thorsten Linz",
+      "organizations": [
+        "CHILLMINE",
+        "SIA - Startup Investor Accelerator",
+        "InnovareAI",
+        "red-dragonfly.vc",
+        "Impact Finance Center",
+        "Innovare Digital",
+        "InnovareAI Services",
+        "3cubed.AI"
+      ],
+      "premiumFeatures": [
+        "premium",
+        "sales_navigator"
+      ],
+      "publicIdentifier": "tvonlinz"
+    }
+  },
+  {
+    "id": "f9c8a97a-d0ca-4b5c-98a8-8965a5c8475c",
+    "user_id": "1d1004ef-3cc7-47b3-942d-58c86f0a27c2",
+    "unipile_account_id": "fntPg3vJTZ2Z1MP4rISntg",
+    "platform": "LINKEDIN",
+    "account_name": "Samantha Truman",
+    "account_email": null,
+    "linkedin_public_identifier": null,
+    "linkedin_profile_url": null,
+    "connection_status": "active",
+    "created_at": "2025-10-21T13:28:17.41151+00:00",
+    "updated_at": "2025-12-30T11:02:16.558+00:00",
+    "linkedin_account_type": null,
+    "account_features": {},
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "account_metadata": {}
+  }
+]

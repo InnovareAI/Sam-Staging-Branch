@@ -580,4 +580,9 @@ div[class*="cl-internal"]:has(svg) {
   body {
     @apply bg-background text-foreground;
   }
+
+  .glass-effect {
+    @apply bg-card/40 backdrop-blur-xl border border-border/40;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+  }
 }

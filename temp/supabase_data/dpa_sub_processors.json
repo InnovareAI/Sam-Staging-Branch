@@ -1,0 +1,96 @@
+[
+  {
+    "id": "bdeb717f-80d5-4784-a906-32fed5c0eb62",
+    "name": "Supabase (PostgreSQL)",
+    "description": "Database and authentication provider",
+    "purpose": "Data storage, user authentication, real-time subscriptions",
+    "location": "United States (AWS us-west-1)",
+    "data_processed": [
+      "prospect_data",
+      "campaign_data",
+      "user_profiles",
+      "knowledge_base"
+    ],
+    "dpa_url": null,
+    "added_date": "2025-10-04",
+    "is_active": true,
+    "created_at": "2025-10-04T23:54:03.077059"
+  },
+  {
+    "id": "fb989f5f-89f8-4486-8d65-de9ae62274b1",
+    "name": "OpenRouter",
+    "description": "AI model routing and API gateway",
+    "purpose": "LLM inference, embeddings generation, AI responses",
+    "location": "United States",
+    "data_processed": [
+      "conversation_history",
+      "document_content",
+      "knowledge_base"
+    ],
+    "dpa_url": null,
+    "added_date": "2025-10-04",
+    "is_active": true,
+    "created_at": "2025-10-04T23:54:03.077059"
+  },
+  {
+    "id": "3d394625-df06-441a-bfef-1bd8ea69e0ea",
+    "name": "Anthropic",
+    "description": "Claude AI model provider",
+    "purpose": "Document analysis, SAM AI conversations, content generation",
+    "location": "United States",
+    "data_processed": [
+      "conversation_history",
+      "document_content"
+    ],
+    "dpa_url": null,
+    "added_date": "2025-10-04",
+    "is_active": true,
+    "created_at": "2025-10-04T23:54:03.077059"
+  },
+  {
+    "id": "0ffd65d3-a963-465a-b6e3-2f7a0f7469a5",
+    "name": "Unipile",
+    "description": "LinkedIn and email integration",
+    "purpose": "Campaign message delivery, reply monitoring",
+    "location": "European Union (France)",
+    "data_processed": [
+      "linkedin_messages",
+      "email_messages",
+      "prospect_data"
+    ],
+    "dpa_url": null,
+    "added_date": "2025-10-04",
+    "is_active": true,
+    "created_at": "2025-10-04T23:54:03.077059"
+  },
+  {
+    "id": "9e7c7463-6d6b-4bb2-a61d-804f69fe1770",
+    "name": "Postmark",
+    "description": "Transactional email delivery",
+    "purpose": "System notifications, password resets, DPA reminders",
+    "location": "United States",
+    "data_processed": [
+      "email_addresses",
+      "notification_content"
+    ],
+    "dpa_url": null,
+    "added_date": "2025-10-04",
+    "is_active": true,
+    "created_at": "2025-10-04T23:54:03.077059"
+  },
+  {
+    "id": "29cfaed4-21b6-4fe5-b0a8-0762e5f450fb",
+    "name": "Netlify",
+    "description": "Application hosting and CDN",
+    "purpose": "Frontend hosting, serverless functions, API routes",
+    "location": "United States",
+    "data_processed": [
+      "request_metadata",
+      "api_logs"
+    ],
+    "dpa_url": null,
+    "added_date": "2025-10-04",
+    "is_active": true,
+    "created_at": "2025-10-04T23:54:03.077059"
+  }
+]

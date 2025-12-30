@@ -169,7 +169,7 @@ export const columns: ColumnDef<ProspectData>[] = [
         header: ({ column }) => (
             <Button
                 variant="ghost"
-                className="-ml-4"
+                className="-ml-4 hover:bg-transparent"
                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
                 Status
                 <ChevronsUpDown className="ml-2 h-4 w-4" />
@@ -177,13 +177,30 @@ export const columns: ColumnDef<ProspectData>[] = [
         ),
         cell: ({ row }) => {
             const status = row.original.approvalStatus;
+            const statusConfig = {
+                approved: {
+                    label: 'Approved',
+                    class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]',
+                    dot: 'bg-emerald-500'
+                },
+                rejected: {
+                    label: 'Rejected',
+                    class: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                    dot: 'bg-rose-500'
+                },
+                pending: {
+                    label: 'Pending',
+                    class: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                    dot: 'bg-amber-500'
+                }
+            };
+            const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+
             return (
-                <div className="flex items-center gap-2">
-                    <Badge
-                        className={status === 'approved' ? 'bg-green-600/20 text-green-400 border-green-600/30' : ''}
-                        variant={status === 'approved' ? 'outline' : status === 'rejected' ? 'destructive' : 'secondary'}
-                    >
-                        {status}
+                <div className="flex items-center">
+                    <Badge variant="outline" className={cn("px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-tighter flex items-center gap-1.5", config.class)}>
+                        <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", config.dot)} />
+                        {config.label}
                     </Badge>
                 </div>
             );
@@ -224,7 +241,7 @@ export const columns: ColumnDef<ProspectData>[] = [
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20 transition-all duration-300"
                         onClick={() => meta.onApprove?.([prospect.id])}
                         disabled={prospect.approvalStatus === 'approved'}
                         title="Approve"
@@ -234,7 +251,7 @@ export const columns: ColumnDef<ProspectData>[] = [
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-300"
                         onClick={() => meta.onReject?.([prospect.id])}
                         disabled={prospect.approvalStatus === 'rejected'}
                         title="Reject"
@@ -244,7 +261,7 @@ export const columns: ColumnDef<ProspectData>[] = [
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/20 transition-all duration-300"
                         onClick={() => meta.onViewDetails?.(prospect)}
                         title="View Details"
                     >
@@ -252,25 +269,18 @@ export const columns: ColumnDef<ProspectData>[] = [
                     </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-surface-highlight/50 transition-colors">
                                 <span className="sr-only">Open menu</span>
                                 <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => meta.onAddToCampaign?.([prospect.id])} className="text-blue-600 focus:text-blue-700 cursor-pointer">
+                        <DropdownMenuContent align="end" className="bg-card border-border shadow-xl backdrop-blur-xl">
+                            <DropdownMenuItem onClick={() => meta.onAddToCampaign?.([prospect.id])} className="text-blue-400 focus:text-blue-300 focus:bg-blue-500/10 cursor-pointer">
                                 <Upload className="mr-2 h-4 w-4" /> Add to Campaign
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => meta.onDelete?.(prospect.id)} className="text-red-600 focus:text-red-700 cursor-pointer">
+                            <DropdownMenuItem onClick={() => meta.onDelete?.(prospect.id)} className="text-rose-400 focus:text-rose-300 focus:bg-rose-500/10 cursor-pointer">
                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                onClick={() => meta.onDismiss?.(prospect.id)}
-                                className="text-gray-600 focus:text-gray-700 cursor-pointer"
-                            >
-                                <Eye className="mr-2 h-4 w-4" /> Dismiss (Hide)
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -486,16 +496,17 @@ export function ProspectsTable({
     };
 
     return (
-        <Card>
+        <Card className="border-border/60 bg-card/60 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
             {title && (
-                <div className="px-6 pt-6 pb-2">
-                    <h2 className="text-xl font-semibold text-foreground">{title}</h2>
-                    <p className="text-sm text-muted-foreground">
-                        {table.getFilteredRowModel().rows.length} {table.getFilteredRowModel().rows.length === data.length ? 'total leads' : 'results found'}
+                <div className="px-6 pt-6 pb-2 relative z-10">
+                    <h2 className="text-xl font-black tracking-tight text-foreground">{title}</h2>
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
+                        {table.getFilteredRowModel().rows.length} {table.getFilteredRowModel().rows.length === data.length ? 'total leads' : 'matching results'}
                     </p>
                 </div>
             )}
-            <CardContent className="pt-4">
+            <CardContent className="pt-4 relative z-10">
                 <div className="mb-4 flex items-center gap-2 flex-wrap">
                     {/* List Selector */}
                     <Select value={selectedList} onValueChange={setSelectedList}>
@@ -687,16 +698,17 @@ export function ProspectsTable({
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-                <div className="rounded-md border max-h-[600px] overflow-auto relative">
+                <div className="rounded-xl border border-border/40 bg-background/40 backdrop-blur-sm max-h-[600px] overflow-auto relative shadow-inner">
                     <Table>
-                        <TableHeader className="sticky top-0 z-10 bg-surface-muted shadow-sm">
+                        <TableHeader className="sticky top-0 z-10 bg-surface-muted/90 backdrop-blur-md shadow-sm border-b border-border/40">
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow key={headerGroup.id}>
+                                <TableRow key={headerGroup.id} className="hover:bg-transparent border-none">
                                     {headerGroup.headers.map((header) => {
                                         return (
                                             <TableHead
                                                 key={header.id}
                                                 style={{ width: header.getSize() }}
+                                                className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 h-12"
                                             >
                                                 {header.isPlaceholder
                                                     ? null
@@ -710,11 +722,16 @@ export function ProspectsTable({
                         <TableBody>
                             {table.getRowModel().rows?.length ? (
                                 table.getRowModel().rows.map((row) => (
-                                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                                    <TableRow
+                                        key={row.id}
+                                        data-state={row.getIsSelected() && "selected"}
+                                        className="group transition-colors hover:bg-surface-highlight/40 border-border/20"
+                                    >
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell
                                                 key={cell.id}
                                                 style={{ width: cell.column.getSize() }}
+                                                className="py-3 px-4"
                                             >
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                             </TableCell>
@@ -723,8 +740,13 @@ export function ProspectsTable({
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                                        No results.
+                                    <TableCell colSpan={columns.length} className="h-48 text-center text-muted-foreground italic">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <div className="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center">
+                                                <Filter className="h-6 w-6 opacity-20" />
+                                            </div>
+                                            <span>No prospects found matching your current filters.</span>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )}

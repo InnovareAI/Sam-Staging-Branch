@@ -1,0 +1,78 @@
+[
+  {
+    "id": "52b98937-29ff-43f3-b040-b0efc9e6b9d6",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "name": "SAM AI",
+    "description": "AI-powered Go-To-Market consultant that helps B2B sales teams define their ICP, craft personalized messaging, and launch high-performing LinkedIn + email campaigns.",
+    "sku": null,
+    "category": "AI Sales Assistant",
+    "price": null,
+    "currency": "USD",
+    "pricing_model": "subscription",
+    "features": [
+      "ICP discovery framework",
+      "Multi-channel campaigns",
+      "HITL approvals",
+      "Performance analytics",
+      "RAG knowledge base",
+      "N8N automation"
+    ],
+    "benefits": [
+      "3-5x more meetings",
+      "50% less prospecting time",
+      "10%+ response rates"
+    ],
+    "use_cases": [
+      "Founder pre-sales hire",
+      "VP Sales scaling outbound",
+      "Agency pipeline building"
+    ],
+    "specifications": {},
+    "metadata": {
+      "positioning": "Strategic consultant + Execution automation"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-10-08T12:32:10.648918+00:00",
+    "updated_at": "2025-10-08T12:32:10.648918+00:00"
+  },
+  {
+    "id": "298a5db7-e85e-4183-a09f-5ed576827daa",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "name": "SAM AI",
+    "description": "AI-powered Go-To-Market consultant that helps B2B sales teams define their ICP, craft personalized messaging, and launch high-performing LinkedIn + email campaigns.",
+    "sku": null,
+    "category": "AI Sales Assistant",
+    "price": null,
+    "currency": "USD",
+    "pricing_model": "subscription",
+    "features": [
+      "ICP discovery framework",
+      "Multi-channel campaigns",
+      "HITL approvals",
+      "Performance analytics",
+      "RAG knowledge base",
+      "N8N automation"
+    ],
+    "benefits": [
+      "3-5x more meetings",
+      "50% less prospecting time",
+      "10%+ response rates"
+    ],
+    "use_cases": [
+      "Founder pre-sales hire",
+      "VP Sales scaling outbound",
+      "Agency pipeline building"
+    ],
+    "specifications": {},
+    "metadata": {
+      "positioning": "Strategic consultant + Execution automation"
+    },
+    "tags": [],
+    "is_active": true,
+    "created_by": null,
+    "created_at": "2025-10-08T12:46:16.388465+00:00",
+    "updated_at": "2025-10-08T12:46:16.388465+00:00"
+  }
+]

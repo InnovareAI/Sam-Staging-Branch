@@ -1,0 +1,35 @@
+[
+  {
+    "id": "0ccd0f9c-fb6b-4589-9b80-a9b231e821ea",
+    "template_name": "SAM_MASTER_CAMPAIGN_WORKFLOW",
+    "template_version": "v1.0",
+    "n8n_workflow_json": {
+      "meta": {
+        "description": "Master campaign workflow for SAM AI",
+        "templateVersion": "v1.0"
+      },
+      "nodes": [],
+      "connections": {}
+    },
+    "customization_points": {
+      "email_config": "configurable",
+      "reply_handling": "configurable",
+      "linkedin_config": "configurable",
+      "personalization_fields": "configurable"
+    },
+    "required_credentials": [],
+    "min_n8n_version": "1.0.0",
+    "required_integrations": [
+      "unipile",
+      "email_provider"
+    ],
+    "compatibility_matrix": {},
+    "description": "Default SAM AI campaign workflow template for N8N integration",
+    "changelog": null,
+    "status": "active",
+    "is_default": true,
+    "created_at": "2025-11-03T04:06:26.902303+00:00",
+    "activated_at": null,
+    "deprecated_at": null
+  }
+]

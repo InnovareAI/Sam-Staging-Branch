@@ -1,0 +1,21 @@
+[
+  {
+    "id": "92af7b22-3772-44ae-8190-8f3c2bace303",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "tier": "startup",
+    "tier_status": "active",
+    "monthly_email_limit": 200,
+    "monthly_linkedin_limit": 50,
+    "daily_email_limit": 7,
+    "daily_linkedin_limit": 2,
+    "hitl_approval_required": true,
+    "integration_config": {},
+    "tier_features": {},
+    "created_at": "2025-09-24T05:28:28.244999+00:00",
+    "updated_at": "2025-10-25T16:08:02.440338+00:00",
+    "lead_search_tier": "external",
+    "monthly_lead_search_quota": 1000,
+    "monthly_lead_searches_used": 0,
+    "search_quota_reset_date": "2025-10-17"
+  }
+]

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "3511cd2f-a1e6-49d1-adc5-67d7e909834e",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "role": "owner",
+    "joined_at": "2025-10-07T15:12:11.79102+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "39690559-2ee1-4d67-851e-aba6443fc5a6",
+    "workspace_id": "04666209-fce8-4d71-8eaf-01278edfc73b",
+    "user_id": "471bcb15-cc53-44f3-b5d2-4b97bb7a8b2f",
+    "role": "owner",
+    "joined_at": "2025-11-08T03:31:30.943649+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "5f423ab1-2d3c-4225-a81e-0360c13dc638",
+    "workspace_id": "96c03b38-a2f4-40de-9e16-43098599e1d4",
+    "user_id": "1949f7fc-f354-47ba-98f1-ae0a7d3b1d5d",
+    "role": "owner",
+    "joined_at": "2025-11-08T03:31:30.943649+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "3795bc4d-efc0-487e-95e3-e7ed373dcd66",
+    "workspace_id": "7f0341da-88db-476b-ae0a-fc0da5b70861",
+    "user_id": "744649a8-d015-4ff7-9e41-983cc9ca7b79",
+    "role": "owner",
+    "joined_at": "2025-11-08T03:31:30.943649+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "1fb2e1d7-329b-4ec2-add8-c09ef5461ecb",
+    "workspace_id": "cd57981a-e63b-401c-bde1-ac71752c2293",
+    "user_id": "a4c3ff4d-ac9c-4e84-9b35-967ce6ff8189",
+    "role": "owner",
+    "joined_at": "2025-11-08T03:31:30.943649+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "1cb00bf6-d3d0-4a7f-b9b2-34d9dba21672",
+    "workspace_id": "2a8f7c3d-9b1e-4f6a-8c2d-5e9a1b4f7d3c",
+    "user_id": "dbbddc37-8740-4614-b448-53e0bfff2290",
+    "role": "owner",
+    "joined_at": "2025-11-08T03:31:30.943649+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "4efa6c80-b9b2-4923-ac4e-d3bbf7a5b255",
+    "workspace_id": "c3100bea-82a6-4365-b159-6581f1be9be3",
+    "user_id": "51a05157-0aa7-42b5-a6e5-acf43d436a4b",
+    "role": "owner",
+    "joined_at": "2025-11-28T09:24:33.516939+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "f645db2a-f2fa-410f-a7c2-ed0dbdc3a708",
+    "workspace_id": "aa1a214c-02f0-4f3a-8849-92c7a50ee4f7",
+    "user_id": "d518b2c7-bf3c-4112-99c5-e6c76fe27615",
+    "role": "owner",
+    "joined_at": "2025-11-28T09:35:08.888688+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "5cd1d119-2e90-4ded-a86f-cb91e7a7c5e3",
+    "workspace_id": "5b81ee67-4d41-4997-b5a4-e1432e060d12",
+    "user_id": "6a927440-ebe1-49b4-ae5e-fbee5d27944d",
+    "role": "owner",
+    "joined_at": "2025-12-10T18:58:00.173962+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "8aa9555a-c2cb-4166-9cc9-a1c55958ff3f",
+    "workspace_id": "dea5a7f2-673c-4429-972d-6ba5fca473fb",
+    "user_id": "1d1004ef-3cc7-47b3-942d-58c86f0a27c2",
+    "role": "owner",
+    "joined_at": "2025-10-07T14:30:20.317+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "73d07866-debb-431c-b8fb-9381ca2e7951",
+    "workspace_id": "e61966ed-18c2-425c-8e83-f466dd5902bb",
+    "user_id": "f2bd2f15-7a77-447a-9ac2-f61a7135f5d2",
+    "role": "owner",
+    "joined_at": "2025-12-15T16:35:05.330572+00:00",
+    "linkedin_unipile_account_id": null,
+    "status": "active"
+  },
+  {
+    "id": "abcca1d2-bb3c-468f-a179-05d0f5f60a10",
+    "workspace_id": "8a720935-db68-43e2-b16d-34383ec6c3e8",
+    "user_id": "57ae01f2-c1a7-4957-9277-de6998a2ac23",
+    "role": "owner",
+    "joined_at": "2025-12-15T19:48:47.476385+00:00",
+    "linkedin_unipile_account_id": "I0XZxvzfSRuCL8nuFoUEuw",
+    "status": "active"
+  }
+]

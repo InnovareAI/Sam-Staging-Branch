@@ -1,0 +1,151 @@
+[
+  {
+    "id": "9a413e6f-1d63-4b4d-9fc0-831cc4b74f6b",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "workspace_id": null,
+    "search_criteria": {
+      "api": "classic",
+      "limit": 30,
+      "title": "VP Sales",
+      "targetCount": 30,
+      "connectionDegree": "1st"
+    },
+    "search_type": "linkedin",
+    "search_source": "classic",
+    "status": "queued",
+    "progress_current": 0,
+    "progress_total": 30,
+    "started_at": null,
+    "completed_at": null,
+    "total_results": null,
+    "error_message": null,
+    "retry_count": 0,
+    "created_at": "2025-10-10T08:31:01.570754+00:00",
+    "updated_at": "2025-10-10T08:31:01.570754+00:00"
+  },
+  {
+    "id": "97df11a2-ccf6-4431-9cef-5de9e6e020ae",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "workspace_id": null,
+    "search_criteria": {
+      "api": "classic",
+      "limit": 20,
+      "title": "CEO",
+      "category": "people",
+      "keywords": "s  tech startups  California",
+      "location": [
+        "103644278"
+      ],
+      "targetCount": 20
+    },
+    "search_type": "linkedin",
+    "search_source": "classic",
+    "status": "queued",
+    "progress_current": 0,
+    "progress_total": 20,
+    "started_at": null,
+    "completed_at": null,
+    "total_results": null,
+    "error_message": null,
+    "retry_count": 0,
+    "created_at": "2025-10-10T08:34:43.597958+00:00",
+    "updated_at": "2025-10-10T08:34:43.597958+00:00"
+  },
+  {
+    "id": "e0226103-af4e-43c3-97b4-f53163677318",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "workspace_id": null,
+    "search_criteria": {
+      "api": "classic",
+      "limit": 20,
+      "title": "CEO",
+      "keywords": "tech startups California",
+      "targetCount": 20,
+      "connectionDegree": "1st"
+    },
+    "search_type": "linkedin",
+    "search_source": "classic",
+    "status": "queued",
+    "progress_current": 0,
+    "progress_total": 20,
+    "started_at": null,
+    "completed_at": null,
+    "total_results": null,
+    "error_message": null,
+    "retry_count": 0,
+    "created_at": "2025-10-10T08:48:49.181037+00:00",
+    "updated_at": "2025-10-10T08:48:49.181037+00:00"
+  },
+  {
+    "id": "ba469ac3-a8f7-42d9-b3e2-23c5fc20abb2",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "workspace_id": null,
+    "search_criteria": {
+      "api": "classic",
+      "limit": 10,
+      "title": "CEO",
+      "keywords": "tech startups California",
+      "targetCount": 10
+    },
+    "search_type": "linkedin",
+    "search_source": "classic",
+    "status": "queued",
+    "progress_current": 0,
+    "progress_total": 10,
+    "started_at": null,
+    "completed_at": null,
+    "total_results": null,
+    "error_message": null,
+    "retry_count": 0,
+    "created_at": "2025-10-10T09:30:55.362872+00:00",
+    "updated_at": "2025-10-10T09:30:55.362872+00:00"
+  },
+  {
+    "id": "62c9f494-10f5-4b11-bc03-b60797d554b1",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "workspace_id": null,
+    "search_criteria": {
+      "api": "classic",
+      "limit": 10,
+      "title": "CEO",
+      "keywords": "tech startups California",
+      "targetCount": 10
+    },
+    "search_type": "linkedin",
+    "search_source": "classic",
+    "status": "queued",
+    "progress_current": 0,
+    "progress_total": 10,
+    "started_at": null,
+    "completed_at": null,
+    "total_results": null,
+    "error_message": null,
+    "retry_count": 0,
+    "created_at": "2025-10-10T09:48:58.98036+00:00",
+    "updated_at": "2025-10-10T09:48:58.98036+00:00"
+  },
+  {
+    "id": "7b915cd0-7538-412b-a853-97005ae74c36",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "workspace_id": null,
+    "search_criteria": {
+      "api": "classic",
+      "limit": 10,
+      "title": "CEO",
+      "keywords": "tech startups California",
+      "targetCount": 10
+    },
+    "search_type": "linkedin",
+    "search_source": "classic",
+    "status": "failed",
+    "progress_current": 0,
+    "progress_total": 10,
+    "started_at": "2025-10-10T13:20:52.809+00:00",
+    "completed_at": "2025-10-10T13:20:53.06+00:00",
+    "total_results": null,
+    "error_message": "Invalid URL",
+    "retry_count": 0,
+    "created_at": "2025-10-10T13:20:25.984305+00:00",
+    "updated_at": "2025-10-10T13:20:25.984305+00:00"
+  }
+]

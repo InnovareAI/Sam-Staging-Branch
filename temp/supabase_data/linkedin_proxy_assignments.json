@@ -1,0 +1,125 @@
+[
+  {
+    "id": "20a857e0-69b3-4e90-bb9b-85749eca394c",
+    "user_id": "471bcb15-cc53-44f3-b5d2-4b97bb7a8b2f",
+    "linkedin_account_id": "MT39bAEDTJ6e_ZPY337UgQ",
+    "linkedin_account_name": "Michelle Angelica  Gestuveo ",
+    "detected_country": "United States",
+    "proxy_country": "us",
+    "proxy_state": null,
+    "proxy_city": null,
+    "proxy_session_id": "mggrhtws_in0fg9w7r7",
+    "proxy_username": "brd-customer-hl_8aca120e-zone-residential-country-us-session-mggrhtws_in0fg9w7r7",
+    "confidence_score": 0.95,
+    "connectivity_status": "active",
+    "connectivity_details": {
+      "success": true,
+      "responseTime": 29,
+      "actualLocation": {
+        "text": "\nWelcome to Bright Data! Here are your proxy details\nCountry: US\nCity: Columbus\nRegion: OH\nPostal Code: 43215\nLatitude: 39.9625\nLongitude: -83.0061\nTimezone: America/New_York\nASN number: 16509\nASN Organization name: AMAZON-02\nIP version: IPv4\n\nCommon usage examples:\n\n[USERNAME]-country-us:[PASSWORD]  // US based Proxy\n[USERNAME]-country-us-state-ny:[PASSWORD]  // US proxy from NY\n[USERNAME]-asn-56386:[PASSWORD]  // proxy from ASN 56386\n[USERNAME]-ip-1.1.1.1.1:[PASSWORD]  // proxy from dedicated pool\n\nTo get a simple JSON response, use https://geo.brdtest.com/mygeo.json .\n\nMore examples on https://docs.brightdata.com/api-reference/introduction\n\n",
+        "expectedCountry": "us"
+      }
+    },
+    "is_primary_account": false,
+    "account_features": [
+      "premium"
+    ],
+    "last_updated": "2025-10-07T16:16:07.882+00:00",
+    "last_connectivity_test": null,
+    "next_rotation_due": null,
+    "created_at": "2025-10-07T16:16:07.948865+00:00",
+    "updated_at": "2025-10-07T16:16:07.948865+00:00"
+  },
+  {
+    "id": "4a232b76-1401-47b0-968a-a95cf4d99640",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "linkedin_account_id": "727JqVTuQFeoFS4GNnsNxA",
+    "linkedin_account_name": "Thorsten Linz",
+    "detected_country": "Germany",
+    "proxy_country": "de",
+    "proxy_state": null,
+    "proxy_city": null,
+    "proxy_session_id": "mghabtw1_8ilz38griov",
+    "proxy_username": "brd-customer-hl_8aca120e-zone-residential-country-de-session-mghabtw1_8ilz38griov",
+    "confidence_score": 0.9,
+    "connectivity_status": "active",
+    "connectivity_details": {
+      "success": true,
+      "responseTime": 62,
+      "actualLocation": {
+        "text": "\nWelcome to Bright Data! Here are your proxy details\nCountry: US\nCity: Columbus\nRegion: OH\nPostal Code: 43215\nLatitude: 39.9625\nLongitude: -83.0061\nTimezone: America/New_York\nASN number: 16509\nASN Organization name: AMAZON-02\nIP version: IPv4\n\nCommon usage examples:\n\n[USERNAME]-country-us:[PASSWORD]  // US based Proxy\n[USERNAME]-country-us-state-ny:[PASSWORD]  // US proxy from NY\n[USERNAME]-asn-56386:[PASSWORD]  // proxy from ASN 56386\n[USERNAME]-ip-1.1.1.1.1:[PASSWORD]  // proxy from dedicated pool\n\nTo get a simple JSON response, use https://geo.brdtest.com/mygeo.json .\n\nMore examples on https://docs.brightdata.com/api-reference/introduction\n\n",
+        "expectedCountry": "de"
+      }
+    },
+    "is_primary_account": true,
+    "account_features": [
+      "premium",
+      "sales_navigator"
+    ],
+    "last_updated": "2025-10-08T01:03:20.656+00:00",
+    "last_connectivity_test": null,
+    "next_rotation_due": null,
+    "created_at": "2025-10-08T01:03:20.729304+00:00",
+    "updated_at": "2025-10-08T01:03:20.729304+00:00"
+  },
+  {
+    "id": "ae7943e1-e2c7-4f07-afa3-df404ff8ea84",
+    "user_id": "744649a8-d015-4ff7-9e41-983cc9ca7b79",
+    "linkedin_account_id": "4nt1J-blSnGUPBjH2Nfjpg",
+    "linkedin_account_name": "𝗖𝗵𝗮𝗿𝗶𝘀𝘀𝗮 𝗦𝗮𝗻𝗶𝗲𝗹",
+    "detected_country": "United States",
+    "proxy_country": "us",
+    "proxy_state": null,
+    "proxy_city": null,
+    "proxy_session_id": "mg8478vv_e8z2qpiza9q",
+    "proxy_username": "brd-customer-hl_8aca120e-zone-residential-country-us-session-mg8478vv_e8z2qpiza9q",
+    "confidence_score": 0.95,
+    "connectivity_status": "active",
+    "connectivity_details": {
+      "success": true,
+      "responseTime": 65,
+      "actualLocation": {
+        "text": "\nWelcome to Bright Data! Here are your proxy details\nCountry: US\nCity: Columbus\nRegion: OH\nPostal Code: 43215\nLatitude: 39.9625\nLongitude: -83.0061\nTimezone: America/New_York\nASN number: 16509\nASN Organization name: AMAZON-02\nIP version: IPv4\n\nCommon usage examples:\n\n[USERNAME]-country-us:[PASSWORD]  // US based Proxy\n[USERNAME]-country-us-state-ny:[PASSWORD]  // US proxy from NY\n[USERNAME]-asn-56386:[PASSWORD]  // proxy from ASN 56386\n[USERNAME]-ip-1.1.1.1.1:[PASSWORD]  // proxy from dedicated pool\n\nTo get a simple JSON response, use https://geo.brdtest.com/mygeo.json .\n\nMore examples on https://docs.brightdata.com/api-reference/introduction\n\n",
+        "expectedCountry": "us"
+      }
+    },
+    "is_primary_account": false,
+    "account_features": [
+      "premium"
+    ],
+    "last_updated": "2025-10-01T15:01:53.532+00:00",
+    "last_connectivity_test": null,
+    "next_rotation_due": null,
+    "created_at": "2025-10-01T15:01:53.60872+00:00",
+    "updated_at": "2025-10-01T15:01:53.60872+00:00"
+  },
+  {
+    "id": "c02c7268-2352-413f-9f7e-aea9e89183cd",
+    "user_id": "6a927440-ebe1-49b4-ae5e-fbee5d27944d",
+    "linkedin_account_id": "FhQYuy9yS2KETw-OYIa0Yw",
+    "linkedin_account_name": "Stan Bounev",
+    "detected_country": "United States",
+    "proxy_country": "us",
+    "proxy_state": null,
+    "proxy_city": null,
+    "proxy_session_id": "mgfgl2qa_2n6msx4gu5l",
+    "proxy_username": "brd-customer-hl_8aca120e-zone-residential-country-us-session-mgfgl2qa_2n6msx4gu5l",
+    "confidence_score": 0.95,
+    "connectivity_status": "active",
+    "connectivity_details": {
+      "success": true,
+      "responseTime": 41,
+      "actualLocation": {
+        "text": "\nWelcome to Bright Data! Here are your proxy details\nCountry: US\nCity: Columbus\nRegion: OH\nPostal Code: 43215\nLatitude: 39.9625\nLongitude: -83.0061\nTimezone: America/New_York\nASN number: 16509\nASN Organization name: AMAZON-02\nIP version: IPv4\n\nCommon usage examples:\n\n[USERNAME]-country-us:[PASSWORD]  // US based Proxy\n[USERNAME]-country-us-state-ny:[PASSWORD]  // US proxy from NY\n[USERNAME]-asn-56386:[PASSWORD]  // proxy from ASN 56386\n[USERNAME]-ip-1.1.1.1.1:[PASSWORD]  // proxy from dedicated pool\n\nTo get a simple JSON response, use https://geo.brdtest.com/mygeo.json .\n\nMore examples on https://docs.brightdata.com/api-reference/introduction\n\n",
+        "expectedCountry": "us"
+      }
+    },
+    "is_primary_account": false,
+    "account_features": [],
+    "last_updated": "2025-10-06T18:22:57.34+00:00",
+    "last_connectivity_test": null,
+    "next_rotation_due": null,
+    "created_at": "2025-10-06T18:22:57.414019+00:00",
+    "updated_at": "2025-10-06T18:22:57.414019+00:00"
+  }
+]

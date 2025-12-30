@@ -1,0 +1,443 @@
+[
+  {
+    "id": "852e14d5-a6ec-49be-8ec9-bfef8d867d77",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1762299165507_zflcywofs"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-05T00:44:31.037839+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-05T00:44:31.037839+00:00"
+  },
+  {
+    "id": "26900061-5be1-40cc-bf48-cfe12eb4273c",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1762298566456_fapokk7hn"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-05T00:53:02.600805+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-05T00:53:02.600805+00:00"
+  },
+  {
+    "id": "7f8b24f4-0c62-4c15-808e-3a50bba52dc1",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1762298566456_fapokk7hn"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-05T03:27:35.917347+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-05T03:27:35.917347+00:00"
+  },
+  {
+    "id": "1ea8828f-bc93-4ff1-86f6-0f7d0a1692fa",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763270565878_vky7u39dz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T06:01:56.78996+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T06:01:56.78996+00:00"
+  },
+  {
+    "id": "3b84dae6-1b15-4969-a5d1-b82f2ee18716",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "failed",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": "N8N webhook failed: 500. {\"code\":0,\"message\":\"Unused Respond to Webhook node found in the workflow\"}",
+    "enrichment_results": [],
+    "created_at": "2025-11-16T09:04:03.041449+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T09:04:03.574733+00:00"
+  },
+  {
+    "id": "f2306a8e-8ef9-40eb-bfb0-f56890da6e54",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T09:09:44.304134+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T09:09:44.304134+00:00"
+  },
+  {
+    "id": "b51de990-36d2-4500-9337-e60d05a901e4",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T09:17:53.902716+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T09:17:53.902716+00:00"
+  },
+  {
+    "id": "fc124c90-8442-45e9-9f0a-b093a85ddc0f",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T09:28:55.240621+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T09:28:55.240621+00:00"
+  },
+  {
+    "id": "dc27d9dc-5797-44e3-81aa-6f415caa69ab",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T09:32:45.417487+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T09:32:45.417487+00:00"
+  },
+  {
+    "id": "7152f30b-b8eb-47e4-bff5-85d60ceb4344",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T10:18:56.911949+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T10:18:56.911949+00:00"
+  },
+  {
+    "id": "a8108a38-70cb-45b9-bf73-3640271bf516",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T10:23:50.621179+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T10:23:50.621179+00:00"
+  },
+  {
+    "id": "767d58fe-f0d8-4deb-a55c-6f0d0584bca3",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T10:27:41.727711+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T10:27:41.727711+00:00"
+  },
+  {
+    "id": "39f7b8f0-8bff-40b9-b434-0eadc84fbd77",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T15:42:54.824668+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T15:42:54.824668+00:00"
+  },
+  {
+    "id": "e9410c4d-c4b2-4141-a888-961c47f80467",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T15:45:59.887447+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T15:45:59.887447+00:00"
+  },
+  {
+    "id": "9ffd2827-dfd2-4c16-ba58-dbd2065b634c",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T15:49:48.791792+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T15:49:48.791792+00:00"
+  },
+  {
+    "id": "ca63dc1b-1893-46e9-8dfa-a391bfefd552",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T16:00:24.0493+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T16:00:24.0493+00:00"
+  },
+  {
+    "id": "36eb3a42-a3c0-4b98-b88f-e57f3f44e3f3",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T16:05:48.929248+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T16:05:48.929248+00:00"
+  },
+  {
+    "id": "1b1f0f26-5458-4a96-bf83-6875ecd90f8f",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "processing",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T16:08:37.429298+00:00",
+    "started_at": "2025-11-16T16:08:40.356+00:00",
+    "completed_at": null,
+    "updated_at": "2025-11-16T16:08:40.420526+00:00"
+  },
+  {
+    "id": "76749d1a-2b51-4d53-9a42-45915634c737",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T16:24:20.661123+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T16:24:20.661123+00:00"
+  },
+  {
+    "id": "039ee031-b8af-43b1-a6a6-82d37cf5e562",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T16:25:32.885913+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T16:25:32.885913+00:00"
+  },
+  {
+    "id": "9e602740-c59a-400e-82ee-ae8f93a0a340",
+    "workspace_id": "babdcab8-1a78-4b2f-913e-6e9fd9821009",
+    "user_id": "f6885ff3-deef-4781-8721-93011c990b1b",
+    "session_id": null,
+    "prospect_ids": [
+      "prospect_1763274020862_q8c6q7ndz"
+    ],
+    "total_prospects": 1,
+    "status": "pending",
+    "processed_count": 0,
+    "failed_count": 0,
+    "current_prospect_id": null,
+    "current_prospect_url": null,
+    "error_message": null,
+    "enrichment_results": [],
+    "created_at": "2025-11-16T16:27:47.470895+00:00",
+    "started_at": null,
+    "completed_at": null,
+    "updated_at": "2025-11-16T16:27:47.470895+00:00"
+  }
+]

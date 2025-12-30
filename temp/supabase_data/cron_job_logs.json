@@ -1,0 +1,2036 @@
+[
+  {
+    "id": "a1a46424-94ae-4a4f-a994-f9f75a6343a8",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-29T06:00:00.156958+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-29T06:00:00.156958+00:00"
+  },
+  {
+    "id": "15badc9b-14f9-4a80-85d0-3c2ce61e5607",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-29T07:00:00.131952+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-29T07:00:00.131952+00:00"
+  },
+  {
+    "id": "e2dd9d7d-7b2f-4606-bc42-a37bf781b24e",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-30T07:00:00.115249+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-30T07:00:00.115249+00:00"
+  },
+  {
+    "id": "eba3fc7e-b585-4290-9e31-55f0db2c21d5",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-29T06:15:00.151712+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-29T06:15:00.151712+00:00"
+  },
+  {
+    "id": "d3506733-9f98-4854-94e1-6d8d6bdca8c0",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-30T06:00:00.239874+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-30T06:00:00.239874+00:00"
+  },
+  {
+    "id": "48ab82dc-d0fe-44d8-ae58-abe418d9d25e",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-29T06:30:00.257743+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-29T06:30:00.257743+00:00"
+  },
+  {
+    "id": "f4da1e1b-a43a-4e03-9e6e-7315c1ced6a6",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-30T06:15:00.145459+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-30T06:15:00.145459+00:00"
+  },
+  {
+    "id": "d5f43034-8572-4a46-9d38-7948a7edb5a9",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-11-29T06:00:00.257607+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-11-29T06:00:00.257607+00:00"
+  },
+  {
+    "id": "f74dfb9a-4dde-4b05-8e60-edcae96c7054",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-11-29T06:15:00.153+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-11-29T06:15:00.153+00:00"
+  },
+  {
+    "id": "934196b7-7f16-4f15-ad19-c5af89b3f1a5",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-11-29T06:30:00.126252+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-11-29T06:30:00.126252+00:00"
+  },
+  {
+    "id": "3523ab84-d303-439a-842b-cd7994366549",
+    "job_name": "check_integration_health",
+    "run_at": "2025-11-29T06:45:00.081875+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 12,
+      "active_accounts": 12,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-11-29T06:45:00.081875+00:00"
+  },
+  {
+    "id": "5084c58e-3deb-46d9-b883-f36e73a372dd",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-11-29T07:00:00.169739+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-11-29T07:00:00.169739+00:00"
+  },
+  {
+    "id": "cf3107ed-c04f-4aa1-af92-ec1f0151df9f",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-11-30T06:00:00.255747+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-11-30T06:00:00.255747+00:00"
+  },
+  {
+    "id": "8ebb0dfb-a36a-4c11-aadd-07ba46e9ccbe",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-11-30T06:15:00.11991+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-11-30T06:15:00.11991+00:00"
+  },
+  {
+    "id": "d09fda9a-1365-4901-9c84-cb53edd48616",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-11-30T06:30:00.204945+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-11-30T06:30:00.204945+00:00"
+  },
+  {
+    "id": "83f808b2-bd7e-4fcd-969c-fe68a8fb0f73",
+    "job_name": "check_integration_health",
+    "run_at": "2025-11-30T06:45:00.126029+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 12,
+      "active_accounts": 12,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-11-30T06:45:00.126029+00:00"
+  },
+  {
+    "id": "5bb0738a-097b-48de-931b-6135971782a1",
+    "job_name": "cleanup_old_logs",
+    "run_at": "2025-11-30T07:00:00.216573+00:00",
+    "status": "success",
+    "details": {
+      "deleted_logs": 0
+    },
+    "created_at": "2025-11-30T07:00:00.216573+00:00"
+  },
+  {
+    "id": "07592e26-f11a-4060-9141-9eae185b9ad8",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-11-30T07:00:00.249126+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-11-30T07:00:00.249126+00:00"
+  },
+  {
+    "id": "b7a70b85-38a2-4093-99ad-890aa924fc7f",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-01T06:00:00.215208+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-01T06:00:00.215208+00:00"
+  },
+  {
+    "id": "81fe8b1a-112c-4137-a846-ad6abd239f94",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-01T06:15:00.201927+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-01T06:15:00.201927+00:00"
+  },
+  {
+    "id": "fb690cbb-d95a-45a4-8e14-aec83655e37d",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-01T06:30:00.105225+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-01T06:30:00.105225+00:00"
+  },
+  {
+    "id": "5f6cb0c4-73bc-4f75-ab94-3cbf7e5bfacf",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-01T06:45:00.220889+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 12,
+      "active_accounts": 12,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-01T06:45:00.220889+00:00"
+  },
+  {
+    "id": "8b026e29-b884-4660-b3bc-23caa3876e79",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-01T07:00:00.22531+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-01T07:00:00.22531+00:00"
+  },
+  {
+    "id": "cf7c8325-3a9b-4c15-965d-2be47f0c21c7",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-02T06:00:00.264656+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-02T06:00:00.264656+00:00"
+  },
+  {
+    "id": "da1e32f8-b17b-49cd-bf41-3a7e84793628",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-02T06:15:00.159904+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-02T06:15:00.159904+00:00"
+  },
+  {
+    "id": "d82c4b0b-8774-4b41-a56a-5c5e5b93bc5c",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-02T06:30:00.130276+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-02T06:30:00.130276+00:00"
+  },
+  {
+    "id": "e64653bf-5026-434c-82a4-ac74f22e2af2",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-02T06:45:00.141163+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 13,
+      "active_accounts": 13,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-02T06:45:00.141163+00:00"
+  },
+  {
+    "id": "713ffbb7-fd3b-4d6f-9fdd-c765499765dd",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-02T07:00:00.262613+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-02T07:00:00.262613+00:00"
+  },
+  {
+    "id": "be4c369f-a984-4dbd-8b31-bcc787c60c4d",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-03T06:00:00.147306+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-03T06:00:00.147306+00:00"
+  },
+  {
+    "id": "8211f58c-6cd6-414e-a287-b95e479e0d53",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-03T06:15:00.171862+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-03T06:15:00.171862+00:00"
+  },
+  {
+    "id": "e3e6aa0b-7b6e-4f21-8798-922d338a7fe7",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-03T06:30:00.217308+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-03T06:30:00.217308+00:00"
+  },
+  {
+    "id": "0139705b-3d9c-4e41-a020-f22f80249662",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-03T06:45:00.148225+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 17,
+      "active_accounts": 17,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-03T06:45:00.148225+00:00"
+  },
+  {
+    "id": "83ca286e-1e02-4e16-bf58-40a7045e2bca",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-03T07:00:00.230932+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-03T07:00:00.230932+00:00"
+  },
+  {
+    "id": "dd1d3c58-66a6-4eae-8ac5-22f8ae2457f8",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-04T06:00:00.194064+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-04T06:00:00.194064+00:00"
+  },
+  {
+    "id": "aa385cb6-bbce-4d45-a285-e34ea1d72be3",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-04T06:15:00.178193+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-04T06:15:00.178193+00:00"
+  },
+  {
+    "id": "f4ccc3bd-c97f-4f4c-a3bd-978f5a05e82d",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-04T06:30:00.108516+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 1,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-04T06:30:00.108516+00:00"
+  },
+  {
+    "id": "f64cbedb-72ca-471a-95ce-cd9c195d9235",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-04T06:45:00.047067+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-04T06:45:00.047067+00:00"
+  },
+  {
+    "id": "38bd5b8b-11c0-4c8c-a699-c9d071938b1b",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-04T07:00:00.105848+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-04T07:00:00.105848+00:00"
+  },
+  {
+    "id": "44e5ced2-50a5-489b-99f2-f77d6694aa51",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-05T06:00:00.090009+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-05T06:00:00.090009+00:00"
+  },
+  {
+    "id": "4be357c6-5e37-41c0-af3c-bd1e7be2e241",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-05T06:15:00.144871+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-05T06:15:00.144871+00:00"
+  },
+  {
+    "id": "c79608be-fed4-404d-a4ee-e33c4895f890",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-05T06:30:00.215112+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 1,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-05T06:30:00.215112+00:00"
+  },
+  {
+    "id": "80f9f1c1-b378-4dd2-a961-a255526658ba",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-05T06:45:00.14709+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-05T06:45:00.14709+00:00"
+  },
+  {
+    "id": "90224fd4-7f65-4e58-b432-323fb6ca95c9",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-05T07:00:00.257779+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-05T07:00:00.257779+00:00"
+  },
+  {
+    "id": "30bdedfd-72c0-40f1-95a4-2b96846332e5",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-06T06:00:00.191811+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-06T06:00:00.191811+00:00"
+  },
+  {
+    "id": "2290c218-218e-4806-ab4f-656fd1c954a7",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-06T06:15:00.170247+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-06T06:15:00.170247+00:00"
+  },
+  {
+    "id": "906fc569-6cc0-470c-97f7-e7ecbf8b980c",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-06T06:30:00.185382+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 1,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-06T06:30:00.185382+00:00"
+  },
+  {
+    "id": "8d06d13c-70e8-4307-bcdb-199c0341530a",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-06T06:45:00.129719+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-06T06:45:00.129719+00:00"
+  },
+  {
+    "id": "f7f5cf48-dc6f-4fd4-b943-0272dc8a38dc",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-06T07:00:00.140931+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-06T07:00:00.140931+00:00"
+  },
+  {
+    "id": "afac582f-fd72-4d06-9bbe-2fab7cd5e2f6",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-07T06:00:00.129174+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-07T06:00:00.129174+00:00"
+  },
+  {
+    "id": "daf635da-b703-4ff5-999b-f0bd089be594",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-07T06:15:00.14312+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-07T06:15:00.14312+00:00"
+  },
+  {
+    "id": "84c32dbc-f929-480d-b76a-5e816f71d053",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-07T06:30:00.222227+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 1,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-07T06:30:00.222227+00:00"
+  },
+  {
+    "id": "30e624db-edac-4e08-990f-6e1c21ae1f1b",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-07T06:45:00.179191+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-07T06:45:00.179191+00:00"
+  },
+  {
+    "id": "cad10ce5-b336-44d1-bb90-61ef5e7dde5f",
+    "job_name": "cleanup_old_logs",
+    "run_at": "2025-12-07T07:00:00.175138+00:00",
+    "status": "success",
+    "details": {
+      "deleted_logs": 0
+    },
+    "created_at": "2025-12-07T07:00:00.175138+00:00"
+  },
+  {
+    "id": "df6724ac-8234-48a9-a8ee-53e2e9d465de",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-07T07:00:00.189195+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-07T07:00:00.189195+00:00"
+  },
+  {
+    "id": "da599840-60dd-4afa-a524-8b27ad4a85b3",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-08T06:00:00.168465+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-08T06:00:00.168465+00:00"
+  },
+  {
+    "id": "f2b46b5c-938e-4b8a-92f7-42bcefe9070a",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-08T06:15:00.138132+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-08T06:15:00.138132+00:00"
+  },
+  {
+    "id": "e6140358-4205-4f84-ab39-ebab77dacb14",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-08T06:30:00.20093+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 1,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-08T06:30:00.20093+00:00"
+  },
+  {
+    "id": "5b23720e-3f93-41af-a0e8-cd2f1cf4bf21",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-08T06:45:00.17353+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-08T06:45:00.17353+00:00"
+  },
+  {
+    "id": "3e0c8ebd-f245-42df-a00f-7b0c943689db",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-08T07:00:00.348142+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-08T07:00:00.348142+00:00"
+  },
+  {
+    "id": "d3f82682-aad7-41c8-8ef9-aae7fffbe100",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-09T06:00:00.190977+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-09T06:00:00.190977+00:00"
+  },
+  {
+    "id": "c835538b-e035-41a7-9fa7-0eff4a2b274f",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-09T06:15:00.168362+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-09T06:15:00.168362+00:00"
+  },
+  {
+    "id": "55080b52-8605-4d3a-a9ee-854e817711da",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-09T06:30:00.168902+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 1,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-09T06:30:00.168902+00:00"
+  },
+  {
+    "id": "69701af7-979b-432d-a553-215d6e71f415",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-09T06:45:00.264853+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-09T06:45:00.264853+00:00"
+  },
+  {
+    "id": "169a0b76-6052-4eb9-a8f1-aa598ee08b8b",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-09T07:00:00.25786+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-09T07:00:00.25786+00:00"
+  },
+  {
+    "id": "ee418c25-724c-4490-bd21-85935261bbe1",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-10T06:00:00.116761+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-10T06:00:00.116761+00:00"
+  },
+  {
+    "id": "2b9a3b8e-b926-497f-ae8e-c07f2f7b52f2",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-10T06:15:00.133034+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-10T06:15:00.133034+00:00"
+  },
+  {
+    "id": "ba176331-8a27-455a-9ac1-9412140a08ef",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-10T06:30:00.112161+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 1,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-10T06:30:00.112161+00:00"
+  },
+  {
+    "id": "a680ed65-4295-47fa-83de-ed142d9d0b6a",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-10T06:45:00.179775+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-10T06:45:00.179775+00:00"
+  },
+  {
+    "id": "508c9986-9370-473d-8522-dabdf38185a0",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-10T07:00:00.104277+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-10T07:00:00.104277+00:00"
+  },
+  {
+    "id": "ff4768ae-eebb-48d4-b9e3-be15e750cda8",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-11T06:00:00.067418+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-11T06:00:00.067418+00:00"
+  },
+  {
+    "id": "6cabe94b-0c66-4d1e-900b-60115e2f7fb0",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-11T06:15:00.149342+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-11T06:15:00.149342+00:00"
+  },
+  {
+    "id": "b57ffcb5-f236-4f28-9e86-0c7d9a01d5bb",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-11T06:30:00.160218+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 2,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-11T06:30:00.160218+00:00"
+  },
+  {
+    "id": "8428caa1-34ff-42f2-935a-a97281730789",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-11T06:45:00.100516+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-11T06:45:00.100516+00:00"
+  },
+  {
+    "id": "79957135-294c-48ab-9f7c-a09f91b8b64e",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-11T07:00:00.09582+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-11T07:00:00.09582+00:00"
+  },
+  {
+    "id": "25aa7ea8-864d-40a9-8329-f7def8e00e56",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-12T06:00:00.23032+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-12T06:00:00.23032+00:00"
+  },
+  {
+    "id": "5bdef260-f51a-4034-8c86-2ea796c2e30f",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-12T06:15:00.115043+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-12T06:15:00.115043+00:00"
+  },
+  {
+    "id": "3e2978cd-ec86-4a26-bcb0-4b4b84bb862b",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-12T06:30:00.142257+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 2,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-12T06:30:00.142257+00:00"
+  },
+  {
+    "id": "33798f95-9b9c-4775-afba-8524d74ebe12",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-12T06:45:00.122982+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-12T06:45:00.122982+00:00"
+  },
+  {
+    "id": "3092fc44-4a9c-4d8c-8795-559dd0d65e0e",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-12T07:00:00.146957+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-12T07:00:00.146957+00:00"
+  },
+  {
+    "id": "8bbafe4b-2f9e-496a-be1e-1a46d1f4a74c",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-13T06:00:00.220577+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-13T06:00:00.220577+00:00"
+  },
+  {
+    "id": "70789b76-7139-4ed9-a789-4f366395eed5",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-13T06:15:00.148733+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-13T06:15:00.148733+00:00"
+  },
+  {
+    "id": "5a8f6455-f1aa-4a00-918a-40bc3b37b400",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-13T06:30:00.172345+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 1,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-13T06:30:00.172345+00:00"
+  },
+  {
+    "id": "5c535797-30a2-4720-b0ef-1a3634f4b4d9",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-13T06:45:00.236037+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-13T06:45:00.236037+00:00"
+  },
+  {
+    "id": "2c7cc0c0-d100-4718-ab64-2ccd23b2e5f7",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-13T07:00:00.141844+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-13T07:00:00.141844+00:00"
+  },
+  {
+    "id": "d662b96f-213e-4526-ac94-ad5f27fe1d00",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-14T06:00:00.204951+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-14T06:00:00.204951+00:00"
+  },
+  {
+    "id": "25dfb0ee-44f8-4fce-995b-c7a630633a9f",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-14T06:15:00.145368+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-14T06:15:00.145368+00:00"
+  },
+  {
+    "id": "99a59b96-b9b7-4dc1-938c-00277f84a8a7",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-14T06:30:00.132466+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 1,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-14T06:30:00.132466+00:00"
+  },
+  {
+    "id": "26830a13-e07a-4a08-8e40-c775897ee174",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-14T06:45:00.264126+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-14T06:45:00.264126+00:00"
+  },
+  {
+    "id": "a90d3bd4-3b81-49a1-b51c-0b6a54cad25a",
+    "job_name": "cleanup_old_logs",
+    "run_at": "2025-12-14T07:00:00.200356+00:00",
+    "status": "success",
+    "details": {
+      "deleted_logs": 30
+    },
+    "created_at": "2025-12-14T07:00:00.200356+00:00"
+  },
+  {
+    "id": "4acf64e2-04ad-46cf-b418-30a51a222377",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-14T07:00:00.196686+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-14T07:00:00.196686+00:00"
+  },
+  {
+    "id": "9526818d-4b8c-4163-b9a9-030f3efe2773",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-15T06:00:00.205458+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-15T06:00:00.205458+00:00"
+  },
+  {
+    "id": "0de0a24b-9f31-43d5-aad0-7aa1b09dcae1",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-15T06:15:00.15914+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-15T06:15:00.15914+00:00"
+  },
+  {
+    "id": "dcdecd97-5482-42a4-a0ae-ad61adf6ff72",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-15T06:30:00.133072+00:00",
+    "status": "warning",
+    "details": {
+      "workspaces_without_owners": 1,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-15T06:30:00.133072+00:00"
+  },
+  {
+    "id": "76631d61-7bd0-4265-b60d-25c5c2514a17",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-15T06:45:00.159159+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-15T06:45:00.159159+00:00"
+  },
+  {
+    "id": "831cdb00-b08f-48ec-9ac2-53e3097b5996",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-15T07:00:00.123623+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-15T07:00:00.123623+00:00"
+  },
+  {
+    "id": "c56ac004-b695-491d-ae12-be2b5777b19e",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-16T06:00:00.264442+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-16T06:00:00.264442+00:00"
+  },
+  {
+    "id": "cab3357a-61bf-4a6e-9601-4e5ae659b2a5",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-16T06:15:00.177072+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-16T06:15:00.177072+00:00"
+  },
+  {
+    "id": "aec4d08b-4b5b-48d1-8199-dc80a720eee2",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-16T06:30:00.184229+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-16T06:30:00.184229+00:00"
+  },
+  {
+    "id": "a2bf7319-5676-4647-b36c-a22b2591c870",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-16T06:45:00.074518+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 15,
+      "active_accounts": 15,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-16T06:45:00.074518+00:00"
+  },
+  {
+    "id": "de19606a-aeea-4b93-9601-8e6e0ddaa0cd",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-16T07:00:00.177166+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-16T07:00:00.177166+00:00"
+  },
+  {
+    "id": "70722b38-465b-4811-b06e-4a4df8b940f8",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-17T06:00:00.134464+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-17T06:00:00.134464+00:00"
+  },
+  {
+    "id": "15c056ae-b4ca-41e3-a444-7f955d9e2d84",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-17T06:15:00.088691+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-17T06:15:00.088691+00:00"
+  },
+  {
+    "id": "4bd266b3-803f-483b-a51c-6d4e122ccf93",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-17T06:30:00.180348+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-17T06:30:00.180348+00:00"
+  },
+  {
+    "id": "5b45f660-ac0e-4245-bd68-500fc41877dc",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-17T06:45:00.1555+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 18,
+      "active_accounts": 18,
+      "inactive_accounts": 0
+    },
+    "created_at": "2025-12-17T06:45:00.1555+00:00"
+  },
+  {
+    "id": "50938aa5-c751-47bf-a099-d9cce123f4f5",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-17T07:00:00.289291+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-17T07:00:00.289291+00:00"
+  },
+  {
+    "id": "f899b688-7928-4c84-bf0e-cce2058386c4",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-18T06:00:00.185123+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-18T06:00:00.185123+00:00"
+  },
+  {
+    "id": "6f5e53e7-0954-48d8-8da3-edba0c3394f3",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-18T06:15:00.193586+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-18T06:15:00.193586+00:00"
+  },
+  {
+    "id": "84a72193-8499-4639-a292-caa297676ea9",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-18T06:30:00.192902+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-18T06:30:00.192902+00:00"
+  },
+  {
+    "id": "480cef28-3d61-4961-87b3-2762ce11c624",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-18T06:45:00.114078+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-18T06:45:00.114078+00:00"
+  },
+  {
+    "id": "99262abf-3525-4876-857b-cab955eb9a5e",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-18T07:00:00.126854+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-18T07:00:00.126854+00:00"
+  },
+  {
+    "id": "89b8b695-6f8b-47b6-843f-b7b64ef9f5d4",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-19T06:00:00.196638+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-19T06:00:00.196638+00:00"
+  },
+  {
+    "id": "917b9c3f-65fd-47ec-9321-afab5b65a582",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-19T06:15:00.148136+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-19T06:15:00.148136+00:00"
+  },
+  {
+    "id": "f4d9642d-e42c-4780-92b4-08123b5828b2",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-19T06:30:00.201571+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-19T06:30:00.201571+00:00"
+  },
+  {
+    "id": "4fb12fc6-ca86-453d-a875-d05faf3aecff",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-19T06:45:00.200308+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-19T06:45:00.200308+00:00"
+  },
+  {
+    "id": "38ef3c32-b2bf-47a3-a721-84731500acbc",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-19T07:00:00.142465+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-19T07:00:00.142465+00:00"
+  },
+  {
+    "id": "c9900cd2-949f-4b29-b460-9f946f811857",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-20T06:00:00.19073+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-20T06:00:00.19073+00:00"
+  },
+  {
+    "id": "99fb708d-29da-4ee4-99d5-8dd46b9006d1",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-20T06:15:00.178434+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-20T06:15:00.178434+00:00"
+  },
+  {
+    "id": "02392a40-a857-4d5b-81d3-6298a9fdaed4",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-20T06:30:00.205488+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-20T06:30:00.205488+00:00"
+  },
+  {
+    "id": "c2344ee9-9691-4b45-9ec0-537567008064",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-20T06:45:00.134826+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-20T06:45:00.134826+00:00"
+  },
+  {
+    "id": "9b0311fe-0a44-4c81-9bdd-acf0ed3e40e3",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-20T07:00:00.054326+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-20T07:00:00.054326+00:00"
+  },
+  {
+    "id": "4c461fac-af16-430b-a200-ad2fb39ecc38",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-21T06:00:00.124967+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-21T06:00:00.124967+00:00"
+  },
+  {
+    "id": "e63b5c35-5b93-4f56-8909-c40bbdc85b27",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-21T06:15:00.140765+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-21T06:15:00.140765+00:00"
+  },
+  {
+    "id": "c057a986-c39a-4898-aa8b-129e19fa2fdc",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-21T06:30:00.135922+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-21T06:30:00.135922+00:00"
+  },
+  {
+    "id": "36783843-9ec4-44a4-9737-307b84fdf571",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-21T06:45:00.05754+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-21T06:45:00.05754+00:00"
+  },
+  {
+    "id": "dc0f1469-cdf1-47c7-9607-bcd8d259b220",
+    "job_name": "cleanup_old_logs",
+    "run_at": "2025-12-21T07:00:00.266841+00:00",
+    "status": "success",
+    "details": {
+      "deleted_logs": 37
+    },
+    "created_at": "2025-12-21T07:00:00.266841+00:00"
+  },
+  {
+    "id": "cb7bb907-3065-4f97-922d-293b5699b401",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-21T07:00:00.242446+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-21T07:00:00.242446+00:00"
+  },
+  {
+    "id": "bcf4fb69-fc32-45aa-8e37-f6bf1806343c",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-22T06:00:00.389766+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-22T06:00:00.389766+00:00"
+  },
+  {
+    "id": "375aa01f-f1ba-49b2-a4aa-53df0d8f7dab",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-22T06:15:00.14321+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-22T06:15:00.14321+00:00"
+  },
+  {
+    "id": "ef85b302-fa2f-4fbc-8a37-a281686c265a",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-22T06:30:00.166067+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-22T06:30:00.166067+00:00"
+  },
+  {
+    "id": "30c9ef7b-59b2-4b34-bf8f-d26fc3b84250",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-22T06:45:00.154164+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-22T06:45:00.154164+00:00"
+  },
+  {
+    "id": "25da028f-4393-4311-94ac-6690b1cd5e1f",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-22T07:00:00.204285+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-22T07:00:00.204285+00:00"
+  },
+  {
+    "id": "1424530d-525d-4b25-9517-28698463c9ae",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-23T06:00:00.212571+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-23T06:00:00.212571+00:00"
+  },
+  {
+    "id": "eeec046e-832e-48d4-8d09-323d877bc325",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-23T06:15:00.118057+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-23T06:15:00.118057+00:00"
+  },
+  {
+    "id": "e0f1c083-85ba-49ff-8209-d75243c7f1f0",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-23T06:30:00.099136+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-23T06:30:00.099136+00:00"
+  },
+  {
+    "id": "d8fa9b1a-ad81-4c37-9142-6fee46144fd1",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-23T06:45:00.155423+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-23T06:45:00.155423+00:00"
+  },
+  {
+    "id": "130fae93-0072-4cec-8dd9-c87917e533a5",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-23T07:00:00.154448+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-23T07:00:00.154448+00:00"
+  },
+  {
+    "id": "36863a18-a4ba-457a-91fe-d2ab023189c1",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-24T06:00:00.226239+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-24T06:00:00.226239+00:00"
+  },
+  {
+    "id": "afc9fd41-8cf6-485a-a247-5183806e640e",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-24T06:15:00.142397+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-24T06:15:00.142397+00:00"
+  },
+  {
+    "id": "ea935396-196e-4ff7-ab6d-7d15fa46dc32",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-24T06:30:00.146944+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-24T06:30:00.146944+00:00"
+  },
+  {
+    "id": "1c32d444-6737-4595-8bf0-089ac666c522",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-24T06:45:00.205479+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-24T06:45:00.205479+00:00"
+  },
+  {
+    "id": "1a3907bf-7c88-4e29-a96c-9313672e18b5",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-24T07:00:00.1532+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-24T07:00:00.1532+00:00"
+  },
+  {
+    "id": "68ae528a-c74b-4c95-b5f4-618ca61f29d9",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-25T06:00:00.164203+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-25T06:00:00.164203+00:00"
+  },
+  {
+    "id": "3c04e1bd-2b4f-4f69-a91f-e4bea6775e9b",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-25T06:15:00.172036+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-25T06:15:00.172036+00:00"
+  },
+  {
+    "id": "dfe2aa9c-6151-4b21-b216-3f6665fcce37",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-25T06:30:00.128678+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-25T06:30:00.128678+00:00"
+  },
+  {
+    "id": "ba756b08-f206-464e-90d3-1fefed434c5f",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-25T06:45:00.152085+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-25T06:45:00.152085+00:00"
+  },
+  {
+    "id": "9614ad13-9aff-48ca-a755-9c70eef22e0e",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-25T07:00:00.087264+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-25T07:00:00.087264+00:00"
+  },
+  {
+    "id": "d8b9dfd1-1f54-4b39-a672-ef8e813d256c",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-26T06:00:00.161022+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-26T06:00:00.161022+00:00"
+  },
+  {
+    "id": "6e7b5462-4173-4786-b752-5b8e20c7d67a",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-26T06:15:00.1255+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-26T06:15:00.1255+00:00"
+  },
+  {
+    "id": "7b627336-5ac8-4883-b249-60efc5292a0b",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-26T06:30:00.109636+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-26T06:30:00.109636+00:00"
+  },
+  {
+    "id": "437b8462-b9fb-4b69-9192-c19927baf166",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-26T06:45:00.135412+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-26T06:45:00.135412+00:00"
+  },
+  {
+    "id": "6a59ba54-6434-4b16-924f-da4d39891996",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-26T07:00:00.138275+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-26T07:00:00.138275+00:00"
+  },
+  {
+    "id": "4846b4bd-d53e-4be1-a171-b4c27932ceaa",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-27T06:00:00.218583+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-27T06:00:00.218583+00:00"
+  },
+  {
+    "id": "00ed3a09-d654-4ce0-b74d-4ab234fabb1f",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-30T06:30:00.245235+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-30T06:30:00.245235+00:00"
+  },
+  {
+    "id": "7870e2e8-9fe1-4653-af66-194a98c139f9",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-27T06:15:00.194621+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-27T06:15:00.194621+00:00"
+  },
+  {
+    "id": "2b287d80-9f01-49a9-b375-e892bca56278",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-27T06:30:00.106392+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-27T06:30:00.106392+00:00"
+  },
+  {
+    "id": "fa0db31a-c4ef-412b-bd7a-aa14069278fe",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-27T06:45:00.181394+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-27T06:45:00.181394+00:00"
+  },
+  {
+    "id": "cba7d644-135d-494c-b5e1-3d7363f9e5ae",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-27T07:00:00.172882+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-27T07:00:00.172882+00:00"
+  },
+  {
+    "id": "a9b20596-e3a5-408d-83f9-e583b5eea1ef",
+    "job_name": "verify_rls_status",
+    "run_at": "2025-12-28T06:00:00.142954+00:00",
+    "status": "warning",
+    "details": {
+      "issues": [
+        {
+          "issue": "RLS should be DISABLED but is ENABLED",
+          "table": "linkedin_proxy_assignments"
+        }
+      ],
+      "issues_found": 1
+    },
+    "created_at": "2025-12-28T06:00:00.142954+00:00"
+  },
+  {
+    "id": "163ea67d-8f66-4d84-9312-75942a1d02df",
+    "job_name": "check_orphaned_data",
+    "run_at": "2025-12-28T06:15:00.175707+00:00",
+    "status": "success",
+    "details": {
+      "orphaned_sessions": 0,
+      "orphaned_campaigns": 0,
+      "orphaned_prospects": 0
+    },
+    "created_at": "2025-12-28T06:15:00.175707+00:00"
+  },
+  {
+    "id": "b2867b67-7d81-436b-b6e1-2f3df1356a4e",
+    "job_name": "check_workspace_health",
+    "run_at": "2025-12-28T06:30:00.083913+00:00",
+    "status": "success",
+    "details": {
+      "workspaces_without_owners": 0,
+      "workspaces_without_members": 0
+    },
+    "created_at": "2025-12-28T06:30:00.083913+00:00"
+  },
+  {
+    "id": "4929d56e-44a8-4cfa-b8d6-675c8643ea81",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-28T06:45:00.137604+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-28T06:45:00.137604+00:00"
+  },
+  {
+    "id": "8ee4f1f2-dd27-4b56-a379-090fe1851626",
+    "job_name": "cleanup_old_logs",
+    "run_at": "2025-12-28T07:00:00.237158+00:00",
+    "status": "success",
+    "details": {
+      "deleted_logs": 36
+    },
+    "created_at": "2025-12-28T07:00:00.237158+00:00"
+  },
+  {
+    "id": "4824574c-aa88-4272-be53-cfb9dd4540f2",
+    "job_name": "send_daily_email_report",
+    "run_at": "2025-12-28T07:00:00.217179+00:00",
+    "status": "success",
+    "details": {
+      "response": "{\"code\":401,\"message\":\"Missing authorization header\"}",
+      "email_sent": true
+    },
+    "created_at": "2025-12-28T07:00:00.217179+00:00"
+  },
+  {
+    "id": "c1714788-63b5-41f9-9f03-3ae9f2432ba3",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-29T06:45:00.131401+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-29T06:45:00.131401+00:00"
+  },
+  {
+    "id": "6d979e7d-ec38-4bdb-a1c7-fa5066665dfa",
+    "job_name": "check_integration_health",
+    "run_at": "2025-12-30T06:45:00.143305+00:00",
+    "status": "success",
+    "details": {
+      "total_accounts": 16,
+      "active_accounts": 13,
+      "inactive_accounts": 3
+    },
+    "created_at": "2025-12-30T06:45:00.143305+00:00"
+  }
+]
