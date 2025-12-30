@@ -317,3 +317,15 @@
 # Handles no-show, cancellation, and post-meeting follow-ups
 [functions."send-meeting-follow-ups"]
   schedule = "*/15 * * * *"
+
+# ============================================
+# OPPORTUNITY DIGEST (Dec 30, 2025)
+# Daily email with trending posts worth engaging with
+# ============================================
+
+# Opportunity Digest: Daily email with high-quality posts to engage with
+# Different from commenting-digest (which shows pending comments for approval)
+# This shows trending posts from monitors that haven't been commented on yet
+# Runs daily at 7 AM PT (3 PM UTC) - start of workday
+[functions."opportunity-digest"]
+  schedule = "0 15 * * 1-5"

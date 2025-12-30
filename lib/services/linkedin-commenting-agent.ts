@@ -102,6 +102,27 @@ export interface BrandGuidelines {
 
   // Section 10: Advanced
   system_prompt?: string;
+
+  // Section 11: VIP/Priority Profiles (Added Dec 30, 2025)
+  priority_profiles?: PriorityProfile[];
+
+  // Section 12: Opportunity Digest (Added Dec 30, 2025)
+  opportunity_digest_enabled?: boolean;
+  opportunity_digest_time?: string;
+}
+
+/**
+ * VIP/Priority Profile for special comment treatment
+ * Added Dec 30, 2025
+ */
+export interface PriorityProfile {
+  profile_id: string;           // LinkedIn profile ID
+  profile_url?: string;         // LinkedIn profile URL
+  name: string;                 // Display name
+  relationship: 'partner' | 'client' | 'friend' | 'prospect' | 'thought_leader';
+  tone_override?: string;       // Custom tone instruction for AI
+  never_miss?: boolean;         // If true, always prioritize their posts
+  notes?: string;               // Additional context for the AI
 }
 
 // Legacy interface for backwards compatibility
@@ -160,6 +181,33 @@ export interface GeneratedComment {
     tokens_used: number;
     generation_time_ms: number;
   };
+  vip_match?: PriorityProfile; // Added Dec 30, 2025: If author was a VIP
+}
+
+/**
+ * Find a priority profile by LinkedIn profile ID
+ * Added Dec 30, 2025
+ *
+ * @param profiles - Array of priority profiles from brand guidelines
+ * @param authorProfileId - LinkedIn profile ID of the post author
+ * @returns Matching priority profile or undefined
+ */
+function findPriorityProfile(
+  profiles: PriorityProfile[] | undefined,
+  authorProfileId: string | undefined
+): PriorityProfile | undefined {
+  if (!profiles || profiles.length === 0 || !authorProfileId) {
+    return undefined;
+  }
+
+  // Direct match on profile_id
+  const match = profiles.find(p => p.profile_id === authorProfileId);
+  if (match) {
+    console.log(`⭐ VIP Match found: ${match.name} (${match.relationship})`);
+    return match;
+  }
+
+  return undefined;
 }
 
 /**
@@ -170,22 +218,6 @@ export async function generateLinkedInComment(
 ): Promise<GeneratedComment> {
   const startTime = Date.now();
 
-  // ANTI-DETECTION: Pure random variance for every comment
-  // No patterns - each comment is independently randomized
-  // LinkedIn cannot detect automation if there's no pattern to find
-  const varianceContext = getCommentVarianceContext();
-
-  console.log('💬 Generating LinkedIn comment:', {
-    post_id: context.post.id,
-    author: context.post.author.name,
-    is_prospect: context.prospect?.is_prospect || false,
-    variance: {
-      targetLength: varianceContext.targetLength,
-      category: varianceContext.lengthCategory,
-      type: varianceContext.commentType
-    }
-  });
-
   // CRITICAL SAFETY CHECK: Never generate comment for posts without content
   // This prevents garbage "couldn't see your post" comments
   const postContent = context.post.post_text?.trim();
@@ -193,6 +225,26 @@ export async function generateLinkedInComment(
     console.error('❌ REFUSED: Cannot generate comment - post has no content or too short');
     throw new Error('POST_CONTENT_MISSING: Cannot generate comment for post without content. This prevents garbage comments.');
   }
+
+  // ANTI-DETECTION: Context-aware variance for every comment
+  // Updated Dec 30, 2025: Now matches comment length to post length
+  // Short posts get short comments, long posts get longer comments
+  const postLength = postContent.length;
+  const varianceContext = getCommentVarianceContext(postLength);
+
+  console.log('💬 Generating LinkedIn comment:', {
+    post_id: context.post.id,
+    author: context.post.author.name,
+    is_prospect: context.prospect?.is_prospect || false,
+    post_length: postLength,
+    variance: {
+      targetLength: varianceContext.targetLength,
+      category: varianceContext.lengthCategory,
+      type: varianceContext.commentType,
+      isContextAware: varianceContext.isContextAware,
+      lengthReason: varianceContext.lengthReason
+    }
+  });
 
   // Build AI prompt with variance instructions
   const systemPrompt = buildCommentSystemPrompt(context, varianceContext);
@@ -466,6 +518,33 @@ ${bg.admired_comments.map((c, i) => `${i + 1}. "${c}"`).join('\n')}`;
 Author: ${post.author.name}${post.author.title ? `, ${post.author.title}` : ''}${post.author.company ? ` at ${post.author.company}` : ''}
 Posted: ${getRelativeTime(post.posted_at)}
 Engagement: ${post.engagement.likes_count} likes, ${post.engagement.comments_count} comments`;
+
+  // VIP/Priority Profile Check (Added Dec 30, 2025)
+  const vipMatch = findPriorityProfile(bg?.priority_profiles, post.author.linkedin_id);
+  if (vipMatch) {
+    const relationshipDescriptions: Record<string, string> = {
+      partner: 'a trusted business partner or associate',
+      client: 'an existing client or customer',
+      friend: 'a personal friend or close connection',
+      prospect: 'a high-priority prospect',
+      thought_leader: 'a respected thought leader in the industry'
+    };
+
+    prompt += `\n\n## ⭐ VIP AUTHOR - SPECIAL HANDLING
+This is **${vipMatch.name}**, ${relationshipDescriptions[vipMatch.relationship] || 'an important contact'}.
+
+**Relationship**: ${vipMatch.relationship.charAt(0).toUpperCase() + vipMatch.relationship.slice(1)}
+${vipMatch.tone_override ? `**Tone Override**: ${vipMatch.tone_override}` : ''}
+${vipMatch.notes ? `**Additional Context**: ${vipMatch.notes}` : ''}
+
+**Guidelines for VIP**:
+- Be especially warm, personal, and thoughtful
+- Reference the relationship naturally if appropriate
+- This person matters - make the comment feel genuine and valued
+- ${vipMatch.relationship === 'friend' ? 'You can be more casual and personal' : ''}
+- ${vipMatch.relationship === 'partner' ? 'Acknowledge the collaborative relationship' : ''}
+- ${vipMatch.relationship === 'client' ? 'Show appreciation without being sycophantic' : ''}`;
+  }
 
   // Prospect handling
   if (prospect?.is_prospect) {

@@ -103,6 +103,23 @@ interface Settings {
 
   // Section 14: Target Countries Filter
   target_countries: string[];
+
+  // Section 15: VIP/Priority Profiles (Added Dec 30, 2025)
+  priority_profiles: PriorityProfile[];
+
+  // Section 16: Opportunity Digest (Added Dec 30, 2025)
+  opportunity_digest_enabled: boolean;
+  opportunity_digest_time: string;
+}
+
+interface PriorityProfile {
+  profile_id: string;
+  profile_url?: string;
+  name: string;
+  relationship: 'partner' | 'client' | 'friend' | 'prospect' | 'thought_leader';
+  tone_override?: string;
+  never_miss?: boolean;
+  notes?: string;
 }
 
 const defaultSettings: Settings = {
@@ -176,6 +193,13 @@ const defaultSettings: Settings = {
 
   // Section 14: Target Countries Filter
   target_countries: [],
+
+  // Section 15: VIP/Priority Profiles
+  priority_profiles: [],
+
+  // Section 16: Opportunity Digest
+  opportunity_digest_enabled: false,
+  opportunity_digest_time: '07:00',
 };
 
 const frameworkDescriptions: Record<string, string> = {
@@ -206,6 +230,8 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     blocklist: false,
     countries: false,
     digest: false,
+    priority_profiles: false,
+    opportunity_digest: false,
     advanced: false,
   });
 
@@ -215,6 +241,17 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
   const [newCompetitor, setNewCompetitor] = useState('');
   const [newBlacklistedProfile, setNewBlacklistedProfile] = useState('');
   const [newBlockedKeyword, setNewBlockedKeyword] = useState('');
+
+  // Priority profile form state (Added Dec 30, 2025)
+  const [newPriorityProfile, setNewPriorityProfile] = useState<Partial<PriorityProfile>>({
+    name: '',
+    profile_id: '',
+    profile_url: '',
+    relationship: 'partner',
+    tone_override: '',
+    notes: '',
+    never_miss: false,
+  });
 
   useEffect(() => {
     loadSettings();
@@ -301,6 +338,11 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
           digest_timezone: data.digest_timezone || defaultSettings.digest_timezone,
           // Section 14: Target Countries Filter
           target_countries: data.target_countries || [],
+          // Section 15: VIP/Priority Profiles (Added Dec 30, 2025)
+          priority_profiles: data.priority_profiles || [],
+          // Section 16: Opportunity Digest (Added Dec 30, 2025)
+          opportunity_digest_enabled: data.opportunity_digest_enabled ?? false,
+          opportunity_digest_time: data.opportunity_digest_time || defaultSettings.opportunity_digest_time,
         });
       }
     } catch (error) {
@@ -393,6 +435,11 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
         digest_timezone: settings.digest_timezone,
         // Section 14: Target Countries Filter
         target_countries: settings.target_countries.length > 0 ? settings.target_countries : null,
+        // Section 15: VIP/Priority Profiles (Added Dec 30, 2025)
+        priority_profiles: settings.priority_profiles.length > 0 ? settings.priority_profiles : null,
+        // Section 16: Opportunity Digest (Added Dec 30, 2025)
+        opportunity_digest_enabled: settings.opportunity_digest_enabled,
+        opportunity_digest_time: settings.opportunity_digest_time,
         is_active: true,
         updated_at: new Date().toISOString(),
       };
@@ -1661,7 +1708,213 @@ DON'T: Use "Great post!", emojis, exclamation points, or buzzwords like "leverag
         )}
       </div>
 
-      {/* Section 14: Advanced */}
+      {/* Section 15: VIP/Priority Profiles (Added Dec 30, 2025) */}
+      <div className="border border-gray-600 rounded-lg overflow-hidden">
+        <SectionHeader title="VIP/Priority Profiles" section="priority_profiles" description="Special treatment for important contacts" />
+        {expandedSections.priority_profiles && (
+          <div className="p-4 bg-gray-800 space-y-5">
+            <div className="p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg mb-4">
+              <p className="text-yellow-200 text-xs">Add profiles of partners, clients, or important contacts. Sam will use a warmer, more personalized tone when commenting on their posts.</p>
+            </div>
+
+            {/* Existing Priority Profiles */}
+            {settings.priority_profiles.length > 0 && (
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-300">Current VIP Profiles</label>
+                {settings.priority_profiles.map((profile, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg border border-gray-600">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-medium">{profile.name}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          profile.relationship === 'partner' ? 'bg-purple-900/50 text-purple-300' :
+                          profile.relationship === 'client' ? 'bg-blue-900/50 text-blue-300' :
+                          profile.relationship === 'friend' ? 'bg-green-900/50 text-green-300' :
+                          profile.relationship === 'prospect' ? 'bg-orange-900/50 text-orange-300' :
+                          'bg-pink-900/50 text-pink-300'
+                        }`}>
+                          {profile.relationship}
+                        </span>
+                        {profile.never_miss && (
+                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-900/50 text-yellow-300">Never Miss</span>
+                        )}
+                      </div>
+                      {profile.tone_override && (
+                        <p className="text-gray-400 text-xs mt-1">Tone: {profile.tone_override}</p>
+                      )}
+                      {profile.notes && (
+                        <p className="text-gray-500 text-xs mt-1">Notes: {profile.notes}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSettings(prev => ({
+                          ...prev,
+                          priority_profiles: prev.priority_profiles.filter((_, i) => i !== idx)
+                        }));
+                      }}
+                      className="text-red-400 hover:text-red-300 p-1"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add New Profile Form */}
+            <div className="p-4 bg-gray-700/50 rounded-lg border border-gray-600 space-y-4">
+              <label className="block text-sm font-medium text-gray-300">Add New VIP Profile</label>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    value={newPriorityProfile.name || ''}
+                    onChange={(e) => setNewPriorityProfile(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g., John Smith"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">LinkedIn Profile ID *</label>
+                  <input
+                    type="text"
+                    value={newPriorityProfile.profile_id || ''}
+                    onChange={(e) => setNewPriorityProfile(prev => ({ ...prev, profile_id: e.target.value }))}
+                    placeholder="e.g., john-smith-123abc"
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Relationship Type *</label>
+                  <select
+                    value={newPriorityProfile.relationship || 'partner'}
+                    onChange={(e) => setNewPriorityProfile(prev => ({ ...prev, relationship: e.target.value as PriorityProfile['relationship'] }))}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  >
+                    <option value="partner">Partner/Associate</option>
+                    <option value="client">Client/Customer</option>
+                    <option value="friend">Friend/Close Connection</option>
+                    <option value="prospect">High-Priority Prospect</option>
+                    <option value="thought_leader">Thought Leader</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Profile URL (optional)</label>
+                  <input
+                    type="text"
+                    value={newPriorityProfile.profile_url || ''}
+                    onChange={(e) => setNewPriorityProfile(prev => ({ ...prev, profile_url: e.target.value }))}
+                    placeholder="https://linkedin.com/in/..."
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Custom Tone Override (optional)</label>
+                <input
+                  type="text"
+                  value={newPriorityProfile.tone_override || ''}
+                  onChange={(e) => setNewPriorityProfile(prev => ({ ...prev, tone_override: e.target.value }))}
+                  placeholder="e.g., warm and personal, like talking to a close colleague"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Notes for AI (optional)</label>
+                <input
+                  type="text"
+                  value={newPriorityProfile.notes || ''}
+                  onChange={(e) => setNewPriorityProfile(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="e.g., Met at conference, interested in AI topics"
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="never_miss"
+                  checked={newPriorityProfile.never_miss || false}
+                  onChange={(e) => setNewPriorityProfile(prev => ({ ...prev, never_miss: e.target.checked }))}
+                  className="w-4 h-4 text-pink-600 bg-gray-700 border-gray-600 rounded focus:ring-pink-500"
+                />
+                <label htmlFor="never_miss" className="text-sm text-gray-300">Never Miss - Always prioritize their posts</label>
+              </div>
+
+              <button
+                onClick={() => {
+                  if (newPriorityProfile.name && newPriorityProfile.profile_id && newPriorityProfile.relationship) {
+                    setSettings(prev => ({
+                      ...prev,
+                      priority_profiles: [...prev.priority_profiles, newPriorityProfile as PriorityProfile]
+                    }));
+                    setNewPriorityProfile({
+                      name: '',
+                      profile_id: '',
+                      profile_url: '',
+                      relationship: 'partner',
+                      tone_override: '',
+                      notes: '',
+                      never_miss: false,
+                    });
+                  }
+                }}
+                disabled={!newPriorityProfile.name || !newPriorityProfile.profile_id}
+                className="w-full px-4 py-2 bg-pink-600 hover:bg-pink-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus size={16} />
+                Add VIP Profile
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Section 16: Opportunity Digest (Added Dec 30, 2025) */}
+      <div className="border border-gray-600 rounded-lg overflow-hidden">
+        <SectionHeader title="Opportunity Digest" section="opportunity_digest" description="Daily email with trending posts to engage with" />
+        {expandedSections.opportunity_digest && (
+          <div className="p-4 bg-gray-800 space-y-5">
+            <div className="p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg mb-4">
+              <p className="text-blue-200 text-xs">Get a daily email highlighting high-engagement posts from your monitors that are opportunities for meaningful engagement.</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="opportunity_digest_enabled"
+                checked={settings.opportunity_digest_enabled}
+                onChange={(e) => setSettings({ ...settings, opportunity_digest_enabled: e.target.checked })}
+                className="w-4 h-4 text-pink-600 bg-gray-700 border-gray-600 rounded focus:ring-pink-500"
+              />
+              <label htmlFor="opportunity_digest_enabled" className="text-sm text-gray-300">Enable Opportunity Digest</label>
+            </div>
+
+            {settings.opportunity_digest_enabled && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Digest Time</label>
+                <input
+                  type="time"
+                  value={settings.opportunity_digest_time}
+                  onChange={(e) => setSettings({ ...settings, opportunity_digest_time: e.target.value })}
+                  className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Time in your workspace timezone ({settings.timezone})</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Section 17: Advanced */}
       <div className="border border-gray-600 rounded-lg overflow-hidden">
         <SectionHeader title="Advanced" section="advanced" description="System prompt override (experts only)" />
         {expandedSections.advanced && (

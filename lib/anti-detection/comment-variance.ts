@@ -56,6 +56,123 @@ export function getRandomCommentLength(): { category: CommentLengthCategory; tar
   };
 }
 
+/**
+ * Get context-aware comment length based on post length
+ *
+ * This matches comment length to post length for more natural engagement:
+ * - Short posts (< 300 chars) → Short comments (quick reactions)
+ * - Medium posts (300-800 chars) → Medium comments (thoughtful response)
+ * - Long posts (800+ chars) → Long comments (detailed engagement)
+ *
+ * Added Dec 30, 2025: Feature request for proportional commenting
+ *
+ * @param postLength - Character count of the original post
+ * @returns Category and target length for the comment
+ */
+export function getContextAwareCommentLength(postLength: number): {
+  category: CommentLengthCategory;
+  targetLength: number;
+  reason: string;
+} {
+  // Helper to get random value within a range
+  const randomInRange = (range: CommentLengthRange): number => {
+    return range.min + Math.floor(Math.random() * (range.max - range.min));
+  };
+
+  // Very short post (tweet-like) → very short to short comment
+  if (postLength < 150) {
+    // 60% very_short, 40% short
+    if (Math.random() < 0.6) {
+      const range = COMMENT_LENGTH_DISTRIBUTION.very_short;
+      return {
+        category: 'very_short',
+        targetLength: randomInRange(range),
+        reason: `Post is very short (${postLength} chars) - matching with brief response`
+      };
+    }
+    const range = COMMENT_LENGTH_DISTRIBUTION.short;
+    return {
+      category: 'short',
+      targetLength: randomInRange(range),
+      reason: `Post is very short (${postLength} chars) - matching with short response`
+    };
+  }
+
+  // Short post → short to medium comment
+  if (postLength < 400) {
+    // 50% short, 50% medium
+    if (Math.random() < 0.5) {
+      const range = COMMENT_LENGTH_DISTRIBUTION.short;
+      return {
+        category: 'short',
+        targetLength: randomInRange(range),
+        reason: `Post is short (${postLength} chars) - matching with short response`
+      };
+    }
+    const range = COMMENT_LENGTH_DISTRIBUTION.medium;
+    return {
+      category: 'medium',
+      targetLength: randomInRange(range),
+      reason: `Post is short (${postLength} chars) - matching with medium response`
+    };
+  }
+
+  // Medium post → medium to long comment
+  if (postLength < 800) {
+    // 60% medium, 40% long
+    if (Math.random() < 0.6) {
+      const range = COMMENT_LENGTH_DISTRIBUTION.medium;
+      return {
+        category: 'medium',
+        targetLength: randomInRange(range),
+        reason: `Post is medium length (${postLength} chars) - matching with medium response`
+      };
+    }
+    const range = COMMENT_LENGTH_DISTRIBUTION.long;
+    return {
+      category: 'long',
+      targetLength: randomInRange(range),
+      reason: `Post is medium length (${postLength} chars) - matching with longer response`
+    };
+  }
+
+  // Long post (800-1500 chars) → long comment
+  if (postLength < 1500) {
+    // 70% long, 30% very_long
+    if (Math.random() < 0.7) {
+      const range = COMMENT_LENGTH_DISTRIBUTION.long;
+      return {
+        category: 'long',
+        targetLength: randomInRange(range),
+        reason: `Post is long (${postLength} chars) - matching with detailed response`
+      };
+    }
+    const range = COMMENT_LENGTH_DISTRIBUTION.very_long;
+    return {
+      category: 'very_long',
+      targetLength: randomInRange(range),
+      reason: `Post is long (${postLength} chars) - matching with comprehensive response`
+    };
+  }
+
+  // Very long post (1500+ chars) → long to very_long comment
+  // 50% long, 50% very_long (don't always do very_long even for long posts)
+  if (Math.random() < 0.5) {
+    const range = COMMENT_LENGTH_DISTRIBUTION.long;
+    return {
+      category: 'long',
+      targetLength: randomInRange(range),
+      reason: `Post is very long (${postLength} chars) - matching with detailed response`
+    };
+  }
+  const range = COMMENT_LENGTH_DISTRIBUTION.very_long;
+  return {
+    category: 'very_long',
+    targetLength: randomInRange(range),
+    reason: `Post is very long (${postLength} chars) - matching with comprehensive response`
+  };
+}
+
 // ============================================
 // COMMENT TYPE VARIANCE (Questions vs Statements)
 // ============================================
@@ -279,13 +396,39 @@ export interface CommentVarianceContext {
   commentType: CommentType;
   typePrompt: string;
   scheduledGapMinutes: number;
+  lengthReason?: string; // Added Dec 30, 2025: Explains why this length was chosen
+  isContextAware?: boolean; // Added Dec 30, 2025: Whether length was based on post content
 }
 
 /**
  * Get full variance context for generating a comment
+ *
+ * Updated Dec 30, 2025: Now supports context-aware comment length
+ * When postLength is provided, comment length matches post length proportionally
+ *
+ * @param postLength - Optional: Character count of the post being commented on
+ * @returns Variance context for AI comment generation
  */
-export function getCommentVarianceContext(): CommentVarianceContext {
-  const { category, targetLength } = getRandomCommentLength();
+export function getCommentVarianceContext(postLength?: number): CommentVarianceContext {
+  let category: CommentLengthCategory;
+  let targetLength: number;
+  let lengthReason: string | undefined;
+  let isContextAware = false;
+
+  // Use context-aware length if post length is provided
+  if (postLength !== undefined && postLength > 0) {
+    const contextLength = getContextAwareCommentLength(postLength);
+    category = contextLength.category;
+    targetLength = contextLength.targetLength;
+    lengthReason = contextLength.reason;
+    isContextAware = true;
+  } else {
+    // Fall back to random distribution
+    const randomLength = getRandomCommentLength();
+    category = randomLength.category;
+    targetLength = randomLength.targetLength;
+  }
+
   const commentType = getRandomCommentType();
 
   return {
@@ -294,6 +437,8 @@ export function getCommentVarianceContext(): CommentVarianceContext {
     commentType,
     typePrompt: getCommentTypePrompt(commentType),
     scheduledGapMinutes: getRandomCommentGap(),
+    lengthReason,
+    isContextAware,
   };
 }
 
