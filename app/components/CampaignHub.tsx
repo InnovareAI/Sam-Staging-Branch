@@ -445,18 +445,14 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
 
   return (
     <div className="space-y-10 py-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Dynamic Header */}
+      {/* Page Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-              <LayoutDashboard className="w-5 h-5 text-primary" />
-            </div>
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground">Campaign Hub</h1>
-          </div>
-          <p className="text-muted-foreground text-lg max-w-2xl">
-            Control center for your outreach. Track performance, manage sequences, and optimize conversion.
-          </p>
+        <div>
+          <h1 className="text-2xl font-semibold text-white flex items-center gap-3">
+            <Rocket className="text-primary" size={28} />
+            Campaign Hub
+          </h1>
+          <p className="text-gray-400 mt-1">Control center for your outreach. Track performance, manage sequences, and optimize conversion.</p>
         </div>
 
         <div className="flex items-center gap-4">

@@ -164,7 +164,7 @@ export default function CommentingAgentDashboard() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-white flex items-center gap-3">
-            <MessageSquare className="text-pink-500" />
+            <MessageSquare className="text-pink-500" size={28} />
             LinkedIn Commenting Agent
           </h1>
           <p className="text-gray-400 mt-1">

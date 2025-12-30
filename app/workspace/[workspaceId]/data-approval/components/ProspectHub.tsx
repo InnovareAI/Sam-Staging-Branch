@@ -841,6 +841,15 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
 
     return (
         <div className="space-y-6 p-6">
+            {/* Page Header */}
+            <div className="mb-2">
+                <h1 className="text-2xl font-semibold text-white flex items-center gap-3">
+                    <Users className="text-primary" size={28} />
+                    Prospect Database
+                </h1>
+                <p className="text-gray-400 mt-1">Manage and approve prospects for your campaigns</p>
+            </div>
+
             {/* Stats Section */}
             <ProspectStats
                 total={stats.total}
