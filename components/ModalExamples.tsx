@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import CustomModal, { ConfirmModal, InfoModal, LoadingModal } from './ui/CustomModal';
 import { Save, Trash2, Settings, UserPlus, Mail, AlertTriangle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function ModalExamples() {
   const [modals, setModals] = useState({
@@ -44,9 +46,9 @@ export default function ModalExamples() {
     <div className="p-8 bg-background min-h-screen">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-semibold text-white mb-8">Custom Modal Examples</h1>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          
+
           {/* Basic Modal */}
           <button
             onClick={() => openModal('basic')}
@@ -116,7 +118,7 @@ export default function ModalExamples() {
         >
           <div className="p-6">
             <p className="text-gray-300 mb-4">
-              This is a basic modal with a title, description, and content area. 
+              This is a basic modal with a title, description, and content area.
               It follows the app's design system with the dark theme and purple accents.
             </p>
             <p className="text-gray-400 text-sm">
@@ -180,11 +182,16 @@ export default function ModalExamples() {
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Role
               </label>
-              <select className="w-full py-3 px-4 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                <option value="member">Member</option>
-                <option value="admin">Admin</option>
-                <option value="owner">Owner</option>
-              </select>
+              <Select defaultValue="member">
+                <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white py-3">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="owner">Owner</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex space-x-3 pt-4">
@@ -215,7 +222,7 @@ export default function ModalExamples() {
           <div className="p-6 space-y-6">
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-foreground">General Settings</h3>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Workspace Name
@@ -239,13 +246,11 @@ export default function ModalExamples() {
               </div>
 
               <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="notifications"
                   defaultChecked
-                  className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
                 />
-                <label htmlFor="notifications" className="text-gray-300">
+                <label htmlFor="notifications" className="text-gray-300 cursor-pointer">
                   Enable email notifications
                 </label>
               </div>
@@ -290,7 +295,7 @@ export default function ModalExamples() {
                   </div>
                   <p className="text-gray-300 text-sm mt-2">All systems operational</p>
                 </div>
-                
+
                 <div className="bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
@@ -298,7 +303,7 @@ export default function ModalExamples() {
                   </div>
                   <p className="text-gray-300 text-sm mt-2">Minor delays detected</p>
                 </div>
-                
+
                 <div className="bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-red-500 rounded-full"></div>
@@ -306,7 +311,7 @@ export default function ModalExamples() {
                   </div>
                   <p className="text-gray-300 text-sm mt-2">Service temporarily unavailable</p>
                 </div>
-                
+
                 <div className="bg-gray-700 rounded-lg p-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-green-500 rounded-full"></div>

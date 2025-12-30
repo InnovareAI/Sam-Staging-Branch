@@ -18,6 +18,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 
@@ -3861,40 +3862,40 @@ const KnowledgeBase: React.FC = () => {
                 <div className="bg-muted border border rounded-lg p-4">
                   <h4 className="text-white font-medium mb-3">Automation Rules Configuration</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <input type="checkbox" className="mr-2" defaultChecked />
-                        <span className="text-gray-300">Auto-create leads from SAM campaigns</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="auto-create-leads" defaultChecked />
+                        <label htmlFor="auto-create-leads" className="text-gray-300 cursor-pointer">Auto-create leads from SAM campaigns</label>
                       </div>
-                      <div className="flex items-center">
-                        <input type="checkbox" className="mr-2" defaultChecked />
-                        <span className="text-gray-300">Sync response status updates</span>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="sync-response" defaultChecked />
+                        <label htmlFor="sync-response" className="text-gray-300 cursor-pointer">Sync response status updates</label>
                       </div>
-                      <div className="flex items-center">
-                        <input type="checkbox" className="mr-2" />
-                        <span className="text-gray-300">Create tasks for follow-ups</span>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="create-tasks" />
+                        <label htmlFor="create-tasks" className="text-gray-300 cursor-pointer">Create tasks for follow-ups</label>
                       </div>
-                      <div className="flex items-center">
-                        <input type="checkbox" className="mr-2" />
-                        <span className="text-gray-300">Update lead scores based on engagement</span>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="update-scores" />
+                        <label htmlFor="update-scores" className="text-gray-300 cursor-pointer">Update lead scores based on engagement</label>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <input type="checkbox" className="mr-2" />
-                        <span className="text-gray-300">Trigger workflows on replies</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="trigger-workflows" />
+                        <label htmlFor="trigger-workflows" className="text-gray-300 cursor-pointer">Trigger workflows on replies</label>
                       </div>
-                      <div className="flex items-center">
-                        <input type="checkbox" className="mr-2" />
-                        <span className="text-gray-300">Assign leads to sales reps</span>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="assign-leads" />
+                        <label htmlFor="assign-leads" className="text-gray-300 cursor-pointer">Assign leads to sales reps</label>
                       </div>
-                      <div className="flex items-center">
-                        <input type="checkbox" className="mr-2" />
-                        <span className="text-gray-300">Create opportunities for qualified leads</span>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="create-opportunities" />
+                        <label htmlFor="create-opportunities" className="text-gray-300 cursor-pointer">Create opportunities for qualified leads</label>
                       </div>
-                      <div className="flex items-center">
-                        <input type="checkbox" className="mr-2" />
-                        <span className="text-gray-300">Send notifications to team members</span>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="send-notifications" />
+                        <label htmlFor="send-notifications" className="text-gray-300 cursor-pointer">Send notifications to team members</label>
                       </div>
                     </div>
                   </div>

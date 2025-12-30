@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Calendar, FileText, GripVertical, MessageSquare, Plus, Settings, Shuffle, Tag, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, GripVertical, MessageSquare, Plus, Settings, Shuffle, Tag, Trash2, Upload, X } from 'lucide-react';
 import { toastError } from '@/lib/toast';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 // SPINTAX REMOVED (Dec 18, 2025) - Feature disabled due to bugs
 
 
@@ -423,11 +425,10 @@ export default function CampaignStepsEditor({
                 <div
                   key={step.id}
                   onClick={() => setSelectedStepId(step.id)}
-                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                    selectedStepId === step.id
-                      ? 'bg-purple-600'
-                      : 'bg-gray-700 hover:bg-gray-650'
-                  }`}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedStepId === step.id
+                    ? 'bg-purple-600'
+                    : 'bg-gray-700 hover:bg-gray-650'
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -527,12 +528,11 @@ export default function CampaignStepsEditor({
                         maxLength={isLinkedInCampaign(campaignType) && selectedStep.stepType === 'connection_request' ? 275 : 1000}
                       />
                       <div className="flex items-center justify-between mt-2">
-                        <span className={`text-sm ${
-                          (isLinkedInCampaign(campaignType) && selectedStep.stepType === 'connection_request' && selectedStep.characterCount > 275) ||
+                        <span className={`text-sm ${(isLinkedInCampaign(campaignType) && selectedStep.stepType === 'connection_request' && selectedStep.characterCount > 275) ||
                           (selectedStep.characterCount > 1000)
-                            ? 'text-red-400 font-semibold'
-                            : 'text-gray-400'
-                        }`}>
+                          ? 'text-red-400 font-semibold'
+                          : 'text-gray-400'
+                          }`}>
                           Characters: {selectedStep.characterCount}
                           {isLinkedInCampaign(campaignType) && selectedStep.stepType === 'connection_request' && (
                             <span className={selectedStep.characterCount > 275 ? 'text-red-400 ml-2' : 'text-yellow-400 ml-2'}>
@@ -595,11 +595,10 @@ export default function CampaignStepsEditor({
                 {samMessages.map((msg, idx) => (
                   <div key={idx} className={`${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                     <div
-                      className={`inline-block p-3 rounded-lg max-w-[85%] ${
-                        msg.role === 'user'
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-700 text-gray-200'
-                      }`}
+                      className={`inline-block p-3 rounded-lg max-w-[85%] ${msg.role === 'user'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-700 text-gray-200'
+                        }`}
                     >
                       {msg.content}
                     </div>
@@ -830,15 +829,20 @@ export default function CampaignStepsEditor({
                     <h4 className="text-white font-medium">Campaign Priority</h4>
                     <label className="flex items-center gap-2">
                       <span className="text-gray-300 text-sm">Use priority</span>
-                      <input type="checkbox" defaultChecked className="w-4 h-4 rounded" />
+                      <Checkbox id="use-priority" defaultChecked />
                     </label>
                   </div>
                   <p className="text-gray-400 text-sm mb-3">If enabled, each campaign will have a default priority value "Medium". If a campaign priority is changed to "High" more actions will be scheduled to be sent from it in comparison to campaigns with lower priority.</p>
-                  <select className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm">
-                    <option>Medium</option>
-                    <option>High</option>
-                    <option>Low</option>
-                  </select>
+                  <Select defaultValue="medium">
+                    <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-white">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Schedule Campaign */}
@@ -847,7 +851,7 @@ export default function CampaignStepsEditor({
                     <h4 className="text-white font-medium">Schedule campaign</h4>
                     <label className="flex items-center gap-2">
                       <span className="text-gray-300 text-sm">Start immediately</span>
-                      <input type="checkbox" defaultChecked className="w-4 h-4 rounded" />
+                      <Checkbox id="start-immediately" defaultChecked />
                     </label>
                   </div>
                   <p className="text-gray-400 text-sm mb-3">
@@ -869,7 +873,7 @@ export default function CampaignStepsEditor({
                     <>
                       <p className="text-gray-400 text-sm mb-3">Override and allow outreaching to LinkedIn profiles from the same company</p>
                       <label className="flex items-center gap-3">
-                        <input type="checkbox" className="w-4 h-4 rounded" />
+                        <Checkbox id="override-linkedin" />
                         <span className="text-white text-sm">Override LinkedIn profiles</span>
                       </label>
                       <p className="text-gray-400 text-xs mt-2">Enable duplicating leads between company campaigns</p>
@@ -878,11 +882,11 @@ export default function CampaignStepsEditor({
                     <>
                       <p className="text-gray-400 text-sm mb-3">Email campaign prospect settings</p>
                       <label className="flex items-center gap-3 mb-2">
-                        <input type="checkbox" className="w-4 h-4 rounded" />
+                        <Checkbox id="allow-duplicates" />
                         <span className="text-white text-sm">Allow duplicate email addresses</span>
                       </label>
                       <label className="flex items-center gap-3">
-                        <input type="checkbox" className="w-4 h-4 rounded" defaultChecked />
+                        <Checkbox id="skip-bounced" defaultChecked />
                         <span className="text-white text-sm">Skip bounced emails</span>
                       </label>
                       <p className="text-gray-400 text-xs mt-2">Automatically skip previously bounced email addresses</p>
