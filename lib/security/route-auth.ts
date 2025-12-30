@@ -35,7 +35,7 @@ export async function requireAuth(request: NextRequest) {
         cookieOptions: {
           // CRITICAL: Must match browser client configuration
           global: {
-            secure: true, // Always true for HTTPS
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
           }

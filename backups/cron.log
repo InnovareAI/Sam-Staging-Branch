@@ -13399,3 +13399,126 @@ Backed up components:
 
 [1;33m📝 Step 2: Creating Git snapshot...[0m
 
+📚 Auto-updating documentation before commit...
+.git/hooks/pre-commit: line 6: node: command not found
+✅ No documentation updates needed
+✅ Commit completed with auto-documentation update
+[main d74e5f61] 🔄 Auto-backup: auto-backup-20251230_180000
+ Committer: Thorsten Linz <tvonlinz@4e309e84-2ae4-481a-a821-046f7759c0f1.fritz.box>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 100 files changed, 724954 insertions(+), 12049 deletions(-)
+ create mode 100644 CampaignHub_Code_Review.md
+ create mode 100644 CampaignHub_Modularization_Report.md
+ create mode 100644 Dockerfile.worker
+ create mode 100644 app/api/workspace-prospects/lists/route.ts
+ create mode 100644 components/campaign/CampaignBuilder.tsx
+ create mode 100644 components/campaign/CampaignCard.tsx
+ create mode 100644 components/campaign/CampaignEditModal.tsx
+ create mode 100644 components/campaign/CampaignList.tsx
+ create mode 100644 components/campaign/CampaignProspectsModal.tsx
+ create mode 100644 components/campaign/CampaignSettingsModal.tsx
+ create mode 100644 components/campaign/CampaignStats.tsx
+ create mode 100644 components/campaign/ReachInboxPushModal.tsx
+ create mode 100644 docs/HANDOVER_DEC_30_2025_CAMPAIGN_STATUS_CHECK.md
+ rename middleware.ts => proxy.ts (99%)
+ create mode 100644 schema_spec.json
+ create mode 100644 scripts/js/consolidate-migrations.mjs
+ create mode 100644 scripts/js/export-supabase-data.mjs
+ create mode 100644 scripts/js/generate-perfect-schema.mjs
+ create mode 100644 scripts/js/import-supabase-data.mjs
+ create mode 100644 scripts/js/orchestrator.js
+ create mode 100644 scripts/js/review-modularization.mjs
+ create mode 100644 scripts/js/sanitize-sql.mjs
+ create mode 100644 scripts/list-supabase-tables.mjs
+ create mode 100644 scripts/sql/drop_all.sql
+ create mode 100644 scripts/sql/gcp_schema.sql
+ create mode 100644 scripts/sql/init-cloud-sql.sql
+ create mode 100644 scripts/sql/master_schema.sql
+ create mode 100644 scripts/sql/perfect_schema.sql
+ create mode 100644 supabase_data.tar.gz
+ create mode 100644 temp/supabase_data/campaign_messages.json
+ create mode 100644 temp/supabase_data/campaign_prospects.json
+ create mode 100644 temp/supabase_data/campaign_replies.json
+ create mode 100644 temp/supabase_data/campaigns.json
+ create mode 100644 temp/supabase_data/cron_job_logs.json
+ create mode 100644 temp/supabase_data/document_ai_analysis.json
+ create mode 100644 temp/supabase_data/dpa_sub_processors.json
+ create mode 100644 temp/supabase_data/dpa_versions.json
+ create mode 100644 temp/supabase_data/email_providers.json
+ create mode 100644 temp/supabase_data/email_responses.json
+ create mode 100644 temp/supabase_data/enrichment_jobs.json
+ create mode 100644 temp/supabase_data/icp_configurations.json
+ create mode 100644 temp/supabase_data/knowledge_base.json
+ create mode 100644 temp/supabase_data/knowledge_base_competitors.json
+ create mode 100644 temp/supabase_data/knowledge_base_content.json
+ create mode 100644 temp/supabase_data/knowledge_base_documents.json
+ create mode 100644 temp/supabase_data/knowledge_base_icps.json
+ create mode 100644 temp/supabase_data/knowledge_base_personas.json
+ create mode 100644 temp/supabase_data/knowledge_base_products.json
+ create mode 100644 temp/supabase_data/knowledge_base_sections.json
+ create mode 100644 temp/supabase_data/knowledge_base_vectors.json
+ create mode 100644 temp/supabase_data/linkedin_post_monitors.json
+ create mode 100644 temp/supabase_data/linkedin_posts_discovered.json
+ create mode 100644 temp/supabase_data/linkedin_proxy_assignments.json
+ create mode 100644 temp/supabase_data/n8n_campaign_executions.json
+ create mode 100644 temp/supabase_data/organizations.json
+ create mode 100644 temp/supabase_data/password_reset_tokens.json
+ create mode 100644 temp/supabase_data/prospect_approval_data.json
+ create mode 100644 temp/supabase_data/prospect_approval_decisions.json
+ create mode 100644 temp/supabase_data/prospect_approval_sessions.json
+ create mode 100644 temp/supabase_data/prospect_search_jobs.json
+ create mode 100644 temp/supabase_data/reply_agent_drafts.json
+ create mode 100644 temp/supabase_data/reply_agent_settings.json
+ create mode 100644 temp/supabase_data/sam_conversation_messages.json
+ create mode 100644 temp/supabase_data/sam_conversation_threads.json
+ create mode 100644 temp/supabase_data/sam_icp_knowledge_entries.json
+ create mode 100644 temp/supabase_data/sam_knowledge_summaries.json
+ create mode 100644 temp/supabase_data/sam_learning_models.json
+ create mode 100644 temp/supabase_data/system_health_checks.json
+ create mode 100644 temp/supabase_data/user_unipile_accounts.json
+ create mode 100644 temp/supabase_data/users.json
+ create mode 100644 temp/supabase_data/workflow_templates.json
+ create mode 100644 temp/supabase_data/workspace_account_limits.json
+ create mode 100644 temp/supabase_data/workspace_accounts.json
+ create mode 100644 temp/supabase_data/workspace_analytics_reports.json
+ create mode 100644 temp/supabase_data/workspace_members.json
+ create mode 100644 temp/supabase_data/workspace_prospects.json
+ create mode 100644 temp/supabase_data/workspace_reply_agent_config.json
+ create mode 100644 temp/supabase_data/workspace_schedule_settings.json
+ create mode 100644 temp/supabase_data/workspace_tiers.json
+ create mode 100644 temp/supabase_data/workspaces.json
+ create mode 100644 types/campaign.ts
+ create mode 100644 workers/sam-worker/.dockerignore
+ create mode 100644 workers/sam-worker/Dockerfile
+ create mode 100644 workers/sam-worker/index.js
+ create mode 100644 workers/sam-worker/package-lock.json
+ create mode 100644 workers/sam-worker/package.json
+ create mode 100644 workers/sam-worker/sam-worker.tar.gz
+[0;32m✅ Git snapshot created[0m
+
+[1;33m⏭️  Skipping SQL dump[0m
+
+[0;34m╔════════════════════════════════════════════════════════╗[0m
+[0;34m║              Backup Summary                            ║[0m
+[0;34m╚════════════════════════════════════════════════════════╝[0m
+
+[0;32m✅ Backup completed: auto-backup-20251230_180000[0m
+[0;32m📅 Timestamp: Tue Dec 30 18:00:02 CET 2025[0m
+
+Backed up components:
+  ✅ Airtable backup (workspace_accounts, workspace_members, users)
+  ✅ Git snapshot
+  ⏭️  SQL dump (optional, not enabled)
+
+[0;34m═══════════════════════════════════════════════════════[0m
+

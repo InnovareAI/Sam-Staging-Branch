@@ -23,15 +23,22 @@ export async function GET(request: NextRequest) {
               // Cookie setting can fail in middleware context
             }
           }
+        },
+        cookieOptions: {
+          global: {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7
+          }
         }
       }
     );
-    
+
     console.log('🔍 Auth Session: Checking current session...');
-    
+
     // Get current session
     const { data: { session }, error } = await supabase.auth.getSession();
-    
+
     if (error) {
       console.error('❌ Session error:', error);
       return NextResponse.json(
@@ -39,7 +46,7 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-    
+
     if (!session) {
       console.log('📝 No active session found');
       return NextResponse.json({
@@ -48,9 +55,9 @@ export async function GET(request: NextRequest) {
         authenticated: false
       });
     }
-    
+
     console.log('✅ Active session found for user:', session.user.id);
-    
+
     // Return session information
     return NextResponse.json({
       user: {
@@ -67,7 +74,7 @@ export async function GET(request: NextRequest) {
       },
       authenticated: true
     });
-    
+
   } catch (error) {
     console.error('❌ Session API error:', error);
     return NextResponse.json(

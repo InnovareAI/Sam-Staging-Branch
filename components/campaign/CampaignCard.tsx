@@ -40,6 +40,7 @@ interface CampaignCardProps {
     onToggleStatus: (id: string, currentStatus: string) => void;
     onExecute: (id: string) => void;
     onArchive: (id: string) => void;
+    onComplete: (id: string) => void;
     onViewMessages: (campaign: Campaign) => void;
     onViewProspects: (id: string) => void;
     onAddProspects: (campaign: Campaign) => void;
@@ -57,6 +58,7 @@ export function CampaignCard({
     onToggleStatus,
     onExecute,
     onArchive,
+    onComplete,
     onViewMessages,
     onViewProspects,
     onAddProspects,
@@ -86,6 +88,16 @@ export function CampaignCard({
                 label: 'Draft',
                 class: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
                 icon: FileText
+            };
+            case 'completed': return {
+                label: 'Completed',
+                class: 'bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.1)]',
+                icon: CheckCircle
+            };
+            case 'archived': return {
+                label: 'Archived',
+                class: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+                icon: Archive
             };
             default: return {
                 label: status.charAt(0).toUpperCase() + status.slice(1),
@@ -191,6 +203,9 @@ export function CampaignCard({
                                         <DropdownMenuSeparator className="bg-border/40" />
                                         <DropdownMenuItem onClick={() => onArchive(c.id)} className="gap-2 text-rose-400 focus:text-rose-400 focus:bg-rose-400/10 cursor-pointer">
                                             <Archive className="w-4 h-4" /> Archive Campaign
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onComplete(c.id)} disabled={c.status === 'completed' || c.status === 'archived'} className="gap-2 text-primary focus:text-primary focus:bg-primary/10 cursor-pointer">
+                                            <CheckCircle className="w-4 h-4" /> Mark as Completed
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

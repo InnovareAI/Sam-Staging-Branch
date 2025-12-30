@@ -20,6 +20,7 @@ interface CampaignStatsData {
     sent: number;
     connected: number;
     replied: number;
+    archived?: number;
 }
 
 interface CampaignStatsProps {
@@ -35,7 +36,7 @@ export function CampaignStats({ stats, className }: CampaignStatsProps) {
         {
             label: "Total Campaigns",
             value: stats.total.toLocaleString(),
-            subLabel: `${stats.active} active, ${stats.paused} paused`,
+            subLabel: `${stats.active} active, ${stats.paused} paused, ${stats.archived || 0} archived`,
             icon: Rocket,
             color: "text-primary",
             bg: "bg-primary/10",

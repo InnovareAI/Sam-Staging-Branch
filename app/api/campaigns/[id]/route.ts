@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const supabase = await createSupabaseRouteClient();
-    
+
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -139,7 +139,6 @@ export async function PUT(
 
     console.log('Updating campaign with data:', updateData);
 
-    // Update campaign
     const { data: campaign, error } = await supabase
       .from('campaigns')
       .update({
@@ -151,6 +150,7 @@ export async function PUT(
       .single();
 
     if (error) {
+      console.error('Campaign update database error:', error);
       throw apiError.database('update campaign', error);
     }
 

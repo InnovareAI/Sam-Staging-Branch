@@ -6,9 +6,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Link as LinkIcon, FileText, Loader2, Upload, Plus } from 'lucide-react'
+import { Search as SearchIcon, FileText, Loader2, Upload, Plus } from 'lucide-react'
 
-export type ImportTab = 'url' | 'paste' | 'csv' | 'quick-add'
+export type ImportTab = 'search' | 'paste' | 'csv' | 'quick-add'
 
 interface ImportProspectsModalProps {
   open: boolean
@@ -18,46 +18,64 @@ interface ImportProspectsModalProps {
   onLinkedInUrl: (url: string) => Promise<void> | void
   onCsvUpload: (file: File) => Promise<void> | void
   onQuickAdd: (url: string) => Promise<void> | void
+  onCompanySearch?: (companyName: string, jobTitles?: string) => Promise<void> | void
   isProcessingPaste?: boolean
   isProcessingUrl?: boolean
   isProcessingCsv?: boolean
   isProcessingQuickAdd?: boolean
+  isProcessingCompany?: boolean
 }
 
 export default function ImportProspectsModal({
   open,
   onClose,
-  initialTab = 'url',
+  initialTab = 'search',
   onPaste,
   onLinkedInUrl,
   onCsvUpload,
   onQuickAdd,
+  onCompanySearch,
   isProcessingPaste = false,
   isProcessingUrl = false,
   isProcessingCsv = false,
   isProcessingQuickAdd = false,
+  isProcessingCompany = false,
 }: ImportProspectsModalProps) {
-  const [tab, setTab] = useState<ImportTab>(initialTab)
+  const [tab, setTab] = useState<ImportTab>(initialTab === 'url' ? 'search' : initialTab as ImportTab)
+  const [searchType, setSearchType] = useState<'people' | 'company' | 'companyUrl'>('people')
   const [url, setUrl] = useState('')
+  const [companySearchUrl, setCompanySearchUrl] = useState('')
   const [text, setText] = useState('')
   const [quickAddUrl, setQuickAddUrl] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [companyName, setCompanyName] = useState('')
+  const [jobTitles, setJobTitles] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) {
-      setTab(initialTab)
+      setTab(initialTab === 'url' ? 'search' : initialTab as ImportTab)
+      setSearchType('people')
       setUrl('')
+      setCompanySearchUrl('')
       setText('')
       setQuickAddUrl('')
       setSelectedFile(null)
+      setCompanyName('')
+      setJobTitles('')
     }
   }, [open, initialTab])
 
   const handleSubmitUrl = async () => {
     if (!url.trim()) return
     await onLinkedInUrl(url.trim())
-    // Keep modal open while processing; close when not processing
+    if (!isProcessingUrl) onClose()
+  }
+
+  const handleSubmitCompanyUrl = async () => {
+    if (!companySearchUrl.trim()) return
+    // Company URL uses the same handler as people URL - the backend will detect the URL type
+    await onLinkedInUrl(companySearchUrl.trim())
     if (!isProcessingUrl) onClose()
   }
 
@@ -79,6 +97,12 @@ export default function ImportProspectsModal({
     if (!isProcessingQuickAdd) onClose()
   }
 
+  const handleCompanySearch = async () => {
+    if (!companyName.trim() || !onCompanySearch) return
+    await onCompanySearch(companyName.trim(), jobTitles.trim() || undefined)
+    if (!isProcessingCompany) onClose()
+  }
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e || !e.target || !e.target.files) {
       console.error('File input event is invalid:', e)
@@ -90,56 +114,150 @@ export default function ImportProspectsModal({
     }
   }
 
+  const isProcessingSearch = searchType === 'people' ? isProcessingUrl : isProcessingCompany
+
   return (
     <Dialog open={open} onOpenChange={(v) => (!v ? onClose() : null)}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Import Prospects</DialogTitle>
-          <DialogDescription>Choose your import method: LinkedIn search, CSV upload, copy & paste, or add a single profile.</DialogDescription>
+          <DialogDescription>Search LinkedIn, upload a CSV, paste data, or add a single profile.</DialogDescription>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as ImportTab)} className="mt-2">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="url" className="flex items-center gap-2">
-              <LinkIcon className="h-4 w-4" />
-              LinkedIn URL
+            <TabsTrigger value="search" className="flex items-center gap-1.5 text-xs">
+              <SearchIcon className="h-3.5 w-3.5" />
+              LinkedIn Search
             </TabsTrigger>
-            <TabsTrigger value="csv" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
+            <TabsTrigger value="csv" className="flex items-center gap-1.5 text-xs">
+              <Upload className="h-3.5 w-3.5" />
               CSV Upload
             </TabsTrigger>
-            <TabsTrigger value="paste" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Copy & Paste
+            <TabsTrigger value="paste" className="flex items-center gap-1.5 text-xs">
+              <FileText className="h-3.5 w-3.5" />
+              Paste
             </TabsTrigger>
-            <TabsTrigger value="quick-add" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
+            <TabsTrigger value="quick-add" className="flex items-center gap-1.5 text-xs">
+              <Plus className="h-3.5 w-3.5" />
               Quick Add
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="url" className="space-y-3 pt-4">
-            <label className="text-sm font-medium">LinkedIn search URL</label>
-            <Input
-              placeholder="https://www.linkedin.com/sales/search/people?..."
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={isProcessingUrl}
-            />
-            <p className="text-xs text-muted-foreground">
-              Paste the full Sales Navigator/Recruiter URL after results have loaded (must include query and filters).
-            </p>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" onClick={onClose} disabled={isProcessingUrl}>Cancel</Button>
-              <Button onClick={handleSubmitUrl} disabled={!url.trim() || isProcessingUrl}>
-                {isProcessingUrl && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Import
+          <TabsContent value="search" className="space-y-4 pt-4">
+            {/* Search Type Toggle */}
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                type="button"
+                variant={searchType === 'people' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSearchType('people')}
+                disabled={isProcessingSearch}
+              >
+                People URL
+              </Button>
+              <Button
+                type="button"
+                variant={searchType === 'companyUrl' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSearchType('companyUrl')}
+                disabled={isProcessingSearch}
+              >
+                Company URL
+              </Button>
+              <Button
+                type="button"
+                variant={searchType === 'company' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSearchType('company')}
+                disabled={isProcessingSearch}
+              >
+                Company Name
               </Button>
             </div>
+
+            {searchType === 'people' ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm text-muted-foreground">Sales Navigator People Search URL</label>
+                  <Input
+                    placeholder="https://www.linkedin.com/sales/search/people?..."
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    disabled={isProcessingUrl}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Paste the full Sales Navigator people search URL after results load.
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={onClose} disabled={isProcessingUrl}>Cancel</Button>
+                  <Button onClick={handleSubmitUrl} disabled={!url.trim() || isProcessingUrl}>
+                    {isProcessingUrl && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Import
+                  </Button>
+                </div>
+              </>
+            ) : searchType === 'companyUrl' ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm text-muted-foreground">Sales Navigator Company Search URL</label>
+                  <Input
+                    placeholder="https://www.linkedin.com/sales/search/company?..."
+                    value={companySearchUrl}
+                    onChange={(e) => setCompanySearchUrl(e.target.value)}
+                    disabled={isProcessingUrl}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Paste the full Sales Navigator company search URL to import companies and their employees.
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={onClose} disabled={isProcessingUrl}>Cancel</Button>
+                  <Button onClick={handleSubmitCompanyUrl} disabled={!companySearchUrl.trim() || isProcessingUrl}>
+                    {isProcessingUrl && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Import
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <label className="text-sm text-muted-foreground">Company Name or LinkedIn URL</label>
+                    <Input
+                      placeholder="e.g., Microsoft or https://linkedin.com/company/microsoft"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      disabled={isProcessingCompany}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm text-muted-foreground">Job Title Keywords (optional)</label>
+                    <Input
+                      placeholder="e.g., VP Sales, Director of Marketing, CTO"
+                      value={jobTitles}
+                      onChange={(e) => setJobTitles(e.target.value)}
+                      disabled={isProcessingCompany}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Search for decision-makers at a company by name.
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={onClose} disabled={isProcessingCompany}>Cancel</Button>
+                  <Button onClick={handleCompanySearch} disabled={!companyName.trim() || isProcessingCompany || !onCompanySearch}>
+                    {isProcessingCompany && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Search Company
+                  </Button>
+                </div>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="csv" className="space-y-3 pt-4">
-            <label className="text-sm font-medium">Upload CSV file</label>
+            <label className="text-sm text-muted-foreground">Upload CSV file</label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               <input
                 ref={fileInputRef}
@@ -152,7 +270,7 @@ export default function ImportProspectsModal({
               {selectedFile ? (
                 <div className="space-y-2">
                   <Upload className="h-8 w-8 mx-auto text-green-500" />
-                  <p className="text-sm font-medium">{selectedFile.name}</p>
+                  <p className="text-sm">{selectedFile.name}</p>
                   <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(2)} KB</p>
                   <Button
                     variant="outline"
@@ -166,7 +284,7 @@ export default function ImportProspectsModal({
               ) : (
                 <div className="space-y-2">
                   <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
-                  <p className="text-sm font-medium">Click to upload CSV file</p>
+                  <p className="text-sm">Click to upload CSV file</p>
                   <p className="text-xs text-muted-foreground">Must include: Name, Title, Company Name, Email, Profile URL</p>
                   <Button
                     variant="outline"
@@ -189,16 +307,16 @@ export default function ImportProspectsModal({
           </TabsContent>
 
           <TabsContent value="paste" className="space-y-3 pt-4">
-            <label className="text-sm font-medium">Rows (CSV or tab separated)</label>
+            <label className="text-sm text-muted-foreground">Rows (CSV or tab separated)</label>
             <Textarea
-              placeholder="Full Name, Title, Company, Email, LinkedIn URL\nJane Doe, CEO, Acme Inc, jane@acme.com, https://linkedin.com/in/janedoe"
+              placeholder="Full Name, Title, Company, Email, LinkedIn URL&#10;Jane Doe, CEO, Acme Inc, jane@acme.com, https://linkedin.com/in/janedoe"
               rows={8}
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={isProcessingPaste}
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Tip: You can paste from Excel/Sheets (tab-separated also supported)</span>
+              <span>Tip: You can paste from Excel/Sheets (tab-separated also works)</span>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="ghost" onClick={onClose} disabled={isProcessingPaste}>Cancel</Button>
@@ -210,7 +328,7 @@ export default function ImportProspectsModal({
           </TabsContent>
 
           <TabsContent value="quick-add" className="space-y-3 pt-4">
-            <label className="text-sm font-medium">LinkedIn profile URL</label>
+            <label className="text-sm text-muted-foreground">LinkedIn profile URL</label>
             <Input
               placeholder="https://linkedin.com/in/username"
               value={quickAddUrl}

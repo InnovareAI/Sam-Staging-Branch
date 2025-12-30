@@ -18,6 +18,13 @@ export async function POST(request: NextRequest) {
               cookieStore.set(name, value, options);
             });
           }
+        },
+        cookieOptions: {
+          global: {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7
+          }
         }
       }
     );

@@ -5,10 +5,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/app/lib/supabase-client';
 import { ProspectStats } from './ProspectStats';
 import { ProspectsTable } from './ProspectsTable';
+import { CompaniesTable } from './CompaniesTable';
 import { ProspectData } from './types';
-import { Star } from 'lucide-react';
+import { Star, Users, Building2 } from 'lucide-react';
 import { ProspectDetailsSheet } from './ProspectDetailsSheet';
 import { ProspectTableSkeleton } from './ProspectTableSkeleton';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 interface ProspectHubProps {
     workspaceId: string;
@@ -231,6 +233,7 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
     const [isProcessingUrl, setIsProcessingUrl] = useState(false);
     const [isProcessingCsv, setIsProcessingCsv] = useState(false);
     const [isProcessingQuickAdd, setIsProcessingQuickAdd] = useState(false);
+    const [isProcessingCompany, setIsProcessingCompany] = useState(false);
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         title: '',
@@ -244,6 +247,24 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
         previousStates: Record<string, 'pending' | 'approved' | 'rejected'>,
         prospects?: ProspectData[]
     } | null>(null);
+
+    // Active tab state
+    const [activeTab, setActiveTab] = useState<'prospects' | 'companies'>('prospects');
+
+    // Companies state and query
+    const { data: companiesData, isLoading: isLoadingCompanies, refetch: refetchCompanies } = useQuery({
+        queryKey: ['workspace-companies', workspaceId],
+        queryFn: async () => {
+            const response = await fetch(`/api/companies?workspace_id=${workspaceId}`);
+            if (!response.ok) throw new Error('Failed to fetch companies');
+            const data = await response.json();
+            return data;
+        },
+        enabled: !!workspaceId && activeTab === 'companies',
+        staleTime: 2 * 60 * 1000
+    });
+
+    const companies = useMemo(() => companiesData?.companies || [], [companiesData?.companies]);
 
     // Update stats when pagination data changes
     useEffect(() => {
@@ -517,6 +538,38 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
         }
     };
 
+    const handleCompanySearch = async (companyName: string, jobTitles?: string) => {
+        setIsProcessingCompany(true);
+        try {
+            const response = await fetch('/api/linkedin/discover-decision-makers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    company_filters: { keywords: companyName },
+                    persona_filters: jobTitles ? { title_keywords: jobTitles } : {},
+                    workspace_id: workspaceId,
+                    max_companies: 10,
+                    prospects_per_company: 5,
+                    campaign_name: `Company Search: ${companyName}`
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                toastSuccess(`Found ${data.prospect_count || 0} prospects at ${data.companies_analyzed || 0} companies`);
+                refetch();
+                setShowImportModal(false);
+            } else {
+                toastError(data.error || 'Company search failed. Please check your LinkedIn connection.');
+            }
+        } catch (error) {
+            console.error('Company search error:', error);
+            toastError('Company search failed. Please try again.');
+        } finally {
+            setIsProcessingCompany(false);
+        }
+    };
+
     const updateProspectStatus = async (id: string, status: 'approved' | 'rejected' | 'pending') => {
         const prospect = prospects.find(p => p.id === id);
         if (!prospect?.sessionId) return;
@@ -712,6 +765,80 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
         setIsSheetOpen(true);
     };
 
+    // Company handlers
+    const handleImportCompanies = async (linkedinUrl: string) => {
+        setIsProcessingUrl(true);
+        try {
+            const response = await fetch('/api/companies', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    workspace_id: workspaceId,
+                    linkedin_url: linkedinUrl
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                toastSuccess(`Imported ${data.count || 0} companies`);
+                refetchCompanies();
+                setShowImportModal(false);
+                setActiveTab('companies');
+            } else {
+                toastError(data.error || 'Failed to import companies');
+            }
+        } catch (error) {
+            console.error('Company import error:', error);
+            toastError('Failed to import companies');
+        } finally {
+            setIsProcessingUrl(false);
+        }
+    };
+
+    const handleDiscoverDecisionMakers = async (companyIds: string[], jobTitles?: string) => {
+        try {
+            const response = await fetch('/api/companies/discover-decision-makers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    company_ids: companyIds,
+                    workspace_id: workspaceId,
+                    persona_filters: jobTitles ? { title_keywords: jobTitles } : {},
+                    campaign_name: 'Decision Maker Discovery'
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                toastSuccess(data.message || `Found ${data.total_prospects} decision-makers`);
+                refetchCompanies();
+                refetch();
+                setActiveTab('prospects');
+            } else {
+                toastError(data.error || 'Discovery failed');
+            }
+        } catch (error) {
+            console.error('Decision maker discovery error:', error);
+            toastError('Discovery failed. Please try again.');
+        }
+    };
+
+    const handleDeleteCompanies = async (companyIds: string[]) => {
+        try {
+            const response = await fetch(`/api/companies?ids=${companyIds.join(',')}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (data.success) {
+                toastSuccess(`Deleted ${data.deleted} companies`);
+                refetchCompanies();
+            } else {
+                toastError(data.error || 'Failed to delete companies');
+            }
+        } catch (error) {
+            console.error('Company delete error:', error);
+            toastError('Failed to delete companies');
+        }
+    };
+
     return (
         <div className="space-y-6 p-6">
             {/* Stats Section */}
@@ -723,118 +850,151 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                 lists={stats.lists}
             />
 
-            {/* Prospects Table Section */}
-            <div className="mt-6">
+            {/* Tab Navigation */}
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'prospects' | 'companies')} className="mt-6">
+                <TabsList>
+                    <TabsTrigger value="prospects" className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Prospects
+                    </TabsTrigger>
+                    <TabsTrigger value="companies" className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Companies ({companies.length})
+                    </TabsTrigger>
+                </TabsList>
 
-                {isLoading && prospects.length === 0 ? (
-                    <ProspectTableSkeleton />
-                ) : (
-                    <>
-                        {isFetching && (
-                            <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
-                                Updating data in background...
-                            </div>
+                <TabsContent value="prospects" className="mt-4">
+
+                    {/* Prospects Table Section */}
+                    <div className="mt-6">
+
+                        {isLoading && prospects.length === 0 ? (
+                            <ProspectTableSkeleton />
+                        ) : (
+                            <>
+                                {isFetching && (
+                                    <div className="mb-2 text-xs text-muted-foreground flex items-center gap-2">
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
+                                        Updating data in background...
+                                    </div>
+                                )}
+                                <ProspectsTable
+                                    data={prospects}
+                                    onApprove={handleApprove}
+                                    onReject={handleReject}
+                                    onDelete={handleDelete}
+                                    onDeleteSelected={handleDeleteMultiple}
+                                    onViewDetails={handleViewDetails}
+                                    onImportClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
+                                    onAddToCampaign={(ids) => {
+                                        setAddToCampaignIds(ids);
+                                        setShowAddToCampaignModal(true);
+                                    }}
+                                    onCreateCampaign={() => setShowCreateCampaignModal(true)}
+                                    title="Prospect Database"
+                                    // Pagination props (controlled by parent for state persistence)
+                                    page={page}
+                                    pageSize={pageSize}
+                                    totalPages={pagination.totalPages}
+                                    totalCount={pagination.total}
+                                    hasNextPage={pagination.hasNext}
+                                    hasPrevPage={pagination.hasPrev}
+                                    onNextPage={handleNextPage}
+                                    onPrevPage={handlePrevPage}
+                                    onPageSizeChange={handlePageSizeChange}
+                                />
+                            </>
                         )}
-                        <ProspectsTable
-                            data={prospects}
-                            onApprove={handleApprove}
-                            onReject={handleReject}
-                            onDelete={handleDelete}
-                            onDeleteSelected={handleDeleteMultiple}
-                            onViewDetails={handleViewDetails}
-                            onImportClick={() => { setImportInitialTab('url'); setShowImportModal(true); }}
-                            onAddToCampaign={(ids) => {
-                                setAddToCampaignIds(ids);
-                                setShowAddToCampaignModal(true);
-                            }}
-                            onCreateCampaign={() => setShowCreateCampaignModal(true)}
-                            title="Prospect Database"
-                            // Pagination props (controlled by parent for state persistence)
-                            page={page}
-                            pageSize={pageSize}
-                            totalPages={pagination.totalPages}
-                            totalCount={pagination.total}
-                            hasNextPage={pagination.hasNext}
-                            hasPrevPage={pagination.hasPrev}
-                            onNextPage={handleNextPage}
-                            onPrevPage={handlePrevPage}
-                            onPageSizeChange={handlePageSizeChange}
+                    </div>
+
+                    {/* Modals */}
+                    {showImportModal && (
+                        <ImportProspectsModal
+                            open={showImportModal}
+                            onClose={() => setShowImportModal(false)}
+                            onLinkedInUrl={handleLinkedInUrl}
+                            onCsvUpload={handleCsvUpload}
+                            onPaste={handlePasteData}
+                            onQuickAdd={handleQuickAdd}
+                            onCompanySearch={handleCompanySearch}
+                            isProcessingUrl={isProcessingUrl}
+                            isProcessingCsv={isProcessingCsv}
+                            isProcessingPaste={isProcessingPaste}
+                            isProcessingQuickAdd={isProcessingQuickAdd}
+                            isProcessingCompany={isProcessingCompany}
+                            initialTab={importInitialTab as any}
                         />
-                    </>
-                )}
-            </div>
+                    )}
 
-            {/* Modals */}
-            {showImportModal && (
-                <ImportProspectsModal
-                    open={showImportModal}
-                    onClose={() => setShowImportModal(false)}
-                    onLinkedInUrl={handleLinkedInUrl}
-                    onCsvUpload={handleCsvUpload}
-                    onPaste={handlePasteData}
-                    onQuickAdd={handleQuickAdd}
-                    isProcessingUrl={isProcessingUrl}
-                    isProcessingCsv={isProcessingCsv}
-                    isProcessingPaste={isProcessingPaste}
-                    isProcessingQuickAdd={isProcessingQuickAdd}
-                    initialTab={importInitialTab as any}
-                />
-            )}
+                    {showAddToCampaignModal && (
+                        <AddToCampaignModal
+                            open={showAddToCampaignModal}
+                            onClose={() => setShowAddToCampaignModal(false)}
+                            workspaceId={workspaceId}
+                            prospectIds={addToCampaignIds}
+                            onSuccess={() => {
+                                // Refresh data to show updated status/removal
+                                refetch();
+                                // Also clear selection by forcing table re-render or similar if needed, 
+                                // but refetch usually handles data updates.
+                                // Ideally we'd also uncheck the boxes, but the table state handle that.
+                            }}
+                        />
+                    )}
 
-            {showAddToCampaignModal && (
-                <AddToCampaignModal
-                    open={showAddToCampaignModal}
-                    onClose={() => setShowAddToCampaignModal(false)}
-                    workspaceId={workspaceId}
-                    prospectIds={addToCampaignIds}
-                    onSuccess={() => {
-                        // Refresh data to show updated status/removal
-                        refetch();
-                        // Also clear selection by forcing table re-render or similar if needed, 
-                        // but refetch usually handles data updates.
-                        // Ideally we'd also uncheck the boxes, but the table state handle that.
-                    }}
-                />
-            )}
+                    {showCreateCampaignModal && (
+                        <CreateCampaignModal
+                            open={showCreateCampaignModal}
+                            onClose={() => setShowCreateCampaignModal(false)}
+                            workspaceId={workspaceId}
+                            defaultName={defaultCampaignName}
+                            prospects={prospects}
+                            onSuccess={(campaignId) => {
+                                // Navigate to campaign hub to configure the new campaign
+                                router.push(`/workspace/${workspaceId}/campaign-hub`);
+                            }}
+                        />
+                    )}
 
-            {showCreateCampaignModal && (
-                <CreateCampaignModal
-                    open={showCreateCampaignModal}
-                    onClose={() => setShowCreateCampaignModal(false)}
-                    workspaceId={workspaceId}
-                    defaultName={defaultCampaignName}
-                    prospects={prospects}
-                    onSuccess={(campaignId) => {
-                        // Navigate to campaign hub to configure the new campaign
-                        router.push(`/workspace/${workspaceId}/campaign-hub`);
-                    }}
-                />
-            )}
+                    <ConfirmModal
+                        isOpen={confirmModal.isOpen}
+                        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                        onConfirm={confirmModal.onConfirm}
+                        title={confirmModal.title}
+                        message={confirmModal.message}
+                        type={confirmModal.type}
+                    />
 
-            <ConfirmModal
-                isOpen={confirmModal.isOpen}
-                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                onConfirm={confirmModal.onConfirm}
-                title={confirmModal.title}
-                message={confirmModal.message}
-                type={confirmModal.type}
-            />
+                    <ProspectDetailsSheet
+                        prospect={selectedProspect}
+                        open={isSheetOpen}
+                        onOpenChange={setIsSheetOpen}
+                        onApprove={handleApprove}
+                        onReject={handleReject}
+                        onDelete={handleDelete}
+                        onAddToCampaign={(ids) => {
+                            setAddToCampaignIds(ids);
+                            setShowAddToCampaignModal(true);
+                            setIsSheetOpen(false);
+                        }}
+                        workspaceId={workspaceId}
+                    />
+                </TabsContent>
 
-            <ProspectDetailsSheet
-                prospect={selectedProspect}
-                open={isSheetOpen}
-                onOpenChange={setIsSheetOpen}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                onDelete={handleDelete}
-                onAddToCampaign={(ids) => {
-                    setAddToCampaignIds(ids);
-                    setShowAddToCampaignModal(true);
-                    setIsSheetOpen(false);
-                }}
-                workspaceId={workspaceId}
-            />
+                <TabsContent value="companies" className="mt-4">
+                    <CompaniesTable
+                        companies={companies}
+                        isLoading={isLoadingCompanies}
+                        onDiscoverDecisionMakers={handleDiscoverDecisionMakers}
+                        onDeleteCompanies={handleDeleteCompanies}
+                        onImportClick={() => {
+                            setImportInitialTab('search');
+                            setShowImportModal(true);
+                        }}
+                    />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
+

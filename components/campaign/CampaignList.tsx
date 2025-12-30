@@ -15,6 +15,7 @@ interface CampaignListProps {
     onToggleStatus?: (id: string, currentStatus: string) => void;
     onExecute?: (id: string) => void;
     onArchive?: (id: string) => void;
+    onComplete?: (id: string) => void;
     onViewMessages?: (campaign: Campaign) => void;
     onViewProspects?: (id: string) => void;
     onAddProspects?: (campaign: Campaign) => void;
@@ -34,6 +35,7 @@ export function CampaignList({
     onToggleStatus,
     onExecute,
     onArchive,
+    onComplete,
     onViewMessages,
     onViewProspects,
     onAddProspects,
@@ -91,6 +93,7 @@ export function CampaignList({
                     onToggleStatus={onToggleStatus || (() => { })}
                     onExecute={onExecute || (() => { })}
                     onArchive={onArchive || (() => { })}
+                    onComplete={onComplete || (() => { })}
                     onViewMessages={onViewMessages || (() => { })}
                     onViewProspects={onViewProspects || (() => { })}
                     onAddProspects={onAddProspects || (() => { })}

@@ -5,7 +5,7 @@
 export interface Campaign {
     id: string;
     name: string;
-    status: 'draft' | 'active' | 'paused' | 'inactive' | 'completed';
+    status: 'draft' | 'active' | 'paused' | 'inactive' | 'completed' | 'archived';
     campaign_type: 'email' | 'linkedin' | 'connector' | 'messenger';
     workspace_id: string;
 
@@ -49,6 +49,7 @@ export interface CampaignStatsData {
     sent: number;
     connected: number;
     replied: number;
+    archived?: number;
 }
 
 export interface ConnectedAccounts {

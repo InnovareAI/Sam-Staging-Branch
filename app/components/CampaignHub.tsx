@@ -67,7 +67,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
   const [showApprovalScreen, setShowApprovalScreen] = useState(false);
   const [campaignDataForApproval, setCampaignDataForApproval] = useState<Campaign | null>(null);
   const [showFullHub, setShowFullHub] = useState(false);
-  const [campaignFilter, setCampaignFilter] = useState<'active' | 'paused' | 'completed' | 'draft'>('active');
+  const [campaignFilter, setCampaignFilter] = useState<'active' | 'paused' | 'completed' | 'draft' | 'archived'>('active');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Auto Create Mode derived state
@@ -170,6 +170,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
     sent: allCampaigns.reduce((acc: number, c: Campaign) => acc + (c.sent || 0), 0),
     connected: allCampaigns.reduce((acc: number, c: Campaign) => acc + (c.connections || 0), 0),
     replied: allCampaigns.reduce((acc: number, c: Campaign) => acc + (c.replies || 0), 0),
+    archived: allCampaigns.filter((c: Campaign) => c.status === 'archived').length,
   };
 
   // Filtering logic
@@ -190,14 +191,16 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
   const handleToggleStatus = async (campaignId: string, currentStatus: string) => {
     const newStatus = (currentStatus === 'active') ? 'paused' : 'active';
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}/status`, {
-        method: 'POST',
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus, workspace_id: actualWorkspaceId })
       });
       if (response.ok) {
         toastSuccess(`Campaign ${newStatus === 'active' ? 'resumed' : 'paused'}`);
         queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+      } else {
+        throw new Error('Failed to update status');
       }
     } catch (error) {
       toastError('Failed to update status');
@@ -340,10 +343,13 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
 
   const handleArchive = async (campaignId: string) => {
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}/archive`, {
-        method: 'POST',
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: actualWorkspaceId })
+        body: JSON.stringify({
+          workspace_id: actualWorkspaceId,
+          status: 'archived'
+        })
       });
       if (response.ok) {
         toastSuccess('Campaign archived');
@@ -353,6 +359,27 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
       }
     } catch (error) {
       toastError('Archive error');
+    }
+  };
+
+  const handleComplete = async (campaignId: string) => {
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: actualWorkspaceId,
+          status: 'completed'
+        })
+      });
+      if (response.ok) {
+        toastSuccess('Campaign marked as completed');
+        queryClient.invalidateQueries({ queryKey: ['campaigns', actualWorkspaceId] });
+      } else {
+        throw new Error('Failed to complete campaign');
+      }
+    } catch (error) {
+      toastError('Error completing campaign');
     }
   };
 
@@ -442,13 +469,15 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
             className="h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Launch Campaign
+            Create Campaign
           </Button>
         </div>
       </div>
 
       {/* Analytics Dashboard */}
-      <CampaignStats stats={stats} />
+      <div className="bg-card/30 backdrop-blur-md border border-border/40 rounded-3xl p-8 shadow-inner shadow-white/5">
+        <CampaignStats stats={stats} />
+      </div>
 
       {/* Main Campaign Management Area */}
       <div className="space-y-8 bg-card/30 backdrop-blur-md border border-border/40 rounded-3xl p-8 shadow-inner shadow-white/5">
@@ -472,6 +501,9 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
                 <TabsTrigger value="draft" className="rounded-xl h-12 px-6 data-[state=active]:bg-background transition-all">
                   Drafts
                 </TabsTrigger>
+                <TabsTrigger value="archived" className="rounded-xl h-12 px-6 data-[state=active]:bg-background transition-all">
+                  Archived
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -491,19 +523,21 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
           <CampaignListModular
             campaigns={filteredCampaigns}
             loading={loadingCampaigns}
-            onEdit={handleEdit}
-            onEditSettings={handleEditSettings}
+            onToggleStatus={handleToggleStatus}
+            onExecute={handleExecute}
+            onArchive={handleArchive}
+            onComplete={handleComplete}
+            onViewMessages={handleViewMessages}
             onViewProspects={(campaignId: string) => {
               const campaign = allCampaigns.find((c: Campaign) => c.id === campaignId);
               if (campaign) handleViewProspects(campaign);
             }}
-            onAddProspects={handleViewProspects}
-            onExecute={handleExecute}
-            onArchive={handleArchive}
-            onViewMessages={handleViewMessages}
+            onEdit={handleEdit}
+            onEditSettings={handleEditSettings}
+            onAddProspects={handleAddProspects}
             onShowAnalytics={handleViewAnalytics}
+            onViewProspectsModular={handleViewProspects}
             onReachInbox={handleReachInbox}
-            onToggleStatus={handleToggleStatus}
             reachInboxConfigured={true}
           />
         </div>
