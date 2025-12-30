@@ -36,7 +36,10 @@
     "fix-workspaces": "npx tsx scripts/fix-user-workspaces.ts",
     "check-workspaces": "npx tsx scripts/fix-user-workspaces.ts",
     "backfill-linkedin-ids": "npx tsx scripts/backfill-linkedin-user-ids.ts",
-    "pre-commit": "npm run lint && npm run update-docs"
+    "pre-commit": "npm run lint && npm run update-docs",
+    "visual-test": "node scripts/js/visual-test.mjs",
+    "visual-test:staging": "node scripts/js/visual-test.mjs --staging",
+    "visual-test:all": "node scripts/js/visual-test.mjs --all"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.30",

@@ -1,0 +1,26 @@
+{
+  "timestamp": "2025-12-30T09:28:03.894Z",
+  "baseUrl": "https://app.meet-sam.com",
+  "totalPages": 1,
+  "successful": 1,
+  "failed": 0,
+  "pagesWithErrors": 0,
+  "results": [
+    {
+      "name": "home",
+      "url": "https://app.meet-sam.com/",
+      "success": true,
+      "screenshotPath": "temp/screenshots/home_prod_2025-12-30T09-28-03.png",
+      "errors": {
+        "console": [],
+        "network": [],
+        "uncaught": []
+      },
+      "timing": {
+        "navigation": 2698,
+        "settle": 3700,
+        "total": 3779
+      }
+    }
+  ]
+}
