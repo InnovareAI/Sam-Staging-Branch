@@ -216,7 +216,7 @@ export default function AdminSettingsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold mb-2">
+          <h1 className="text-3xl font-semibold mb-2">
             Settings & Profile
           </h1>
           <p className="text-muted-foreground">Manage your account settings and preferences</p>

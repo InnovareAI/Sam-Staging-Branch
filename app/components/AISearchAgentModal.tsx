@@ -562,19 +562,19 @@ export default function AISearchAgentModal({ isOpen, onClose, workspaceId }: AIS
                   {/* Score Cards */}
                   <div className="grid grid-cols-3 gap-4">
                     <div className="p-4 bg-gray-700 rounded-lg text-center">
-                      <div className={`text-3xl font-bold ${getScoreColor(latestAnalysis.overall_score)}`}>
+                      <div className={`text-3xl font-semibold ${getScoreColor(latestAnalysis.overall_score)}`}>
                         {latestAnalysis.overall_score}
                       </div>
                       <div className="text-gray-400 text-sm">Overall Score</div>
                     </div>
                     <div className="p-4 bg-gray-700 rounded-lg text-center">
-                      <div className={`text-3xl font-bold ${getScoreColor(latestAnalysis.seo_score)}`}>
+                      <div className={`text-3xl font-semibold ${getScoreColor(latestAnalysis.seo_score)}`}>
                         {latestAnalysis.seo_score}
                       </div>
                       <div className="text-gray-400 text-sm">SEO Score</div>
                     </div>
                     <div className="p-4 bg-gray-700 rounded-lg text-center">
-                      <div className={`text-3xl font-bold ${getScoreColor(latestAnalysis.geo_score)}`}>
+                      <div className={`text-3xl font-semibold ${getScoreColor(latestAnalysis.geo_score)}`}>
                         {latestAnalysis.geo_score}
                       </div>
                       <div className="text-gray-400 text-sm">GEO Score</div>

@@ -126,7 +126,7 @@ export default function OutlookCalendarModal({ isOpen, onClose, workspaceId }: O
               <Calendar className="h-5 w-5 text-blue-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Outlook Calendar</h2>
+              <h2 className="text-lg font-semibold">Outlook Calendar</h2>
               <p className="text-xs text-muted-foreground">Connect Microsoft 365 calendar</p>
             </div>
           </div>

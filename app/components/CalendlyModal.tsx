@@ -126,7 +126,7 @@ export default function CalendlyModal({ isOpen, onClose, workspaceId }: Calendly
               <Link className="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Calendly</h2>
+              <h2 className="text-lg font-semibold">Calendly</h2>
               <p className="text-xs text-muted-foreground">Connect for meeting scheduling</p>
             </div>
           </div>

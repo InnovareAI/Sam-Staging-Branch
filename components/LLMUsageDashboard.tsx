@@ -99,7 +99,7 @@ export default function LLMUsageDashboard({ onConfigureClick }: LLMUsageDashboar
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">AI Usage Statistics</h2>
+          <h2 className="text-2xl font-semibold">AI Usage Statistics</h2>
           <p className="text-sm text-gray-500 mt-1">
             {preferences?.isBYOK 
               ? '🔑 Using your own API key' 
@@ -138,19 +138,19 @@ export default function LLMUsageDashboard({ onConfigureClick }: LLMUsageDashboar
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-4 bg-white dark:bg-surface-muted rounded-lg border">
           <div className="text-sm text-gray-500 mb-1">Total Conversations</div>
-          <div className="text-2xl font-bold">{formatNumber(stats.totalRequests)}</div>
+          <div className="text-2xl font-semibold">{formatNumber(stats.totalRequests)}</div>
           <div className="text-xs text-gray-500 mt-1">AI interactions</div>
         </div>
         
         <div className="p-4 bg-white dark:bg-surface-muted rounded-lg border">
           <div className="text-sm text-gray-500 mb-1">Total Tokens</div>
-          <div className="text-2xl font-bold">{formatNumber(stats.totalTokens)}</div>
+          <div className="text-2xl font-semibold">{formatNumber(stats.totalTokens)}</div>
           <div className="text-xs text-gray-500 mt-1">Processed</div>
         </div>
         
         <div className="p-4 bg-white dark:bg-surface-muted rounded-lg border">
           <div className="text-sm text-gray-500 mb-1">Reliability</div>
-          <div className={`text-2xl font-bold ${stats.errorRate > 5 ? 'text-red-600' : 'text-green-600'}`}>
+          <div className={`text-2xl font-semibold ${stats.errorRate > 5 ? 'text-red-600' : 'text-green-600'}`}>
             {(100 - stats.errorRate).toFixed(1)}%
           </div>
           <div className="text-xs text-gray-500 mt-1">Success rate</div>

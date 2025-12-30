@@ -56,7 +56,7 @@ export function ReachInboxPushModal({
                         </div>
                         <div>
                             <DialogTitle className="text-xl font-black tracking-tight uppercase">Distribute Leads</DialogTitle>
-                            <DialogDescription className="text-xs font-bold text-muted-foreground/60 uppercase tracking-widest mt-0.5">
+                            <DialogDescription className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-widest mt-0.5">
                                 Push to ReachInbox for multi-channel outreach
                             </DialogDescription>
                         </div>
@@ -67,20 +67,20 @@ export function ReachInboxPushModal({
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-12 gap-4">
                             <Loader2 className="w-8 h-8 text-pink-400 animate-spin" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Syncing External Campaigns...</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">Syncing External Campaigns...</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80 ml-1">Destination Campaign</label>
                                 <Select value={selectedId} onValueChange={setSelectedId}>
-                                    <SelectTrigger className="bg-background/40 border-border/40 h-12 font-bold focus:ring-pink-500/20">
+                                    <SelectTrigger className="bg-background/40 border-border/40 h-12 font-semibold focus:ring-pink-500/20">
                                         <SelectValue placeholder="Search ReachInbox campaigns" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-card border-border/40 backdrop-blur-3xl">
                                         {reachInboxCampaigns.map((c) => (
                                             <SelectItem key={c.id} value={c.id} className="font-medium">
-                                                {c.name} <span className="opacity-40 text-[10px] ml-2 font-bold uppercase tracking-tighter">({c.status})</span>
+                                                {c.name} <span className="opacity-40 text-[10px] ml-2 font-semibold uppercase tracking-tighter">({c.status})</span>
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -109,7 +109,7 @@ export function ReachInboxPushModal({
                 </div>
 
                 <DialogFooter className="p-6 border-t border-border/40 bg-muted/20 flex flex-row gap-3">
-                    <Button variant="ghost" className="flex-1 font-bold uppercase tracking-widest text-[10px]" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button variant="ghost" className="flex-1 font-semibold uppercase tracking-widest text-[10px]" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button
                         disabled={!selectedId || pushing || loading}
                         onClick={handlePush}

@@ -57,7 +57,7 @@ export default function WorkspaceSettingsPage() {
             <div className="w-full">
                 {/* Page Header */}
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+                    <h1 className="text-2xl font-semibold text-white flex items-center gap-3">
                         <Settings className="text-primary" size={28} />
                         Settings & Profile
                     </h1>

@@ -72,7 +72,7 @@ export default function SkiperCampaignHubPage() {
                   </motion.div>
                 </motion.div>
                 <div>
-                  <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">
+                  <h1 className="text-4xl font-semibold bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">
                     Elite Campaign Studio
                   </h1>
                   <p className="text-purple-200 flex items-center gap-2">
@@ -135,7 +135,7 @@ export default function SkiperCampaignHubPage() {
                         <Sparkles className={`h-5 w-5 text-${metric.color}-400`} />
                       </motion.div>
                     </div>
-                    <div className="text-3xl font-bold text-white mb-2">{metric.value}</div>
+                    <div className="text-3xl font-semibold text-white mb-2">{metric.value}</div>
                     <div className="text-sm text-gray-300">{metric.title}</div>
                   </CardContent>
                 </Card>
@@ -192,7 +192,7 @@ export default function SkiperCampaignHubPage() {
                       >
                         <div className="flex items-center justify-between mb-4">
                           <div>
-                            <h4 className="text-lg font-bold text-white">{campaign.name}</h4>
+                            <h4 className="text-lg font-semibold text-white">{campaign.name}</h4>
                             <p className="text-sm text-gray-300">{campaign.platform}</p>
                           </div>
                           <Badge className={`${
@@ -209,11 +209,11 @@ export default function SkiperCampaignHubPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-xs text-gray-400 mb-1">Premium Reach</p>
-                            <p className="text-lg font-bold text-white">{campaign.reach}</p>
+                            <p className="text-lg font-semibold text-white">{campaign.reach}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-400 mb-1">Elite ROI</p>
-                            <p className="text-lg font-bold text-green-400">{campaign.roi}</p>
+                            <p className="text-lg font-semibold text-green-400">{campaign.roi}</p>
                           </div>
                         </div>
                       </motion.div>
@@ -222,7 +222,7 @@ export default function SkiperCampaignHubPage() {
 
                   {/* Premium performance chart */}
                   <div className="mt-8">
-                    <h4 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <h4 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                       <TrendingUp className="h-6 w-6 text-green-400" />
                       Elite Performance Trends
                     </h4>

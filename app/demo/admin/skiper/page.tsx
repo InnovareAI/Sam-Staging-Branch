@@ -73,7 +73,7 @@ export default function SkiperAdminPage() {
                   </motion.div>
                 </motion.div>
                 <div>
-                  <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">
+                  <h1 className="text-4xl font-semibold bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">
                     Elite Admin Center
                   </h1>
                   <p className="text-purple-200 flex items-center gap-2">
@@ -138,7 +138,7 @@ export default function SkiperAdminPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="relative z-10">
-                    <div className="text-3xl font-bold text-white mb-2">{metric.value}</div>
+                    <div className="text-3xl font-semibold text-white mb-2">{metric.value}</div>
                     <div className="text-sm text-gray-300">{metric.title}</div>
                   </CardContent>
                 </Card>
@@ -191,7 +191,7 @@ export default function SkiperAdminPage() {
                       >
                         <div className="flex items-center justify-between mb-3">
                           <span className="text-white font-medium">{resource.label}</span>
-                          <span className="text-2xl font-bold text-white">{resource.value}%</span>
+                          <span className="text-2xl font-semibold text-white">{resource.value}%</span>
                         </div>
                         <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
                           <motion.div
@@ -212,7 +212,7 @@ export default function SkiperAdminPage() {
                   </div>
 
                   <div className="mt-8">
-                    <h4 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                    <h4 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                       <BarChart3 className="h-6 w-6 text-blue-400" />
                       Performance Timeline
                     </h4>

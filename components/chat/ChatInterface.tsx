@@ -216,7 +216,7 @@ export function ChatInterface() {
                                 {currentThread?.title || "New Chat"}
                             </h2>
                             {currentThread?.prospect_name && (
-                                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
                                     {currentThread.prospect_name} @ {currentThread.prospect_company}
                                 </span>
                             )}
@@ -233,7 +233,7 @@ export function ChatInterface() {
                             className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 gap-2 px-4 shadow-lg shadow-primary/10"
                         >
                             <Plus size={16} />
-                            <span className="font-bold">New Chat</span>
+                            <span className="font-semibold">New Chat</span>
                         </Button>
 
                         {currentThread && (
@@ -278,7 +278,7 @@ export function ChatInterface() {
                                     <img src="/SAM.jpg" alt="Sam" className="w-full h-full object-cover" />
                                 </div>
                                 <div className="space-y-1">
-                                    <h1 className="text-2xl font-bold text-white tracking-tight">Meet Sam — Your Orchestration Agent</h1>
+                                    <h1 className="text-2xl font-semibold text-white tracking-tight">Meet Sam — Your Orchestration Agent</h1>
                                     <p className="text-slate-400 max-w-sm mx-auto">What do you want to tackle today? I'm ready to help with research, campaigns, or strategy.</p>
                                 </div>
                             </div>
@@ -332,7 +332,7 @@ export function ChatInterface() {
 
                                 {msg.role === 'user' && (
                                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-1 border border-primary/30">
-                                        <span className="text-xs font-bold text-primary">YOU</span>
+                                        <span className="text-xs font-semibold text-primary">YOU</span>
                                     </div>
                                 )}
                             </div>

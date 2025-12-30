@@ -161,7 +161,7 @@ export default function SHSFAdminPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5, duration: 1 }}
-                    className="text-5xl font-bold bg-gradient-to-r from-rose-600 via-pink-600 to-orange-600 bg-clip-text text-transparent"
+                    className="text-5xl font-semibold bg-gradient-to-r from-rose-600 via-pink-600 to-orange-600 bg-clip-text text-transparent"
                   >
                     Admin Sanctuary
                   </motion.h1>
@@ -241,7 +241,7 @@ export default function SHSFAdminPage() {
                     <div className="text-4xl mb-2">{metric.emotion}</div>
                   </CardHeader>
                   <CardContent className="relative z-10 text-center">
-                    <div className="text-3xl font-bold text-gray-800 mb-2">{metric.value}</div>
+                    <div className="text-3xl font-semibold text-gray-800 mb-2">{metric.value}</div>
                     <div className="text-sm text-gray-600">{metric.title}</div>
                   </CardContent>
                 </Card>
@@ -306,7 +306,7 @@ export default function SHSFAdminPage() {
                             </motion.div>
                             <span className="font-medium text-gray-700">{wellness.label}</span>
                           </div>
-                          <span className="text-2xl font-bold text-gray-800">{wellness.value}%</span>
+                          <span className="text-2xl font-semibold text-gray-800">{wellness.value}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
                           <motion.div

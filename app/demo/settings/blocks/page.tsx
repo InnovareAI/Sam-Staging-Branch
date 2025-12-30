@@ -54,7 +54,7 @@ export default function BlocksSettingsPage() {
                 <Settings className="h-8 w-8 text-white" />
               </motion.div>
               <div>
-                <h1 className="text-3xl font-bold text-white">Enterprise Settings</h1>
+                <h1 className="text-3xl font-semibold text-white">Enterprise Settings</h1>
                 <p className="text-blue-200">Blocks.mvp-subha.me Design - Data-Rich Dashboard Style</p>
               </div>
             </div>
@@ -62,15 +62,15 @@ export default function BlocksSettingsPage() {
             {/* Real-time metrics */}
             <div className="flex gap-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-400">98.7%</div>
+                <div className="text-2xl font-semibold text-green-400">98.7%</div>
                 <div className="text-xs text-gray-400">System Health</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-400">2.1K</div>
+                <div className="text-2xl font-semibold text-blue-400">2.1K</div>
                 <div className="text-xs text-gray-400">Active Users</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-400">847ms</div>
+                <div className="text-2xl font-semibold text-purple-400">847ms</div>
                 <div className="text-xs text-gray-400">Response Time</div>
               </div>
             </div>

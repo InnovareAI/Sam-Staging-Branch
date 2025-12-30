@@ -167,19 +167,19 @@ export default function SuperAdminInvite() {
               <div className="grid grid-cols-3 gap-3">
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <div className="text-lg font-bold">{results.summary?.total}</div>
+                    <div className="text-lg font-semibold">{results.summary?.total}</div>
                     <div className="text-xs text-muted-foreground">Total</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <div className="text-lg font-bold text-green-600">{results.summary?.successful}</div>
+                    <div className="text-lg font-semibold text-green-600">{results.summary?.successful}</div>
                     <div className="text-xs text-muted-foreground">Successful</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-4 text-center">
-                    <div className="text-lg font-bold text-destructive">{results.summary?.errors}</div>
+                    <div className="text-lg font-semibold text-destructive">{results.summary?.errors}</div>
                     <div className="text-xs text-muted-foreground">Errors</div>
                   </CardContent>
                 </Card>

@@ -307,7 +307,7 @@ export default function ApproveCommentsPage() {
               <ArrowLeft size={20} className="text-muted-foreground" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Comment Approval</h1>
+              <h1 className="text-xl font-semibold text-foreground">Comment Approval</h1>
               <p className="text-gray-400 text-sm">
                 {dateFilter === 'today' ? "Today's Arrivals" : "History"} - {comments.length} items
               </p>
@@ -511,7 +511,7 @@ export default function ApproveCommentsPage() {
               <div className="bg-surface-muted rounded-xl p-5 border border-border mb-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
                       {selectedComment.post_author.charAt(0)}
                     </div>
                     <div>

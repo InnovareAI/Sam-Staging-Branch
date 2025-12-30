@@ -40,7 +40,7 @@ function SignupCompleteContent() {
         <Card className="w-full max-w-md shadow-xl">
           <CardContent className="pt-12 pb-12 text-center">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold mb-2">Payment Successful!</h1>
+            <h1 className="text-2xl font-semibold mb-2">Payment Successful!</h1>
             <p className="text-slate-600 mb-4">
               Your 14-day trial has started. You won't be charged until day 14.
             </p>
@@ -59,7 +59,7 @@ function SignupCompleteContent() {
       <Card className="w-full max-w-md shadow-xl">
         <CardContent className="pt-12 pb-12 text-center">
           <XCircle className="h-16 w-16 text-red-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Payment Failed</h1>
+          <h1 className="text-2xl font-semibold mb-2">Payment Failed</h1>
           <p className="text-slate-600 mb-4">
             There was an issue setting up your payment method.
           </p>

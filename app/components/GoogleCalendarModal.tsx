@@ -128,7 +128,7 @@ export default function GoogleCalendarModal({ isOpen, onClose, workspaceId }: Go
               <Calendar className="h-5 w-5 text-red-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Google Calendar</h2>
+              <h2 className="text-lg font-semibold">Google Calendar</h2>
               <p className="text-xs text-muted-foreground">Connect for meeting scheduling</p>
             </div>
           </div>

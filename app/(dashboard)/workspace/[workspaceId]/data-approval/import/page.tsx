@@ -89,7 +89,7 @@ export default function LinkedInImportPage({ params }: PageProps) {
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h2 className="text-xl font-bold">Error</h2>
+            <h2 className="text-xl font-semibold">Error</h2>
           </div>
           <p className="text-gray-700 mb-6">{error}</p>
           <button
@@ -107,7 +107,7 @@ export default function LinkedInImportPage({ params }: PageProps) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Missing LinkedIn URL</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Missing LinkedIn URL</h2>
           <p className="text-gray-700 mb-6">
             A LinkedIn saved search URL is required to import prospects.
           </p>
@@ -139,7 +139,7 @@ export default function LinkedInImportPage({ params }: PageProps) {
             </svg>
             Back to Workspace
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">LinkedIn Import</h1>
+          <h1 className="text-3xl font-semibold text-gray-900">LinkedIn Import</h1>
           <p className="text-gray-600 mt-2">
             Importing prospects from LinkedIn Sales Navigator
           </p>

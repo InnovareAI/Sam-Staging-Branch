@@ -113,7 +113,7 @@ function KPIGrid({ campaignKPIs, timeRange, campaignType, visibleMetrics, isLoad
                 </div>
               ) : (
                 <>
-                  <div className="text-2xl font-bold">{c.value}</div>
+                  <div className="text-2xl font-semibold">{c.value}</div>
                   <p className="text-xs text-muted-foreground mt-1">
                     {c.sublabel}
                   </p>

@@ -256,7 +256,7 @@ function GoogleIntegrationContent() {
       <div className="min-h-screen bg-gray-900 py-12 px-4 flex items-center justify-center">
         <div className="text-center max-w-md">
           <GoogleLogo size={60} />
-          <h1 className="text-2xl font-bold text-white mt-4 mb-3">Google Integration</h1>
+          <h1 className="text-2xl font-semibold text-white mt-4 mb-3">Google Integration</h1>
           <p className="text-gray-400 mb-6">Please sign in to connect your Google account.</p>
           <button
             onClick={() => window.location.href = '/'}
@@ -276,7 +276,7 @@ function GoogleIntegrationContent() {
           <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 p-4">
             <GoogleLogo size={48} />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-3">Google Integration</h1>
+          <h1 className="text-3xl font-semibold text-white mb-3">Google Integration</h1>
           <p className="text-gray-400">Connect your Gmail or Google Workspace account</p>
         </div>
 

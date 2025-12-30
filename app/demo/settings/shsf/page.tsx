@@ -258,7 +258,7 @@ export default function SHSFSettingsPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5, duration: 0.8 }}
-                    className="text-4xl font-bold bg-gradient-to-r from-rose-600 via-pink-600 to-orange-600 bg-clip-text text-transparent"
+                    className="text-4xl font-semibold bg-gradient-to-r from-rose-600 via-pink-600 to-orange-600 bg-clip-text text-transparent"
                   >
                     Elegant Settings
                   </motion.h1>
@@ -502,7 +502,7 @@ export default function SHSFSettingsPage() {
                             >
                               <div>
                                 <p className="text-sm text-gray-600">{stat.label}</p>
-                                <p className="text-xl font-bold text-gray-900">{stat.value}</p>
+                                <p className="text-xl font-semibold text-gray-900">{stat.value}</p>
                               </div>
                               <motion.div
                                 animate={{ scale: [1, 1.1, 1] }}
@@ -609,7 +609,7 @@ export default function SHSFSettingsPage() {
                                 </motion.div>
                               )}
                             </div>
-                            <h3 className="font-bold text-xl mb-2">{integration.name}</h3>
+                            <h3 className="font-semibold text-xl mb-2">{integration.name}</h3>
                             <p className="text-gray-600">
                               {integration.connected ? 'Active integration' : 'Click to connect'}
                             </p>

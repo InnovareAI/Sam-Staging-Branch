@@ -171,7 +171,7 @@ export default function MonitorDetailPage() {
             <MonitorIcon size={24} className="text-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{monitor?.name || 'Monitor'}</h1>
+            <h1 className="text-2xl font-semibold text-foreground">{monitor?.name || 'Monitor'}</h1>
             <p className="text-muted-foreground">
               {getMonitorTarget()} &bull; {posts.length} posts discovered
             </p>
@@ -201,7 +201,7 @@ export default function MonitorDetailPage() {
           { label: 'Scheduled', value: posts.filter(p => p.comment?.status === 'scheduled').length, color: 'text-amber-400' },
         ].map((stat, i) => (
           <div key={i} className="bg-surface-muted rounded-xl p-4 border border-border">
-            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+            <p className={`text-2xl font-semibold ${stat.color}`}>{stat.value}</p>
             <p className="text-sm text-muted-foreground">{stat.label}</p>
           </div>
         ))}
@@ -250,7 +250,7 @@ export default function MonitorDetailPage() {
               <div className="p-4 border-b border-border">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
                       {post.author_name?.charAt(0) || '?'}
                     </div>
                     <div>

@@ -57,7 +57,7 @@ export default function OriginCampaignHubPage() {
                 <metric.icon className="h-4 w-4 text-gray-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metric.value}</div>
+                <div className="text-2xl font-semibold">{metric.value}</div>
                 <p className="text-xs text-gray-500 mt-1">{metric.change}</p>
               </CardContent>
             </Card>

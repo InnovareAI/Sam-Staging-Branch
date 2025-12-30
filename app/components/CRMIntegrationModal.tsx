@@ -193,7 +193,7 @@ export function CRMIntegrationModal({ isOpen, onClose, workspaceId, workspaceNam
         {/* Header */}
         <div className="p-6 border-b border-gray-700 flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-white">CRM Integrations</h2>
+            <h2 className="text-2xl font-semibold text-white">CRM Integrations</h2>
             <p className="text-gray-400 text-sm mt-1">
               Connect your CRM to sync contacts, companies, and deals with SAM AI
             </p>

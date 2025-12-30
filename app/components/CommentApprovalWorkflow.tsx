@@ -638,7 +638,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <CheckCircle size={64} className="text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">All caught up!</h2>
+          <h2 className="text-2xl font-semibold text-white mb-2">All caught up!</h2>
           <p className="text-gray-400">No comments pending approval</p>
         </div>
       </div>
@@ -661,7 +661,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
               </button>
             )}
             <div>
-              <h1 className="text-2xl font-bold text-white">Comment Management</h1>
+              <h1 className="text-2xl font-semibold text-white">Comment Management</h1>
               {/* Tab Navigation */}
               <div className="flex items-center gap-4 mt-2">
                 <button
@@ -849,7 +849,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
 
                 {/* Author */}
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                  <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
                     {selectedComment.postAuthor[0]}
                   </div>
                   <div>
@@ -1022,7 +1022,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
                 <div key={comment.id} className="bg-gray-800 rounded-lg border border-gray-700 p-5 hover:border-green-700/50 transition-colors">
                   <div className="flex items-start gap-4">
                     {/* Author Avatar */}
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
                       {comment.postAuthor[0]}
                     </div>
 
@@ -1136,7 +1136,7 @@ export default function CommentApprovalWorkflow({ workspaceId, onBack }: Comment
                   >
                     <div className="flex items-start gap-3">
                       {/* Avatar */}
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
                         {comment.author_name[0]}
                       </div>
 

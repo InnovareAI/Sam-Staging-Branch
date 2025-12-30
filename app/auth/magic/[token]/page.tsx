@@ -72,7 +72,7 @@ export default function MagicLinkPage() {
               >
                 <Loader2 className="h-16 w-16 text-indigo-600" />
               </motion.div>
-              <h1 className="text-2xl font-bold mb-2">Verifying Login</h1>
+              <h1 className="text-2xl font-semibold mb-2">Verifying Login</h1>
               <p className="text-slate-600">{message}</p>
             </>
           )}
@@ -86,7 +86,7 @@ export default function MagicLinkPage() {
               >
                 <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
               </motion.div>
-              <h1 className="text-2xl font-bold mb-2 text-green-900">{message}</h1>
+              <h1 className="text-2xl font-semibold mb-2 text-green-900">{message}</h1>
               <div className="flex items-center justify-center gap-2 text-sm text-slate-500 mt-4">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Redirecting...</span>
@@ -97,7 +97,7 @@ export default function MagicLinkPage() {
           {status === 'error' && (
             <>
               <XCircle className="h-16 w-16 text-red-600 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold mb-2 text-red-900">Login Failed</h1>
+              <h1 className="text-2xl font-semibold mb-2 text-red-900">Login Failed</h1>
               <p className="text-slate-600 mb-6">{message}</p>
               <p className="text-sm text-slate-500">
                 Please contact your administrator for a new invitation link.

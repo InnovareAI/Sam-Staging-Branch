@@ -307,7 +307,7 @@ export default function AdminWorkspacePage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
             Workspace Management
           </h1>
           <p className="text-slate-600">Manage your InnovareAI workspace and team members</p>
@@ -362,7 +362,7 @@ export default function AdminWorkspacePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-blue-600">{members.length}</div>
+                    <div className="text-3xl font-semibold text-blue-600">{members.length}</div>
                     <p className="text-sm text-slate-500 mt-1">Active users</p>
                   </CardContent>
                 </Card>
@@ -377,7 +377,7 @@ export default function AdminWorkspacePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-purple-600">{billingInfo.plan}</div>
+                    <div className="text-3xl font-semibold text-purple-600">{billingInfo.plan}</div>
                     <p className="text-sm text-slate-500 mt-1">${billingInfo.amount}/month</p>
                   </CardContent>
                 </Card>
@@ -392,7 +392,7 @@ export default function AdminWorkspacePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-green-600 capitalize">{billingInfo.status}</div>
+                    <div className="text-3xl font-semibold text-green-600 capitalize">{billingInfo.status}</div>
                     <p className="text-sm text-slate-500 mt-1">All systems operational</p>
                   </CardContent>
                 </Card>
@@ -655,25 +655,25 @@ export default function AdminWorkspacePage() {
                   <div className="grid grid-cols-2 gap-6">
                     <div className="p-4 bg-slate-50 rounded-lg">
                       <p className="text-sm text-slate-500 mb-1">Current Plan</p>
-                      <p className="text-2xl font-bold text-blue-600">{billingInfo.plan}</p>
+                      <p className="text-2xl font-semibold text-blue-600">{billingInfo.plan}</p>
                       <p className="text-sm text-slate-600 mt-2">${billingInfo.amount}/month</p>
                     </div>
                     
                     <div className="p-4 bg-slate-50 rounded-lg">
                       <p className="text-sm text-slate-500 mb-1">Next Billing Date</p>
-                      <p className="text-2xl font-bold text-indigo-600">{new Date(billingInfo.nextBilling).toLocaleDateString()}</p>
+                      <p className="text-2xl font-semibold text-indigo-600">{new Date(billingInfo.nextBilling).toLocaleDateString()}</p>
                       <p className="text-sm text-slate-600 mt-2">Auto-renewal enabled</p>
                     </div>
                     
                     <div className="p-4 bg-slate-50 rounded-lg">
                       <p className="text-sm text-slate-500 mb-1">Active Users</p>
-                      <p className="text-2xl font-bold text-green-600">{billingInfo.users} / {billingInfo.maxUsers}</p>
+                      <p className="text-2xl font-semibold text-green-600">{billingInfo.users} / {billingInfo.maxUsers}</p>
                       <p className="text-sm text-slate-600 mt-2">User seats available</p>
                     </div>
                     
                     <div className="p-4 bg-slate-50 rounded-lg">
                       <p className="text-sm text-slate-500 mb-1">Billing Status</p>
-                      <p className="text-2xl font-bold text-green-600 capitalize">{billingInfo.status}</p>
+                      <p className="text-2xl font-semibold text-green-600 capitalize">{billingInfo.status}</p>
                       <p className="text-sm text-slate-600 mt-2">All payments current</p>
                     </div>
                   </div>

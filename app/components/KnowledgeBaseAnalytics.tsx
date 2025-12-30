@@ -119,7 +119,7 @@ export default function KnowledgeBaseAnalytics() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white flex items-center">
+        <h2 className="text-2xl font-semibold text-white flex items-center">
           <Activity className="mr-2" size={24} />
           Knowledge Base Analytics
         </h2>
@@ -201,7 +201,7 @@ export default function KnowledgeBaseAnalytics() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Total Documents</p>
-                  <p className="text-2xl font-bold text-white">{documentData.summary.totalDocuments}</p>
+                  <p className="text-2xl font-semibold text-white">{documentData.summary.totalDocuments}</p>
                 </div>
                 <FileText className="text-blue-500" size={32} />
               </div>
@@ -211,7 +211,7 @@ export default function KnowledgeBaseAnalytics() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Documents Used</p>
-                  <p className="text-2xl font-bold text-white">{documentData.summary.documentsUsed}</p>
+                  <p className="text-2xl font-semibold text-white">{documentData.summary.documentsUsed}</p>
                   <p className="text-xs text-gray-500">{documentData.summary.usageRate} usage rate</p>
                 </div>
                 <BarChart className="text-green-500" size={32} />
@@ -222,7 +222,7 @@ export default function KnowledgeBaseAnalytics() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Total Uses</p>
-                  <p className="text-2xl font-bold text-white">{documentData.summary.totalUses}</p>
+                  <p className="text-2xl font-semibold text-white">{documentData.summary.totalUses}</p>
                 </div>
                 <Activity className="text-purple-500" size={32} />
               </div>
@@ -232,7 +232,7 @@ export default function KnowledgeBaseAnalytics() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Avg Uses/Doc</p>
-                  <p className="text-2xl font-bold text-white">{documentData.summary.avgUsesPerDoc}</p>
+                  <p className="text-2xl font-semibold text-white">{documentData.summary.avgUsesPerDoc}</p>
                 </div>
                 <TrendingUp className="text-yellow-500" size={32} />
               </div>
@@ -256,7 +256,7 @@ export default function KnowledgeBaseAnalytics() {
                       <p className="text-xs text-gray-400">{doc.section}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-bold">{doc.total_uses} uses</p>
+                      <p className="text-white font-semibold">{doc.total_uses} uses</p>
                       <p className="text-xs text-gray-400">{doc.unique_threads} conversations</p>
                     </div>
                   </div>
@@ -349,23 +349,23 @@ export default function KnowledgeBaseAnalytics() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div>
                   <p className="text-gray-400 text-sm">Total Docs</p>
-                  <p className="text-2xl font-bold text-white">{section.total_documents}</p>
+                  <p className="text-2xl font-semibold text-white">{section.total_documents}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Docs Used</p>
-                  <p className="text-2xl font-bold text-white">{section.documents_used}</p>
+                  <p className="text-2xl font-semibold text-white">{section.documents_used}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Total Uses</p>
-                  <p className="text-2xl font-bold text-white">{section.total_uses}</p>
+                  <p className="text-2xl font-semibold text-white">{section.total_uses}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Avg Uses/Doc</p>
-                  <p className="text-2xl font-bold text-white">{(section.avg_uses_per_doc || 0).toFixed(1)}</p>
+                  <p className="text-2xl font-semibold text-white">{(section.avg_uses_per_doc || 0).toFixed(1)}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Usage Rate</p>
-                  <p className="text-2xl font-bold text-white">{(section.usage_rate || 0).toFixed(0)}%</p>
+                  <p className="text-2xl font-semibold text-white">{(section.usage_rate || 0).toFixed(0)}%</p>
                 </div>
               </div>
 

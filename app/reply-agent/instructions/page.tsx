@@ -101,7 +101,7 @@ function AddInstructionsContent() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-lg max-w-md">
-          <h1 className="text-xl font-bold text-red-600 mb-2">Error</h1>
+          <h1 className="text-xl font-semibold text-red-600 mb-2">Error</h1>
           <p className="text-gray-600">{error}</p>
         </div>
       </div>
@@ -114,7 +114,7 @@ function AddInstructionsContent() {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-4">
-            <h1 className="text-xl font-bold text-white">Add Instructions</h1>
+            <h1 className="text-xl font-semibold text-white">Add Instructions</h1>
             <p className="text-purple-100 text-sm">
               Tell SAM how to improve the reply
             </p>

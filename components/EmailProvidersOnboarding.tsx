@@ -91,7 +91,7 @@ export default function EmailProvidersOnboarding({ isOpen, onClose, onComplete }
             <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Mail className="w-8 h-8 text-blue-600" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-3">Connect Email Account</h2>
+            <h2 className="text-2xl font-semibold text-white mb-3">Connect Email Account</h2>
             <p className="text-gray-400 mb-6">
               Connect your email account to enable email campaigns and inbox management.
             </p>
@@ -134,7 +134,7 @@ export default function EmailProvidersOnboarding({ isOpen, onClose, onComplete }
             <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Mail className="w-8 h-8 text-blue-600" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-3">Select Email Provider</h2>
+            <h2 className="text-xl font-semibold text-white mb-3">Select Email Provider</h2>
             <p className="text-gray-400 mb-6">
               Choose your email provider to continue with secure OAuth authentication.
             </p>
@@ -207,7 +207,7 @@ export default function EmailProvidersOnboarding({ isOpen, onClose, onComplete }
             <div className="w-16 h-16 bg-green-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-3">Successfully Connected!</h2>
+            <h2 className="text-xl font-semibold text-white mb-3">Successfully Connected!</h2>
             <p className="text-gray-400 mb-6">
               Your email account has been connected successfully. You can now use email campaigns and inbox features.
             </p>

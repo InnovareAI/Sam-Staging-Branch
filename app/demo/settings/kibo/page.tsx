@@ -91,7 +91,7 @@ export default function KiboSettingsPage() {
           <div className="w-24 h-24 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full mx-auto mb-4 flex items-center justify-center">
             <User className="h-12 w-12 text-white" />
           </div>
-          <h2 className="text-2xl font-bold">Sarah Powell</h2>
+          <h2 className="text-2xl font-semibold">Sarah Powell</h2>
           <p className="text-gray-600">Product Manager</p>
         </div>
         
@@ -369,7 +369,7 @@ export default function KiboSettingsPage() {
           >
             <Settings className="h-8 w-8 text-white" />
           </motion.div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Mobile Settings
           </h1>
           <p className="text-gray-600 text-sm">Kibo UI - Gesture-Driven Interface</p>
@@ -423,7 +423,7 @@ export default function KiboSettingsPage() {
                 <div className="flex items-center gap-3">
                   {React.createElement(settingsCards[currentCard].icon, { className: "h-8 w-8" })}
                   <div>
-                    <CardTitle className="text-xl font-bold">{settingsCards[currentCard].title}</CardTitle>
+                    <CardTitle className="text-xl font-semibold">{settingsCards[currentCard].title}</CardTitle>
                     <CardDescription className="text-white/80">
                       Card {currentCard + 1} of {settingsCards.length}
                     </CardDescription>

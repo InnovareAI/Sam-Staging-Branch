@@ -122,7 +122,7 @@ export default function DemoShowcasePage() {
         className="max-w-7xl mx-auto mb-8"
       >
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl font-semibold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
             SAM AI Design Showcase
           </h1>
           <p className="text-lg text-slate-600 max-w-3xl mx-auto">
@@ -163,7 +163,7 @@ export default function DemoShowcasePage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mb-12"
           >
-            <h2 className="text-2xl font-bold text-center mb-8">Design Philosophy Overview</h2>
+            <h2 className="text-2xl font-semibold text-center mb-8">Design Philosophy Overview</h2>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {designStyles.map((style, index) => (
                 <motion.div
@@ -215,7 +215,7 @@ export default function DemoShowcasePage() {
               <div className="text-center mb-6">
                 <div className="flex items-center justify-center gap-3 mb-2">
                   <page.icon className="h-6 w-6 text-indigo-600" />
-                  <h2 className="text-2xl font-bold">{page.title}</h2>
+                  <h2 className="text-2xl font-semibold">{page.title}</h2>
                 </div>
                 <p className="text-slate-600">{page.description}</p>
               </div>
@@ -320,7 +320,7 @@ export default function DemoShowcasePage() {
           <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200 shadow-xl max-w-2xl mx-auto">
             <CardContent className="p-8">
               <Sparkles className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold mb-4">Choose Your Design Direction</h3>
+              <h3 className="text-2xl font-semibold mb-4">Choose Your Design Direction</h3>
               <p className="text-slate-600 mb-6">
                 Each design approach offers unique advantages. Explore the demos above to find the perfect 
                 style for SAM AI's professional B2B platform.

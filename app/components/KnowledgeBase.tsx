@@ -2523,7 +2523,7 @@ const KnowledgeBase: React.FC = () => {
                   {/* Large Readiness Number */}
                   <div className="flex items-center gap-6">
                     <div className="flex-shrink-0">
-                      <span className="text-5xl font-bold text-primary">{isLoadingContext ? '...' : Math.round(contextData?.knowledge?.completeness ?? 0)}%</span>
+                      <span className="text-5xl font-semibold text-primary">{isLoadingContext ? '...' : Math.round(contextData?.knowledge?.completeness ?? 0)}%</span>
                     </div>
 
                     {/* Category Breakdown Bars */}
@@ -3640,17 +3640,17 @@ const KnowledgeBase: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   <div className="bg-muted border border rounded-lg p-4 text-center">
-                    <div className="text-3xl font-bold text-green-400 mb-2">35%</div>
+                    <div className="text-3xl font-semibold text-green-400 mb-2">35%</div>
                     <div className="text-white font-medium">Avg. Lead Engagement Increase</div>
                     <div className="text-gray-400 text-sm">First 30 days</div>
                   </div>
                   <div className="bg-muted border border rounded-lg p-4 text-center">
-                    <div className="text-3xl font-bold text-blue-400 mb-2">50%</div>
+                    <div className="text-3xl font-semibold text-blue-400 mb-2">50%</div>
                     <div className="text-white font-medium">Faster Outreach Cycle</div>
                     <div className="text-gray-400 text-sm">vs Manual SDRs</div>
                   </div>
                   <div className="bg-muted border border rounded-lg p-4 text-center">
-                    <div className="text-3xl font-bold text-purple-400 mb-2">10x</div>
+                    <div className="text-3xl font-semibold text-purple-400 mb-2">10x</div>
                     <div className="text-white font-medium">ROI Within 3 Months</div>
                     <div className="text-gray-400 text-sm">Typical customer</div>
                   </div>
@@ -3660,21 +3660,21 @@ const KnowledgeBase: React.FC = () => {
                   <h4 className="text-white font-medium mb-3">Success Timeline</h4>
                   <div className="space-y-4">
                     <div className="flex items-center">
-                      <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-4">30</div>
+                      <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold mr-4">30</div>
                       <div>
                         <div className="text-white font-medium">Days 1-30: Foundation</div>
                         <div className="text-gray-400 text-sm">Setup, training, initial campaigns • 15-25% improvement</div>
                       </div>
                     </div>
                     <div className="flex items-center">
-                      <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mr-4">60</div>
+                      <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-semibold mr-4">60</div>
                       <div>
                         <div className="text-white font-medium">Days 31-60: Optimization</div>
                         <div className="text-gray-400 text-sm">AI learning, message refinement • 35-45% improvement</div>
                       </div>
                     </div>
                     <div className="flex items-center">
-                      <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold mr-4">90</div>
+                      <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-semibold mr-4">90</div>
                       <div>
                         <div className="text-white font-medium">Days 61-90: Scale</div>
                         <div className="text-gray-400 text-sm">Full automation, team expansion • 50%+ improvement</div>

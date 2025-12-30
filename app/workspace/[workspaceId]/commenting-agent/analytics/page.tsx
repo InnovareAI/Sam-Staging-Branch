@@ -105,7 +105,7 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
-      <p className="text-2xl font-bold text-foreground">{value}</p>
+      <p className="text-2xl font-semibold text-foreground">{value}</p>
       <p className="text-sm text-muted-foreground">{label}</p>
       {changeLabel && <p className="text-xs text-gray-500 mt-1">{changeLabel}</p>}
     </div>
@@ -151,7 +151,7 @@ export default function AnalyticsPage() {
             <ArrowLeft size={20} className="text-muted-foreground" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white flex items-center gap-3">
               <BarChart3 className="text-pink-500" />
               Commenting Analytics
             </h1>
@@ -311,7 +311,7 @@ export default function AnalyticsPage() {
             <div className="pt-4 border-t border-border">
               <div className="flex items-center justify-between">
                 <span className="text-gray-400 text-sm">Avg. Comments/Day</span>
-                <span className="text-xl font-bold text-foreground">
+                <span className="text-xl font-semibold text-foreground">
                   {analytics.overview.avg_comments_per_day.toFixed(1)}
                 </span>
               </div>
@@ -338,7 +338,7 @@ export default function AnalyticsPage() {
                   className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-pink-600/20 rounded-lg flex items-center justify-center text-pink-400 font-bold text-sm">
+                    <div className="w-8 h-8 bg-pink-600/20 rounded-lg flex items-center justify-center text-pink-400 font-semibold text-sm">
                       {idx + 1}
                     </div>
                     <div>
@@ -374,7 +374,7 @@ export default function AnalyticsPage() {
                   className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-600/20 rounded-full flex items-center justify-center text-blue-400 font-bold text-sm">
+                    <div className="w-8 h-8 bg-blue-600/20 rounded-full flex items-center justify-center text-blue-400 font-semibold text-sm">
                       {profile.profile.charAt(0).toUpperCase()}
                     </div>
                     <div>

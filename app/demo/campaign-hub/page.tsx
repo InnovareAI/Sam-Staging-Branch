@@ -162,7 +162,7 @@ export default function DemoCampaignHubPage() {
                   key={campaign.reach}
                   initial={{ scale: 1.2 }}
                   animate={{ scale: 1 }}
-                  className="text-2xl font-bold text-blue-600"
+                  className="text-2xl font-semibold text-blue-600"
                 >
                   {campaign.reach.toLocaleString()}
                 </motion.p>
@@ -173,7 +173,7 @@ export default function DemoCampaignHubPage() {
                   key={campaign.conversions}
                   initial={{ scale: 1.2 }}
                   animate={{ scale: 1 }}
-                  className="text-2xl font-bold text-purple-600"
+                  className="text-2xl font-semibold text-purple-600"
                 >
                   {campaign.conversions}
                 </motion.p>
@@ -273,7 +273,7 @@ export default function DemoCampaignHubPage() {
               <Megaphone className="h-8 w-8 text-white" />
             </motion.div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-semibold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 Campaign Hub Demo
               </h1>
               <p className="text-slate-600 mt-1">
@@ -356,7 +356,7 @@ export default function DemoCampaignHubPage() {
                               key={stat.value}
                               initial={{ scale: 1.3 }}
                               animate={{ scale: 1 }}
-                              className="text-3xl font-bold text-gray-900 mt-2"
+                              className="text-3xl font-semibold text-gray-900 mt-2"
                             >
                               {stat.value}
                             </motion.p>
@@ -486,7 +486,7 @@ export default function DemoCampaignHubPage() {
                           >
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-sm font-medium">{metric}</span>
-                              <span className="text-sm text-blue-600 font-bold">
+                              <span className="text-sm text-blue-600 font-semibold">
                                 {index === 0 ? '24.5%' : index === 1 ? '8.7%' : '3.2%'}
                               </span>
                             </div>
@@ -532,7 +532,7 @@ export default function DemoCampaignHubPage() {
                               <div className={`w-4 h-4 bg-${item.color}-500 rounded-full`}></div>
                               <span className="font-medium">{item.channel}</span>
                             </div>
-                            <span className="font-bold text-purple-600">{item.percentage}%</span>
+                            <span className="font-semibold text-purple-600">{item.percentage}%</span>
                           </motion.div>
                         ))}
                       </div>

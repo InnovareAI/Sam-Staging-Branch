@@ -131,7 +131,7 @@ function SlackConnectContent() {
           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="h-8 w-8 text-red-500" />
           </div>
-          <h1 className="text-xl font-bold mb-2">Connection Failed</h1>
+          <h1 className="text-xl font-semibold mb-2">Connection Failed</h1>
           <p className="text-muted-foreground mb-6">
             {error === 'access_denied'
               ? 'You cancelled the Slack authorization.'
@@ -158,7 +158,7 @@ function SlackConnectContent() {
             <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="h-8 w-8 text-green-500" />
             </div>
-            <h1 className="text-xl font-bold mb-2">SAM Installed in Slack!</h1>
+            <h1 className="text-xl font-semibold mb-2">SAM Installed in Slack!</h1>
             <p className="text-muted-foreground">
               {teamName ? (
                 <>Connected to <strong>{teamName}</strong></>
@@ -261,7 +261,7 @@ function SlackConnectContent() {
         <div className="w-16 h-16 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
           <Slack className="h-8 w-8 text-purple-500" />
         </div>
-        <h1 className="text-xl font-bold mb-2">Connect SAM to Slack</h1>
+        <h1 className="text-xl font-semibold mb-2">Connect SAM to Slack</h1>
         <p className="text-muted-foreground mb-6">
           Install the SAM app in your Slack workspace to receive campaign updates and interact with SAM directly.
         </p>

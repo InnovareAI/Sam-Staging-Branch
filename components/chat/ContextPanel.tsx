@@ -161,16 +161,16 @@ export function ContextPanel() {
                                 <div className="flex gap-1 bg-white/5 p-1 rounded-lg">
                                     <button
                                         onClick={() => setStatusFilter('active')}
-                                        className={cn("flex-1 py-1 text-[10px] font-bold rounded-md transition-all", statusFilter === 'active' ? "bg-white/10 text-white" : "text-slate-500")}
+                                        className={cn("flex-1 py-1 text-[10px] font-semibold rounded-md transition-all", statusFilter === 'active' ? "bg-white/10 text-white" : "text-slate-500")}
                                     >Active</button>
                                     <button
                                         onClick={() => setStatusFilter('archived')}
-                                        className={cn("flex-1 py-1 text-[10px] font-bold rounded-md transition-all", statusFilter === 'archived' ? "bg-white/10 text-white" : "text-slate-500")}
+                                        className={cn("flex-1 py-1 text-[10px] font-semibold rounded-md transition-all", statusFilter === 'archived' ? "bg-white/10 text-white" : "text-slate-500")}
                                     >Archived</button>
                                 </div>
                                 <button
                                     onClick={() => archiveAllThreads()}
-                                    className="text-[10px] font-bold text-slate-500 hover:text-red-400 flex items-center gap-1 justify-center py-1 transition-colors"
+                                    className="text-[10px] font-semibold text-slate-500 hover:text-red-400 flex items-center gap-1 justify-center py-1 transition-colors"
                                 >
                                     <Archive size={12} /> Archive All Chats
                                 </button>
@@ -189,11 +189,11 @@ export function ContextPanel() {
                                         )}
                                     >
                                         <div className="flex justify-between items-start mb-1">
-                                            <span className="text-[11px] font-bold text-white truncate max-w-[150px]">{thread.title}</span>
+                                            <span className="text-[11px] font-semibold text-white truncate max-w-[150px]">{thread.title}</span>
                                             <span className="text-[9px] text-slate-500">{new Date(thread.last_active_at).toLocaleDateString()}</span>
                                         </div>
                                         {thread.prospect_name && (
-                                            <div className="text-[9px] text-primary/80 font-bold uppercase tracking-tighter mb-1">
+                                            <div className="text-[9px] text-primary/80 font-semibold uppercase tracking-tighter mb-1">
                                                 {thread.prospect_name} @ {thread.prospect_company}
                                             </div>
                                         )}
@@ -221,7 +221,7 @@ export function ContextPanel() {
                                 </div>
                                 <div className="flex items-center gap-2 mb-2">
                                     <Sparkles size={16} className="text-primary animate-pulse" />
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary/80">AI Command Center</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-primary/80">AI Command Center</span>
                                 </div>
                                 <h3 className="text-sm font-semibold text-white mb-1">{intelligence.currentGoal}</h3>
                                 <p className="text-xs text-slate-400 leading-relaxed">{intelligence.samStrategy}</p>
@@ -266,7 +266,7 @@ export function ContextPanel() {
                             <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
                                 <div className="flex items-center justify-between mb-2">
                                     <h4 className="font-semibold text-white flex items-center gap-2"><Brain size={16} className="text-primary" /> SAM Readiness</h4>
-                                    <span className="text-2xl font-bold text-primary">{contextData?.knowledge?.completeness || 0}%</span>
+                                    <span className="text-2xl font-semibold text-primary">{contextData?.knowledge?.completeness || 0}%</span>
                                 </div>
                                 <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                                     <div className="h-full bg-gradient-to-r from-primary to-purple-400" style={{ width: `${contextData?.knowledge?.completeness || 0}%` }} />
@@ -306,8 +306,8 @@ function KnowledgeCategory({ label, score, color }: { label: string, score: numb
     };
     return (
         <div className={cn("p-3 rounded-xl border flex items-center justify-between", colorClasses[color])}>
-            <span className="text-xs font-bold">{label}</span>
-            <span className="text-xs font-bold">{score}%</span>
+            <span className="text-xs font-semibold">{label}</span>
+            <span className="text-xs font-semibold">{score}%</span>
         </div>
     );
 }

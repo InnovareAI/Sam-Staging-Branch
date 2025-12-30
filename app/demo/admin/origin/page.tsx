@@ -51,7 +51,7 @@ export default function OriginAdminPage() {
                 <metric.icon className="h-4 w-4 text-gray-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{metric.value}</div>
+                <div className="text-2xl font-semibold">{metric.value}</div>
                 <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                   <span className={metric.change.startsWith('+') && !metric.title.includes('Load') ? 'text-green-600' : 'text-red-600'}>
                     {metric.change}

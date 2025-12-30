@@ -90,7 +90,7 @@ export default function CalendarIntegrationModal({ isOpen, onClose, workspaceId 
                 <Calendar className="h-5 w-5 text-blue-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold">Calendar Integration</h2>
+                <h2 className="text-lg font-semibold">Calendar Integration</h2>
                 <p className="text-xs text-muted-foreground">Connect your calendar for scheduling</p>
               </div>
             </div>

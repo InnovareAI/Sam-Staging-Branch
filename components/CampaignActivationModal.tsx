@@ -65,7 +65,7 @@ export default function CampaignActivationModal({
               <CheckCircle className="w-6 h-6 text-green-400" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-foreground">Campaign Approved!</h2>
+              <h2 className="text-2xl font-semibold text-foreground">Campaign Approved!</h2>
               <p className="text-gray-400 text-sm">Ready to activate and launch</p>
             </div>
           </div>

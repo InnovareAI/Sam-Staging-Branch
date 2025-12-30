@@ -199,7 +199,7 @@ export const columns: ColumnDef<ProspectData>[] = [
 
             return (
                 <div className="flex items-center">
-                    <Badge variant="outline" className={cn("px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-tighter flex items-center gap-1.5", config.class)}>
+                    <Badge variant="outline" className={cn("px-2.5 py-0.5 rounded-full font-semibold text-[10px] uppercase tracking-tighter flex items-center gap-1.5", config.class)}>
                         <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", config.dot)} />
                         {config.label}
                     </Badge>

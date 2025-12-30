@@ -215,7 +215,7 @@ export default function CampaignsPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">LinkedIn Campaign Builder</h1>
+          <h1 className="text-3xl font-semibold mb-2">LinkedIn Campaign Builder</h1>
           <p className="text-gray-400">Build, approve, and launch LinkedIn outreach campaigns</p>
         </div>
 
@@ -224,7 +224,7 @@ export default function CampaignsPage() {
           {['search', 'review', 'messages', 'schedule', 'approve', 'launch'].map((step, index) => (
             <div key={step} className="flex items-center">
               <div className={`
-                w-10 h-10 rounded-full flex items-center justify-center font-bold
+                w-10 h-10 rounded-full flex items-center justify-center font-semibold
                 ${currentStep === step ? 'bg-blue-600' :
                   ['search', 'review', 'messages', 'schedule', 'approve', 'launch'].indexOf(currentStep) > index ? 'bg-green-600' : 'bg-gray-700'}
               `}>
@@ -242,7 +242,7 @@ export default function CampaignsPage() {
           {currentStep === 'search' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold mb-4 flex items-center">
+                <h2 className="text-2xl font-semibold mb-4 flex items-center">
                   <Search className="mr-2" />
                   Search LinkedIn Prospects
                 </h2>
@@ -277,7 +277,7 @@ export default function CampaignsPage() {
           {currentStep === 'review' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold flex items-center">
+                <h2 className="text-2xl font-semibold flex items-center">
                   <Users className="mr-2" />
                   Review Prospects ({prospects.length} found)
                 </h2>
@@ -335,7 +335,7 @@ export default function CampaignsPage() {
           {currentStep === 'messages' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold mb-4 flex items-center">
+                <h2 className="text-2xl font-semibold mb-4 flex items-center">
                   <MessageSquare className="mr-2" />
                   Create Message Sequence
                 </h2>
@@ -429,7 +429,7 @@ export default function CampaignsPage() {
           {currentStep === 'approve' && campaign && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold mb-4 flex items-center">
+                <h2 className="text-2xl font-semibold mb-4 flex items-center">
                   <Eye className="mr-2" />
                   Review & Approve Campaign
                 </h2>
@@ -445,11 +445,11 @@ export default function CampaignsPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-gray-400 text-sm">Prospects</p>
-                    <p className="text-2xl font-bold">{selectedProspects.size}</p>
+                    <p className="text-2xl font-semibold">{selectedProspects.size}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Messages</p>
-                    <p className="text-2xl font-bold">{messages.filter(m => m.trim()).length}</p>
+                    <p className="text-2xl font-semibold">{messages.filter(m => m.trim()).length}</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Schedule</p>
@@ -499,7 +499,7 @@ export default function CampaignsPage() {
               <div className="flex justify-center">
                 <CheckCircle className="text-green-500" size={80} />
               </div>
-              <h2 className="text-3xl font-bold">Campaign Launched!</h2>
+              <h2 className="text-3xl font-semibold">Campaign Launched!</h2>
               <p className="text-gray-400">
                 Your campaign is now active and sending messages to {selectedProspects.size} prospects.
               </p>

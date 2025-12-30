@@ -105,7 +105,7 @@ export default function SkiperSettingsPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="text-4xl font-bold bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent"
+                    className="text-4xl font-semibold bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent"
                   >
                     Premium Settings
                   </motion.h1>
@@ -320,7 +320,7 @@ export default function SkiperSettingsPage() {
                                 className="flex justify-between items-center p-3 bg-white/10 rounded-lg cursor-pointer"
                               >
                                 <span className="text-gray-300 text-sm">{item.metric}</span>
-                                <span className={`text-${item.color}-400 font-bold`}>{item.value}</span>
+                                <span className={`text-${item.color}-400 font-semibold`}>{item.value}</span>
                               </motion.div>
                             ))}
                           </div>
@@ -400,7 +400,7 @@ export default function SkiperSettingsPage() {
                                 </motion.div>
                               )}
                             </div>
-                            <h3 className="font-bold text-white text-lg mb-2">{integration.name}</h3>
+                            <h3 className="font-semibold text-white text-lg mb-2">{integration.name}</h3>
                             <p className="text-gray-300 text-sm">
                               {integration.connected ? 'Premium features active' : 'Unlock premium features'}
                             </p>
@@ -444,7 +444,7 @@ export default function SkiperSettingsPage() {
                             <Palette className="h-6 w-6 text-white" />
                           </motion.div>
                           <div>
-                            <h3 className="text-lg font-bold text-white">Premium Dark Mode</h3>
+                            <h3 className="text-lg font-semibold text-white">Premium Dark Mode</h3>
                             <p className="text-gray-300 text-sm">Enhanced visual experience</p>
                           </div>
                         </div>
@@ -454,7 +454,7 @@ export default function SkiperSettingsPage() {
                       </motion.div>
 
                       <div>
-                        <h3 className="text-xl font-bold mb-6 text-white flex items-center gap-2">
+                        <h3 className="text-xl font-semibold mb-6 text-white flex items-center gap-2">
                           <Diamond className="h-6 w-6 text-purple-400" />
                           Premium Color Schemes
                         </h3>
@@ -480,7 +480,7 @@ export default function SkiperSettingsPage() {
                             >
                               <motion.span 
                                 whileHover={{ scale: 1.2 }}
-                                className="text-white font-bold text-lg drop-shadow-2xl"
+                                className="text-white font-semibold text-lg drop-shadow-2xl"
                               >
                                 {theme.name}
                               </motion.span>
@@ -528,7 +528,7 @@ export default function SkiperSettingsPage() {
                           className="flex items-center justify-between p-6 rounded-2xl transition-all duration-500 border border-transparent hover:border-orange-500/30"
                         >
                           <div>
-                            <h3 className="font-bold text-white text-lg">{item.title}</h3>
+                            <h3 className="font-semibold text-white text-lg">{item.title}</h3>
                             <p className="text-gray-300">{item.desc}</p>
                           </div>
                           <motion.div whileTap={{ scale: 0.9 }}>

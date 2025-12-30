@@ -2891,7 +2891,7 @@ export default function DataCollectionHub({
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-600/20 text-purple-300 text-xs font-bold" title={prospect.researchedBy || 'Unknown'}>
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-600/20 text-purple-300 text-xs font-semibold" title={prospect.researchedBy || 'Unknown'}>
                         {prospect.researchedByInitials || 'U'}
                       </div>
                     </div>
@@ -3647,7 +3647,7 @@ function DataValidationModal({
           {/* Summary */}
           <div className="bg-gray-700/50 rounded-lg p-4">
             <p className="text-gray-300 text-sm mb-3">
-              Loaded <span className="font-bold text-foreground">{validationResults.totalProspects}</span> prospects
+              Loaded <span className="font-semibold text-foreground">{validationResults.totalProspects}</span> prospects
             </p>
 
             {hasIssues && (

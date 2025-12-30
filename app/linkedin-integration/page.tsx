@@ -529,7 +529,7 @@ function LinkedInIntegrationContent() {
           <div className="w-20 h-20 bg-[#0A66C2]/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <LinkedInLogo size={40} className="text-[#0A66C2]" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-3">LinkedIn Integration</h1>
+          <h1 className="text-2xl font-semibold text-white mb-3">LinkedIn Integration</h1>
           <p className="text-gray-400 mb-6">Please sign in to access LinkedIn integration features.</p>
           
           {message && (
@@ -564,7 +564,7 @@ function LinkedInIntegrationContent() {
           <div className="w-20 h-20 bg-[#0A66C2]/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <LinkedInLogo size={40} className="text-[#0A66C2]" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-3">LinkedIn Integration</h1>
+          <h1 className="text-3xl font-semibold text-white mb-3">LinkedIn Integration</h1>
           <p className="text-gray-400">
             Connect your LinkedIn account to unlock SAM AI's powerful sales features
           </p>

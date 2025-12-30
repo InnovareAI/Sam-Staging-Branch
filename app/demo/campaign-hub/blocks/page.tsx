@@ -100,7 +100,7 @@ export default function BlocksCampaignHubPage() {
                 <Zap className="h-8 w-8 text-white" />
               </motion.div>
               <div>
-                <h1 className="text-3xl font-bold text-white">Campaign Command Center</h1>
+                <h1 className="text-3xl font-semibold text-white">Campaign Command Center</h1>
                 <p className="text-blue-200">Blocks.mvp-subha.me - Enterprise Campaign Analytics</p>
               </div>
             </div>
@@ -108,15 +108,15 @@ export default function BlocksCampaignHubPage() {
             {/* Real-time stats */}
             <div className="flex gap-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-400">{campaignMetrics.activeCampaigns}</div>
+                <div className="text-2xl font-semibold text-green-400">{campaignMetrics.activeCampaigns}</div>
                 <div className="text-xs text-gray-400">Active</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-400">{(campaignMetrics.totalReach / 1000).toFixed(0)}K</div>
+                <div className="text-2xl font-semibold text-blue-400">{(campaignMetrics.totalReach / 1000).toFixed(0)}K</div>
                 <div className="text-xs text-gray-400">Total Reach</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-400">{campaignMetrics.conversionRate}%</div>
+                <div className="text-2xl font-semibold text-purple-400">{campaignMetrics.conversionRate}%</div>
                 <div className="text-xs text-gray-400">Conversion</div>
               </div>
             </div>
@@ -154,7 +154,7 @@ export default function BlocksCampaignHubPage() {
                       Live
                     </Badge>
                   </div>
-                  <div className="text-2xl font-bold text-white mb-1">{metric.value}</div>
+                  <div className="text-2xl font-semibold text-white mb-1">{metric.value}</div>
                   <div className="text-xs text-gray-400">{metric.title}</div>
                 </CardContent>
               </Card>

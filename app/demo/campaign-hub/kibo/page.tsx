@@ -64,7 +64,7 @@ export default function KiboCampaignHubPage() {
           >
             <Target className="h-10 w-10 text-white" />
           </motion.div>
-          <h2 className="text-2xl font-bold">Campaign Hub</h2>
+          <h2 className="text-2xl font-semibold">Campaign Hub</h2>
           <p className="text-gray-600">Manage all your marketing campaigns</p>
         </div>
 
@@ -80,7 +80,7 @@ export default function KiboCampaignHubPage() {
               whileHover={{ scale: 1.05 }}
               className={`p-4 bg-gradient-to-r from-${metric.color}-50 to-${metric.color}-100 rounded-2xl border-2 border-${metric.color}-200 text-center`}
             >
-              <div className={`text-2xl font-bold text-${metric.color}-700`}>{metric.value}</div>
+              <div className={`text-2xl font-semibold text-${metric.color}-700`}>{metric.value}</div>
               <div className={`text-sm text-${metric.color}-600`}>{metric.label}</div>
             </motion.div>
           ))}
@@ -106,7 +106,7 @@ export default function KiboCampaignHubPage() {
           >
             <Play className="h-10 w-10 text-white" />
           </motion.div>
-          <h2 className="text-2xl font-bold">Active Campaigns</h2>
+          <h2 className="text-2xl font-semibold">Active Campaigns</h2>
           <p className="text-gray-600">Currently running campaigns</p>
         </div>
 
@@ -125,7 +125,7 @@ export default function KiboCampaignHubPage() {
                 <p className="text-sm text-gray-600">{campaign.platform}</p>
               </div>
               <div className="text-right">
-                <div className="text-lg font-bold text-green-700">{campaign.reach}</div>
+                <div className="text-lg font-semibold text-green-700">{campaign.reach}</div>
                 <Badge className={campaign.status === 'active' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}>
                   {campaign.status}
                 </Badge>
@@ -148,7 +148,7 @@ export default function KiboCampaignHubPage() {
           >
             <BarChart3 className="h-10 w-10 text-white" />
           </motion.div>
-          <h2 className="text-2xl font-bold">Performance Analytics</h2>
+          <h2 className="text-2xl font-semibold">Performance Analytics</h2>
           <p className="text-gray-600">Campaign insights and metrics</p>
         </div>
 
@@ -166,7 +166,7 @@ export default function KiboCampaignHubPage() {
               <div className="flex justify-between items-center">
                 <div>
                   <div className="text-sm text-gray-600">{item.metric}</div>
-                  <div className="text-2xl font-bold text-purple-700">{item.value}</div>
+                  <div className="text-2xl font-semibold text-purple-700">{item.value}</div>
                 </div>
                 <Badge className="bg-green-500 text-white">{item.trend}</Badge>
               </div>
@@ -188,7 +188,7 @@ export default function KiboCampaignHubPage() {
           >
             <Zap className="h-10 w-10 text-white" />
           </motion.div>
-          <h2 className="text-2xl font-bold">Quick Templates</h2>
+          <h2 className="text-2xl font-semibold">Quick Templates</h2>
           <p className="text-gray-600">Launch campaigns instantly</p>
         </div>
 
@@ -235,7 +235,7 @@ export default function KiboCampaignHubPage() {
           >
             <Zap className="h-8 w-8 text-white" />
           </motion.div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Campaign Hub
           </h1>
           <p className="text-gray-600 text-sm flex items-center justify-center gap-2">
@@ -288,7 +288,7 @@ export default function KiboCampaignHubPage() {
                 <div className="flex items-center gap-3">
                   {React.createElement(campaignCards[currentCard].icon, { className: "h-8 w-8" })}
                   <div>
-                    <CardTitle className="text-xl font-bold">{campaignCards[currentCard].title}</CardTitle>
+                    <CardTitle className="text-xl font-semibold">{campaignCards[currentCard].title}</CardTitle>
                     <p className="text-white/80">Section {currentCard + 1} of {campaignCards.length}</p>
                   </div>
                 </div>

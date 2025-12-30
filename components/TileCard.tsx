@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { LucideIcon, Settings } from 'lucide-react';
+import { LucideIcon, ArrowRight } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-type ColorVariant = 'purple' | 'cyan' | 'blue' | 'green' | 'yellow' | 'orange' | 'pink' | 'indigo' | 'teal' | 'red';
+type ColorVariant = 'purple' | 'cyan' | 'blue' | 'green' | 'yellow' | 'orange' | 'pink' | 'indigo' | 'teal' | 'red' | 'primary';
 type Status = 'active' | 'coming-soon' | 'upgrade';
 
 interface TileCardProps {
@@ -19,61 +19,66 @@ interface TileCardProps {
   className?: string;
 }
 
-// Color configurations for cards
+// Color configurations - accent colors for icons and borders only
 const colorConfig: Record<ColorVariant, {
-  card: string;
+  border: string;
   icon: string;
   iconBg: string;
 }> = {
   purple: {
-    card: 'bg-gradient-to-br from-purple-600/20 to-purple-900/20 border-purple-500/30 hover:border-purple-400/50',
-    icon: 'text-purple-400',
+    border: 'hover:border-purple-500/50',
+    icon: 'text-purple-500',
     iconBg: 'bg-purple-600/20'
   },
   cyan: {
-    card: 'bg-gradient-to-br from-cyan-600/20 to-cyan-900/20 border-cyan-500/30 hover:border-cyan-400/50',
-    icon: 'text-cyan-400',
+    border: 'hover:border-cyan-500/50',
+    icon: 'text-cyan-500',
     iconBg: 'bg-cyan-600/20'
   },
   blue: {
-    card: 'bg-gradient-to-br from-blue-600/20 to-blue-900/20 border-blue-500/30 hover:border-blue-400/50',
-    icon: 'text-blue-400',
+    border: 'hover:border-blue-500/50',
+    icon: 'text-blue-500',
     iconBg: 'bg-blue-600/20'
   },
   green: {
-    card: 'bg-gradient-to-br from-green-600/20 to-green-900/20 border-green-500/30 hover:border-green-400/50',
-    icon: 'text-green-400',
+    border: 'hover:border-green-500/50',
+    icon: 'text-green-500',
     iconBg: 'bg-green-600/20'
   },
   yellow: {
-    card: 'bg-gradient-to-br from-yellow-600/20 to-yellow-900/20 border-yellow-500/30 hover:border-yellow-400/50',
-    icon: 'text-yellow-400',
+    border: 'hover:border-yellow-500/50',
+    icon: 'text-yellow-500',
     iconBg: 'bg-yellow-600/20'
   },
   orange: {
-    card: 'bg-gradient-to-br from-orange-600/20 to-orange-900/20 border-orange-500/30 hover:border-orange-400/50',
-    icon: 'text-orange-400',
+    border: 'hover:border-orange-500/50',
+    icon: 'text-orange-500',
     iconBg: 'bg-orange-600/20'
   },
   pink: {
-    card: 'bg-gradient-to-br from-pink-600/20 to-pink-900/20 border-pink-500/30 hover:border-pink-400/50',
-    icon: 'text-pink-400',
+    border: 'hover:border-pink-500/50',
+    icon: 'text-pink-500',
     iconBg: 'bg-pink-600/20'
   },
   red: {
-    card: 'bg-gradient-to-br from-red-600/20 to-red-900/20 border-red-500/30 hover:border-red-400/50',
-    icon: 'text-red-400',
+    border: 'hover:border-red-500/50',
+    icon: 'text-red-500',
     iconBg: 'bg-red-600/20'
   },
   indigo: {
-    card: 'bg-gradient-to-br from-indigo-600/20 to-indigo-900/20 border-indigo-500/30 hover:border-indigo-400/50',
-    icon: 'text-indigo-400',
+    border: 'hover:border-indigo-500/50',
+    icon: 'text-indigo-500',
     iconBg: 'bg-indigo-600/20'
   },
   teal: {
-    card: 'bg-gradient-to-br from-teal-600/20 to-teal-900/20 border-teal-500/30 hover:border-teal-400/50',
-    icon: 'text-teal-400',
+    border: 'hover:border-teal-500/50',
+    icon: 'text-teal-500',
     iconBg: 'bg-teal-600/20'
+  },
+  primary: {
+    border: 'hover:border-primary/50',
+    icon: 'text-primary',
+    iconBg: 'bg-primary/20'
   },
 };
 
@@ -85,8 +90,8 @@ const statusConfig: Record<Status, { variant: 'default' | 'secondary' | 'destruc
 };
 
 /**
- * TileCard - Built on shadcn Card with custom color variants
- * Used for action tiles throughout the app (Settings, Integrations, etc.)
+ * TileCard - Unified card style matching app-wide design
+ * Uses surface-muted background with colored border highlights on hover
  */
 export function TileCard({
   title,
@@ -105,11 +110,10 @@ export function TileCard({
     <Card
       onClick={isActive ? onClick : undefined}
       className={cn(
-        'group relative transition-all duration-200',
-        colors.card,
-        isActive
-          ? 'cursor-pointer hover:scale-[1.02] hover:shadow-xl'
-          : 'cursor-not-allowed opacity-60',
+        'group relative bg-surface-muted border border-border rounded-xl transition-all duration-200',
+        colors.border,
+        'hover:bg-surface-muted/80',
+        isActive ? 'cursor-pointer' : 'cursor-not-allowed opacity-60',
         className
       )}
       role={isActive ? 'button' : undefined}
@@ -122,38 +126,37 @@ export function TileCard({
       }}
       aria-disabled={!isActive}
     >
-      <CardHeader className="p-4">
+      <CardHeader className="p-5">
         {/* Icon and Status Badge Row */}
-        <div className="flex items-start justify-between mb-2">
+        <div className="flex items-start justify-between mb-3">
           <div className={cn(
-            'w-10 h-10 rounded-lg flex items-center justify-center',
+            'w-12 h-12 rounded-xl flex items-center justify-center',
             isActive ? colors.iconBg : 'bg-gray-700/50'
           )}>
-            <Icon className={cn('h-5 w-5', isActive ? 'text-white' : 'text-gray-500')} />
+            <Icon className={cn('h-6 w-6', isActive ? colors.icon : 'text-gray-500')} />
           </div>
-          <Badge variant={statusInfo.variant} className="text-xs">
-            {statusInfo.label}
-          </Badge>
+          {status !== 'active' && (
+            <Badge variant={statusInfo.variant} className="text-xs">
+              {statusInfo.label}
+            </Badge>
+          )}
         </div>
 
         {/* Title and Description */}
-        <CardTitle className="text-base text-foreground">{title}</CardTitle>
-        <CardDescription className="text-xs leading-relaxed">{description}</CardDescription>
-      </CardHeader>
+        <CardTitle className={cn(
+          "text-lg text-foreground mb-1 transition-colors",
+          isActive && `group-hover:${colors.icon}`
+        )}>{title}</CardTitle>
+        <CardDescription className="text-sm leading-relaxed text-muted-foreground">{description}</CardDescription>
 
-      {/* Hover Overlay */}
-      {isActive && (
-        <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <button
-            onClick={onClick}
-            className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-            aria-label={`Configure ${title}`}
-          >
-            <Settings className="h-4 w-4" />
-            Configure
-          </button>
-        </div>
-      )}
+        {/* Action hint on hover */}
+        {isActive && (
+          <div className="mt-3 flex items-center gap-1 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className={colors.icon}>Open</span>
+            <ArrowRight className={cn('h-4 w-4', colors.icon)} />
+          </div>
+        )}
+      </CardHeader>
     </Card>
   );
 }
@@ -176,8 +179,9 @@ export function SimpleTileCard({
     <Card
       onClick={onClick}
       className={cn(
-        'group relative transition-all duration-200 cursor-pointer hover:scale-[1.02] hover:shadow-xl',
-        colors.card,
+        'group relative bg-surface-muted border border-border rounded-xl transition-all duration-200 cursor-pointer',
+        colors.border,
+        'hover:bg-surface-muted/80',
         className
       )}
       role="button"
@@ -189,28 +193,22 @@ export function SimpleTileCard({
         }
       }}
     >
-      <CardHeader className="p-4">
+      <CardHeader className="p-5">
         {/* Icon */}
-        <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center mb-2', colors.iconBg)}>
-          <Icon className="h-5 w-5 text-foreground" />
+        <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center mb-3', colors.iconBg)}>
+          <Icon className={cn('h-6 w-6', colors.icon)} />
         </div>
 
         {/* Title and Description */}
-        <CardTitle className="text-base text-foreground">{title}</CardTitle>
-        <CardDescription className="text-xs leading-relaxed">{description}</CardDescription>
-      </CardHeader>
+        <CardTitle className="text-lg text-foreground mb-1">{title}</CardTitle>
+        <CardDescription className="text-sm leading-relaxed text-muted-foreground">{description}</CardDescription>
 
-      {/* Hover Overlay */}
-      <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        <button
-          onClick={onClick}
-          className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-          aria-label={`Configure ${title}`}
-        >
-          <Settings className="h-4 w-4" />
-          Configure
-        </button>
-      </div>
+        {/* Action hint on hover */}
+        <div className="mt-3 flex items-center gap-1 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className={colors.icon}>Open</span>
+          <ArrowRight className={cn('h-4 w-4', colors.icon)} />
+        </div>
+      </CardHeader>
     </Card>
   );
 }

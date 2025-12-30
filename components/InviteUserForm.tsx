@@ -75,7 +75,7 @@ export default function InviteUserForm({ organizations, onInviteSuccess }: Invit
 
   return (
     <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Invite User</h2>
+      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Invite User</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

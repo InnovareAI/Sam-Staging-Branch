@@ -311,7 +311,7 @@ export default function LinkedInConnectionHub({ isOpen, onClose, onComplete }: L
                 </svg>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-foreground">LinkedIn Connection</h2>
+                <h2 className="text-xl font-semibold text-foreground">LinkedIn Connection</h2>
                 <p className="text-gray-400 text-sm">Connect your LinkedIn account to SAM AI</p>
               </div>
             </div>

@@ -135,7 +135,7 @@ export function ProspectDetailsSheet({ prospect, open, onOpenChange, onApprove, 
                             <span className="text-sm text-muted-foreground">Quality Score</span>
                             <div className="flex items-center gap-2 mt-1">
                                 <Star className={`h-5 w-5 ${prospect.qualityScore >= 80 ? 'fill-green-500 text-green-500' : 'fill-yellow-500 text-yellow-500'}`} />
-                                <span className="text-2xl font-bold">{prospect.qualityScore}</span>
+                                <span className="text-2xl font-semibold">{prospect.qualityScore}</span>
                             </div>
                         </div>
                         <Separator orientation="vertical" className="h-10" />

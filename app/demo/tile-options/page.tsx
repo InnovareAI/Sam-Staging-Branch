@@ -6,7 +6,7 @@ export default function TileOptionsDemo() {
   return (
     <div className="min-h-screen p-8 bg-background">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Tile Design Options Comparison</h1>
+        <h1 className="text-4xl font-semibold mb-8">Tile Design Options Comparison</h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Option 1: Icon Button in Header */}

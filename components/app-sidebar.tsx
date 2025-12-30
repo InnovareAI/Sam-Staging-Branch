@@ -139,7 +139,7 @@ export function AppSidebar({
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight" style={{ color: 'hsl(var(--header-foreground))' }}>
+            <span className="text-lg font-semibold tracking-tight" style={{ color: 'hsl(var(--header-foreground))' }}>
               SAM AI
             </span>
             <span className="text-xs text-muted-foreground">
@@ -209,7 +209,7 @@ export function AppSidebar({
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-bold text-slate-100">
+                  <p className="truncate text-sm font-semibold text-slate-100">
                     {user?.name || 'User'}
                   </p>
                   <p className="truncate text-[10px] text-slate-500 uppercase tracking-tight">{user?.email || ''}</p>

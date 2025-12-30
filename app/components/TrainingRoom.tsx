@@ -155,7 +155,7 @@ const TrainingRoom: React.FC = () => {
   return (
     <div className="flex-1 bg-gray-900 p-6 overflow-y-auto">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-white mb-4">Sam Training Room</h1>
+        <h1 className="text-2xl font-semibold text-white mb-4">Sam Training Room</h1>
         <OnboardingWizard />
       </div>
     </div>

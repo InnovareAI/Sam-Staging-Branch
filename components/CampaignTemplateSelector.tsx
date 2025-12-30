@@ -71,7 +71,7 @@ const CampaignTemplateSelector: React.FC<CampaignTemplateSelectorProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Choose Campaign Template</h2>
+            <h2 className="text-2xl font-semibold text-gray-900">Choose Campaign Template</h2>
             <p className="text-gray-600 mt-1">Select a proven template or create custom campaign</p>
           </div>
           <button
@@ -160,7 +160,7 @@ const CampaignTemplateSelector: React.FC<CampaignTemplateSelectorProps> = ({
                     </div>
                     <div className="text-right">
                       <div className="text-sm text-gray-500">Response Rate</div>
-                      <div className="text-lg font-bold text-green-600">{template.expected_response_rate}</div>
+                      <div className="text-lg font-semibold text-green-600">{template.expected_response_rate}</div>
                     </div>
                   </div>
 

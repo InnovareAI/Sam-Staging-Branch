@@ -78,7 +78,7 @@ export function CampaignList({
         return (
             <div className="flex flex-col items-center justify-center p-20 border border-dashed border-border/40 rounded-3xl bg-card/10">
                 <Rocket className="h-12 w-12 text-muted-foreground/20 mb-4" />
-                <h3 className="text-xl font-bold text-foreground/60 tracking-tight">No Campaigns Found</h3>
+                <h3 className="text-xl font-semibold text-foreground/60 tracking-tight">No Campaigns Found</h3>
                 <p className="text-sm text-muted-foreground/60 mt-1">Start by creating your first outreach campaign.</p>
             </div>
         );

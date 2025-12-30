@@ -386,13 +386,13 @@ export function WorkspaceAccountSwitcher({ workspaceId, currentUserId, onAccount
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-semibold text-blue-600">
                 {teamMembers.reduce((sum, member) => sum + member.accounts.length, 0)}
               </div>
               <div className="text-sm text-gray-600">Total Accounts</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-semibold text-green-600">
                 {teamMembers.reduce((sum, member) => 
                   sum + member.accounts.filter(acc => acc.connection_status === 'connected').length, 0
                 )}
@@ -400,7 +400,7 @@ export function WorkspaceAccountSwitcher({ workspaceId, currentUserId, onAccount
               <div className="text-sm text-gray-600">Connected</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-semibold text-orange-600">
                 {teamMembers.reduce((sum, member) => 
                   sum + member.accounts.reduce((accSum, acc) => accSum + acc.daily_message_count, 0), 0
                 )}
@@ -408,7 +408,7 @@ export function WorkspaceAccountSwitcher({ workspaceId, currentUserId, onAccount
               <div className="text-sm text-gray-600">Messages Today</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-semibold text-purple-600">
                 {Math.round(
                   (teamMembers.reduce((sum, member) => 
                     sum + member.accounts.reduce((accSum, acc) => accSum + acc.usage_percentage, 0), 0

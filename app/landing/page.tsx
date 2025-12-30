@@ -11,7 +11,7 @@ export default function LandingPage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg" />
-              <span className="text-xl font-bold">SaaSify</span>
+              <span className="text-xl font-semibold">SaaSify</span>
             </div>
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-gray-400 hover:text-white transition-colors">Features</a>
@@ -41,7 +41,7 @@ export default function LandingPage() {
             </div>
 
             {/* Headline */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight mb-6">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-semibold leading-tight mb-6">
               Scale Your Business
               <span className="block bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
                 Without the Complexity
@@ -110,7 +110,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl font-semibold mb-4">
               Everything You Need to Succeed
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
@@ -178,7 +178,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl font-semibold mb-4">
               Simple, Transparent Pricing
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
@@ -257,7 +257,7 @@ export default function LandingPage() {
                   <h3 className="text-xl font-semibold mb-2">{plan.name}</h3>
                   <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-4xl font-bold">${plan.price}</span>
+                    <span className="text-4xl font-semibold">${plan.price}</span>
                     <span className="text-gray-400">/month</span>
                   </div>
                 </div>
@@ -295,7 +295,7 @@ export default function LandingPage() {
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
 
             <div className="relative z-10">
-              <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+              <h2 className="text-3xl sm:text-4xl font-semibold mb-4">
                 Ready to Get Started?
               </h2>
               <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
@@ -321,7 +321,7 @@ export default function LandingPage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg" />
-                <span className="text-xl font-bold">SaaSify</span>
+                <span className="text-xl font-semibold">SaaSify</span>
               </div>
               <p className="text-gray-400 text-sm">
                 Empowering businesses to automate and scale with confidence.

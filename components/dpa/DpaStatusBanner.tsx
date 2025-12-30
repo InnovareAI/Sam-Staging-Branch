@@ -74,7 +74,7 @@ export default function DpaStatusBanner({ workspaceId, onSignClick }: DpaStatusB
     return (
       <Alert variant="destructive" className="mb-6 border-2 border-red-500">
         <AlertTriangle className="h-5 w-5" />
-        <AlertTitle className="text-lg font-bold">Service Blocked - DPA Required</AlertTitle>
+        <AlertTitle className="text-lg font-semibold">Service Blocked - DPA Required</AlertTitle>
         <AlertDescription>
           <p className="mb-4">
             Your workspace has been blocked due to an unsigned Data Processing Agreement.
@@ -152,7 +152,7 @@ export default function DpaStatusBanner({ workspaceId, onSignClick }: DpaStatusB
       }`}
     >
       <AlertTriangle className={`h-5 w-5 ${isUrgent ? 'text-red-600' : 'text-yellow-600'}`} />
-      <AlertTitle className={`text-lg font-bold ${isUrgent ? 'text-red-900' : 'text-yellow-900'}`}>
+      <AlertTitle className={`text-lg font-semibold ${isUrgent ? 'text-red-900' : 'text-yellow-900'}`}>
         {isUrgent ? '⚠️ Urgent: ' : ''}Data Processing Agreement Signature Required
       </AlertTitle>
       <AlertDescription className={isUrgent ? 'text-red-800' : 'text-yellow-800'}>

@@ -149,7 +149,7 @@ export default function ResetPasswordPage() {
               className="w-16 h-16 rounded-full object-cover mx-auto mb-4" 
               style={{ objectPosition: 'center 30%' }}
             />
-            <h1 className="text-2xl font-bold text-white">Invalid Reset Link</h1>
+            <h1 className="text-2xl font-semibold text-white">Invalid Reset Link</h1>
             <p className="text-gray-400">This password reset link is invalid or has expired</p>
           </div>
           
@@ -194,7 +194,7 @@ export default function ResetPasswordPage() {
             className="w-16 h-16 rounded-full object-cover mx-auto mb-4" 
             style={{ objectPosition: 'center 30%' }}
           />
-          <h1 className="text-2xl font-bold text-white">Reset Your Password</h1>
+          <h1 className="text-2xl font-semibold text-white">Reset Your Password</h1>
           <p className="text-gray-400">Enter your new password for {email}</p>
         </div>
         

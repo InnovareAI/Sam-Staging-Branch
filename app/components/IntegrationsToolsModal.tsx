@@ -41,7 +41,7 @@ export function IntegrationsToolsModal({ isOpen, onClose, workspaceId }: Integra
                 <Zap className="h-5 w-5 text-yellow-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold">Integrations & Tools</h2>
+                <h2 className="text-lg font-semibold">Integrations & Tools</h2>
                 <p className="text-xs text-muted-foreground">Connect your accounts</p>
               </div>
             </div>

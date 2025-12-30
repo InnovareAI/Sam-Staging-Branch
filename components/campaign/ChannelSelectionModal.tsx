@@ -170,7 +170,7 @@ export function ChannelSelectionModal({
             </div>
             <div>
               <h2 className="text-3xl font-black tracking-tighter text-foreground uppercase italic">Outreach Strategy</h2>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
                 Architect your multi-channel conversion engine
               </p>
             </div>
@@ -248,11 +248,11 @@ export function ChannelSelectionModal({
                       <div className="flex gap-4 border-t border-border/20 pt-4 mt-auto">
                         <div className="flex flex-col">
                           <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest">Reach</span>
-                          <span className="text-[10px] font-bold">{strategy.reachPotential}</span>
+                          <span className="text-[10px] font-semibold">{strategy.reachPotential}</span>
                         </div>
                         <div className="flex flex-col">
                           <span className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest">Growth</span>
-                          <span className="text-[10px] font-bold text-emerald-400">{strategy.responseRate}</span>
+                          <span className="text-[10px] font-semibold text-emerald-400">{strategy.responseRate}</span>
                         </div>
                       </div>
                     </div>
@@ -302,7 +302,7 @@ export function ChannelSelectionModal({
                               {selectedAccounts[channel as 'email' | 'linkedin']?.includes(account.id) && <Check className="w-3 h-3 text-white" />}
                             </div>
                             <div>
-                              <div className="text-sm font-bold">{account.name}</div>
+                              <div className="text-sm font-semibold">{account.name}</div>
                               <div className="text-[10px] text-muted-foreground font-medium">{account.email}</div>
                             </div>
                           </div>
@@ -363,8 +363,8 @@ export function ChannelSelectionModal({
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Accounts</span>
                     <div className="flex gap-2">
-                      {selectedAccounts.email.length > 0 && <Badge variant="secondary" className="font-bold">{selectedAccounts.email.length} Email</Badge>}
-                      {selectedAccounts.linkedin.length > 0 && <Badge variant="secondary" className="font-bold">{selectedAccounts.linkedin.length} LI</Badge>}
+                      {selectedAccounts.email.length > 0 && <Badge variant="secondary" className="font-semibold">{selectedAccounts.email.length} Email</Badge>}
+                      {selectedAccounts.linkedin.length > 0 && <Badge variant="secondary" className="font-semibold">{selectedAccounts.linkedin.length} LI</Badge>}
                     </div>
                   </div>
                   <div className="pt-6 border-t border-primary/20 flex justify-between items-center">

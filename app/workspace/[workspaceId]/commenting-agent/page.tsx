@@ -163,7 +163,7 @@ export default function CommentingAgentDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-semibold text-white flex items-center gap-3">
             <MessageSquare className="text-pink-500" />
             LinkedIn Commenting Agent
           </h1>
@@ -216,7 +216,7 @@ export default function CommentingAgentDashboard() {
               <Target size={16} className="text-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{monitors.filter(m => m.status === 'active').length}</p>
+              <p className="text-2xl font-semibold text-foreground">{monitors.filter(m => m.status === 'active').length}</p>
               <p className="text-xs text-muted-foreground">Active Monitors</p>
             </div>
           </div>
@@ -232,7 +232,7 @@ export default function CommentingAgentDashboard() {
               <Clock size={16} className="text-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats?.pending_comments || 0}</p>
+              <p className="text-2xl font-semibold text-foreground">{stats?.pending_comments || 0}</p>
               <p className="text-xs text-gray-400 group-hover:text-amber-400 transition-colors">Pending Approval</p>
             </div>
           </div>
@@ -245,7 +245,7 @@ export default function CommentingAgentDashboard() {
               <CheckCircle2 size={16} className="text-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats?.posted_today || 0}</p>
+              <p className="text-2xl font-semibold text-foreground">{stats?.posted_today || 0}</p>
               <p className="text-xs text-muted-foreground">Posted Today</p>
             </div>
           </div>
@@ -258,7 +258,7 @@ export default function CommentingAgentDashboard() {
               <BarChart3 size={16} className="text-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats?.engagement_rate || 0}%</p>
+              <p className="text-2xl font-semibold text-foreground">{stats?.engagement_rate || 0}%</p>
               <p className="text-xs text-muted-foreground">Engagement Rate</p>
             </div>
           </div>
@@ -294,7 +294,7 @@ export default function CommentingAgentDashboard() {
                 </button>
               </div>
             </div>
-            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-pink-400 transition-colors">Personal Profiles</h3>
+            <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-pink-400 transition-colors">Personal Profiles</h3>
             <p className="text-gray-400 text-sm mb-4">
               Monitor and engage with specific LinkedIn user profiles. Build relationships with influencers and leads.
             </p>
@@ -347,7 +347,7 @@ export default function CommentingAgentDashboard() {
                 </button>
               </div>
             </div>
-            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Company Pages</h3>
+            <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors">Company Pages</h3>
             <p className="text-gray-400 text-sm mb-4">
               Track competitors or partners. Engage with company updates to increase brand visibility.
             </p>
@@ -400,7 +400,7 @@ export default function CommentingAgentDashboard() {
                 </button>
               </div>
             </div>
-            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Hashtags</h3>
+            <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-purple-400 transition-colors">Hashtags</h3>
             <p className="text-gray-400 text-sm mb-4">
               Discover posts by topic or keyword (e.g. #SaaS, #AI). Find trends and join relevant conversations.
             </p>
@@ -444,7 +444,7 @@ export default function CommentingAgentDashboard() {
               <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
             </div>
           </div>
-          <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">My Profile</h3>
+          <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-green-400 transition-colors">My Profile</h3>
           <p className="text-gray-400 text-sm mb-4">
             Auto-reply to comments on your own posts. Engage with your audience and capture leads.
           </p>

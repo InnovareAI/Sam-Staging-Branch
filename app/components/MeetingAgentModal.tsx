@@ -211,19 +211,19 @@ export default function MeetingAgentModal({ isOpen, onClose, workspaceId }: Meet
               {/* Stats Overview */}
               <div className="grid grid-cols-4 gap-4">
                 <div className="p-4 bg-gray-700 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-white">{stats.scheduled}</div>
+                  <div className="text-2xl font-semibold text-white">{stats.scheduled}</div>
                   <div className="text-gray-400 text-sm">Scheduled</div>
                 </div>
                 <div className="p-4 bg-gray-700 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-green-400">{stats.completed}</div>
+                  <div className="text-2xl font-semibold text-green-400">{stats.completed}</div>
                   <div className="text-gray-400 text-sm">Completed</div>
                 </div>
                 <div className="p-4 bg-gray-700 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-red-400">{stats.no_shows}</div>
+                  <div className="text-2xl font-semibold text-red-400">{stats.no_shows}</div>
                   <div className="text-gray-400 text-sm">No-Shows</div>
                 </div>
                 <div className="p-4 bg-gray-700 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-yellow-400">{stats.pending_follow_ups}</div>
+                  <div className="text-2xl font-semibold text-yellow-400">{stats.pending_follow_ups}</div>
                   <div className="text-gray-400 text-sm">Pending</div>
                 </div>
               </div>

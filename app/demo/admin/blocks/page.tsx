@@ -81,7 +81,7 @@ export default function BlocksAdminPage() {
                 <Shield className="h-8 w-8 text-white" />
               </motion.div>
               <div>
-                <h1 className="text-3xl font-bold text-white">Enterprise Admin Dashboard</h1>
+                <h1 className="text-3xl font-semibold text-white">Enterprise Admin Dashboard</h1>
                 <p className="text-blue-200">Blocks.mvp-subha.me - Data-Rich Analytics Platform</p>
               </div>
             </div>
@@ -89,15 +89,15 @@ export default function BlocksAdminPage() {
             {/* System status indicators */}
             <div className="flex gap-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-400">{systemStats.uptime}%</div>
+                <div className="text-2xl font-semibold text-green-400">{systemStats.uptime}%</div>
                 <div className="text-xs text-gray-400">Uptime</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-400">{realtimeData.usersOnline}</div>
+                <div className="text-2xl font-semibold text-blue-400">{realtimeData.usersOnline}</div>
                 <div className="text-xs text-gray-400">Online Now</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-400">{realtimeData.requestsPerSecond}/s</div>
+                <div className="text-2xl font-semibold text-purple-400">{realtimeData.requestsPerSecond}/s</div>
                 <div className="text-xs text-gray-400">Requests</div>
               </div>
             </div>
@@ -161,7 +161,7 @@ export default function BlocksAdminPage() {
                   <metric.icon className={`h-4 w-4 text-${metric.color}-400`} />
                 </CardHeader>
                 <CardContent className="relative z-10">
-                  <div className="text-2xl font-bold text-white">{metric.value}</div>
+                  <div className="text-2xl font-semibold text-white">{metric.value}</div>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge 
                       className={`text-xs ${
@@ -314,7 +314,7 @@ export default function BlocksAdminPage() {
                       key={realtimeData.usersOnline}
                       initial={{ scale: 1.2, color: '#60a5fa' }}
                       animate={{ scale: 1, color: '#ffffff' }}
-                      className="text-sm font-bold text-white"
+                      className="text-sm font-semibold text-white"
                     >
                       {realtimeData.usersOnline}
                     </motion.span>
@@ -325,7 +325,7 @@ export default function BlocksAdminPage() {
                       key={realtimeData.activeConnections}
                       initial={{ scale: 1.2, color: '#34d399' }}
                       animate={{ scale: 1, color: '#ffffff' }}
-                      className="text-sm font-bold text-white"
+                      className="text-sm font-semibold text-white"
                     >
                       {realtimeData.activeConnections}
                     </motion.span>
@@ -336,7 +336,7 @@ export default function BlocksAdminPage() {
                       key={realtimeData.requestsPerSecond}
                       initial={{ scale: 1.2, color: '#a78bfa' }}
                       animate={{ scale: 1, color: '#ffffff' }}
-                      className="text-sm font-bold text-white"
+                      className="text-sm font-semibold text-white"
                     >
                       {realtimeData.requestsPerSecond}
                     </motion.span>

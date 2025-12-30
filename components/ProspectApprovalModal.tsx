@@ -508,7 +508,7 @@ export default function ProspectApprovalModal({
                       </>
                     )}
                     {isDismissed && (
-                      <span className="px-3 py-1 rounded-lg text-xs font-bold border-2 bg-red-600 text-white border-red-500 uppercase tracking-wide flex-shrink-0">
+                      <span className="px-3 py-1 rounded-lg text-xs font-semibold border-2 bg-red-600 text-white border-red-500 uppercase tracking-wide flex-shrink-0">
                         ✗ REJECTED
                       </span>
                     )}

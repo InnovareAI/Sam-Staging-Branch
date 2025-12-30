@@ -27,7 +27,7 @@ function ResultContent() {
         <div className="flex justify-center mb-6">
           {icons[type as keyof typeof icons]}
         </div>
-        <h1 className="text-2xl font-bold text-white mb-4">
+        <h1 className="text-2xl font-semibold text-white mb-4">
           {type === 'success' ? 'Success!' : type === 'error' ? 'Error' : 'Notice'}
         </h1>
         <p className="text-gray-300 mb-8">{decodeURIComponent(message)}</p>

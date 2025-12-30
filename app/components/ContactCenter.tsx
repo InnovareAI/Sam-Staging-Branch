@@ -488,7 +488,7 @@ const ContactCenter: React.FC = () => {
     <div className="flex-1 bg-background p-6 overflow-y-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Inbox</h1>
+        <h1 className="text-3xl font-semibold text-white mb-2">Inbox</h1>
         <p className="text-gray-400">Manage inbound requests and customer communications</p>
       </div>
 

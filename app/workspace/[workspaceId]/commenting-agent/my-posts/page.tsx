@@ -201,7 +201,7 @@ export default function MyPostsMonitorPage() {
             <ChevronRight size={14} />
             <span className="text-muted-foreground">My Posts</span>
           </div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl font-semibold text-white flex items-center gap-3">
             <UserCircle2 className="text-pink-500" />
             Monitor My Posts
           </h1>
@@ -226,7 +226,7 @@ export default function MyPostsMonitorPage() {
               <MessageSquare size={20} className="text-pink-400" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-foreground">{monitors.length}</p>
+          <p className="text-2xl font-semibold text-foreground">{monitors.length}</p>
           <p className="text-sm text-muted-foreground">Posts Monitored</p>
         </div>
         <div className="bg-surface-muted rounded-xl p-5 border border-border">
@@ -235,7 +235,7 @@ export default function MyPostsMonitorPage() {
               <CheckCircle2 size={20} className="text-green-400" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-foreground">
+          <p className="text-2xl font-semibold text-foreground">
             {monitors.reduce((sum, m) => sum + (m.total_replies_sent || 0), 0)}
           </p>
           <p className="text-sm text-muted-foreground">Total Replies Sent</p>
@@ -246,7 +246,7 @@ export default function MyPostsMonitorPage() {
               <Users size={20} className="text-blue-400" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-foreground">
+          <p className="text-2xl font-semibold text-foreground">
             {monitors.reduce((sum, m) => sum + (m.total_comments_seen || 0), 0)}
           </p>
           <p className="text-sm text-muted-foreground">Comments Detected</p>
@@ -257,7 +257,7 @@ export default function MyPostsMonitorPage() {
               <TrendingUp size={20} className="text-amber-400" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-foreground">
+          <p className="text-2xl font-semibold text-foreground">
             {monitors.filter(m => m.auto_connect_enabled).length}
           </p>
           <p className="text-sm text-muted-foreground">Lead Capture Enabled</p>
@@ -411,7 +411,7 @@ export default function MyPostsMonitorPage() {
             { step: 4, title: 'Reply & Capture', desc: 'Replies sent + leads scored & captured' },
           ].map((item) => (
             <div key={item.step} className="text-center">
-              <div className="w-10 h-10 bg-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white font-bold">
+              <div className="w-10 h-10 bg-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white font-semibold">
                 {item.step}
               </div>
               <p className="text-white font-medium">{item.title}</p>

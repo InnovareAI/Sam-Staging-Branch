@@ -69,7 +69,7 @@ export default function MyProfileMonitorPage() {
                         <LayoutDashboard size={24} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-white tracking-tight">My Profile Monitor</h1>
+                        <h1 className="text-2xl font-semibold text-white tracking-tight">My Profile Monitor</h1>
                         <p className="text-gray-400 text-sm">Monitor engagement on your own LinkedIn posts</p>
                     </div>
                 </div>
@@ -98,7 +98,7 @@ export default function MyProfileMonitorPage() {
                         </div>
                         <div>
                             <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">{stat.label}</p>
-                            <h3 className="text-2xl font-bold text-white mt-0.5">{stat.value}</h3>
+                            <h3 className="text-2xl font-semibold text-white mt-0.5">{stat.value}</h3>
                         </div>
                     </div>
                 ))}
@@ -201,7 +201,7 @@ export default function MyProfileMonitorPage() {
             {/* Help Note */}
             <div className="p-4 bg-pink-900/10 border border-pink-900/30 rounded-lg">
                 <p className="text-xs text-pink-400 leading-relaxed">
-                    <span className="font-bold">Note:</span> This section specifically monitors engagement on your personal profile. To monitor competitors 또는 company pages, use the "Monitored Profiles" section.
+                    <span className="font-semibold">Note:</span> This section specifically monitors engagement on your personal profile. To monitor competitors 또는 company pages, use the "Monitored Profiles" section.
                 </p>
             </div>
         </div>

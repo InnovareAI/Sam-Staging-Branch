@@ -81,7 +81,7 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
                   <Settings className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">Workspace Settings</h2>
+                  <h2 className="text-xl font-semibold">Workspace Settings</h2>
                   <p className="text-xs text-muted-foreground">{workspaceName}</p>
                 </div>
               </div>

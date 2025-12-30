@@ -179,7 +179,7 @@ export default function SAMAnalyticsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="text-3xl font-semibold flex items-center gap-2">
             <Brain className="h-8 w-8 text-blue-600" />
             SAM AI Analytics & Optimization
           </h1>
@@ -235,7 +235,7 @@ export default function SAMAnalyticsPage() {
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatNumber(analytics?.totalConversations || 0)}</div>
+                <div className="text-2xl font-semibold">{formatNumber(analytics?.totalConversations || 0)}</div>
                 {getChangeIndicator(analytics?.totalConversations || 0, 1200)}
               </CardContent>
             </Card>
@@ -246,7 +246,7 @@ export default function SAMAnalyticsPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatNumber(analytics?.uniqueUsers || 0)}</div>
+                <div className="text-2xl font-semibold">{formatNumber(analytics?.uniqueUsers || 0)}</div>
                 {getChangeIndicator(analytics?.uniqueUsers || 0, 450)}
               </CardContent>
             </Card>
@@ -257,7 +257,7 @@ export default function SAMAnalyticsPage() {
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-semibold">
                   {(analytics?.userEngagementMetrics.averageSessionDuration || 0).toFixed(1)}m
                 </div>
                 {getChangeIndicator(analytics?.userEngagementMetrics.averageSessionDuration || 0, 3.2)}
@@ -270,7 +270,7 @@ export default function SAMAnalyticsPage() {
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-semibold">
                   {(analytics?.samPerformanceMetrics.responseAccuracy || 0).toFixed(1)}%
                 </div>
                 {getChangeIndicator(analytics?.samPerformanceMetrics.responseAccuracy || 0, 82)}
@@ -408,13 +408,13 @@ export default function SAMAnalyticsPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-semibold">
                       {(userBehavior?.sessionPatterns.averageSessionLength || 0).toFixed(1)}m
                     </div>
                     <div className="text-sm text-gray-600">Average Session</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-semibold">
                       {(userBehavior?.sessionPatterns.conversationsPerSession || 0).toFixed(1)}
                     </div>
                     <div className="text-sm text-gray-600">Messages/Session</div>
@@ -474,19 +474,19 @@ export default function SAMAnalyticsPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600">
+                  <div className="text-3xl font-semibold text-green-600">
                     {(userBehavior?.conversionFunnels.greetingToDiscovery || 0)}%
                   </div>
                   <div className="text-sm text-gray-600">Greeting → Discovery</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">
+                  <div className="text-3xl font-semibold text-blue-600">
                     {(userBehavior?.conversionFunnels.discoveryToICP || 0)}%
                   </div>
                   <div className="text-sm text-gray-600">Discovery → ICP</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-600">
+                  <div className="text-3xl font-semibold text-purple-600">
                     {(userBehavior?.conversionFunnels.icpToAction || 0)}%
                   </div>
                   <div className="text-sm text-gray-600">ICP → Action</div>

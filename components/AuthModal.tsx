@@ -130,7 +130,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               className="w-20 h-20 rounded-full object-cover mx-auto mb-4 shadow-lg"
               style={{ objectPosition: 'center 30%' }}
             />
-            <h1 className="text-2xl font-bold text-white mb-2">
+            <h1 className="text-2xl font-semibold text-white mb-2">
               {showPasswordReset
                 ? (success ? 'Check Your Email' : 'Reset Password')
                 : 'Welcome Back'

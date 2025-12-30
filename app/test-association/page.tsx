@@ -103,7 +103,7 @@ export default function TestAssociationPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Test LinkedIn Association</h1>
+      <h1 className="text-2xl font-semibold mb-4">Test LinkedIn Association</h1>
       
       <div className="space-y-4">
         <button
@@ -133,7 +133,7 @@ export default function TestAssociationPage() {
 
       {result && (
         <div className="mt-6 p-4 bg-gray-100 rounded">
-          <h2 className="font-bold mb-2">Result:</h2>
+          <h2 className="font-semibold mb-2">Result:</h2>
           <pre className="whitespace-pre-wrap text-sm">
             {JSON.stringify(result, null, 2)}
           </pre>

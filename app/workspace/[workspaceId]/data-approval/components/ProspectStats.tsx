@@ -86,13 +86,13 @@ export function ProspectStats({ total, approved, rejected, pending, lists = 0, c
                     stat.glow
                 )}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                        <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80">
                             {stat.label}
                         </CardTitle>
                         <stat.icon className={cn("h-4 w-4", stat.color)} />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-black tracking-tighter text-foreground">
+                        <div className="text-3xl font-semibold tracking-tight text-foreground">
                             {stat.value}
                         </div>
                         {stat.progress !== undefined ? (

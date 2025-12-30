@@ -76,7 +76,7 @@ export default function SignUpPage() {
               style={{ objectPosition: 'center 30%' }}
             />
           </div>
-          <CardTitle className="text-3xl font-bold">
+          <CardTitle className="text-3xl font-semibold">
             Create Your Account
           </CardTitle>
           <CardDescription>

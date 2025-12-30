@@ -147,7 +147,7 @@ export default function EmailSignupForm({ onSuccess, inviteToken }: EmailSignupF
           />
         </div>
         <div>
-          <CardTitle className="text-3xl font-bold text-gray-900">Start Your 14-Day Trial</CardTitle>
+          <CardTitle className="text-3xl font-semibold text-gray-900">Start Your 14-Day Trial</CardTitle>
           <CardDescription className="text-base mt-2 text-gray-700">
             No credit card charge until trial ends
           </CardDescription>

@@ -87,7 +87,7 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Users</p>
-                    <p className="text-2xl font-bold">{stats?.users.total || 0}</p>
+                    <p className="text-2xl font-semibold">{stats?.users.total || 0}</p>
                     <p className="text-xs text-muted-foreground">
                       +{stats?.users.thisWeek || 0} this week
                     </p>
@@ -104,7 +104,7 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Organizations</p>
-                    <p className="text-2xl font-bold">{stats?.organizations.total || 0}</p>
+                    <p className="text-2xl font-semibold">{stats?.organizations.total || 0}</p>
                     <p className="text-xs text-muted-foreground">
                       {stats?.organizations.active || 0} active
                     </p>
@@ -121,7 +121,7 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Conversations</p>
-                    <p className="text-2xl font-bold">{stats?.conversations.total || 0}</p>
+                    <p className="text-2xl font-semibold">{stats?.conversations.total || 0}</p>
                     <p className="text-xs text-muted-foreground">
                       {stats?.conversations.today || 0} today
                     </p>
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Engagement</p>
-                    <p className="text-2xl font-bold">
+                    <p className="text-2xl font-semibold">
                       {stats?.conversations.avgPerUser.toFixed(1) || '0.0'}
                     </p>
                     <p className="text-xs text-muted-foreground">avg per user</p>
@@ -162,19 +162,19 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="space-y-1">
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400">
                     {stats?.users.today || 0}
                   </p>
                   <p className="text-sm text-muted-foreground">New Users</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  <p className="text-2xl font-semibold text-green-600 dark:text-green-400">
                     {stats?.conversations.today || 0}
                   </p>
                   <p className="text-sm text-muted-foreground">Conversations</p>
                 </div>
                 <div className="space-y-1">
-                  <p className={`text-2xl font-bold ${
+                  <p className={`text-2xl font-semibold ${
                     (stats?.users.growth || 0) >= 0 
                       ? 'text-green-600 dark:text-green-400' 
                       : 'text-red-600 dark:text-red-400'
@@ -210,7 +210,7 @@ export default function AdminDashboard() {
                         </p>
                       </div>
                       <div className="text-right space-y-1">
-                        <Badge variant="secondary" className="text-sm font-bold">
+                        <Badge variant="secondary" className="text-sm font-semibold">
                           {org.conversations}
                         </Badge>
                         <p className="text-xs text-muted-foreground">conversations</p>

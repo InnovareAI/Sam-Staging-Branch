@@ -11,7 +11,7 @@ export default function DataApprovalDemo() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6 flex items-center justify-center">
       <div className="max-w-2xl mx-auto text-center">
-        <h1 className="text-3xl font-bold text-white mb-4">
+        <h1 className="text-3xl font-semibold text-white mb-4">
           ⚠️ Page Deprecated
         </h1>
         <p className="text-gray-300 text-lg mb-6">

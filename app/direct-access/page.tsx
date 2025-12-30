@@ -74,7 +74,7 @@ export default function DirectAccessPage() {
             className="w-24 h-24 rounded-full object-cover mx-auto mb-6"
             style={{ objectPosition: 'center 30%' }}
           />
-          <h1 className="text-foreground text-3xl font-bold mb-2">SAM AI - Direct Access</h1>
+          <h1 className="text-foreground text-3xl font-semibold mb-2">SAM AI - Direct Access</h1>
           <p className="text-muted-foreground mb-8">Skip authentication and go straight to the application</p>
         </div>
 

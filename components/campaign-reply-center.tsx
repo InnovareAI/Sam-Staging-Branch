@@ -124,7 +124,7 @@ export function CampaignReplyCenter() {
         {icon}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-2xl font-semibold">{value}</div>
       </CardContent>
     </Card>
   )
@@ -210,7 +210,7 @@ export function CampaignReplyCenter() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Campaign Reply Center</h1>
+          <h1 className="text-2xl font-semibold">Campaign Reply Center</h1>
           <p className="text-gray-600">Manage replies to your campaign messages</p>
         </div>
         <Button onClick={fetchCampaignReplies} className="flex items-center space-x-2">

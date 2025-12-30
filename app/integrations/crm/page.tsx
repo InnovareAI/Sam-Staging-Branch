@@ -295,7 +295,7 @@ export default function CRMIntegrationsPage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">CRM Integrations</h1>
+          <h1 className="text-3xl font-semibold">CRM Integrations</h1>
           <p className="text-muted-foreground mt-2">
             Connect your CRM platforms to enable bi-directional contact sync
           </p>
@@ -343,7 +343,7 @@ export default function CRMIntegrationsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 ${crm.color} rounded-lg flex items-center justify-center text-white font-bold`}>
+                    <div className={`w-10 h-10 ${crm.color} rounded-lg flex items-center justify-center text-white font-semibold`}>
                       {crm.name.charAt(0)}
                     </div>
                     <div>

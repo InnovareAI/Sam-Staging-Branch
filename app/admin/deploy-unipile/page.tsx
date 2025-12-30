@@ -118,25 +118,25 @@ export default function DeployUnipilePage() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-semibold text-blue-600">
                 {deploymentSummary?.total_workspaces || 0}
               </div>
               <div className="text-sm text-gray-600">Total Workspaces</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-semibold text-green-600">
                 {deploymentSummary?.successful_deployments || 0}
               </div>
               <div className="text-sm text-gray-600">Active Deployments</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-semibold text-red-600">
                 {deploymentSummary?.failed_deployments || 0}
               </div>
               <div className="text-sm text-gray-600">Failed Deployments</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-semibold text-purple-600">
                 {deploymentSummary ? Math.round((deploymentSummary.successful_deployments / Math.max(1, deploymentSummary.total_workspaces)) * 100) : 0}%
               </div>
               <div className="text-sm text-gray-600">Success Rate</div>
@@ -227,19 +227,19 @@ export default function DeployUnipilePage() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-2xl font-semibold text-blue-600">
                     {deploymentSummary.total_workspaces}
                   </div>
                   <div className="text-sm text-gray-600">Total Workspaces</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-2xl font-semibold text-green-600">
                     {deploymentSummary.successful_deployments}
                   </div>
                   <div className="text-sm text-gray-600">Successful</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">
+                  <div className="text-2xl font-semibold text-red-600">
                     {deploymentSummary.failed_deployments}
                   </div>
                   <div className="text-sm text-gray-600">Failed</div>

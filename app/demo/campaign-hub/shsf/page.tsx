@@ -169,7 +169,7 @@ export default function SHSFCampaignHubPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5, duration: 1.2 }}
-                    className="text-5xl font-bold bg-gradient-to-r from-rose-600 via-pink-600 to-orange-600 bg-clip-text text-transparent"
+                    className="text-5xl font-semibold bg-gradient-to-r from-rose-600 via-pink-600 to-orange-600 bg-clip-text text-transparent"
                   >
                     Campaign Sanctuary
                   </motion.h1>
@@ -247,7 +247,7 @@ export default function SHSFCampaignHubPage() {
                       <metric.icon className="h-8 w-8 text-white" />
                     </motion.div>
                     <div className="text-4xl mb-2">{metric.emotion}</div>
-                    <div className="text-3xl font-bold text-gray-800 mb-2">{metric.value}</div>
+                    <div className="text-3xl font-semibold text-gray-800 mb-2">{metric.value}</div>
                     <div className="text-sm text-gray-600">{metric.title}</div>
                   </CardContent>
                 </Card>
@@ -321,11 +321,11 @@ export default function SHSFCampaignHubPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Gentle Reach</p>
-                            <p className="text-lg font-bold text-gray-800">{campaign.reach}</p>
+                            <p className="text-lg font-semibold text-gray-800">{campaign.reach}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Campaign Vibe</p>
-                            <p className="text-lg font-bold text-purple-600">{campaign.vibe}</p>
+                            <p className="text-lg font-semibold text-purple-600">{campaign.vibe}</p>
                           </div>
                         </div>
                       </motion.div>

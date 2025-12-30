@@ -33,7 +33,7 @@ export default function ScheduleSettings({ settings, onChange }: ScheduleSetting
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold mb-4 flex items-center">
+                <h2 className="text-2xl font-semibold mb-4 flex items-center">
                     <Clock className="mr-2" />
                     Campaign Schedule
                 </h2>

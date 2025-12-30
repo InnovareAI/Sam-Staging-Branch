@@ -237,7 +237,7 @@ export default function SystemHealthDashboard() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">System Health Dashboard</h1>
+          <h1 className="text-3xl font-semibold">System Health Dashboard</h1>
           <p className="text-gray-600">Real-time monitoring and auto-healing status</p>
         </div>
         <div className="flex items-center space-x-4">
@@ -292,7 +292,7 @@ export default function SystemHealthDashboard() {
                 {getStatusIcon(healthData?.status || 'unknown')}
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold capitalize">
+                <div className="text-2xl font-semibold capitalize">
                   {healthData?.status || 'Unknown'}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -308,7 +308,7 @@ export default function SystemHealthDashboard() {
                 <Zap className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-semibold">
                   {healthData?.performance.responseTime || 0}ms
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -324,7 +324,7 @@ export default function SystemHealthDashboard() {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-semibold">
                   {qaSession?.statistics.success_rate || 0}%
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -340,7 +340,7 @@ export default function SystemHealthDashboard() {
                 <CheckCircle className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-semibold">
                   {qaSession?.statistics.issues_fixed || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -447,7 +447,7 @@ export default function SystemHealthDashboard() {
                     <CardTitle className="text-sm font-medium">Session Uptime</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{qaSession.uptime_minutes}m</div>
+                    <div className="text-2xl font-semibold">{qaSession.uptime_minutes}m</div>
                     <p className="text-xs text-muted-foreground">
                       Session ID: {qaSession.session_id.substring(0, 8)}...
                     </p>
@@ -459,7 +459,7 @@ export default function SystemHealthDashboard() {
                     <CardTitle className="text-sm font-medium">Issues Detected</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{qaSession.statistics.issues_detected}</div>
+                    <div className="text-2xl font-semibold">{qaSession.statistics.issues_detected}</div>
                     <p className="text-xs text-muted-foreground">
                       Total issues found
                     </p>
@@ -471,7 +471,7 @@ export default function SystemHealthDashboard() {
                     <CardTitle className="text-sm font-medium">Auto-Fixed</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-green-600">{qaSession.statistics.issues_fixed}</div>
+                    <div className="text-2xl font-semibold text-green-600">{qaSession.statistics.issues_fixed}</div>
                     <p className="text-xs text-muted-foreground">
                       Automatically resolved
                     </p>
@@ -483,7 +483,7 @@ export default function SystemHealthDashboard() {
                     <CardTitle className="text-sm font-medium">Manual Required</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-yellow-600">{qaSession.statistics.manual_intervention_required}</div>
+                    <div className="text-2xl font-semibold text-yellow-600">{qaSession.statistics.manual_intervention_required}</div>
                     <p className="text-xs text-muted-foreground">
                       Needs human review
                     </p>

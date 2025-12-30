@@ -74,7 +74,7 @@ export default function TestSidebarPage() {
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
           {/* Hero section */}
           <div className="rounded-xl bg-muted/50 p-8">
-            <h1 className="text-3xl font-bold mb-4">🎉 shadcn Sidebar Test Page</h1>
+            <h1 className="text-3xl font-semibold mb-4">🎉 shadcn Sidebar Test Page</h1>
             <p className="text-muted-foreground mb-6">
               This page demonstrates the new shadcn sidebar-07 component integrated with SAM's navigation structure.
             </p>

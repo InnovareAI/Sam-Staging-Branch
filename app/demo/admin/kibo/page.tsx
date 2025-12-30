@@ -95,7 +95,7 @@ export default function KiboAdminPage() {
               className={`p-4 bg-gradient-to-r from-${item.color}-50 to-${item.color}-100 rounded-2xl border-2 border-${item.color}-200`}
             >
               <div className="text-center">
-                <div className={`text-2xl font-bold text-${item.color}-700`}>{item.value}</div>
+                <div className={`text-2xl font-semibold text-${item.color}-700`}>{item.value}</div>
                 <div className={`text-sm text-${item.color}-600`}>{item.label}</div>
               </div>
             </motion.div>
@@ -139,7 +139,7 @@ export default function KiboAdminPage() {
           >
             <Users className="h-10 w-10 text-white" />
           </motion.div>
-          <h2 className="text-2xl font-bold">User Management</h2>
+          <h2 className="text-2xl font-semibold">User Management</h2>
           <p className="text-gray-600">Manage user accounts and permissions</p>
         </div>
 
@@ -178,7 +178,7 @@ export default function KiboAdminPage() {
           >
             <Shield className="h-10 w-10 text-white" />
           </motion.div>
-          <h2 className="text-2xl font-bold">Security Center</h2>
+          <h2 className="text-2xl font-semibold">Security Center</h2>
           <p className="text-gray-600">Monitor and manage security threats</p>
         </div>
 
@@ -226,7 +226,7 @@ export default function KiboAdminPage() {
           >
             <Server className="h-10 w-10 text-white" />
           </motion.div>
-          <h2 className="text-2xl font-bold">Infrastructure</h2>
+          <h2 className="text-2xl font-semibold">Infrastructure</h2>
           <p className="text-gray-600">Monitor servers and services</p>
         </div>
 
@@ -269,7 +269,7 @@ export default function KiboAdminPage() {
           >
             <BarChart3 className="h-10 w-10 text-white" />
           </motion.div>
-          <h2 className="text-2xl font-bold">Analytics Hub</h2>
+          <h2 className="text-2xl font-semibold">Analytics Hub</h2>
           <p className="text-gray-600">Data insights and reporting</p>
         </div>
 
@@ -287,7 +287,7 @@ export default function KiboAdminPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-medium">{item.metric}</div>
-                  <div className="text-2xl font-bold text-orange-700">{item.value}</div>
+                  <div className="text-2xl font-semibold text-orange-700">{item.value}</div>
                 </div>
                 <Badge className="bg-green-500 text-white">{item.change}</Badge>
               </div>
@@ -317,7 +317,7 @@ export default function KiboAdminPage() {
           >
             <Shield className="h-8 w-8 text-white" />
           </motion.div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Admin Dashboard
           </h1>
           <p className="text-gray-600 text-sm flex items-center justify-center gap-2">
@@ -374,7 +374,7 @@ export default function KiboAdminPage() {
                 <div className="flex items-center gap-3">
                   {React.createElement(adminCards[currentCard].icon, { className: "h-8 w-8" })}
                   <div>
-                    <CardTitle className="text-xl font-bold">{adminCards[currentCard].title}</CardTitle>
+                    <CardTitle className="text-xl font-semibold">{adminCards[currentCard].title}</CardTitle>
                     <CardDescription className="text-white/80">
                       Panel {currentCard + 1} of {adminCards.length}
                     </CardDescription>

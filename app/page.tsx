@@ -3288,7 +3288,7 @@ export default function Page() {
                   <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
                 </button>
                 <div className="max-w-4xl">
-                  <h1 className="text-2xl font-bold text-white mb-2">Personal Profiles</h1>
+                  <h1 className="text-2xl font-semibold text-white mb-2">Personal Profiles</h1>
                   <p className="text-gray-400 mb-6">Monitor specific LinkedIn user profiles for new posts and auto-generate comments.</p>
                   <div className="space-y-4">
                     {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('PROFILE:'))).map((campaign) => (
@@ -3321,7 +3321,7 @@ export default function Page() {
                   <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
                 </button>
                 <div className="max-w-4xl">
-                  <h1 className="text-2xl font-bold text-white mb-2">Company Pages</h1>
+                  <h1 className="text-2xl font-semibold text-white mb-2">Company Pages</h1>
                   <p className="text-gray-400 mb-6">Monitor LinkedIn company pages for updates and engage with their content.</p>
                   <div className="space-y-4">
                     {commentingCampaigns.filter(c => c.hashtags?.some((h: string) => h.startsWith('COMPANY:'))).map((campaign) => (
@@ -3354,7 +3354,7 @@ export default function Page() {
                   <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
                 </button>
                 <div className="max-w-4xl">
-                  <h1 className="text-2xl font-bold text-white mb-2">Hashtags & Keywords</h1>
+                  <h1 className="text-2xl font-semibold text-white mb-2">Hashtags & Keywords</h1>
                   <p className="text-gray-400 mb-6">Discover posts by topic or keyword and join relevant conversations.</p>
                   <div className="space-y-4">
                     {commentingCampaigns.filter(c => c.keywords?.length > 0 || c.hashtags?.some((h: string) => h.startsWith('HASHTAG:') || h.startsWith('#'))).map((campaign) => (
@@ -3390,7 +3390,7 @@ export default function Page() {
                   <ArrowRight size={16} className="rotate-180" /> Back to Dashboard
                 </button>
                 <div className="max-w-4xl">
-                  <h1 className="text-2xl font-bold text-white mb-2">My Profile</h1>
+                  <h1 className="text-2xl font-semibold text-white mb-2">My Profile</h1>
                   <p className="text-gray-400 mb-6">Monitor your own posts and auto-reply to comments from your audience.</p>
                   <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
                     <UserCircle2 size={48} className="text-green-500 mx-auto mb-4" />
@@ -3430,7 +3430,7 @@ export default function Page() {
                           <Target size={16} className="text-white" />
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-white">{commentingCampaigns.filter(c => c.status === 'active').length}</p>
+                          <p className="text-2xl font-semibold text-white">{commentingCampaigns.filter(c => c.status === 'active').length}</p>
                           <p className="text-xs text-gray-400">Active Monitors</p>
                         </div>
                       </div>
@@ -3446,7 +3446,7 @@ export default function Page() {
                           <Clock size={16} className="text-white" />
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-white">{pendingCommentsLoading ? '...' : pendingComments.length}</p>
+                          <p className="text-2xl font-semibold text-white">{pendingCommentsLoading ? '...' : pendingComments.length}</p>
                           <p className="text-xs text-gray-400 group-hover:text-amber-400 transition-colors">Pending Approval</p>
                         </div>
                       </div>
@@ -3459,7 +3459,7 @@ export default function Page() {
                           <CheckCircle size={16} className="text-white" />
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-white">0</p>
+                          <p className="text-2xl font-semibold text-white">0</p>
                           <p className="text-xs text-gray-400">Posted Today</p>
                         </div>
                       </div>
@@ -3472,7 +3472,7 @@ export default function Page() {
                           <BarChart3 size={16} className="text-white" />
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-white">--%</p>
+                          <p className="text-2xl font-semibold text-white">--%</p>
                           <p className="text-xs text-gray-400">Engagement Rate</p>
                         </div>
                       </div>
@@ -3499,7 +3499,7 @@ export default function Page() {
                           <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
                         </div>
                       </div>
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-pink-400 transition-colors">Personal Profiles</h3>
+                      <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-pink-400 transition-colors">Personal Profiles</h3>
                       <p className="text-gray-400 text-sm mb-4">
                         Monitor and engage with specific LinkedIn user profiles. Build relationships with influencers and leads.
                       </p>
@@ -3524,7 +3524,7 @@ export default function Page() {
                           <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
                         </div>
                       </div>
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Company Pages</h3>
+                      <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors">Company Pages</h3>
                       <p className="text-gray-400 text-sm mb-4">
                         Track competitors or partners. Engage with company updates to increase brand visibility.
                       </p>
@@ -3549,7 +3549,7 @@ export default function Page() {
                           <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
                         </div>
                       </div>
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Hashtags</h3>
+                      <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-purple-400 transition-colors">Hashtags</h3>
                       <p className="text-gray-400 text-sm mb-4">
                         Discover posts by topic or keyword (e.g. #SaaS, #AI). Find trends and join relevant conversations.
                       </p>
@@ -3574,7 +3574,7 @@ export default function Page() {
                           <ExternalLink size={16} className="text-gray-500 group-hover:text-white transition-colors" />
                         </div>
                       </div>
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">My Profile</h3>
+                      <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-green-400 transition-colors">My Profile</h3>
                       <p className="text-gray-400 text-sm mb-4">
                         Auto-reply to comments on your own posts. Engage with your audience and capture leads.
                       </p>
@@ -3765,7 +3765,7 @@ export default function Page() {
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="max-w-4xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
-                  <h1 className="text-3xl font-bold text-white flex items-center">
+                  <h1 className="text-3xl font-semibold text-white flex items-center">
                     <Shield className="mr-3 text-primary" size={36} />
                     Workspace Administration
                   </h1>
@@ -3915,7 +3915,7 @@ export default function Page() {
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="max-w-4xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
-                  <h1 className="text-3xl font-bold text-white flex items-center">
+                  <h1 className="text-3xl font-semibold text-white flex items-center">
                     <User className="mr-3" size={36} />
                     User Profile
                   </h1>
@@ -4112,7 +4112,7 @@ export default function Page() {
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="max-w-4xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
-                  <h1 className="text-3xl font-bold text-white flex items-center">
+                  <h1 className="text-3xl font-semibold text-white flex items-center">
                     <Shield className="mr-3 text-purple-500" size={36} />
                     Super Admin
                   </h1>
@@ -4129,15 +4129,15 @@ export default function Page() {
                   <h2 className="text-2xl font-semibold text-white mb-6">System Overview</h2>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-gray-700 rounded-lg p-4">
-                      <div className="text-3xl font-bold text-white">{workspaces.length}</div>
+                      <div className="text-3xl font-semibold text-white">{workspaces.length}</div>
                       <div className="text-gray-400 text-sm">Total Workspaces</div>
                     </div>
                     <div className="bg-gray-700 rounded-lg p-4">
-                      <div className="text-3xl font-bold text-green-400">Active</div>
+                      <div className="text-3xl font-semibold text-green-400">Active</div>
                       <div className="text-gray-400 text-sm">System Status</div>
                     </div>
                     <div className="bg-gray-700 rounded-lg p-4">
-                      <div className="text-3xl font-bold text-purple-400">v2.0</div>
+                      <div className="text-3xl font-semibold text-purple-400">v2.0</div>
                       <div className="text-gray-400 text-sm">Platform Version</div>
                     </div>
                   </div>
@@ -4624,7 +4624,7 @@ export default function Page() {
           showPasswordChange && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
-                <h2 className="text-2xl font-bold text-white mb-4">Change Password</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4">Change Password</h2>
                 <p className="text-gray-400 mb-6">Enter your new password below</p>
 
                 <form onSubmit={handlePasswordChange} className="space-y-4">
@@ -4702,19 +4702,19 @@ export default function Page() {
                 {userStats && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     <div className="bg-gray-700 rounded-lg p-4">
-                      <div className="text-2xl font-bold text-white">{userStats.total_users}</div>
+                      <div className="text-2xl font-semibold text-white">{userStats.total_users}</div>
                       <div className="text-sm text-gray-400">Total Users</div>
                     </div>
                     <div className="bg-gray-700 rounded-lg p-4">
-                      <div className="text-2xl font-bold text-green-400">{userStats.active_users}</div>
+                      <div className="text-2xl font-semibold text-green-400">{userStats.active_users}</div>
                       <div className="text-sm text-gray-400">Active Users</div>
                     </div>
                     <div className="bg-gray-700 rounded-lg p-4">
-                      <div className="text-2xl font-bold text-yellow-400">{userStats.pending_invitations}</div>
+                      <div className="text-2xl font-semibold text-yellow-400">{userStats.pending_invitations}</div>
                       <div className="text-sm text-gray-400">Pending Invites</div>
                     </div>
                     <div className="bg-gray-700 rounded-lg p-4">
-                      <div className="text-2xl font-bold text-purple-400">{userStats.super_admins}</div>
+                      <div className="text-2xl font-semibold text-purple-400">{userStats.super_admins}</div>
                       <div className="text-sm text-gray-400">Super Admins</div>
                     </div>
                   </div>

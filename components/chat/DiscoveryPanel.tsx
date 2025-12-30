@@ -142,7 +142,7 @@ export function DiscoveryPanel() {
                     <button
                         key={mode}
                         onClick={() => setSearchMode(mode)}
-                        className={`flex-1 px-2 py-1.5 text-[10px] font-bold rounded-lg transition-all capitalize ${searchMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                        className={`flex-1 px-2 py-1.5 text-[10px] font-semibold rounded-lg transition-all capitalize ${searchMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                     >
                         {mode}
                     </button>
@@ -155,7 +155,7 @@ export function DiscoveryPanel() {
             {searchMode === 'people' && (
                 <div className="space-y-4">
                     <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                             <Users size={12} className="text-purple-400" /> People Filters
                         </label>
                         <div className="space-y-2">
@@ -179,7 +179,7 @@ export function DiscoveryPanel() {
 
                             <button
                                 onClick={() => setShowAdvanced(!showAdvanced)}
-                                className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline"
+                                className="text-[10px] font-semibold text-primary flex items-center gap-1 hover:underline"
                             >
                                 <Settings2 size={12} />
                                 {showAdvanced ? "Hide Advanced Filters" : "Show Advanced Filters"}
@@ -213,7 +213,7 @@ export function DiscoveryPanel() {
                         </div>
                     </div>
                     <Button
-                        className="w-full text-xs font-bold h-10 shadow-lg"
+                        className="w-full text-xs font-semibold h-10 shadow-lg"
                         onClick={() => handleStandardSearch('people')}
                         disabled={isLoading || (!personaTitle && !personaKeywords)}
                     >
@@ -227,7 +227,7 @@ export function DiscoveryPanel() {
             {searchMode === 'companies' && (
                 <div className="space-y-4">
                     <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                             <Building2 size={12} className="text-blue-400" /> Company Filters
                         </label>
                         <div className="space-y-2">
@@ -270,7 +270,7 @@ export function DiscoveryPanel() {
                         </div>
                     </div>
                     <Button
-                        className="w-full text-xs font-bold h-10 shadow-lg bg-blue-600 hover:bg-blue-700"
+                        className="w-full text-xs font-semibold h-10 shadow-lg bg-blue-600 hover:bg-blue-700"
                         onClick={() => handleStandardSearch('companies')}
                         disabled={isLoading || !companyKeywords}
                     >
@@ -291,7 +291,7 @@ export function DiscoveryPanel() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Step 1: Companies</label>
+                        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Step 1: Companies</label>
                         <Input
                             value={companyUrl}
                             onChange={(e) => setCompanyUrl(e.target.value)}
@@ -308,7 +308,7 @@ export function DiscoveryPanel() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Step 2: Personas</label>
+                        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Step 2: Personas</label>
                         <Input
                             value={personaTitle}
                             onChange={(e) => setPersonaTitle(e.target.value)}
@@ -329,7 +329,7 @@ export function DiscoveryPanel() {
                     </div>
 
                     <Button
-                        className="w-full text-xs font-bold h-10 bg-amber-600 hover:bg-amber-700 shadow-md"
+                        className="w-full text-xs font-semibold h-10 bg-amber-600 hover:bg-amber-700 shadow-md"
                         onClick={handleDiscoverySubmit}
                         disabled={isLoading || ((!companyKeywords && !companyUrl) || !personaTitle)}
                     >
@@ -342,7 +342,7 @@ export function DiscoveryPanel() {
             {/* Import / URL Mode */}
             {searchMode === 'import' && (
                 <div className="space-y-4">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                         <Upload size={12} className="text-green-400" /> Bulk Import & URL
                     </label>
 
@@ -355,7 +355,7 @@ export function DiscoveryPanel() {
                             className="bg-background border-border/60 h-9 text-xs"
                         />
                         <Button
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-xs font-bold h-9 rounded-lg"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-xs font-semibold h-9 rounded-lg"
                             onClick={handleUrlImport}
                             disabled={isLoading || !companyUrl}
                         >
@@ -373,7 +373,7 @@ export function DiscoveryPanel() {
                             className="flex flex-col items-center justify-center p-4 bg-background border border-border/60 border-dashed rounded-lg hover:border-green-500/50 transition-all group"
                         >
                             <Upload size={24} className="text-muted-foreground mb-1 group-hover:text-green-400" />
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Upload .CSV</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase">Upload .CSV</span>
                         </button>
                     </div>
 
@@ -409,10 +409,10 @@ export function DiscoveryPanel() {
             {/* Global Settings / Limit */}
             <div className="pt-4 border-t border-border/40">
                 <div className="flex items-center justify-between mb-2">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                         <Settings2 size={12} className="text-slate-400" /> Job Limit
                     </label>
-                    <span className="text-[10px] font-bold text-primary">{discoveryLimit} leads</span>
+                    <span className="text-[10px] font-semibold text-primary">{discoveryLimit} leads</span>
                 </div>
                 <Select value={discoveryLimit.toString()} onValueChange={(v) => setDiscoveryLimit(parseInt(v))}>
                     <SelectTrigger className="bg-surface/50 border-border/40 h-8 text-xs font-medium">

@@ -167,7 +167,7 @@ export default function ProfilesListPage() {
             <ArrowLeft size={20} className="text-muted-foreground" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Monitored Profiles</h1>
+            <h1 className="text-2xl font-semibold text-foreground">Monitored Profiles</h1>
             <p className="text-gray-400 text-sm">{profiles.length} profile campaigns</p>
           </div>
         </div>

@@ -79,7 +79,7 @@ export function StatCard({
                 {title}
               </p>
               <div className="flex items-baseline gap-3 mb-2">
-                <h3 className={cn("text-3xl font-bold tracking-tight", styles.value)}>
+                <h3 className={cn("text-3xl font-semibold tracking-tight", styles.value)}>
                   {value}
                 </h3>
                 {trend && (

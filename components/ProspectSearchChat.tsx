@@ -467,7 +467,7 @@ export default function ProspectSearchChat({
                       <Sparkles size={20} className="text-amber-400" />}
               </div>
               <div>
-                <h3 className="text-sm font-bold text-foreground">
+                <h3 className="text-sm font-semibold text-foreground">
                   {searchMode === 'people' ? 'People Search' :
                     searchMode === 'companies' ? 'Company Search' :
                       searchMode === 'import' ? 'Bulk Import' :
@@ -481,19 +481,19 @@ export default function ProspectSearchChat({
               <div className="flex bg-gray-900/50 p-1 rounded-xl border border-gray-700 mx-2">
                 <button
                   onClick={() => setSearchMode('people')}
-                  className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 ${searchMode === 'people' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`px-3 py-1.5 text-[10px] font-semibold rounded-lg transition-all flex items-center gap-1 ${searchMode === 'people' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                   People
                 </button>
                 <button
                   onClick={() => setSearchMode('companies')}
-                  className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 ${searchMode === 'companies' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`px-3 py-1.5 text-[10px] font-semibold rounded-lg transition-all flex items-center gap-1 ${searchMode === 'companies' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                   Companies
                 </button>
                 <button
                   onClick={() => setSearchMode('nested')}
-                  className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 ${searchMode === 'nested' ? 'bg-amber-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`px-3 py-1.5 text-[10px] font-semibold rounded-lg transition-all flex items-center gap-1 ${searchMode === 'nested' ? 'bg-amber-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                   Nested
                 </button>
@@ -502,7 +502,7 @@ export default function ProspectSearchChat({
                     setSearchMode('import');
                     setIsSettingsOpen(true);
                   }}
-                  className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 ${searchMode === 'import' ? 'bg-green-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
+                  className={`px-3 py-1.5 text-[10px] font-semibold rounded-lg transition-all flex items-center gap-1 ${searchMode === 'import' ? 'bg-green-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                   Import
                 </button>
@@ -514,7 +514,7 @@ export default function ProspectSearchChat({
                 title="Search Settings"
               >
                 <Settings2 size={16} />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Settings</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider">Settings</span>
               </button>
 
               <div className="w-px h-4 bg-gray-700 mx-1"></div>
@@ -653,7 +653,7 @@ export default function ProspectSearchChat({
                     <Settings2 size={18} className="text-purple-400" />
                   </div>
                   <div>
-                    <SheetTitle className="text-lg font-bold">Search Configuration</SheetTitle>
+                    <SheetTitle className="text-lg font-semibold">Search Configuration</SheetTitle>
                     <SheetDescription className="text-xs text-gray-500">Fine-tune your prospecting filters</SheetDescription>
                   </div>
                 </div>
@@ -665,7 +665,7 @@ export default function ProspectSearchChat({
               <div className="space-y-6">
                 {/* Bulk Discovery & Import Section */}
                 <div className="space-y-4">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                  <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                     <Upload size={12} className="text-green-400" /> Bulk Discovery & Import
                   </label>
                   <div className="grid grid-cols-2 gap-3 p-4 bg-gray-900/50 rounded-xl border border-gray-800">
@@ -674,14 +674,14 @@ export default function ProspectSearchChat({
                       className="flex flex-col items-center justify-center p-4 bg-black/40 border border-gray-700 rounded-lg hover:border-green-500/50 transition-all group"
                     >
                       <Upload size={22} className="text-gray-500 mb-2 group-hover:text-green-400" />
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">CSV Upload</span>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase">CSV Upload</span>
                     </button>
                     <button
                       onClick={() => setSearchMode('nested')}
                       className="flex flex-col items-center justify-center p-4 bg-black/40 border border-gray-700 rounded-lg hover:border-blue-500/50 transition-all group"
                     >
                       <LinkIcon size={22} className="text-gray-500 mb-2 group-hover:text-blue-400" />
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">LinkedIn URL</span>
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase">LinkedIn URL</span>
                     </button>
                   </div>
 
@@ -696,7 +696,7 @@ export default function ProspectSearchChat({
                   {selectedFile && (
                     <Button
                       onClick={handleCsvImport}
-                      className="w-full bg-green-600 hover:bg-green-700 text-xs font-bold py-3 rounded-lg"
+                      className="w-full bg-green-600 hover:bg-green-700 text-xs font-semibold py-3 rounded-lg"
                     >
                       Import {selectedFile.name}
                     </Button>
@@ -714,7 +714,7 @@ export default function ProspectSearchChat({
                     </div>
 
                     <div className="space-y-3">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                      <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                         <Globe size={12} className="text-blue-400" /> Step 1: Target Companies
                       </label>
                       <div className="space-y-3 p-4 bg-gray-900/50 rounded-xl border border-gray-800">
@@ -730,7 +730,7 @@ export default function ProspectSearchChat({
                         </div>
                         <div className="py-2 flex items-center gap-3">
                           <div className="h-px flex-1 bg-gray-800"></div>
-                          <span className="text-[8px] font-bold text-gray-600 uppercase">OR</span>
+                          <span className="text-[8px] font-semibold text-gray-600 uppercase">OR</span>
                           <div className="h-px flex-1 bg-gray-800"></div>
                         </div>
                         <div className="space-y-3">
@@ -780,7 +780,7 @@ export default function ProspectSearchChat({
                     </div>
 
                     <div className="space-y-3">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                      <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                         <Users size={12} className="text-purple-400" /> Step 2: Decision Makers
                       </label>
                       <div className="space-y-3 p-4 bg-gray-900/50 rounded-xl border border-gray-800">
@@ -815,7 +815,7 @@ export default function ProspectSearchChat({
                 {searchMode === 'people' && (
                   <div className="space-y-6">
                     <div className="space-y-4">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                      <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                         <Filter size={12} className="text-purple-400" /> Filter Criteria
                       </label>
                       <div className="grid grid-cols-2 gap-4">
@@ -860,7 +860,7 @@ export default function ProspectSearchChat({
                 {searchMode === 'companies' && (
                   <div className="space-y-6">
                     <div className="space-y-4">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                      <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                         <Building2 size={12} className="text-blue-400" /> Company Filters
                       </label>
                       <div className="space-y-3">
@@ -909,7 +909,7 @@ export default function ProspectSearchChat({
 
               <div className="pt-8">
                 <Button
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-xs font-bold gap-2 py-6 rounded-xl shadow-lg"
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-xs font-semibold gap-2 py-6 rounded-xl shadow-lg"
                   onClick={() => {
                     setIsLoading(true);
                     setIsSettingsOpen(false);

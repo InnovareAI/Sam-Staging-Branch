@@ -135,7 +135,7 @@ export function ProspectValidationDetails({
           <ul className="space-y-1">
             {validation.errors.map((error, idx) => (
               <li key={idx} className="text-sm text-red-700 flex items-start gap-2">
-                <span className="text-red-500 font-bold">•</span>
+                <span className="text-red-500 font-semibold">•</span>
                 {error}
               </li>
             ))}

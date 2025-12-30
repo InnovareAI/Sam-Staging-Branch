@@ -113,16 +113,15 @@ export function CampaignCard({
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -4 }}
+            whileHover={{ y: -2 }}
             className="group"
         >
             <Card className={cn(
-                "relative overflow-hidden border transition-all duration-300 glass-effect hover:border-primary/40 shadow-xl hover:shadow-primary/5",
+                "relative overflow-hidden border border-border bg-surface-muted rounded-xl transition-all duration-200",
+                "hover:border-primary/40 hover:bg-surface-muted/80",
                 isSelected && "border-primary/60 ring-1 ring-primary/20",
                 c.status === 'draft' ? "opacity-90" : "opacity-100"
             )}>
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
-
                 <CardContent className="p-0">
                     {/* Header Section */}
                     <div className="p-5 pb-4">

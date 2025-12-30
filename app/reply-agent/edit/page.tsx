@@ -146,7 +146,7 @@ function EditReplyContent() {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full">
-          <h1 className="text-xl font-bold text-red-600 mb-2">Unavailable</h1>
+          <h1 className="text-xl font-semibold text-red-600 mb-2">Unavailable</h1>
           <p className="text-gray-600">{error}</p>
         </div>
       </div>
@@ -166,7 +166,7 @@ function EditReplyContent() {
           <div className="bg-white border-b border-gray-100 p-6 pb-4">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-3">
-                <h1 className="text-xl font-bold text-gray-900">Reply to {draft?.prospect_name}</h1>
+                <h1 className="text-xl font-semibold text-gray-900">Reply to {draft?.prospect_name}</h1>
                 <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">Draft</span>
               </div>
               {/* LinkedIn Link */}
@@ -254,7 +254,7 @@ function EditReplyContent() {
                 />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-gray-100">Chat with Sam AI</h3>
+                <h3 className="text-sm font-semibold text-gray-100">Chat with Sam AI</h3>
                 <p className="text-xs text-gray-500">Powered by Claude Opus 4.5</p>
               </div>
             </div>

@@ -108,7 +108,7 @@ export default function UnipileIntegrationPage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-[#0A66C2]">LinkedIn Integration</h1>
+          <h1 className="text-3xl font-semibold text-[#0A66C2]">LinkedIn Integration</h1>
           <p className="text-muted-foreground mt-2">
             Connect your LinkedIn account to enable prospect enrichment and messaging
           </p>

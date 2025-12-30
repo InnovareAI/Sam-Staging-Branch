@@ -66,7 +66,7 @@ export default function PlanSelector({ onPlanSelected, showEuBadge }: PlanSelect
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <h2 className="text-5xl font-bold mb-4 text-[#111827]">
+          <h2 className="text-5xl font-semibold mb-4 text-[#111827]">
             Choose Your Plan
           </h2>
           <p className="text-gray-600 text-lg mb-6">
@@ -130,7 +130,7 @@ export default function PlanSelector({ onPlanSelected, showEuBadge }: PlanSelect
               {/* Discount badge - Top right corner */}
               {plan.showDiscount && (
                 <div className="absolute top-4 right-4">
-                  <Badge className="bg-green-500 text-white px-3 py-1 text-xs font-bold shadow-md">
+                  <Badge className="bg-green-500 text-white px-3 py-1 text-xs font-semibold shadow-md">
                     LIMITED TIME
                   </Badge>
                 </div>
@@ -139,7 +139,7 @@ export default function PlanSelector({ onPlanSelected, showEuBadge }: PlanSelect
               <CardHeader className="pb-8 pt-10">
                 {/* Plan Name & Description */}
                 <div className="mb-6">
-                  <CardTitle className="text-3xl font-bold text-[#111827] mb-2">
+                  <CardTitle className="text-3xl font-semibold text-[#111827] mb-2">
                     {plan.name}
                   </CardTitle>
                   <p className="text-gray-600 text-base">
@@ -151,7 +151,7 @@ export default function PlanSelector({ onPlanSelected, showEuBadge }: PlanSelect
                 <div className="space-y-3">
                   {plan.showDiscount && (
                     <div className="flex items-center gap-3">
-                      <span className="text-3xl font-bold text-gray-400 line-through">
+                      <span className="text-3xl font-semibold text-gray-400 line-through">
                         ${plan.originalPrice}
                       </span>
                       <Badge className="bg-green-100 text-green-700 px-3 py-1 text-xs">
@@ -161,7 +161,7 @@ export default function PlanSelector({ onPlanSelected, showEuBadge }: PlanSelect
                   )}
 
                   <div className="flex items-baseline gap-2">
-                    <span className="text-6xl font-bold text-[#8907FF]">
+                    <span className="text-6xl font-semibold text-[#8907FF]">
                       ${plan.price}
                     </span>
                     <span className="text-xl text-gray-600 font-medium">

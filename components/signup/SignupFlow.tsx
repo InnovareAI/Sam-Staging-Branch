@@ -267,7 +267,7 @@ export default function SignupFlow() {
             >
               <CheckCircle className="h-20 w-20 text-green-600 mx-auto mb-6" />
             </motion.div>
-            <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-[#6600FF] to-[#8907FF] bg-clip-text text-transparent">
+            <h2 className="text-3xl font-semibold mb-3 bg-gradient-to-r from-[#6600FF] to-[#8907FF] bg-clip-text text-transparent">
               Welcome to SAM AI! 🎉
             </h2>
             <p className="text-gray-900 mb-4">

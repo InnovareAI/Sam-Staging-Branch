@@ -101,7 +101,7 @@ export default function TestInvitePage() {
         <div className="max-w-2xl mx-auto">
           <Card>
             <CardHeader>
-              <CardTitle className="text-3xl font-bold">Test User Invitation</CardTitle>
+              <CardTitle className="text-3xl font-semibold">Test User Invitation</CardTitle>
               <CardDescription>Send invitations to test users</CardDescription>
             </CardHeader>
             <CardContent>

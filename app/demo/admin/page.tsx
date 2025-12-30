@@ -208,7 +208,7 @@ export default function DemoSuperAdminPage() {
                 key={value}
                 initial={{ scale: 1.2 }}
                 animate={{ scale: 1 }}
-                className="text-3xl font-bold text-gray-900 mt-1"
+                className="text-3xl font-semibold text-gray-900 mt-1"
               >
                 {typeof value === 'number' ? value.toLocaleString() : value}
               </motion.p>
@@ -281,7 +281,7 @@ export default function DemoSuperAdminPage() {
             <Crown className="h-8 w-8 text-white" />
           </motion.div>
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-semibold bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 bg-clip-text text-transparent">
               Super Admin Dashboard
             </h1>
             <p className="text-slate-300 mt-1">
@@ -536,7 +536,7 @@ export default function DemoSuperAdminPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-gray-300 text-sm">Total Workspaces</p>
-                            <p className="text-white text-2xl font-bold">{systemStats.totalWorkspaces}</p>
+                            <p className="text-white text-2xl font-semibold">{systemStats.totalWorkspaces}</p>
                           </div>
                           <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
                         </div>
@@ -545,7 +545,7 @@ export default function DemoSuperAdminPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-gray-300 text-sm">Active Users</p>
-                            <p className="text-white text-2xl font-bold">{animatedStats.activeUsers}</p>
+                            <p className="text-white text-2xl font-semibold">{animatedStats.activeUsers}</p>
                           </div>
                           <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                         </div>
@@ -554,7 +554,7 @@ export default function DemoSuperAdminPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-gray-300 text-sm">Monthly Revenue</p>
-                            <p className="text-white text-2xl font-bold">${(systemStats.totalRevenue / 1000).toFixed(0)}K</p>
+                            <p className="text-white text-2xl font-semibold">${(systemStats.totalRevenue / 1000).toFixed(0)}K</p>
                           </div>
                           <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
                         </div>
@@ -563,7 +563,7 @@ export default function DemoSuperAdminPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-gray-300 text-sm">Growth Rate</p>
-                            <p className="text-white text-2xl font-bold">+{systemStats.monthlyGrowth}%</p>
+                            <p className="text-white text-2xl font-semibold">+{systemStats.monthlyGrowth}%</p>
                           </div>
                           <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
                         </div>
@@ -612,7 +612,7 @@ export default function DemoSuperAdminPage() {
                         >
                           <div className="flex items-center gap-4 mb-4">
                             <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                              <span className="text-white font-bold text-lg">
+                              <span className="text-white font-semibold text-lg">
                                 {workspace.name ? workspace.name.substring(0, 2).toUpperCase() : 'WS'}
                               </span>
                             </div>
@@ -706,7 +706,7 @@ export default function DemoSuperAdminPage() {
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between mb-4">
                             <metric.icon className="h-8 w-8 text-white" />
-                            <span className={`text-2xl font-bold text-${metric.color}-400`}>
+                            <span className={`text-2xl font-semibold text-${metric.color}-400`}>
                               {metric.value}
                             </span>
                           </div>
@@ -809,7 +809,7 @@ export default function DemoSuperAdminPage() {
                       <Card className={`bg-gradient-to-br from-${stat.color}-900/30 to-${stat.color}-800/20 backdrop-blur-xl border border-${stat.color}-500/20 shadow-2xl`}>
                         <CardContent className="p-6">
                           <h3 className="text-slate-300 text-sm font-medium mb-2">{stat.title}</h3>
-                          <p className="text-3xl font-bold text-white mb-2">{stat.value}</p>
+                          <p className="text-3xl font-semibold text-white mb-2">{stat.value}</p>
                           <div className="flex items-center gap-1">
                             <TrendingUp className={`h-4 w-4 text-${stat.color}-400`} />
                             <span className={`text-sm text-${stat.color}-400`}>{stat.change}</span>

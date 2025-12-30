@@ -51,7 +51,7 @@ export default function DemoSettingsPage() {
           >
             <Settings className="h-6 w-6 text-indigo-600" />
           </motion.div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
             Personal Settings
           </h1>
         </div>

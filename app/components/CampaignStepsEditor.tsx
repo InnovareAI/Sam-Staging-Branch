@@ -372,7 +372,7 @@ export default function CampaignStepsEditor({
                 <span className="text-sm">Back</span>
               </button>
               <div>
-                <h2 className="text-2xl font-bold text-white mb-1">Campaign Steps Editor</h2>
+                <h2 className="text-2xl font-semibold text-white mb-1">Campaign Steps Editor</h2>
                 <p className="text-gray-400">{campaignName} • {getCampaignTypeLabel(campaignType)}</p>
               </div>
             </div>

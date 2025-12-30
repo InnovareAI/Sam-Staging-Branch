@@ -66,7 +66,7 @@ export default function SMTPIntegrationPage() {
           <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
             <Mail size={40} className="text-gray-300" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-3">SMTP Configuration</h1>
+          <h1 className="text-3xl font-semibold text-white mb-3">SMTP Configuration</h1>
           <p className="text-gray-400">Configure a custom email server</p>
         </div>
 

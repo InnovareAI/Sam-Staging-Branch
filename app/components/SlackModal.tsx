@@ -123,7 +123,7 @@ export default function SlackModal({ isOpen, onClose, workspaceId }: SlackModalP
               <Hash className="h-5 w-5 text-purple-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Slack Integration</h2>
+              <h2 className="text-lg font-semibold">Slack Integration</h2>
               <p className="text-xs text-muted-foreground">
                 Full two-way communication
               </p>

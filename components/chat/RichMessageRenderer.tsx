@@ -161,25 +161,25 @@ function CampaignStatsCard({ stats }: { stats: CampaignStatsData }) {
                     <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1">
                         <Mail size={12} /> Sent
                     </div>
-                    <div className="text-xl font-bold text-foreground">{stats.sent}</div>
+                    <div className="text-xl font-semibold text-foreground">{stats.sent}</div>
                 </div>
                 <div className="p-2.5 rounded-lg bg-surface/50 border border-border/30">
                     <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1">
                         <TrendingUp size={12} /> Replied
                     </div>
-                    <div className="text-xl font-bold text-green-400">{stats.replied}</div>
+                    <div className="text-xl font-semibold text-green-400">{stats.replied}</div>
                 </div>
                 <div className="p-2.5 rounded-lg bg-surface/50 border border-border/30">
                     <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1">
                         <Calendar size={12} /> Meetings
                     </div>
-                    <div className="text-xl font-bold text-purple-400">{stats.meetings}</div>
+                    <div className="text-xl font-semibold text-purple-400">{stats.meetings}</div>
                 </div>
                 <div className="p-2.5 rounded-lg bg-surface/50 border border-border/30">
                     <div className="flex items-center gap-1.5 text-muted-foreground text-xs mb-1">
                         <Target size={12} /> Response Rate
                     </div>
-                    <div className="text-xl font-bold text-primary">{stats.responseRate}</div>
+                    <div className="text-xl font-semibold text-primary">{stats.responseRate}</div>
                 </div>
             </div>
         </div>
@@ -224,7 +224,7 @@ function ProgressCard({ label, current, total, percentage }: { label: string; cu
                     <Clock size={14} className="text-primary" />
                     {label}
                 </span>
-                <span className="text-sm font-bold text-primary">{percentage}%</span>
+                <span className="text-sm font-semibold text-primary">{percentage}%</span>
             </div>
             <div className="h-2 w-full bg-slate-700 rounded-full overflow-hidden">
                 <div

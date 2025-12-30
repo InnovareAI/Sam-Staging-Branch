@@ -126,7 +126,7 @@ export default function CalComModal({ isOpen, onClose, workspaceId }: CalComModa
               <Link className="h-5 w-5 text-orange-500" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Cal.com</h2>
+              <h2 className="text-lg font-semibold">Cal.com</h2>
               <p className="text-xs text-muted-foreground">Open-source scheduling</p>
             </div>
           </div>

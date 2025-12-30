@@ -382,7 +382,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
             <div className="w-16 h-16 bg-[#0A66C2]/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <LinkedInLogo size={32} className="text-[#0A66C2]" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-3">Welcome to SAM AI!</h2>
+            <h2 className="text-2xl font-semibold text-white mb-3">Welcome to SAM AI!</h2>
             <p className="text-gray-400 mb-6">
               Let's connect your LinkedIn account to unlock SAM's powerful sales features.
             </p>
@@ -426,7 +426,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
             <div className="w-16 h-16 bg-[#0A66C2]/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <LinkedInLogo size={32} className="text-[#0A66C2]" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-3">Connect Your LinkedIn</h2>
+            <h2 className="text-xl font-semibold text-white mb-3">Connect Your LinkedIn</h2>
             <p className="text-gray-400 mb-6">
               Enter your LinkedIn credentials to connect your account securely.
             </p>
@@ -604,15 +604,15 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
                         
                         <div className="space-y-2 text-left mb-4">
                           <div className="flex items-center space-x-2">
-                            <span className="text-blue-400 font-bold">1.</span>
+                            <span className="text-blue-400 font-semibold">1.</span>
                             <span className="text-white text-xs">Open LinkedIn mobile app or linkedin.com</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <span className="text-blue-400 font-bold">2.</span>
+                            <span className="text-blue-400 font-semibold">2.</span>
                             <span className="text-white text-xs">Complete any CAPTCHA or verification prompts</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <span className="text-green-400 font-bold">3.</span>
+                            <span className="text-green-400 font-semibold">3.</span>
                             <span className="text-white text-xs">Return here and check the box below</span>
                           </div>
                         </div>
@@ -707,7 +707,7 @@ export default function LinkedInOnboarding({ isOpen, onClose, onComplete }: Link
             <div className="w-16 h-16 bg-green-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-3">Successfully Connected!</h2>
+            <h2 className="text-xl font-semibold text-white mb-3">Successfully Connected!</h2>
             <p className="text-gray-400 mb-6">
               Your LinkedIn account has been connected successfully. You can now use SAM AI's powerful LinkedIn features.
             </p>
