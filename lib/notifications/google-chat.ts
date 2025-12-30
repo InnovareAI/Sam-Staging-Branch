@@ -6,7 +6,12 @@
  * Setup:
  * 1. Open Google Chat space → Apps & Integrations → Webhooks → Create
  * 2. Copy the webhook URL and add to .env.local as GOOGLE_CHAT_WEBHOOK_URL
+ *
+ * KILL SWITCH: Set PAUSE_NOTIFICATIONS=true to disable ALL notifications
  */
+
+// Global kill switch - set PAUSE_NOTIFICATIONS=true to pause all notifications
+const NOTIFICATIONS_PAUSED = process.env.PAUSE_NOTIFICATIONS === 'true';
 
 // REMOVED: Hardcoded IA workspace IDs - now queries ALL workspaces dynamically
 // OLD: const IA_WORKSPACE_IDS = ['ia1-xxx', 'ia2-xxx', ...]
@@ -105,6 +110,12 @@ export interface HealthCheckNotification {
 export async function sendGoogleChatNotification(
   message: GoogleChatMessage
 ): Promise<{ success: boolean; error?: string }> {
+  // Kill switch - skip all notifications when paused
+  if (NOTIFICATIONS_PAUSED) {
+    console.log('⏸️ Notifications paused (PAUSE_NOTIFICATIONS=true) - skipping Google Chat');
+    return { success: true, error: 'Notifications paused' };
+  }
+
   const webhookUrl = process.env.GOOGLE_CHAT_WEBHOOK_URL;
 
   if (!webhookUrl) {
@@ -302,6 +313,12 @@ const CLIENT_WORKSPACE_WEBHOOKS: Record<string, string> = {
 export async function sendReplyAgentHITLNotification(
   notification: ReplyAgentHITLNotification
 ): Promise<{ success: boolean; error?: string }> {
+  // Kill switch - skip all notifications when paused
+  if (NOTIFICATIONS_PAUSED) {
+    console.log('⏸️ Notifications paused (PAUSE_NOTIFICATIONS=true) - skipping Reply Agent notification');
+    return { success: true, error: 'Notifications paused' };
+  }
+
   const isIAWorkspace = notification.workspaceId && INNOVAREAI_WORKSPACE_IDS.includes(notification.workspaceId);
   const isClientRepliesWorkspace = notification.workspaceId && CLIENT_REPLIES_WORKSPACE_IDS.includes(notification.workspaceId);
   const hasClientWebhook = notification.workspaceId && CLIENT_WORKSPACE_WEBHOOKS[notification.workspaceId];

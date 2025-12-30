@@ -8,9 +8,14 @@
  * - Interactive buttons (approve/reject flows)
  * - Thread replies (conversation threading)
  * - Channel management
+ *
+ * KILL SWITCH: Set PAUSE_NOTIFICATIONS=true to disable ALL notifications
  */
 
 import { supabaseAdmin } from '@/app/lib/supabase';
+
+// Global kill switch - set PAUSE_NOTIFICATIONS=true to pause all notifications
+const NOTIFICATIONS_PAUSED = process.env.PAUSE_NOTIFICATIONS === 'true';
 
 // ============================================================================
 // TYPES
@@ -126,6 +131,12 @@ class SlackService {
     channel: string,
     message: SlackMessage
   ): Promise<{ success: boolean; ts?: string; error?: string }> {
+    // Kill switch - skip all notifications when paused
+    if (NOTIFICATIONS_PAUSED) {
+      console.log('⏸️ Notifications paused (PAUSE_NOTIFICATIONS=true) - skipping Slack Bot message');
+      return { success: true, error: 'Notifications paused' };
+    }
+
     const config = await this.getAppConfig(workspaceId);
     if (!config) {
       return { success: false, error: 'Slack not configured for this workspace' };
@@ -321,6 +332,12 @@ class SlackService {
   // ==========================================================================
 
   async sendMessage(message: SlackMessage): Promise<{ success: boolean; error?: string }> {
+    // Kill switch - skip all notifications when paused
+    if (NOTIFICATIONS_PAUSED) {
+      console.log('⏸️ Notifications paused (PAUSE_NOTIFICATIONS=true) - skipping Slack webhook');
+      return { success: true, error: 'Notifications paused' };
+    }
+
     this.initialize();
 
     if (!this.webhookUrl) {
