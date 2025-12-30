@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { createClient } from '@/app/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -60,6 +61,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
   onCampaignCreated
 }) => {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const actualWorkspaceId = workspaceId;
 
   // Header & View State
@@ -85,6 +87,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
   const [isPushingToReach, setIsPushingToReach] = useState(false);
   const [showUnipileWizard, setShowUnipileWizard] = useState(false);
   const [unipileProvider, setUnipileProvider] = useState<'LINKEDIN' | 'GOOGLE' | 'MICROSOFT' | null>(null);
+  const [selectedProspectsForBuilder, setSelectedProspectsForBuilder] = useState<any[] | null>(null);
 
   // Main Campaigns Query
   const { data: allCampaigns = [], isLoading: loadingCampaigns } = useQuery({
@@ -100,7 +103,7 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
     staleTime: 30 * 1000,
   });
 
-  // Available Prospects Query (for Prospects Modal)
+  // Available Prospects Query (for Prospects Modal - only when modal open)
   const { data: availableProspects = [], isLoading: loadingProspects } = useQuery({
     queryKey: ['available-prospects', actualWorkspaceId],
     queryFn: async () => {
@@ -111,6 +114,20 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
       return result.prospects || [];
     },
     enabled: showProspectsModal && !!actualWorkspaceId,
+  });
+
+  // Available Approved Prospects Query (always enabled for Create Campaign check)
+  const { data: availableApprovedProspects = [] } = useQuery({
+    queryKey: ['available-approved-prospects', actualWorkspaceId],
+    queryFn: async () => {
+      if (!actualWorkspaceId) return [];
+      const response = await fetch(`/api/workspace-prospects/available?workspace_id=${actualWorkspaceId}&status=approved`);
+      if (!response.ok) return [];
+      const result = await response.json();
+      return result.prospects || [];
+    },
+    enabled: !!actualWorkspaceId,
+    staleTime: 30 * 1000,
   });
 
   // Available Lists Query (for Prospects Modal)
@@ -391,17 +408,33 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
     toastInfo(`View templates for: ${campaign.name}`);
   };
 
+  // Handle Create Campaign button click - check for available prospects first
+  const handleCreateCampaign = () => {
+    if (availableApprovedProspects.length > 0) {
+      // Has approved prospects - proceed to builder with them
+      setSelectedProspectsForBuilder(availableApprovedProspects);
+      setShowBuilder(true);
+    } else {
+      // No approved prospects - redirect to Prospect Database
+      toastWarning('No approved prospects available. Please approve prospects in the Prospect Database first.');
+      router.push(`/workspace/${actualWorkspaceId}/data-approval`);
+    }
+  };
+
   // If in Builder mode (e.g. from Prospect Approval)
   if (showBuilder && !showApprovalScreen && (!showFullHub || isAutoCreateMode)) {
+    // Use selectedProspectsForBuilder if set (from Create Campaign button), otherwise use initialProspects
+    const prospectsToUse = selectedProspectsForBuilder || initialProspects;
     return (
       <div className="min-h-screen bg-transparent animate-in fade-in zoom-in-95 duration-300">
         <CampaignBuilder
           workspaceId={actualWorkspaceId}
-          initialProspects={initialProspects}
+          initialProspects={prospectsToUse}
           initialCampaignType={initialCampaignType}
           initialDraftId={initialDraftId}
           onClose={() => {
             setShowBuilder(false);
+            setSelectedProspectsForBuilder(null); // Clear selected prospects
             onCampaignCreated?.();
           }}
           onPrepareForApproval={(data) => {
@@ -461,11 +494,16 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
             <span className="text-sm font-medium text-foreground/80">{stats.sent.toLocaleString()} Prospects Contacted</span>
           </div>
           <Button
-            onClick={() => setShowBuilder(true)}
+            onClick={handleCreateCampaign}
             className="h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95"
           >
             <Plus className="w-5 h-5 mr-2" />
             Create Campaign
+            {availableApprovedProspects.length > 0 && (
+              <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                {availableApprovedProspects.length}
+              </span>
+            )}
           </Button>
         </div>
       </div>
