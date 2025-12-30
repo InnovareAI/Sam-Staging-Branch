@@ -234,6 +234,7 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
     const [isProcessingCsv, setIsProcessingCsv] = useState(false);
     const [isProcessingQuickAdd, setIsProcessingQuickAdd] = useState(false);
     const [isProcessingCompany, setIsProcessingCompany] = useState(false);
+    const [isProcessingCompanyCsv, setIsProcessingCompanyCsv] = useState(false);
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         title: '',
@@ -567,6 +568,80 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
             toastError('Company search failed. Please try again.');
         } finally {
             setIsProcessingCompany(false);
+        }
+    };
+
+    const handleCompanyCsvUpload = async (file: File) => {
+        setIsProcessingCompanyCsv(true);
+        try {
+            const text = await file.text();
+            const lines = text.split('\n').filter(line => line.trim());
+
+            if (lines.length < 2) {
+                toastError('CSV must have at least a header row and one data row');
+                return;
+            }
+
+            // Parse header to find column indices
+            const headerLine = lines[0].toLowerCase();
+            const headers = headerLine.split(',').map(h => h.trim().replace(/"/g, ''));
+
+            const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('company'));
+            const websiteIdx = headers.findIndex(h => h.includes('website') || h.includes('url') && !h.includes('linkedin'));
+            const linkedinIdx = headers.findIndex(h => h.includes('linkedin'));
+            const industryIdx = headers.findIndex(h => h.includes('industry'));
+            const locationIdx = headers.findIndex(h => h.includes('location'));
+
+            if (nameIdx === -1) {
+                toastError('CSV must have a "Company Name" or "Name" column');
+                return;
+            }
+
+            // Parse data rows
+            const companies = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                const name = values[nameIdx];
+                if (!name) continue;
+
+                companies.push({
+                    name,
+                    website: websiteIdx >= 0 ? values[websiteIdx] : undefined,
+                    linkedin_url: linkedinIdx >= 0 ? values[linkedinIdx] : undefined,
+                    industry: industryIdx >= 0 ? values[industryIdx] : undefined,
+                    location: locationIdx >= 0 ? values[locationIdx] : undefined,
+                });
+            }
+
+            if (companies.length === 0) {
+                toastError('No valid companies found in CSV');
+                return;
+            }
+
+            // Call bulk import API
+            const response = await fetch('/api/companies/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    workspace_id: workspaceId,
+                    companies
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                toastSuccess(`Imported ${data.imported} companies${data.duplicates > 0 ? ` (${data.duplicates} duplicates skipped)` : ''}`);
+                refetchCompanies();
+                setShowImportModal(false);
+                setActiveTab('companies');
+            } else {
+                toastError(data.error || 'Failed to import companies');
+            }
+        } catch (error) {
+            console.error('Company CSV upload error:', error);
+            toastError('Failed to parse CSV. Please check the format.');
+        } finally {
+            setIsProcessingCompanyCsv(false);
         }
     };
 
@@ -925,11 +1000,13 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                             onPaste={handlePasteData}
                             onQuickAdd={handleQuickAdd}
                             onCompanySearch={handleCompanySearch}
+                            onCompanyCsvUpload={handleCompanyCsvUpload}
                             isProcessingUrl={isProcessingUrl}
                             isProcessingCsv={isProcessingCsv}
                             isProcessingPaste={isProcessingPaste}
                             isProcessingQuickAdd={isProcessingQuickAdd}
                             isProcessingCompany={isProcessingCompany}
+                            isProcessingCompanyCsv={isProcessingCompanyCsv}
                             initialTab={importInitialTab as any}
                         />
                     )}

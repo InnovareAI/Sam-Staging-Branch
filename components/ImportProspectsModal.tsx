@@ -6,9 +6,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Search as SearchIcon, FileText, Loader2, Upload, Plus } from 'lucide-react'
+import { Search as SearchIcon, FileText, Loader2, Upload, Plus, Building2 } from 'lucide-react'
 
-export type ImportTab = 'search' | 'paste' | 'csv' | 'quick-add'
+export type ImportTab = 'search' | 'paste' | 'csv' | 'company-csv' | 'quick-add'
 
 interface ImportProspectsModalProps {
   open: boolean
@@ -19,11 +19,13 @@ interface ImportProspectsModalProps {
   onCsvUpload: (file: File) => Promise<void> | void
   onQuickAdd: (url: string) => Promise<void> | void
   onCompanySearch?: (companyName: string, jobTitles?: string) => Promise<void> | void
+  onCompanyCsvUpload?: (file: File) => Promise<void> | void
   isProcessingPaste?: boolean
   isProcessingUrl?: boolean
   isProcessingCsv?: boolean
   isProcessingQuickAdd?: boolean
   isProcessingCompany?: boolean
+  isProcessingCompanyCsv?: boolean
 }
 
 export default function ImportProspectsModal({
@@ -35,11 +37,13 @@ export default function ImportProspectsModal({
   onCsvUpload,
   onQuickAdd,
   onCompanySearch,
+  onCompanyCsvUpload,
   isProcessingPaste = false,
   isProcessingUrl = false,
   isProcessingCsv = false,
   isProcessingQuickAdd = false,
   isProcessingCompany = false,
+  isProcessingCompanyCsv = false,
 }: ImportProspectsModalProps) {
   const [tab, setTab] = useState<ImportTab>(initialTab === 'url' ? 'search' : initialTab as ImportTab)
   const [searchType, setSearchType] = useState<'people' | 'company' | 'companyUrl'>('people')
@@ -48,9 +52,11 @@ export default function ImportProspectsModal({
   const [text, setText] = useState('')
   const [quickAddUrl, setQuickAddUrl] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedCompanyFile, setSelectedCompanyFile] = useState<File | null>(null)
   const [companyName, setCompanyName] = useState('')
   const [jobTitles, setJobTitles] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const companyFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) {
@@ -61,6 +67,7 @@ export default function ImportProspectsModal({
       setText('')
       setQuickAddUrl('')
       setSelectedFile(null)
+      setSelectedCompanyFile(null)
       setCompanyName('')
       setJobTitles('')
     }
@@ -114,6 +121,23 @@ export default function ImportProspectsModal({
     }
   }
 
+  const handleCompanyFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e || !e.target || !e.target.files) {
+      console.error('File input event is invalid:', e)
+      return
+    }
+    const file = e.target.files[0]
+    if (file) {
+      setSelectedCompanyFile(file)
+    }
+  }
+
+  const handleCompanyCsvUpload = async () => {
+    if (!selectedCompanyFile || !onCompanyCsvUpload) return
+    await onCompanyCsvUpload(selectedCompanyFile)
+    if (!isProcessingCompanyCsv) onClose()
+  }
+
   const isProcessingSearch = searchType === 'people' ? isProcessingUrl : isProcessingCompany
 
   return (
@@ -125,14 +149,18 @@ export default function ImportProspectsModal({
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as ImportTab)} className="mt-2">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="search" className="flex items-center gap-1.5 text-xs">
               <SearchIcon className="h-3.5 w-3.5" />
-              LinkedIn Search
+              LinkedIn
             </TabsTrigger>
             <TabsTrigger value="csv" className="flex items-center gap-1.5 text-xs">
               <Upload className="h-3.5 w-3.5" />
-              CSV Upload
+              CSV
+            </TabsTrigger>
+            <TabsTrigger value="company-csv" className="flex items-center gap-1.5 text-xs">
+              <Building2 className="h-3.5 w-3.5" />
+              Companies
             </TabsTrigger>
             <TabsTrigger value="paste" className="flex items-center gap-1.5 text-xs">
               <FileText className="h-3.5 w-3.5" />
@@ -348,6 +376,59 @@ export default function ImportProspectsModal({
               <Button onClick={handleQuickAdd} disabled={!quickAddUrl.trim() || isProcessingQuickAdd}>
                 {isProcessingQuickAdd && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Add Profile
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="company-csv" className="space-y-3 pt-4">
+            <label className="text-sm text-muted-foreground">Upload Company List CSV</label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <input
+                ref={companyFileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCompanyFileChange}
+                className="hidden"
+                disabled={isProcessingCompanyCsv}
+              />
+              {selectedCompanyFile ? (
+                <div className="space-y-2">
+                  <Building2 className="h-8 w-8 mx-auto text-green-500" />
+                  <p className="text-sm">{selectedCompanyFile.name}</p>
+                  <p className="text-xs text-muted-foreground">{(selectedCompanyFile.size / 1024).toFixed(2)} KB</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => companyFileInputRef.current?.click()}
+                    disabled={isProcessingCompanyCsv}
+                  >
+                    Choose Different File
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Building2 className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <p className="text-sm">Click to upload company list CSV</p>
+                  <p className="text-xs text-muted-foreground">Include: Company Name, Website (optional), LinkedIn URL (optional)</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => companyFileInputRef.current?.click()}
+                    disabled={isProcessingCompanyCsv}
+                  >
+                    Select File
+                  </Button>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Companies will appear in the Companies tab. You can then discover decision-makers for each company.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" onClick={onClose} disabled={isProcessingCompanyCsv}>Cancel</Button>
+              <Button onClick={handleCompanyCsvUpload} disabled={!selectedCompanyFile || isProcessingCompanyCsv || !onCompanyCsvUpload}>
+                {isProcessingCompanyCsv && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Import Companies
               </Button>
             </div>
           </TabsContent>
