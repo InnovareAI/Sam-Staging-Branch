@@ -178,6 +178,32 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
     staleTime: 60 * 1000,
   });
 
+  // State to track if user dismissed the LinkedIn connect popup (to avoid re-showing)
+  const [linkedInPromptDismissed, setLinkedInPromptDismissed] = useState(false);
+
+  // Auto-show LinkedIn connect popup if no LinkedIn account connected
+  useEffect(() => {
+    // Only show if:
+    // 1. We have a workspace
+    // 2. LinkedIn is not connected
+    // 3. User hasn't dismissed the popup this session
+    // 4. Not already showing the wizard
+    if (
+      actualWorkspaceId &&
+      connectedAccounts.linkedin === false &&
+      !linkedInPromptDismissed &&
+      !showUnipileWizard &&
+      !showBuilder
+    ) {
+      // Small delay to let the page load first
+      const timer = setTimeout(() => {
+        setUnipileProvider('LINKEDIN');
+        setShowUnipileWizard(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [actualWorkspaceId, connectedAccounts.linkedin, linkedInPromptDismissed, showUnipileWizard, showBuilder]);
+
   // Stats calculation
   const stats: CampaignStatsData = {
     total: allCampaigns.length,
@@ -634,6 +660,17 @@ const CampaignHub: React.FC<CampaignHubProps> = ({
           />
         )}
       </AnimatePresence>
+
+      {/* LinkedIn Connect Popup - Auto-shows when no LinkedIn account connected */}
+      <UnipileModal
+        isOpen={showUnipileWizard}
+        onClose={() => {
+          setShowUnipileWizard(false);
+          setLinkedInPromptDismissed(true); // Don't show again this session
+        }}
+        provider={unipileProvider || 'LINKEDIN'}
+        workspaceId={actualWorkspaceId || undefined}
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface CompanyInput {
@@ -15,7 +15,7 @@ interface CompanyInput {
  */
 export async function POST(request: NextRequest) {
     try {
-        const supabase = await createClient();
+        const supabase = await createSupabaseRouteClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {

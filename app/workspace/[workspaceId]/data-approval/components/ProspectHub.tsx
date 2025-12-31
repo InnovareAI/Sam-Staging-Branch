@@ -129,6 +129,7 @@ import { Upload, Trash2 } from 'lucide-react';
 import { AddToCampaignModal } from './AddToCampaignModal';
 import { CreateCampaignModal } from './CreateCampaignModal';
 import { Button } from '@/components/ui/button';
+import { CampaignBuilder } from '@/components/campaign/CampaignBuilder';
 
 
 export default function ProspectHub({ workspaceId }: ProspectHubProps) {
@@ -251,6 +252,11 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
 
     // Active tab state
     const [activeTab, setActiveTab] = useState<'prospects' | 'companies'>('prospects');
+
+    // State for CampaignBuilder after CreateCampaignModal creates campaign
+    const [showCampaignBuilder, setShowCampaignBuilder] = useState(false);
+    const [builderCampaignType, setBuilderCampaignType] = useState<string | null>(null);
+    const [builderProspects, setBuilderProspects] = useState<ProspectData[]>([]);
 
     // Companies state and query
     const { data: companiesData, isLoading: isLoadingCompanies, refetch: refetchCompanies } = useQuery({
@@ -1035,8 +1041,13 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                             defaultName={defaultCampaignName}
                             prospects={prospects}
                             onSuccess={(campaignId) => {
-                                // Navigate to campaign hub to configure the new campaign
-                                router.push(`/workspace/${workspaceId}/campaign-hub`);
+                                // Close the modal and open CampaignBuilder with approved prospects
+                                setShowCreateCampaignModal(false);
+                                // Get only approved prospects for the builder
+                                const approvedProspects = prospects.filter(p => p.approvalStatus === 'approved');
+                                setBuilderProspects(approvedProspects);
+                                setShowCampaignBuilder(true);
+                                toastSuccess(`Campaign created! Now set up your messages for ${approvedProspects.length} prospects.`);
                             }}
                         />
                     )}
@@ -1079,7 +1090,28 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                     />
                 </TabsContent>
             </Tabs>
+
+            {/* CampaignBuilder - Opens after CreateCampaignModal creates a campaign */}
+            {showCampaignBuilder && (
+                <CampaignBuilder
+                    workspaceId={workspaceId}
+                    initialProspects={builderProspects}
+                    onClose={() => {
+                        setShowCampaignBuilder(false);
+                        setBuilderProspects([]);
+                        setBuilderCampaignType(null);
+                        // Refresh the prospects list
+                        refetch();
+                    }}
+                    onSuccess={() => {
+                        setShowCampaignBuilder(false);
+                        setBuilderProspects([]);
+                        setBuilderCampaignType(null);
+                        toastSuccess('Campaign created successfully!');
+                        refetch();
+                    }}
+                />
+            )}
         </div>
     );
 }
-

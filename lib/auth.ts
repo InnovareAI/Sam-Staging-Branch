@@ -1,121 +1,142 @@
 /**
- * Enterprise-grade authentication and authorization system
- * Provides secure JWT verification, user context extraction, and workspace access control
+ * Firebase-based authentication and authorization system
+ * Provides secure session verification, user context extraction, and workspace access control
  */
 
-import { supabaseAdmin } from '../app/lib/supabase'
-import { NextRequest } from 'next/server'
+import { NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
+import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
+import { Pool } from 'pg';
 
-// Use admin client for auth verification
-const supabase = supabaseAdmin()
+// Initialize PostgreSQL connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 export interface AuthContext {
-  userId: string
-  workspaceId: string
-  userEmail: string
-  userRole: 'owner' | 'admin' | 'member'
-  workspaceRole: 'owner' | 'admin' | 'member'
-  permissions: string[]
+  userId: string;
+  workspaceId: string;
+  userEmail: string;
+  userRole: 'owner' | 'admin' | 'member';
+  workspaceRole: 'owner' | 'admin' | 'member';
+  permissions: string[];
 }
 
 export interface AuthError {
-  code: 'UNAUTHORIZED' | 'FORBIDDEN' | 'INVALID_TOKEN' | 'WORKSPACE_ACCESS_DENIED' | 'MISSING_PERMISSIONS'
-  message: string
-  statusCode: 401 | 403
+  code: 'UNAUTHORIZED' | 'FORBIDDEN' | 'INVALID_TOKEN' | 'WORKSPACE_ACCESS_DENIED' | 'MISSING_PERMISSIONS';
+  message: string;
+  statusCode: 401 | 403;
 }
 
+const SESSION_COOKIE_NAME = 'session';
+
 /**
- * Extract and verify JWT token from request
+ * Extract and verify Firebase session from request
  * Returns user context or throws AuthError
  */
 export async function verifyAuth(request: NextRequest): Promise<AuthContext> {
-  // Extract Authorization header
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  // Also check Authorization header for API calls
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!sessionCookie && !token) {
     throw {
       code: 'UNAUTHORIZED',
-      message: 'Missing or invalid authorization header',
+      message: 'No authentication provided',
       statusCode: 401
-    } as AuthError
+    } as AuthError;
   }
 
-  const token = authHeader.slice(7)
-  
   try {
-    // Verify JWT token with Supabase Auth
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
-    if (authError || !user) {
+    const auth = getAdminAuth();
+    let decodedClaims;
+
+    if (sessionCookie) {
+      // Verify session cookie
+      decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+    } else if (token) {
+      // Verify ID token from header
+      decodedClaims = await auth.verifyIdToken(token);
+    }
+
+    if (!decodedClaims) {
       throw {
         code: 'INVALID_TOKEN',
         message: 'Invalid or expired token',
         statusCode: 401
-      } as AuthError
+      } as AuthError;
     }
 
-    // Extract workspace ID from headers (validated against user access)
-    const workspaceId = request.headers.get('x-workspace-id')
+    // Extract workspace ID from headers
+    const workspaceId = request.headers.get('x-workspace-id');
     if (!workspaceId) {
       throw {
         code: 'UNAUTHORIZED',
         message: 'Missing workspace ID header',
         statusCode: 401
-      } as AuthError
+      } as AuthError;
     }
 
-    // Verify user has access to the workspace
-    const { data: workspaceMember, error: memberError } = await supabase
-      .from('workspace_members')
-      .select(`
-        role,
-        permissions,
-        workspace:workspaces!inner(
-          id,
-          name,
-          status
-        )
-      `)
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .single()
+    // Get user from database using Firebase UID
+    // First, find user by email since we're migrating from Supabase
+    const userResult = await pool.query(
+      'SELECT id, email FROM users WHERE email = $1',
+      [decodedClaims.email]
+    );
 
-    if (memberError || !workspaceMember) {
+    if (userResult.rows.length === 0) {
+      throw {
+        code: 'UNAUTHORIZED',
+        message: 'User not found in database',
+        statusCode: 401
+      } as AuthError;
+    }
+
+    const dbUser = userResult.rows[0];
+
+    // Verify user has access to the workspace
+    const memberResult = await pool.query(
+      `SELECT wm.role, wm.permissions, w.id, w.name
+       FROM workspace_members wm
+       JOIN workspaces w ON wm.workspace_id = w.id
+       WHERE wm.workspace_id = $1 AND wm.user_id = $2`,
+      [workspaceId, dbUser.id]
+    );
+
+    if (memberResult.rows.length === 0) {
       throw {
         code: 'WORKSPACE_ACCESS_DENIED',
         message: 'Access denied to workspace',
         statusCode: 403
-      } as AuthError
+      } as AuthError;
     }
 
-    // Check workspace is active
-    if (workspaceMember.workspace.status !== 'active') {
-      throw {
-        code: 'WORKSPACE_ACCESS_DENIED',
-        message: 'Workspace is not active',
-        statusCode: 403
-      } as AuthError
-    }
+    const membership = memberResult.rows[0];
 
     return {
-      userId: user.id,
+      userId: dbUser.id,
       workspaceId,
-      userEmail: user.email!,
-      userRole: user.user_metadata?.role || 'member',
-      workspaceRole: workspaceMember.role,
-      permissions: workspaceMember.permissions || []
-    }
+      userEmail: decodedClaims.email!,
+      userRole: 'member',
+      workspaceRole: membership.role || 'member',
+      permissions: membership.permissions || []
+    };
 
   } catch (error) {
     if (error && typeof error === 'object' && 'code' in error) {
-      throw error as AuthError
+      throw error as AuthError;
     }
-    
+
+    console.error('Auth verification error:', error);
     throw {
       code: 'UNAUTHORIZED',
       message: 'Authentication failed',
       statusCode: 401
-    } as AuthError
+    } as AuthError;
   }
 }
 
@@ -123,15 +144,12 @@ export async function verifyAuth(request: NextRequest): Promise<AuthContext> {
  * Check if user has required permissions for operation
  */
 export function hasPermission(authContext: AuthContext, requiredPermissions: string[]): boolean {
-  // Workspace owners have all permissions
   if (authContext.workspaceRole === 'owner') {
-    return true
+    return true;
   }
-
-  // Check if user has all required permissions
-  return requiredPermissions.every(permission => 
+  return requiredPermissions.every(permission =>
     authContext.permissions.includes(permission)
-  )
+  );
 }
 
 /**
@@ -143,12 +161,12 @@ export function requirePermissions(authContext: AuthContext, requiredPermissions
       code: 'MISSING_PERMISSIONS',
       message: `Missing required permissions: ${requiredPermissions.join(', ')}`,
       statusCode: 403
-    } as AuthError
+    } as AuthError;
   }
 }
 
 /**
- * Common campaign-related permissions
+ * Common permissions
  */
 export const PERMISSIONS = {
   CAMPAIGNS_VIEW: 'campaigns:view',
@@ -160,21 +178,51 @@ export const PERMISSIONS = {
   PROSPECTS_DELETE: 'prospects:delete',
   N8N_WORKFLOWS_MANAGE: 'n8n:workflows:manage',
   ANALYTICS_VIEW: 'analytics:view'
-} as const
+} as const;
 
 /**
  * Create authentication middleware for API routes
  */
 export function withAuth(permissions: string[] = []) {
   return async function authMiddleware(request: NextRequest): Promise<AuthContext> {
-    const authContext = await verifyAuth(request)
-    
+    const authContext = await verifyAuth(request);
+
     if (permissions.length > 0) {
-      requirePermissions(authContext, permissions)
+      requirePermissions(authContext, permissions);
     }
-    
-    return authContext
-  }
+
+    return authContext;
+  };
 }
 
-// Environment validation removed - using custom supabase client
+/**
+ * Get current user from session (for server components)
+ */
+export async function getCurrentUser() {
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+    if (!sessionCookie) {
+      return null;
+    }
+
+    const auth = getAdminAuth();
+    const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+
+    // Get user from database
+    const userResult = await pool.query(
+      'SELECT id, email, first_name, last_name, current_workspace_id FROM users WHERE email = $1',
+      [decodedClaims.email]
+    );
+
+    if (userResult.rows.length === 0) {
+      return null;
+    }
+
+    return userResult.rows[0];
+  } catch (error) {
+    console.error('getCurrentUser error:', error);
+    return null;
+  }
+}

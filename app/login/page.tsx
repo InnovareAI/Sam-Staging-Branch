@@ -2,37 +2,32 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/app/lib/supabase';
+import { getFirebaseAuth, onAuthStateChanged } from '@/lib/firebase';
 import AuthModal from '@/components/AuthModal';
 import { Loader2 } from 'lucide-react';
 
-// Force dynamic to prevent static generation issues
 export const dynamic = 'force-dynamic';
 
 /**
- * Login Page
- * 
- * Displays AuthModal for user authentication
- * After successful login, redirects to workspace
+ * Login Page - Firebase Authentication
  */
 export default function LoginPage() {
     const router = useRouter();
     const [checking, setChecking] = useState(true);
 
     useEffect(() => {
-        const checkAuth = async () => {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
+        const auth = getFirebaseAuth();
 
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
-                // User is already logged in, redirect to root which will redirect to workspace
+                // User is logged in, redirect to root which will redirect to workspace
                 router.push('/');
             } else {
                 setChecking(false);
             }
-        };
+        });
 
-        checkAuth();
+        return () => unsubscribe();
     }, [router]);
 
     if (checking) {
@@ -49,7 +44,6 @@ export default function LoginPage() {
                 isOpen={true}
                 onClose={() => {
                     // After successful login, AuthModal reloads the page
-                    // which will trigger the checkAuth useEffect above
                 }}
             />
         </div>

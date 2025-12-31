@@ -13,6 +13,7 @@ import {
   Building2,
   LogOut,
   User,
+  Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -106,6 +107,10 @@ export function AppSidebar({
 }) {
   const router = useRouter();
 
+  // Super admin check - shows Admin Panel for platform administrators
+  const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'mg@innovareai.com'];
+  const isSuperAdmin = user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase());
+
   const handleNavClick = (path: string) => {
     const fullPath = workspaceId ? `/workspace/${workspaceId}${path}` : path;
     router.push(fullPath);
@@ -191,6 +196,41 @@ export function AppSidebar({
               </button>
             );
           })}
+
+          {/* Admin Panel - Super Admin Only */}
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => handleNavClick('/admin')}
+              className={cn(
+                "group w-full rounded-xl border border-orange-500/30 px-4 py-3.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 mt-6",
+                getIsActive('/admin')
+                  ? "bg-orange-500/20 text-orange-300 shadow-glow ring-1 ring-orange-500/50"
+                  : "text-orange-400/80 hover:bg-orange-500/10 hover:text-orange-300"
+              )}
+            >
+              <div className="flex items-center gap-4">
+                <span
+                  className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors",
+                    getIsActive('/admin')
+                      ? "bg-orange-500/30 text-orange-300"
+                      : "bg-orange-500/20 text-orange-400 group-hover:text-orange-300"
+                  )}
+                >
+                  <Shield size={20} />
+                </span>
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-sm font-semibold leading-tight truncate">
+                    Admin Panel
+                  </p>
+                  <p className="mt-1 text-[11px] leading-snug opacity-75 truncate">
+                    Super admin dashboard
+                  </p>
+                </div>
+              </div>
+            </button>
+          )}
         </nav>
       </SidebarContent>
 
