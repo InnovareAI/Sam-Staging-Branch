@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 // Helper function to make Unipile API calls
 async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: any) {
@@ -23,7 +22,7 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
   }
 
   const response = await fetch(url, options)
-  
+
   if (!response.ok) {
     const errorText = await response.text()
     console.error(`Unipile API error: ${response.status} ${response.statusText}`, {
@@ -41,24 +40,14 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 // POST - Reconnect existing LinkedIn account (recommended by Unipile support)
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user first
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required to reconnect LinkedIn account',
-        timestamp: new Date().toISOString()
-      }, { status: 401 })
-    }
+    // Authenticate user using Firebase/Cloud SQL
+    const { userId, userEmail } = await verifyAuth(request)
 
-    console.log(`🔄 User ${user.email} (${user.id}) attempting LinkedIn reconnect`)
+    console.log(`🔄 User ${userEmail} (${userId}) attempting LinkedIn reconnect`)
 
     const body = await request.json()
     const { account_id, linkedin_credentials } = body
-    
+
     if (!account_id) {
       return NextResponse.json({
         success: false,
@@ -81,7 +70,7 @@ export async function POST(request: NextRequest) {
       hasPassword: !!linkedin_credentials.password,
       has2FA: !!linkedin_credentials.twoFaCode
     })
-    
+
     // Use Unipile's reconnect endpoint (recommended over create for existing accounts)
     const result = await callUnipileAPI(`accounts/${account_id}/reconnect`, 'POST', {
       credentials: {
@@ -141,24 +130,21 @@ export async function POST(request: NextRequest) {
         }, { status: 422 })
       }
     }
-    
-    // Update the association status in our database
-    const { error: updateError } = await supabase
-      .from('user_unipile_accounts')
-      .update({ 
-        connection_status: 'active',
-        updated_at: new Date().toISOString()
-      })
-      .eq('unipile_account_id', account_id)
-      .eq('user_id', user.id)
 
-    if (updateError) {
+    // Update the association status in our database
+    try {
+      await pool.query(
+        `UPDATE user_unipile_accounts
+         SET connection_status = 'active', updated_at = NOW()
+         WHERE unipile_account_id = $1 AND user_id = $2`,
+        [account_id, userId]
+      )
+      console.log(`✅ Updated association status for account ${account_id}`)
+    } catch (updateError: any) {
       console.log(`⚠️ Failed to update association status:`, updateError.message)
       // Don't fail the whole operation for this
-    } else {
-      console.log(`✅ Updated association status for account ${account_id}`)
     }
-    
+
     return NextResponse.json({
       success: true,
       action: 'reconnected',
@@ -167,19 +153,28 @@ export async function POST(request: NextRequest) {
       message: 'LinkedIn account reconnected successfully',
       timestamp: new Date().toISOString()
     })
-    
-  } catch (error) {
+
+  } catch (error: any) {
+    // Handle auth errors
+    if (error?.code === 'UNAUTHORIZED' || error?.code === 'FORBIDDEN') {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required to reconnect LinkedIn account',
+        timestamp: new Date().toISOString()
+      }, { status: error.statusCode || 401 })
+    }
+
     console.error('LinkedIn reconnect error:', error)
-    
+
     // Check if error indicates 2FA is required
     const errorMessage = error instanceof Error ? error.message : 'Reconnection failed'
     let statusCode = 500
     let requires2FA = false
     let requiresCaptcha = false
-    
+
     // Detect specific error types
-    if (errorMessage.includes('2FA') || 
-        errorMessage.includes('two-factor') || 
+    if (errorMessage.includes('2FA') ||
+        errorMessage.includes('two-factor') ||
         errorMessage.includes('verification') ||
         errorMessage.includes('challenge') ||
         errorMessage.includes('authenticate')) {
@@ -188,16 +183,16 @@ export async function POST(request: NextRequest) {
     } else if (errorMessage.includes('captcha') || errorMessage.includes('CAPTCHA')) {
       statusCode = 422
       requiresCaptcha = true
-    } else if (errorMessage.includes('credentials not configured') || 
-               errorMessage.includes('401') || 
+    } else if (errorMessage.includes('credentials not configured') ||
+               errorMessage.includes('401') ||
                errorMessage.includes('403')) {
       statusCode = 503 // Service Unavailable - configuration issue
     }
-    
+
     return NextResponse.json({
       success: false,
-      error: statusCode === 503 ? 
-        'Unipile integration not configured. Please check environment variables.' : 
+      error: statusCode === 503 ?
+        'Unipile integration not configured. Please check environment variables.' :
         errorMessage,
       requires_2fa: requires2FA,
       requires_captcha: requiresCaptcha,

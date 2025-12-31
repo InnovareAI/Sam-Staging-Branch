@@ -1,8 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth, pool } from '@/lib/auth';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
-export async function POST(request: Request) {
+// Initialize Supabase admin client for storage operations
+const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+export async function POST(request: NextRequest) {
     try {
         const auth = await verifyAuth(request);
 
@@ -11,8 +17,6 @@ export async function POST(request: Request) {
         }
 
         const user = auth.user;
-        const supabase = supabaseAdmin();
-
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const threadId = formData.get('threadId') as string;
@@ -27,10 +31,14 @@ export async function POST(request: Request) {
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const storagePath = `${user.uid}/${threadId}/${timestamp}_${sanitizedName}`;
 
-        // 2. Upload to Supabase Storage
-        const { data: storageData, error: storageError } = await supabase.storage
+        // 2. Upload to Supabase Storage using admin client
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        const { error: storageError } = await supabaseAdmin.storage
             .from('sam-attachments')
-            .upload(storagePath, file, {
+            .upload(storagePath, buffer, {
+                contentType: file.type,
                 cacheControl: '3600',
                 upsert: false
             });
@@ -76,7 +84,7 @@ export async function POST(request: Request) {
         } catch (dbError) {
             console.error('❌ Database insert error:', dbError);
             // Cleanup storage if DB record fails
-            await supabase.storage.from('sam-attachments').remove([storagePath]);
+            await supabaseAdmin.storage.from('sam-attachments').remove([storagePath]);
             return NextResponse.json({
                 success: false,
                 error: 'Failed to record attachment',

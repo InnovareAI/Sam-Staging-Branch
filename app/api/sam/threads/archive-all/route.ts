@@ -1,35 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createRouteHandlerClient({ cookies: cookies })
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-        if (authError || !user) {
+        const auth = await verifyAuth(request);
+        if (!auth.isAuthenticated || !auth.user) {
             return NextResponse.json({
                 success: false,
                 error: 'Authentication required'
             }, { status: 401 })
         }
 
-        const { error } = await supabase
-            .from('sam_conversation_threads')
-            .update({ status: 'archived' })
-            .eq('user_id', user.id)
-            .eq('status', 'active')
+        const user = auth.user;
 
-        if (error) {
-            console.error('Failed to archive all threads:', error)
-            return NextResponse.json({
-                success: false,
-                error: 'Failed to archive threads'
-            }, { status: 500 })
-        }
+        const res = await pool.query(
+            'UPDATE sam_conversation_threads SET status = $1 WHERE user_id = $2 AND status = $3',
+            ['archived', user.uid, 'active']
+        );
 
         return NextResponse.json({
             success: true,
+            count: res.rowCount,
             message: 'All active threads archived'
         })
 

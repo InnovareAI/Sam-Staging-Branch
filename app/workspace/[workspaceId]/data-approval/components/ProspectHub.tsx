@@ -409,6 +409,7 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
             const urlObj = new URL(url);
             const savedSearchId = urlObj.searchParams.get('savedSearchId');
             const keywords = urlObj.searchParams.get('keywords');
+            // Sales Navigator now uses sessionId instead of savedSearchId
             const sessionId = urlObj.searchParams.get('sessionId');
 
             console.log('LinkedIn Search URL parsed:', { savedSearchId, keywords, sessionId });
@@ -418,7 +419,8 @@ export default function ProspectHub({ workspaceId }: ProspectHubProps) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     search_criteria: {
-                        saved_search_id: savedSearchId,
+                        // Use sessionId if savedSearchId is not present (new Sales Nav format)
+                        saved_search_id: savedSearchId || sessionId,
                         keywords: keywords,
                         url: url // Pass full URL as fallback
                     },

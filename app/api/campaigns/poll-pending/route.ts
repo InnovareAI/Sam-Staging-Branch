@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/auth';
 
 /**
  * N8N Polling Endpoint - Returns pending prospects that need CRs sent
@@ -14,38 +13,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = await createSupabaseRouteClient();
-
     // Get pending prospects (limit to 10 per poll to avoid overwhelming)
-    const { data: prospects, error } = await supabase
-      .from('campaign_prospects')
-      .select(`
-        id,
-        campaign_id,
-        first_name,
-        last_name,
-        linkedin_url,
-        status,
-        company_name,
-        title,
-        campaigns (
-          id,
-          name,
-          workspace_id,
-          connection_message,
-          message_templates
-        )
-      `)
-      .in('status', ['pending', 'approved', 'ready_to_message'])
-      .not('linkedin_url', 'is', null)
-      .is('contacted_at', null)
-      .order('created_at', { ascending: true })
-      .limit(10);
+    const prospectsResult = await pool.query(
+      `SELECT
+        cp.id,
+        cp.campaign_id,
+        cp.first_name,
+        cp.last_name,
+        cp.linkedin_url,
+        cp.status,
+        cp.company_name,
+        cp.title,
+        c.id as campaign_id,
+        c.name as campaign_name,
+        c.workspace_id,
+        c.connection_message,
+        c.message_templates
+       FROM campaign_prospects cp
+       JOIN campaigns c ON cp.campaign_id = c.id
+       WHERE cp.status IN ('pending', 'approved', 'ready_to_message')
+         AND cp.linkedin_url IS NOT NULL
+         AND cp.contacted_at IS NULL
+       ORDER BY cp.created_at ASC
+       LIMIT 10`
+    );
 
-    if (error) {
-      console.error('❌ Error fetching pending prospects:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const prospects = prospectsResult.rows;
 
     if (!prospects || prospects.length === 0) {
       return NextResponse.json({
@@ -59,36 +52,31 @@ export async function GET(request: NextRequest) {
     const campaignMap = new Map();
 
     for (const prospect of prospects) {
-      const campaign = prospect.campaigns;
-      if (!campaign) continue;
-
-      const campaignId = campaign.id;
+      const campaignId = prospect.campaign_id;
 
       if (!campaignMap.has(campaignId)) {
         // Get LinkedIn account for this campaign's workspace
-        // Use service role client to bypass RLS for account lookup
-        const serviceClient = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        const accountResult = await pool.query(
+          `SELECT unipile_account_id
+           FROM workspace_accounts
+           WHERE workspace_id = $1
+             AND account_type = 'linkedin'
+             AND is_active = true
+           LIMIT 1`,
+          [prospect.workspace_id]
         );
 
-        const { data: account } = await serviceClient
-          .from('workspace_accounts')
-          .select('unipile_account_id')
-          .eq('workspace_id', campaign.workspace_id)
-          .eq('account_type', 'linkedin')
-          .eq('is_active', true)
-          .single();
-
-        if (!account) {
-          console.error(`❌ No active LinkedIn account for workspace ${campaign.workspace_id}`);
+        if (accountResult.rows.length === 0) {
+          console.error(`No active LinkedIn account for workspace ${prospect.workspace_id}`);
           continue;
         }
 
+        const account = accountResult.rows[0];
+
         campaignMap.set(campaignId, {
           campaign_id: campaignId,
-          campaign_name: campaign.name,
-          workspace_id: campaign.workspace_id,
+          campaign_name: prospect.campaign_name,
+          workspace_id: prospect.workspace_id,
           unipile_dsn: `https://${process.env.UNIPILE_DSN}` || '',
           unipile_api_key: process.env.UNIPILE_API_KEY || '',
           unipile_account_id: account.unipile_account_id,
@@ -97,7 +85,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Personalize message (same logic as execute-live)
-      const crMessage = campaign.connection_message || campaign.message_templates?.connection_request || '';
+      const crMessage = prospect.connection_message || prospect.message_templates?.connection_request || '';
       const personalizedMessage = crMessage
         .replace(/\{first_name\}/gi, prospect.first_name || '')
         .replace(/\{last_name\}/gi, prospect.last_name || '')
@@ -125,7 +113,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.log(`✅ Returning ${firstCampaign.prospects.length} prospects from campaign: ${firstCampaign.campaign_name}`);
+    console.log(`Returning ${firstCampaign.prospects.length} prospects from campaign: ${firstCampaign.campaign_name}`);
 
     return NextResponse.json({
       ...firstCampaign,
@@ -133,7 +121,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Error in poll-pending:', error);
+    console.error('Error in poll-pending:', error);
     return NextResponse.json({
       error: error.message,
       prospects: [],

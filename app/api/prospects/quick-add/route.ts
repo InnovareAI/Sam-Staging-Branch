@@ -1,14 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyAuth, pool } from '@/lib/auth'
 
 // Helper to normalize LinkedIn URL to hash (vanity name only)
 function normalizeLinkedInUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-  const match = url.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
-  if (match) return match[1].toLowerCase().trim();
-  return url.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+  if (!url) return null
+  const match = url.match(/linkedin\.com\/in\/([^\/\?#]+)/i)
+  if (match) return match[1].toLowerCase().trim()
+  return url.replace(/^\/+|\/+$/g, '').toLowerCase().trim()
 }
 
 /**
@@ -18,138 +16,159 @@ function normalizeLinkedInUrl(url: string | null | undefined): string | null {
  */
 export async function POST(request: NextRequest) {
   try {
-    console.log('🚀 Quick Add API called');
+    console.log('🚀 Quick Add API called')
 
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-    // Get authenticated user (using getUser instead of getSession for security)
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Firebase auth + workspace context
+    const { userId, workspaceId } = await verifyAuth(request)
 
     console.log('Auth check:', {
-      hasUser: !!user,
-      userId: user?.id,
-      authError: authError?.message
-    });
+      hasUser: true,
+      userId: userId
+    })
 
-    if (authError || !user) {
-      console.error('❌ Auth error:', authError);
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    const { linkedin_url, workspace_id, campaign_name } = await request.json()
 
-    const { linkedin_url, workspace_id, campaign_name } = await request.json();
+    // Use workspace_id from body if provided, otherwise from auth context
+    const effectiveWorkspaceId = workspace_id || workspaceId
 
-    console.log('Request data:', { linkedin_url, workspace_id, campaign_name, userId: user.id });
+    console.log('Request data:', { linkedin_url, workspace_id: effectiveWorkspaceId, campaign_name, userId })
 
     if (!linkedin_url) {
-      return NextResponse.json({ error: 'LinkedIn URL required' }, { status: 400 });
+      return NextResponse.json({ error: 'LinkedIn URL required' }, { status: 400 })
     }
 
-    if (!workspace_id) {
-      return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
+    if (!effectiveWorkspaceId) {
+      return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 })
     }
 
-    console.log('🚀 Quick Add Prospect:', linkedin_url);
+    console.log('🚀 Quick Add Prospect:', linkedin_url)
 
     // Step 1: Extract LinkedIn username from URL
-    const username = extractLinkedInUsername(linkedin_url);
+    const username = extractLinkedInUsername(linkedin_url)
     if (!username) {
       return NextResponse.json({
         error: 'Invalid LinkedIn URL. Expected format: https://linkedin.com/in/username'
-      }, { status: 400 });
+      }, { status: 400 })
     }
 
-    console.log('📝 Extracted username:', username);
+    console.log('📝 Extracted username:', username)
 
     // Step 2: Check if it's a 1st degree connection (has chat ID)
-    let linkedinUserId = null;
-    let connectionDegree = '2nd/3rd'; // Default assumption
-    let fullName = 'LinkedIn User';
+    let linkedinUserId = null
+    let connectionDegree = '2nd/3rd' // Default assumption
+    let fullName = 'LinkedIn User'
 
     try {
       // Try to find this person in Unipile connections (with 5 second timeout)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
 
       const unipileResponse = await fetch(`https://${process.env.UNIPILE_DSN}/api/v1/users/${username}?account_id=${process.env.UNIPILE_ACCOUNT_ID}`, {
         headers: {
           'X-API-KEY': process.env.UNIPILE_API_KEY || ''
         },
         signal: controller.signal
-      });
+      })
 
-      clearTimeout(timeoutId);
+      clearTimeout(timeoutId)
 
       if (unipileResponse.ok) {
-        const unipileData = await unipileResponse.json();
+        const unipileData = await unipileResponse.json()
 
         // If we got profile data, they might be a connection
         if (unipileData.provider_id) {
-          linkedinUserId = unipileData.provider_id;
-          connectionDegree = '1st'; // They're in our connections
-          fullName = unipileData.display_name || unipileData.name || 'LinkedIn User';
-          console.log('✅ Found 1st degree connection:', linkedinUserId);
+          linkedinUserId = unipileData.provider_id
+          connectionDegree = '1st' // They're in our connections
+          fullName = unipileData.display_name || unipileData.name || 'LinkedIn User'
+          console.log('✅ Found 1st degree connection:', linkedinUserId)
         }
       }
     } catch (error) {
-      console.warn('⚠️ Could not check Unipile connection, treating as 2nd/3rd degree');
+      console.warn('⚠️ Could not check Unipile connection, treating as 2nd/3rd degree')
       // Continue - we'll treat as 2nd/3rd degree connection
     }
 
     // Step 3: DATABASE-FIRST - Upsert to workspace_prospects master table
-    const linkedinHash = normalizeLinkedInUrl(linkedin_url);
+    const linkedinHash = normalizeLinkedInUrl(linkedin_url)
 
-    const { data: masterProspect, error: masterError } = await supabase
-      .from('workspace_prospects')
-      .upsert({
-        workspace_id: workspace_id,
-        linkedin_url: linkedin_url,
-        linkedin_url_hash: linkedinHash,
-        first_name: fullName.split(' ')[0] || 'Unknown',
-        last_name: fullName.split(' ').slice(1).join(' ') || '',
-        linkedin_provider_id: linkedinUserId,
-        connection_status: connectionDegree === '1st' ? 'connected' : 'not_connected',
-        source: 'quick_add',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'workspace_id,linkedin_url_hash',
-        ignoreDuplicates: false
-      })
-      .select('id')
-      .single();
+    // Check if prospect exists
+    const existingResult = await pool.query(
+      `SELECT id FROM workspace_prospects WHERE workspace_id = $1 AND linkedin_url_hash = $2`,
+      [effectiveWorkspaceId, linkedinHash]
+    )
 
-    if (masterError) {
-      console.error('Master prospect upsert error:', masterError);
-      throw new Error('Failed to save to master prospect table');
+    let masterProspectId: string
+    if (existingResult.rows.length > 0) {
+      // Update existing
+      masterProspectId = existingResult.rows[0].id
+      await pool.query(
+        `UPDATE workspace_prospects SET
+          first_name = $1,
+          last_name = $2,
+          linkedin_provider_id = $3,
+          connection_status = $4,
+          source = $5,
+          updated_at = NOW()
+        WHERE id = $6`,
+        [
+          fullName.split(' ')[0] || 'Unknown',
+          fullName.split(' ').slice(1).join(' ') || '',
+          linkedinUserId,
+          connectionDegree === '1st' ? 'connected' : 'not_connected',
+          'quick_add',
+          masterProspectId
+        ]
+      )
+    } else {
+      // Insert new
+      const insertResult = await pool.query(
+        `INSERT INTO workspace_prospects
+          (workspace_id, linkedin_url, linkedin_url_hash, first_name, last_name, linkedin_provider_id, connection_status, source, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        RETURNING id`,
+        [
+          effectiveWorkspaceId,
+          linkedin_url,
+          linkedinHash,
+          fullName.split(' ')[0] || 'Unknown',
+          fullName.split(' ').slice(1).join(' ') || '',
+          linkedinUserId,
+          connectionDegree === '1st' ? 'connected' : 'not_connected',
+          'quick_add'
+        ]
+      )
+      masterProspectId = insertResult.rows[0].id
     }
 
-    console.log('✅ Upserted to workspace_prospects:', masterProspect.id);
+    console.log('✅ Upserted to workspace_prospects:', masterProspectId)
 
     // Step 4: Create approval session
-    const sessionId = `quick_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const { error: sessionError } = await supabase
-      .from('prospect_approval_sessions')
-      .insert({
-        id: sessionId,
-        workspace_id: workspace_id,
-        campaign_name: campaign_name || `Quick Add - ${new Date().toLocaleDateString()}`,
-        status: 'pending',
-        total_count: 1,
-        approved_count: 0,
-        created_by: user.id
-      });
-
-    if (sessionError) {
-      console.error('Session creation error:', sessionError);
-      throw new Error('Failed to create approval session');
+    const sessionId = `quick_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    try {
+      await pool.query(
+        `INSERT INTO prospect_approval_sessions
+          (id, workspace_id, campaign_name, status, total_count, approved_count, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          sessionId,
+          effectiveWorkspaceId,
+          campaign_name || `Quick Add - ${new Date().toLocaleDateString()}`,
+          'pending',
+          1,
+          0,
+          userId
+        ]
+      )
+    } catch (sessionError) {
+      console.error('Session creation error:', sessionError)
+      throw new Error('Failed to create approval session')
     }
 
     // Step 5: Save prospect to approval database with master_prospect_id reference
     const prospectData = {
       session_id: sessionId,
-      workspace_id: workspace_id,
-      master_prospect_id: masterProspect.id,  // FK to workspace_prospects
+      workspace_id: effectiveWorkspaceId,
+      master_prospect_id: masterProspectId,  // FK to workspace_prospects
       contact: {
         name: fullName,
         linkedin_url: linkedin_url,
@@ -159,20 +178,31 @@ export async function POST(request: NextRequest) {
       source: 'quick_add',
       confidence_score: 0.8,
       status: 'pending'
-    };
-
-    const { error: insertError } = await supabase
-      .from('prospect_approval_data')
-      .insert(prospectData);
-
-    if (insertError) {
-      console.error('Prospect insert error:', insertError);
-      throw new Error('Failed to save prospect');
     }
 
-    console.log('✅ Prospect saved to database');
+    try {
+      await pool.query(
+        `INSERT INTO prospect_approval_data
+          (session_id, workspace_id, master_prospect_id, contact, source, confidence_score, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          prospectData.session_id,
+          prospectData.workspace_id,
+          prospectData.master_prospect_id,
+          JSON.stringify(prospectData.contact),
+          prospectData.source,
+          prospectData.confidence_score,
+          prospectData.status
+        ]
+      )
+    } catch (insertError) {
+      console.error('Prospect insert error:', insertError)
+      throw new Error('Failed to save prospect')
+    }
 
-    // Step 5: Return success with prospect data
+    console.log('✅ Prospect saved to database')
+
+    // Step 6: Return success with prospect data
     return NextResponse.json({
       success: true,
       message: connectionDegree === '1st'
@@ -187,14 +217,17 @@ export async function POST(request: NextRequest) {
         connection_degree: connectionDegree,
         source: 'quick_add'
       }
-    });
+    })
 
-  } catch (error) {
-    console.error('Quick add prospect error:', error);
+  } catch (error: any) {
+    if (error?.statusCode === 401 || error?.statusCode === 403) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
+    console.error('Quick add prospect error:', error)
     return NextResponse.json({
       error: 'Failed to add prospect',
       details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    }, { status: 500 })
   }
 }
 
@@ -207,17 +240,17 @@ function extractLinkedInUsername(url: string): string | null {
     const patterns = [
       /linkedin\.com\/in\/([^\/\?]+)/i,           // https://linkedin.com/in/username
       /linkedin\.com\/profile\/view\?id=([^&]+)/i // Old format
-    ];
+    ]
 
     for (const pattern of patterns) {
-      const match = url.match(pattern);
+      const match = url.match(pattern)
       if (match && match[1]) {
-        return match[1].trim();
+        return match[1].trim()
       }
     }
 
-    return null;
+    return null
   } catch (error) {
-    return null;
+    return null
   }
 }

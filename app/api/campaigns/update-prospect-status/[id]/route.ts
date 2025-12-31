@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { pool } from '@/lib/auth';
 
 /**
  * Update Prospect Status - Called by N8N after sending CR
@@ -18,14 +18,13 @@ export async function POST(
     const prospectId = params.id;
     const body = await request.json();
 
-    const supabase = await createSupabaseRouteClient();
-
     // First, get existing prospect data to preserve personalization_data
-    const { data: existingProspect } = await supabase
-      .from('campaign_prospects')
-      .select('personalization_data')
-      .eq('id', prospectId)
-      .single();
+    const existingResult = await pool.query(
+      `SELECT personalization_data FROM campaign_prospects WHERE id = $1`,
+      [prospectId]
+    );
+
+    const existingProspect = existingResult.rows[0];
 
     // Merge new personalization_data with existing (preserve campaign_name, etc)
     const mergedPersonalizationData = {
@@ -36,31 +35,35 @@ export async function POST(
     };
 
     // Update prospect status
-    const { data, error } = await supabase
-      .from('campaign_prospects')
-      .update({
-        status: body.status || 'connection_requested',
-        contacted_at: body.contacted_at || new Date().toISOString(),
-        personalization_data: mergedPersonalizationData
-      })
-      .eq('id', prospectId)
-      .select()
-      .single();
+    const updateResult = await pool.query(
+      `UPDATE campaign_prospects
+       SET status = $1,
+           contacted_at = $2,
+           personalization_data = $3
+       WHERE id = $4
+       RETURNING *`,
+      [
+        body.status || 'connection_requested',
+        body.contacted_at || new Date().toISOString(),
+        JSON.stringify(mergedPersonalizationData),
+        prospectId
+      ]
+    );
 
-    if (error) {
-      console.error(`❌ Error updating prospect ${prospectId}:`, error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (updateResult.rows.length === 0) {
+      console.error(`Error updating prospect ${prospectId}: not found`);
+      return NextResponse.json({ error: 'Prospect not found' }, { status: 404 });
     }
 
-    console.log(`✅ Updated prospect ${prospectId} to status: ${body.status}`);
+    console.log(`Updated prospect ${prospectId} to status: ${body.status}`);
 
     return NextResponse.json({
       success: true,
-      prospect: data
+      prospect: updateResult.rows[0]
     });
 
   } catch (error: any) {
-    console.error('❌ Error in update-prospect-status:', error);
+    console.error('Error in update-prospect-status:', error);
     return NextResponse.json({
       error: error.message,
       success: false

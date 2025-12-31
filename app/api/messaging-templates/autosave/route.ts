@@ -1,18 +1,21 @@
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(request);
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
     }
+
+    const { userId, workspaceId } = authContext;
 
     const body = await request.json();
     const {
-      workspace_id,
       campaign_name,
       campaign_type,
       connection_message,
@@ -20,49 +23,38 @@ export async function POST(request: Request) {
       follow_up_messages
     } = body;
 
-    if (!workspace_id || !campaign_name) {
+    if (!campaign_name) {
       return NextResponse.json(
-        { error: 'workspace_id and campaign_name required' },
+        { error: 'campaign_name required' },
         { status: 400 }
       );
-    }
-
-    // Check workspace membership
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspace_id)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!member) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const template_name = `autosave_${campaign_name}`;
 
     // Upsert template
-    const { data: template, error } = await supabase
-      .from('messaging_templates')
-      .upsert({
-        workspace_id,
+    const { rows } = await pool.query(
+      `INSERT INTO messaging_templates
+       (workspace_id, template_name, campaign_type, connection_message, alternative_message, follow_up_messages, created_by, is_active)
+       VALUES ($1, $2, 'custom', $3, $4, $5, $6, true)
+       ON CONFLICT (workspace_id, template_name)
+       DO UPDATE SET
+         connection_message = EXCLUDED.connection_message,
+         alternative_message = EXCLUDED.alternative_message,
+         follow_up_messages = EXCLUDED.follow_up_messages,
+         updated_at = NOW()
+       RETURNING *`,
+      [
+        workspaceId,
         template_name,
-        campaign_type: 'custom',
-        connection_message: connection_message || '',
-        alternative_message: alternative_message || '',
-        follow_up_messages: follow_up_messages || [],
-        created_by: user.id,
-        is_active: true
-      }, {
-        onConflict: 'workspace_id,template_name'
-      })
-      .select()
-      .single();
+        connection_message || '',
+        alternative_message || '',
+        JSON.stringify(follow_up_messages || []),
+        userId
+      ]
+    );
 
-    if (error) {
-      console.error('Autosave error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const template = rows[0];
 
     return NextResponse.json({ success: true, template_id: template.id });
   } catch (error: any) {

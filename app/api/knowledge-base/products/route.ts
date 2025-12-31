@@ -1,7 +1,5 @@
-
-
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 const toStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
@@ -16,77 +14,37 @@ const toRecord = (value: unknown): Record<string, unknown> => {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 };
 
-async function resolveWorkspaceId(
-  supabase: any,
-  userId: string,
-  providedWorkspaceId?: string | null
-): Promise<string> {
-  if (providedWorkspaceId && providedWorkspaceId.trim().length > 0) {
-    return providedWorkspaceId;
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('current_workspace_id')
-    .eq('id', userId)
-    .single();
-
-  if (!profileError && profile?.current_workspace_id) {
-    return profile.current_workspace_id;
-  }
-
-  const { data: membership, error: membershipError } = await supabase
-    .from('workspace_members')
-    .select('workspace_id')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
-
-  if (!membershipError && membership?.workspace_id) {
-    return membership.workspace_id;
-  }
-
-  throw new Error('Workspace not found for user');
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { searchParams } = new URL(request.url);
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    // Firebase auth verification
     let workspaceId: string;
+
     try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, searchParams.get('workspace_id'));
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
     } catch (error) {
-      console.error('Workspace resolution failed in products GET', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
     }
 
+    const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get('include_inactive') === 'true';
 
-    let query = supabase
-      .from('knowledge_base_products')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false });
+    let query = `
+      SELECT * FROM knowledge_base_products
+      WHERE workspace_id = $1
+    `;
+    const params: any[] = [workspaceId];
 
     if (!includeInactive) {
-      query = query.eq('is_active', true);
+      query += ` AND is_active = true`;
     }
 
-    const { data: products, error } = await query;
+    query += ` ORDER BY created_at DESC`;
 
-    if (error) {
-      console.error('Error fetching products:', error);
-      return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
-    }
+    const result = await pool.query(query, params);
 
-    return NextResponse.json({ products: products ?? [] });
+    return NextResponse.json({ products: result.rows ?? [] });
   } catch (error) {
     console.error('Unexpected error in products GET:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -95,7 +53,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let userId: string;
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      userId = auth.userId;
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const body = await request.json();
     const {
       name,
@@ -109,50 +79,37 @@ export async function POST(request: NextRequest) {
       target_segments
     } = body;
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    let workspaceId: string;
-    try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, body.workspace_id);
-    } catch (error) {
-      console.error('Workspace resolution failed in products POST', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
-    }
-
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
-    const payload = {
-      workspace_id: workspaceId,
-      name: name.trim(),
-      description: typeof description === 'string' ? description : null,
-      category: typeof category === 'string' ? category : null,
-      pricing: toRecord(pricing),
-      features: toStringArray(features),
-      benefits: toStringArray(benefits),
-      use_cases: toStringArray(use_cases),
-      competitive_advantages: toStringArray(competitive_advantages),
-      target_segments: toStringArray(target_segments),
-      is_active: true,
-      created_by: user.id
-    };
+    const result = await pool.query(
+      `INSERT INTO knowledge_base_products (
+        workspace_id, name, description, category, pricing, features,
+        benefits, use_cases, competitive_advantages, target_segments, is_active, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING *`,
+      [
+        workspaceId,
+        name.trim(),
+        typeof description === 'string' ? description : null,
+        typeof category === 'string' ? category : null,
+        JSON.stringify(toRecord(pricing)),
+        toStringArray(features),
+        toStringArray(benefits),
+        toStringArray(use_cases),
+        toStringArray(competitive_advantages),
+        toStringArray(target_segments),
+        true,
+        userId
+      ]
+    );
 
-    const { data: product, error } = await supabase
-      .from('knowledge_base_products')
-      .insert(payload)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating product:', error);
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
     }
 
-    return NextResponse.json({ product }, { status: 201 });
+    return NextResponse.json({ product: result.rows[0] }, { status: 201 });
   } catch (error) {
     console.error('Unexpected error in products POST:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -161,7 +118,17 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const body = await request.json();
     const {
       id,
@@ -181,48 +148,68 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Build dynamic update query
+    const updates: string[] = ['updated_at = NOW()'];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (typeof name === 'string') {
+      updates.push(`name = $${paramIndex++}`);
+      params.push(name.trim());
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      params.push(typeof description === 'string' ? description : null);
+    }
+    if (category !== undefined) {
+      updates.push(`category = $${paramIndex++}`);
+      params.push(typeof category === 'string' ? category : null);
+    }
+    if (pricing !== undefined) {
+      updates.push(`pricing = $${paramIndex++}`);
+      params.push(JSON.stringify(toRecord(pricing)));
+    }
+    if (features !== undefined) {
+      updates.push(`features = $${paramIndex++}`);
+      params.push(toStringArray(features));
+    }
+    if (benefits !== undefined) {
+      updates.push(`benefits = $${paramIndex++}`);
+      params.push(toStringArray(benefits));
+    }
+    if (use_cases !== undefined) {
+      updates.push(`use_cases = $${paramIndex++}`);
+      params.push(toStringArray(use_cases));
+    }
+    if (competitive_advantages !== undefined) {
+      updates.push(`competitive_advantages = $${paramIndex++}`);
+      params.push(toStringArray(competitive_advantages));
+    }
+    if (target_segments !== undefined) {
+      updates.push(`target_segments = $${paramIndex++}`);
+      params.push(toStringArray(target_segments));
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(Boolean(is_active));
     }
 
-    let workspaceId: string;
-    try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, body.workspace_id);
-    } catch (error) {
-      console.error('Workspace resolution failed in products PUT', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
+    params.push(id);
+    params.push(workspaceId);
+
+    const result = await pool.query(
+      `UPDATE knowledge_base_products
+       SET ${updates.join(', ')}
+       WHERE id = $${paramIndex++} AND workspace_id = $${paramIndex}
+       RETURNING *`,
+      params
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString()
-    };
-
-    if (typeof name === 'string') updateData.name = name.trim();
-    if (description !== undefined) updateData.description = typeof description === 'string' ? description : null;
-    if (category !== undefined) updateData.category = typeof category === 'string' ? category : null;
-    if (pricing !== undefined) updateData.pricing = toRecord(pricing);
-    if (features !== undefined) updateData.features = toStringArray(features);
-    if (benefits !== undefined) updateData.benefits = toStringArray(benefits);
-    if (use_cases !== undefined) updateData.use_cases = toStringArray(use_cases);
-    if (competitive_advantages !== undefined) updateData.competitive_advantages = toStringArray(competitive_advantages);
-    if (target_segments !== undefined) updateData.target_segments = toStringArray(target_segments);
-    if (is_active !== undefined) updateData.is_active = Boolean(is_active);
-
-    const { data: product, error } = await supabase
-      .from('knowledge_base_products')
-      .update(updateData)
-      .eq('id', id)
-      .eq('workspace_id', workspaceId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating product:', error);
-      return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
-    }
-
-    return NextResponse.json({ product });
+    return NextResponse.json({ product: result.rows[0] });
   } catch (error) {
     console.error('Unexpected error in products PUT:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -231,7 +218,17 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -239,31 +236,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const result = await pool.query(
+      `UPDATE knowledge_base_products
+       SET is_active = false, updated_at = NOW()
+       WHERE id = $1 AND workspace_id = $2`,
+      [id, workspaceId]
+    );
 
-    let workspaceId: string;
-    try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, searchParams.get('workspace_id'));
-    } catch (error) {
-      console.error('Workspace resolution failed in products DELETE', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
-    }
-
-    const { error } = await supabase
-      .from('knowledge_base_products')
-      .update({
-        is_active: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .eq('workspace_id', workspaceId);
-
-    if (error) {
-      console.error('Error deleting product:', error);
-      return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'Product deleted successfully' });

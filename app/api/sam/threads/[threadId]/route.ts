@@ -2,11 +2,11 @@
  * SAM AI Individual Thread Management API
  * 
  * Handles updates and deletion of specific conversation threads
+ * Updated Dec 31, 2025: Migrated to verifyAuth and pool.query
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
@@ -14,24 +14,20 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
     }
 
-    const { data: thread, error } = await supabase
-      .from('sam_conversation_threads')
-      .select('*')
-      .eq('id', resolvedParams.threadId)
-      .eq('user_id', user.id)
-      .single()
+    const { rows } = await pool.query(
+      'SELECT * FROM sam_conversation_threads WHERE id = $1 AND user_id = $2',
+      [resolvedParams.threadId, auth.user.uid]
+    );
 
-    if (error) {
+    if (rows.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'Thread not found'
@@ -40,7 +36,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      thread
+      thread: rows[0]
     })
 
   } catch (error) {
@@ -58,10 +54,8 @@ export async function PATCH(
 ) {
   try {
     const resolvedParams = await params
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
@@ -70,56 +64,48 @@ export async function PATCH(
 
     const body = await request.json()
     const allowedFields = [
-      'title',
-      'status',
-      'prospect_name',
-      'prospect_company',
-      'prospect_linkedin_url',
-      'campaign_id',
-      'campaign_name',
-      'tags',
-      'priority',
-      'current_discovery_stage',
-      'discovery_progress',
-      'sales_methodology',
-      'deal_stage',
-      'deal_value'
+      'title', 'status', 'prospect_name', 'prospect_company',
+      'prospect_linkedin_url', 'campaign_id', 'campaign_name',
+      'tags', 'priority', 'current_discovery_stage',
+      'discovery_progress', 'sales_methodology', 'deal_stage', 'deal_value'
     ]
 
-    // Filter only allowed fields
-    const updates = Object.keys(body)
-      .filter(key => allowedFields.includes(key))
-      .reduce((obj, key) => {
-        obj[key] = body[key]
-        return obj
-      }, {} as any)
+    const setClauses: string[] = [];
+    const queryParams: any[] = [resolvedParams.threadId, auth.user.uid];
 
-    if (Object.keys(updates).length === 0) {
+    Object.keys(body).forEach(key => {
+      if (allowedFields.includes(key)) {
+        queryParams.push(body[key]);
+        setClauses.push(`${key} = $${queryParams.length}`);
+      }
+    });
+
+    if (setClauses.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'No valid fields to update'
       }, { status: 400 })
     }
 
-    const { data: thread, error } = await supabase
-      .from('sam_conversation_threads')
-      .update(updates)
-      .eq('id', resolvedParams.threadId)
-      .eq('user_id', user.id)
-      .select()
-      .single()
+    const sql = `
+      UPDATE sam_conversation_threads 
+      SET ${setClauses.join(', ')}, updated_at = NOW() 
+      WHERE id = $1 AND user_id = $2
+      RETURNING *
+    `;
 
-    if (error) {
-      console.error('Failed to update thread:', error)
+    const { rows } = await pool.query(sql, queryParams);
+
+    if (rows.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'Failed to update thread'
-      }, { status: 500 })
+        error: 'Thread not found or unauthorized'
+      }, { status: 404 })
     }
 
     return NextResponse.json({
       success: true,
-      thread,
+      thread: rows[0],
       message: 'Thread updated successfully'
     })
 
@@ -138,29 +124,24 @@ export async function DELETE(
 ) {
   try {
     const resolvedParams = await params
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
     }
 
-    // Delete thread and all associated messages (cascade)
-    const { error } = await supabase
-      .from('sam_conversation_threads')
-      .delete()
-      .eq('id', resolvedParams.threadId)
-      .eq('user_id', user.id)
+    const res = await pool.query(
+      'DELETE FROM sam_conversation_threads WHERE id = $1 AND user_id = $2',
+      [resolvedParams.threadId, auth.user.uid]
+    );
 
-    if (error) {
-      console.error('Failed to delete thread:', error)
+    if (res.rowCount === 0) {
       return NextResponse.json({
         success: false,
-        error: 'Failed to delete thread'
-      }, { status: 500 })
+        error: 'Thread not found or unauthorized'
+      }, { status: 404 })
     }
 
     return NextResponse.json({

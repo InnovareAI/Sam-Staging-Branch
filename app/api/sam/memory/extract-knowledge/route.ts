@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 // Knowledge categories for extraction - mapped to your knowledge base sections
 const KNOWLEDGE_CATEGORIES = {
@@ -92,35 +92,29 @@ const KNOWLEDGE_CATEGORIES = {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    const { userId } = await verifyAuth(request);
     const { conversation_id, force_extract = false } = await request.json();
-
-    // Check authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     if (!conversation_id) {
       return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 });
     }
 
     // Get conversation data
-    const { data: conversation, error: convError } = await supabase
-      .from('sam_conversations')
-      .select('*')
-      .eq('id', conversation_id)
-      .eq('user_id', session.user.id)
-      .single();
+    const { rows: convRows } = await pool.query(
+      'SELECT * FROM sam_conversations WHERE id = $1 AND user_id = $2',
+      [conversation_id, userId]
+    );
 
-    if (convError || !conversation) {
+    if (convRows.length === 0) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
+    const conversation = convRows[0];
+
     // Skip if already extracted (unless forced)
     if (conversation.knowledge_extracted && !force_extract) {
-      return NextResponse.json({ 
-        message: 'Knowledge already extracted from this conversation' 
+      return NextResponse.json({
+        message: 'Knowledge already extracted from this conversation'
       });
     }
 
@@ -129,16 +123,16 @@ export async function POST(request: NextRequest) {
 
     if (extractedKnowledge.length === 0) {
       // Mark as processed even if no knowledge found
-      await supabase
-        .from('sam_conversations')
-        .update({ 
-          knowledge_extracted: true,
-          extraction_confidence: 0,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', conversation_id);
+      await pool.query(
+        `UPDATE sam_conversations SET
+          knowledge_extracted = true,
+          extraction_confidence = 0,
+          updated_at = NOW()
+        WHERE id = $1`,
+        [conversation_id]
+      );
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'No significant knowledge found in conversation',
         extracted_count: 0
       });
@@ -147,45 +141,48 @@ export async function POST(request: NextRequest) {
     // Save to knowledge base
     const savedKnowledge = [];
     for (const knowledge of extractedKnowledge) {
-      const { data: saved, error: saveError } = await supabase
-        .from('knowledge_base_items')
-        .insert({
-          workspace_id: conversation.organization_id || 'default',
-          content: knowledge.content,
-          title: knowledge.title,
-          item_type: 'conversation_extract',
-          content_category: knowledge.category,
-          tags: knowledge.tags,
-          source_type: 'sam_conversation',
-          source_metadata: {
+      const { rows: savedRows } = await pool.query(
+        `INSERT INTO knowledge_base_items (
+          workspace_id, content, title, item_type, content_category,
+          tags, source_type, source_metadata, importance_score,
+          status, approved_by, approved_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+        RETURNING *`,
+        [
+          conversation.organization_id || 'default',
+          knowledge.content,
+          knowledge.title,
+          'conversation_extract',
+          knowledge.category,
+          knowledge.tags,
+          'sam_conversation',
+          JSON.stringify({
             conversation_id: conversation_id,
             extracted_at: new Date().toISOString(),
             importance_score: knowledge.importance,
             original_message: knowledge.snippet,
             extraction_method: 'automated'
-          },
-          importance_score: knowledge.importance,
-          status: 'approved', // Auto-approve conversation extracts
-          approved_by: session.user.id,
-          approved_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+          }),
+          knowledge.importance,
+          'approved',
+          userId
+        ]
+      );
 
-      if (!saveError && saved) {
-        savedKnowledge.push(saved);
+      if (savedRows.length > 0) {
+        savedKnowledge.push(savedRows[0]);
       }
     }
 
     // Update conversation as processed
-    await supabase
-      .from('sam_conversations')
-      .update({
-        knowledge_extracted: true,
-        extraction_confidence: Math.max(...extractedKnowledge.map(k => k.importance)) / 10,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', conversation_id);
+    await pool.query(
+      `UPDATE sam_conversations SET
+        knowledge_extracted = true,
+        extraction_confidence = $1,
+        updated_at = NOW()
+      WHERE id = $2`,
+      [Math.max(...extractedKnowledge.map(k => k.importance)) / 10, conversation_id]
+    );
 
     return NextResponse.json({
       success: true,
@@ -200,6 +197,10 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Knowledge extraction error:', error);
     return NextResponse.json(
       { error: 'Failed to extract knowledge' },
@@ -211,80 +212,75 @@ export async function POST(request: NextRequest) {
 // Batch process multiple conversations
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    const { userId } = await verifyAuth(request);
     const { max_conversations = 10 } = await request.json();
 
-    // Check authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Get unprocessed conversations
-    const { data: conversations, error: convError } = await supabase
-      .from('sam_conversations')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .eq('knowledge_extracted', false)
-      .order('created_at', { ascending: false })
-      .limit(max_conversations);
-
-    if (convError) {
-      return NextResponse.json({ error: convError.message }, { status: 500 });
-    }
+    const { rows: conversations } = await pool.query(
+      `SELECT * FROM sam_conversations
+       WHERE user_id = $1 AND knowledge_extracted = false
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [userId, max_conversations]
+    );
 
     let totalExtracted = 0;
     const results = [];
 
-    for (const conversation of conversations || []) {
+    for (const conversation of conversations) {
       try {
         const extractedKnowledge = await extractKnowledgeFromConversation(conversation);
-        
+
         if (extractedKnowledge.length > 0) {
           // Save to knowledge base
           for (const knowledge of extractedKnowledge) {
-            const { data: saved, error: saveError } = await supabase
-              .from('knowledge_base_items')
-              .insert({
-                workspace_id: conversation.organization_id || 'default',
-                content: knowledge.content,
-                title: knowledge.title,
-                item_type: 'conversation_extract',
-                content_category: knowledge.category,
-                tags: knowledge.tags,
-                source_type: 'sam_conversation',
-                source_metadata: {
+            const { rowCount } = await pool.query(
+              `INSERT INTO knowledge_base_items (
+                workspace_id, content, title, item_type, content_category,
+                tags, source_type, source_metadata, importance_score,
+                status, approved_by, approved_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())`,
+              [
+                conversation.organization_id || 'default',
+                knowledge.content,
+                knowledge.title,
+                'conversation_extract',
+                knowledge.category,
+                knowledge.tags,
+                'sam_conversation',
+                JSON.stringify({
                   conversation_id: conversation.id,
                   extracted_at: new Date().toISOString(),
                   importance_score: knowledge.importance,
                   original_message: knowledge.snippet,
                   extraction_method: 'batch_automated'
-                },
-                importance_score: knowledge.importance,
-                status: 'approved',
-                approved_by: session.user.id,
-                approved_at: new Date().toISOString()
-              })
-              .select()
-              .single();
+                }),
+                knowledge.importance,
+                'approved',
+                userId
+              ]
+            );
 
-            if (!saveError) {
+            if (rowCount && rowCount > 0) {
               totalExtracted++;
             }
           }
         }
 
         // Mark as processed
-        await supabase
-          .from('sam_conversations')
-          .update({
-            knowledge_extracted: true,
-            extraction_confidence: extractedKnowledge.length > 0 
-              ? Math.max(...extractedKnowledge.map(k => k.importance)) / 10 
+        await pool.query(
+          `UPDATE sam_conversations SET
+            knowledge_extracted = true,
+            extraction_confidence = $1,
+            updated_at = NOW()
+          WHERE id = $2`,
+          [
+            extractedKnowledge.length > 0
+              ? Math.max(...extractedKnowledge.map(k => k.importance)) / 10
               : 0,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', conversation.id);
+            conversation.id
+          ]
+        );
 
         results.push({
           conversation_id: conversation.id,
@@ -302,12 +298,16 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      processed_conversations: conversations?.length || 0,
+      processed_conversations: conversations.length,
       total_extracted: totalExtracted,
       results
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Batch knowledge extraction error:', error);
     return NextResponse.json(
       { error: 'Failed to batch extract knowledge' },
@@ -320,18 +320,18 @@ export async function PUT(request: NextRequest) {
 async function extractKnowledgeFromConversation(conversation: any): Promise<any[]> {
   const extractedItems = [];
   const fullText = `${conversation.message} ${conversation.response}`.toLowerCase();
-  
+
   // Analyze each knowledge category
   for (const [categoryName, category] of Object.entries(KNOWLEDGE_CATEGORIES)) {
-    const matchedKeywords = category.keywords.filter(keyword => 
+    const matchedKeywords = category.keywords.filter(keyword =>
       fullText.includes(keyword.toLowerCase())
     );
 
     if (matchedKeywords.length > 0) {
       // Extract relevant snippets
       const snippets = extractRelevantSnippets(
-        conversation.message, 
-        conversation.response, 
+        conversation.message,
+        conversation.response,
         matchedKeywords
       );
 
@@ -352,7 +352,7 @@ async function extractKnowledgeFromConversation(conversation: any): Promise<any[
 
   // Remove duplicates and sort by importance
   return extractedItems
-    .filter((item, index, arr) => 
+    .filter((item, index, arr) =>
       arr.findIndex(other => other.content === item.content) === index
     )
     .sort((a, b) => b.importance - a.importance)
@@ -380,7 +380,7 @@ function extractRelevantSnippets(userMessage: string, response: string, keywords
 // Generate structured knowledge content
 function generateKnowledgeContent(snippet: string, category: string): string {
   const timestamp = new Date().toISOString().split('T')[0];
-  
+
   return `## ${category} Information (Extracted from Conversation)
 
 **Date:** ${timestamp}

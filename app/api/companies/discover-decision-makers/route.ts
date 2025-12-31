@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { unipileRequest } from '@/lib/unipile';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
@@ -9,13 +8,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // POST - Discover decision makers at selected companies
 export async function POST(request: NextRequest) {
     try {
-        const cookieStore = await cookies();
-        const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-        const { data: { session }, error: authError } = await supabase.auth.getSession();
-        if (authError || !session) {
-            return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-        }
+        const { workspaceId } = await verifyAuth(request);
 
         const body = await request.json();
         const {
@@ -26,22 +19,20 @@ export async function POST(request: NextRequest) {
             campaign_name = 'Decision Maker Discovery'
         } = body;
 
-        if (!workspace_id) {
-            return NextResponse.json({ error: 'workspace_id is required' }, { status: 400 });
-        }
+        const targetWorkspaceId = workspace_id || workspaceId;
 
         if (!company_ids || !Array.isArray(company_ids) || company_ids.length === 0) {
             return NextResponse.json({ error: 'company_ids array is required' }, { status: 400 });
         }
 
         // Get LinkedIn account
-        const { data: accounts } = await supabase
-            .from('workspace_accounts')
-            .select('unipile_account_id')
-            .eq('workspace_id', workspace_id)
-            .eq('account_type', 'linkedin')
-            .in('connection_status', VALID_CONNECTION_STATUSES)
-            .limit(1);
+        const { rows: accounts } = await pool.query(`
+            SELECT unipile_account_id FROM workspace_accounts
+            WHERE workspace_id = $1
+            AND account_type = 'linkedin'
+            AND connection_status = ANY($2)
+            LIMIT 1
+        `, [targetWorkspaceId, VALID_CONNECTION_STATUSES]);
 
         if (!accounts || accounts.length === 0) {
             return NextResponse.json({ error: 'No active LinkedIn account found' }, { status: 400 });
@@ -50,22 +41,23 @@ export async function POST(request: NextRequest) {
         const linkedinAccountId = accounts[0].unipile_account_id;
 
         // Get the selected companies
-        const { data: companies, error: companiesError } = await supabase
-            .from('workspace_companies')
-            .select('*')
-            .in('id', company_ids);
+        const placeholders = company_ids.map((_, i) => `$${i + 1}`).join(', ');
+        const { rows: companies } = await pool.query(
+            `SELECT * FROM workspace_companies WHERE id IN (${placeholders})`,
+            company_ids
+        );
 
-        if (companiesError || !companies || companies.length === 0) {
+        if (!companies || companies.length === 0) {
             return NextResponse.json({ error: 'No valid companies found' }, { status: 400 });
         }
 
         console.log(`🎯 Starting decision-maker discovery for ${companies.length} companies...`);
 
         // Update companies to processing status
-        await supabase
-            .from('workspace_companies')
-            .update({ status: 'processing' })
-            .in('id', company_ids);
+        await pool.query(
+            `UPDATE workspace_companies SET status = 'processing' WHERE id IN (${placeholders})`,
+            company_ids
+        );
 
         const allProspects: any[] = [];
         const companyResults: { company_id: string; name: string; prospects_found: number }[] = [];
@@ -118,24 +110,20 @@ export async function POST(request: NextRequest) {
                 });
 
                 // Update company with prospect count
-                await supabase
-                    .from('workspace_companies')
-                    .update({
-                        status: 'processed',
-                        prospects_found: prospects.length,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', company.id);
+                await pool.query(`
+                    UPDATE workspace_companies
+                    SET status = 'processed', prospects_found = $1, updated_at = NOW()
+                    WHERE id = $2
+                `, [prospects.length, company.id]);
 
                 // Rate limiting delay
                 await delay(1500);
             } catch (error) {
                 console.error(`❌ Error searching ${company.name}:`, error);
 
-                await supabase
-                    .from('workspace_companies')
-                    .update({ status: 'pending' })
-                    .eq('id', company.id);
+                await pool.query(`
+                    UPDATE workspace_companies SET status = 'pending' WHERE id = $1
+                `, [company.id]);
             }
         }
 
@@ -156,7 +144,7 @@ export async function POST(request: NextRequest) {
                         campaign_tag: 'company-discovery',
                         source: 'company-decision-makers',
                         prospects: allProspects,
-                        workspace_id
+                        workspace_id: targetWorkspaceId
                     })
                 }
             );
@@ -180,6 +168,10 @@ export async function POST(request: NextRequest) {
             message: 'No prospects found matching the criteria'
         });
     } catch (error) {
+        if ((error as AuthError).code) {
+            const authError = error as AuthError;
+            return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+        }
         console.error('Decision-maker discovery error:', error);
         return NextResponse.json({
             error: 'Discovery failed',

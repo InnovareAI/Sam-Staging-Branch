@@ -1,10 +1,9 @@
 /**
  * Fetch the user's own LinkedIn posts via Unipile
- * GET /api/linkedin-commenting/fetch-my-posts?workspace_id=...
+ * GET /api/linkedin-commenting/fetch-my-posts
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
@@ -16,44 +15,28 @@ const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
 
 export async function GET(request: NextRequest) {
     try {
-        const { searchParams } = new URL(request.url);
-        const workspaceId = searchParams.get('workspace_id');
-
-        if (!workspaceId) {
-            return NextResponse.json({ error: 'Missing workspace_id parameter' }, { status: 400 });
-        }
-
-        // Authenticate user
-        const authClient = await createSupabaseRouteClient();
-        const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-        if (authError || !user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
+        // Authenticate user using Firebase auth
+        const { workspaceId } = await verifyAuth(request);
 
         // Get LinkedIn account for this workspace
-        const { data: linkedinAccount, error: accountError } = await supabase
-            .from('workspace_accounts')
-            .select('unipile_account_id')
-            .eq('workspace_id', workspaceId)
-            .eq('account_type', 'linkedin')
-            .in('connection_status', VALID_CONNECTION_STATUSES)
-            .limit(1)
-            .single();
+        const accountResult = await pool.query(
+            `SELECT unipile_account_id FROM workspace_accounts
+             WHERE workspace_id = $1
+             AND account_type = 'linkedin'
+             AND connection_status = ANY($2)
+             LIMIT 1`,
+            [workspaceId, VALID_CONNECTION_STATUSES]
+        );
 
-        if (accountError || !linkedinAccount) {
+        if (accountResult.rows.length === 0) {
             return NextResponse.json({ error: 'No connected LinkedIn account' }, { status: 400 });
         }
+
+        const linkedinAccount = accountResult.rows[0];
 
         console.log(`📬 Fetching own posts for workspace ${workspaceId} using Unipile account ${linkedinAccount.unipile_account_id}`);
 
         // Fetch posts from Unipile
-        // Note: This endpoint might vary based on Unipile version, but usually /api/v1/posts or /api/v1/accounts/{id}/posts
         const unipileUrl = `${UNIPILE_BASE_URL}/api/v1/posts?account_id=${linkedinAccount.unipile_account_id}&limit=20`;
 
         const unipileResponse = await fetch(unipileUrl, {
@@ -89,6 +72,12 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error) {
+        // Handle auth errors
+        if (error && typeof error === 'object' && 'code' in error) {
+            const authError = error as AuthError;
+            return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+        }
+
         console.error('❌ Error in fetch-my-posts:', error);
         return NextResponse.json({
             error: 'Internal server error',

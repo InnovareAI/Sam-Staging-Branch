@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 
 export async function GET(
@@ -7,61 +7,59 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Get user and workspace
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw apiError.unauthorized();
-    }
+    const { userId, workspaceId } = await verifyAuth(req);
 
     const campaignId = params.id;
 
     // Get campaign details with performance metrics
-    const { data: campaign, error } = await supabase
-      .from('campaign_performance_summary')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .single();
+    const campaignResult = await pool.query(
+      `SELECT * FROM campaign_performance_summary WHERE campaign_id = $1`,
+      [campaignId]
+    );
 
-    if (error) {
+    if (campaignResult.rows.length === 0) {
       throw apiError.notFound('Campaign');
     }
 
-    // Verify user has access to this campaign's workspace
-    const { data: membership } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', campaign.workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const campaign = campaignResult.rows[0];
 
-    if (!membership) {
+    // Verify user has access to this campaign's workspace
+    const membershipResult = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [campaign.workspace_id, userId]
+    );
+
+    if (membershipResult.rows.length === 0) {
       throw apiError.forbidden('Access denied to this campaign');
     }
 
     // Get campaign messages and replies
-    const { data: messages, error: messagesError } = await supabase
-      .from('campaign_messages')
-      .select(`
-        *,
-        campaign_replies (*)
-      `)
-      .eq('campaign_id', campaignId)
-      .order('sent_at', { ascending: false });
-
-    if (messagesError) {
-      console.error('Failed to fetch campaign messages:', messagesError);
-    }
+    const messagesResult = await pool.query(
+      `SELECT cm.*,
+              COALESCE(
+                json_agg(cr.*) FILTER (WHERE cr.id IS NOT NULL),
+                '[]'
+              ) as campaign_replies
+       FROM campaign_messages cm
+       LEFT JOIN campaign_replies cr ON cm.id = cr.message_id
+       WHERE cm.campaign_id = $1
+       GROUP BY cm.id
+       ORDER BY cm.sent_at DESC`,
+      [campaignId]
+    );
 
     return apiSuccess({
       campaign: {
         ...campaign,
-        messages: messages || []
+        messages: messagesResult.rows || []
       }
     });
 
   } catch (error) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     return handleApiError(error, 'campaign_get');
   }
 }
@@ -71,39 +69,32 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Get user and workspace
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw apiError.unauthorized();
-    }
+    const { userId, workspaceId } = await verifyAuth(req);
 
     const campaignId = params.id;
     const updates = await req.json();
 
-    console.log('Campaign update request:', { campaignId, updates, userId: user.id });
+    console.log('Campaign update request:', { campaignId, updates, userId });
 
     // First, verify the campaign exists and user has access
-    const { data: existingCampaign, error: fetchError } = await supabase
-      .from('campaigns')
-      .select('id, workspace_id')
-      .eq('id', campaignId)
-      .single();
+    const existingCampaignResult = await pool.query(
+      `SELECT id, workspace_id FROM campaigns WHERE id = $1`,
+      [campaignId]
+    );
 
-    if (fetchError || !existingCampaign) {
+    if (existingCampaignResult.rows.length === 0) {
       throw apiError.notFound('Campaign');
     }
 
-    // Verify user is a member of the campaign's workspace
-    const { data: membership, error: membershipError } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', existingCampaign.workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const existingCampaign = existingCampaignResult.rows[0];
 
-    if (membershipError || !membership) {
+    // Verify user is a member of the campaign's workspace
+    const membershipResult = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [existingCampaign.workspace_id, userId]
+    );
+
+    if (membershipResult.rows.length === 0) {
       throw apiError.forbidden('You do not have access to this campaign');
     }
 
@@ -112,11 +103,12 @@ export async function PUT(
 
     // CRITICAL: For email campaigns, validate email body and subject exist when updating messages
     // Get the current campaign to check its type
-    const { data: currentCampaign } = await supabase
-      .from('campaigns')
-      .select('campaign_type, message_templates')
-      .eq('id', campaignId)
-      .single();
+    const currentCampaignResult = await pool.query(
+      `SELECT campaign_type, message_templates FROM campaigns WHERE id = $1`,
+      [campaignId]
+    );
+
+    const currentCampaign = currentCampaignResult.rows[0];
 
     if (currentCampaign?.campaign_type === 'email') {
       // Check if message_templates is being updated
@@ -139,30 +131,46 @@ export async function PUT(
 
     console.log('Updating campaign with data:', updateData);
 
-    const { data: campaign, error } = await supabase
-      .from('campaigns')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', campaignId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Campaign update database error:', error);
-      throw apiError.database('update campaign', error);
+    // Build dynamic update query
+    const updateFields = Object.keys(updateData);
+    if (updateFields.length === 0) {
+      throw apiError.validation('No fields to update');
     }
 
-    if (!campaign) {
+    // Add updated_at
+    updateData.updated_at = new Date().toISOString();
+    updateFields.push('updated_at');
+
+    const setClause = updateFields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+    const values = updateFields.map(field => {
+      const value = updateData[field];
+      // Convert objects to JSON string for JSONB columns
+      if (typeof value === 'object' && value !== null) {
+        return JSON.stringify(value);
+      }
+      return value;
+    });
+    values.push(campaignId);
+
+    const updateResult = await pool.query(
+      `UPDATE campaigns SET ${setClause} WHERE id = $${values.length} RETURNING *`,
+      values
+    );
+
+    if (updateResult.rows.length === 0) {
       throw apiError.internal('Campaign update failed', 'No data returned after update');
     }
 
+    const campaign = updateResult.rows[0];
     console.log('Campaign updated successfully:', campaign.id);
 
     return apiSuccess({ campaign }, 'Campaign updated successfully');
 
   } catch (error) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     return handleApiError(error, 'campaign_put');
   }
 }
@@ -180,101 +188,72 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    const { userId, workspaceId } = await verifyAuth(req);
     const url = new URL(req.url);
     const forceDelete = url.searchParams.get('force') === 'true';
-
-    // Get user and workspace
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw apiError.unauthorized();
-    }
 
     const campaignId = params.id;
 
     // Get campaign to verify workspace access
-    const { data: campaign, error: fetchError } = await supabase
-      .from('campaigns')
-      .select('id, workspace_id')
-      .eq('id', campaignId)
-      .single();
+    const campaignResult = await pool.query(
+      `SELECT id, workspace_id FROM campaigns WHERE id = $1`,
+      [campaignId]
+    );
 
-    if (fetchError || !campaign) {
+    if (campaignResult.rows.length === 0) {
       throw apiError.notFound('Campaign');
     }
 
-    // Verify user has access to this campaign's workspace
-    const { data: membership } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', campaign.workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const campaign = campaignResult.rows[0];
 
-    if (!membership) {
+    // Verify user has access to this campaign's workspace
+    const membershipResult = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [campaign.workspace_id, userId]
+    );
+
+    if (membershipResult.rows.length === 0) {
       throw apiError.forbidden('Access denied to this campaign');
     }
 
     // Force delete: skip message check and delete everything
     if (forceDelete) {
       // Delete related data first
-      await supabase.from('campaign_messages').delete().eq('campaign_id', campaignId);
-      await supabase.from('campaign_prospects').delete().eq('campaign_id', campaignId);
-      await supabase.from('send_queue').delete().eq('campaign_id', campaignId);
+      await pool.query('DELETE FROM campaign_messages WHERE campaign_id = $1', [campaignId]);
+      await pool.query('DELETE FROM campaign_prospects WHERE campaign_id = $1', [campaignId]);
+      await pool.query('DELETE FROM send_queue WHERE campaign_id = $1', [campaignId]);
 
-      const { error } = await supabase
-        .from('campaigns')
-        .delete()
-        .eq('id', campaignId);
-
-      if (error) {
-        throw apiError.database('force delete campaign', error);
-      }
+      await pool.query('DELETE FROM campaigns WHERE id = $1', [campaignId]);
 
       return apiSuccess({ deleted: true, forced: true }, 'Campaign and all related data deleted');
     }
 
     // Check if campaign has sent messages (prevent deletion of active campaigns)
-    const { data: messages, error: messagesError } = await supabase
-      .from('campaign_messages')
-      .select('id')
-      .eq('campaign_id', campaignId)
-      .limit(1);
+    const messagesResult = await pool.query(
+      `SELECT id FROM campaign_messages WHERE campaign_id = $1 LIMIT 1`,
+      [campaignId]
+    );
 
-    if (messagesError) {
-      throw apiError.database('check campaign messages', messagesError);
-    }
-
-    if (messages && messages.length > 0) {
+    if (messagesResult.rows.length > 0) {
       // Archive instead of delete if messages exist
-      const { error: archiveError } = await supabase
-        .from('campaigns')
-        .update({
-          status: 'archived',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', campaignId);
-
-      if (archiveError) {
-        throw apiError.database('archive campaign', archiveError);
-      }
+      await pool.query(
+        `UPDATE campaigns SET status = 'archived', updated_at = $1 WHERE id = $2`,
+        [new Date().toISOString(), campaignId]
+      );
 
       return apiSuccess({ archived: true }, 'Campaign archived (cannot delete campaigns with sent messages)');
     }
 
     // Delete campaign if no messages sent
-    const { error } = await supabase
-      .from('campaigns')
-      .delete()
-      .eq('id', campaignId);
-
-    if (error) {
-      throw apiError.database('delete campaign', error);
-    }
+    await pool.query('DELETE FROM campaigns WHERE id = $1', [campaignId]);
 
     return apiSuccess({ deleted: true }, 'Campaign deleted successfully');
 
   } catch (error) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     return handleApiError(error, 'campaign_delete');
   }
 }

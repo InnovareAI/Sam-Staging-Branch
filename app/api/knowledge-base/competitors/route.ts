@@ -1,7 +1,5 @@
-
-
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 const toStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
@@ -16,77 +14,39 @@ const toRecord = (value: unknown): Record<string, unknown> => {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 };
 
-async function resolveWorkspaceId(
-  supabase: any,
-  userId: string,
-  providedWorkspaceId?: string | null
-): Promise<string> {
-  if (providedWorkspaceId && providedWorkspaceId.trim().length > 0) {
-    return providedWorkspaceId;
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('current_workspace_id')
-    .eq('id', userId)
-    .single();
-
-  if (!profileError && profile?.current_workspace_id) {
-    return profile.current_workspace_id;
-  }
-
-  const { data: membership, error: membershipError } = await supabase
-    .from('workspace_members')
-    .select('workspace_id')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
-
-  if (!membershipError && membership?.workspace_id) {
-    return membership.workspace_id;
-  }
-
-  throw new Error('Workspace not found for user');
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { searchParams } = new URL(request.url);
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    // Firebase auth verification
+    let userId: string;
     let workspaceId: string;
+
     try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, searchParams.get('workspace_id'));
+      const auth = await verifyAuth(request);
+      userId = auth.userId;
+      workspaceId = auth.workspaceId;
     } catch (error) {
-      console.error('Workspace resolution failed in competitors GET', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
     }
 
+    const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get('include_inactive') === 'true';
 
-    let query = supabase
-      .from('knowledge_base_competitors')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false });
+    let query = `
+      SELECT * FROM knowledge_base_competitors
+      WHERE workspace_id = $1
+    `;
+    const params: any[] = [workspaceId];
 
     if (!includeInactive) {
-      query = query.eq('is_active', true);
+      query += ` AND is_active = true`;
     }
 
-    const { data: competitors, error } = await query;
+    query += ` ORDER BY created_at DESC`;
 
-    if (error) {
-      console.error('Error fetching competitors:', error);
-      return NextResponse.json({ error: 'Failed to fetch competitors' }, { status: 500 });
-    }
+    const result = await pool.query(query, params);
 
-    return NextResponse.json({ competitors: competitors ?? [] });
+    return NextResponse.json({ competitors: result.rows ?? [] });
   } catch (error) {
     console.error('Unexpected error in competitors GET:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -95,7 +55,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let userId: string;
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      userId = auth.userId;
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const body = await request.json();
     const {
       name,
@@ -109,50 +81,37 @@ export async function POST(request: NextRequest) {
       competitive_positioning
     } = body;
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    let workspaceId: string;
-    try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, body.workspace_id);
-    } catch (error) {
-      console.error('Workspace resolution failed in competitors POST', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
-    }
-
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
-    const payload = {
-      workspace_id: workspaceId,
-      name: name.trim(),
-      website: typeof website === 'string' ? website : null,
-      description: typeof description === 'string' ? description : null,
-      strengths: toStringArray(strengths),
-      weaknesses: toStringArray(weaknesses),
-      pricing_model: typeof pricing_model === 'string' ? pricing_model : null,
-      key_features: toStringArray(key_features),
-      target_market: typeof target_market === 'string' ? target_market : null,
-      competitive_positioning: toRecord(competitive_positioning),
-      is_active: true,
-      created_by: user.id
-    };
+    const result = await pool.query(
+      `INSERT INTO knowledge_base_competitors (
+        workspace_id, name, website, description, strengths, weaknesses,
+        pricing_model, key_features, target_market, competitive_positioning, is_active, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING *`,
+      [
+        workspaceId,
+        name.trim(),
+        typeof website === 'string' ? website : null,
+        typeof description === 'string' ? description : null,
+        toStringArray(strengths),
+        toStringArray(weaknesses),
+        typeof pricing_model === 'string' ? pricing_model : null,
+        toStringArray(key_features),
+        typeof target_market === 'string' ? target_market : null,
+        JSON.stringify(toRecord(competitive_positioning)),
+        true,
+        userId
+      ]
+    );
 
-    const { data: competitor, error } = await supabase
-      .from('knowledge_base_competitors')
-      .insert(payload)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating competitor:', error);
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Failed to create competitor' }, { status: 500 });
     }
 
-    return NextResponse.json({ competitor }, { status: 201 });
+    return NextResponse.json({ competitor: result.rows[0] }, { status: 201 });
   } catch (error) {
     console.error('Unexpected error in competitors POST:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -161,7 +120,17 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const body = await request.json();
     const {
       id,
@@ -181,48 +150,68 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Competitor ID is required' }, { status: 400 });
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Build dynamic update query
+    const updates: string[] = ['updated_at = NOW()'];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (typeof name === 'string') {
+      updates.push(`name = $${paramIndex++}`);
+      params.push(name.trim());
+    }
+    if (website !== undefined) {
+      updates.push(`website = $${paramIndex++}`);
+      params.push(typeof website === 'string' ? website : null);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      params.push(typeof description === 'string' ? description : null);
+    }
+    if (strengths !== undefined) {
+      updates.push(`strengths = $${paramIndex++}`);
+      params.push(toStringArray(strengths));
+    }
+    if (weaknesses !== undefined) {
+      updates.push(`weaknesses = $${paramIndex++}`);
+      params.push(toStringArray(weaknesses));
+    }
+    if (pricing_model !== undefined) {
+      updates.push(`pricing_model = $${paramIndex++}`);
+      params.push(typeof pricing_model === 'string' ? pricing_model : null);
+    }
+    if (key_features !== undefined) {
+      updates.push(`key_features = $${paramIndex++}`);
+      params.push(toStringArray(key_features));
+    }
+    if (target_market !== undefined) {
+      updates.push(`target_market = $${paramIndex++}`);
+      params.push(typeof target_market === 'string' ? target_market : null);
+    }
+    if (competitive_positioning !== undefined) {
+      updates.push(`competitive_positioning = $${paramIndex++}`);
+      params.push(JSON.stringify(toRecord(competitive_positioning)));
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(Boolean(is_active));
     }
 
-    let workspaceId: string;
-    try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, body.workspace_id);
-    } catch (error) {
-      console.error('Workspace resolution failed in competitors PUT', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
+    params.push(id);
+    params.push(workspaceId);
+
+    const result = await pool.query(
+      `UPDATE knowledge_base_competitors
+       SET ${updates.join(', ')}
+       WHERE id = $${paramIndex++} AND workspace_id = $${paramIndex}
+       RETURNING *`,
+      params
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: 'Competitor not found' }, { status: 404 });
     }
 
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString()
-    };
-
-    if (typeof name === 'string') updateData.name = name.trim();
-    if (website !== undefined) updateData.website = typeof website === 'string' ? website : null;
-    if (description !== undefined) updateData.description = typeof description === 'string' ? description : null;
-    if (strengths !== undefined) updateData.strengths = toStringArray(strengths);
-    if (weaknesses !== undefined) updateData.weaknesses = toStringArray(weaknesses);
-    if (pricing_model !== undefined) updateData.pricing_model = typeof pricing_model === 'string' ? pricing_model : null;
-    if (key_features !== undefined) updateData.key_features = toStringArray(key_features);
-    if (target_market !== undefined) updateData.target_market = typeof target_market === 'string' ? target_market : null;
-    if (competitive_positioning !== undefined) updateData.competitive_positioning = toRecord(competitive_positioning);
-    if (is_active !== undefined) updateData.is_active = Boolean(is_active);
-
-    const { data: competitor, error } = await supabase
-      .from('knowledge_base_competitors')
-      .update(updateData)
-      .eq('id', id)
-      .eq('workspace_id', workspaceId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating competitor:', error);
-      return NextResponse.json({ error: 'Failed to update competitor' }, { status: 500 });
-    }
-
-    return NextResponse.json({ competitor });
+    return NextResponse.json({ competitor: result.rows[0] });
   } catch (error) {
     console.error('Unexpected error in competitors PUT:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -231,7 +220,17 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -239,31 +238,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Competitor ID is required' }, { status: 400 });
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const result = await pool.query(
+      `UPDATE knowledge_base_competitors
+       SET is_active = false, updated_at = NOW()
+       WHERE id = $1 AND workspace_id = $2`,
+      [id, workspaceId]
+    );
 
-    let workspaceId: string;
-    try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, searchParams.get('workspace_id'));
-    } catch (error) {
-      console.error('Workspace resolution failed in competitors DELETE', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
-    }
-
-    const { error } = await supabase
-      .from('knowledge_base_competitors')
-      .update({
-        is_active: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .eq('workspace_id', workspaceId);
-
-    if (error) {
-      console.error('Error deleting competitor:', error);
-      return NextResponse.json({ error: 'Failed to delete competitor' }, { status: 500 });
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Competitor not found' }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'Competitor deleted successfully' });

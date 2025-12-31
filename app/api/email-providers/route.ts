@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client'
+import { verifyAuth, pool, AuthError } from '@/lib/auth'
 
 // Helper function to make Unipile API calls
 async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: any) {
@@ -22,7 +22,7 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
   }
 
   const response = await fetch(url, options)
-  
+
   if (!response.ok) {
     const errorText = await response.text()
     console.error(`Unipile API error: ${response.status} ${response.statusText}`, errorText)
@@ -34,93 +34,56 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('📧 GET /api/email-providers called')
+    console.log('GET /api/email-providers called')
 
-    // Get current user with new SSR auth pattern (fixes session mixing issue)
-    const supabase = await createSupabaseRouteClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    console.log('🔐 Auth check:', {
-      hasUser: !!user,
-      authError: authError?.message
-    })
-
-    if (authError || !user) {
-      console.log('❌ Auth failed - returning 401')
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(request);
+    } catch (error) {
+      const authError = error as AuthError;
+      console.log('Auth failed - returning', authError.statusCode)
       return NextResponse.json({
         success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
+        error: authError.message
+      }, { status: authError.statusCode });
     }
 
-    console.log('📧 Fetching email providers for user:', user.id)
+    const { userId, workspaceId } = authContext;
 
-    // Get user's current workspace - try users table first, then workspace_members
-    let workspaceId: string | null = null
-
-    const { data: userData } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single()
-
-    if (userData?.current_workspace_id) {
-      workspaceId = userData.current_workspace_id
-    } else {
-      // Fallback: get workspace from workspace_members
-      const { data: memberData } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single()
-
-      workspaceId = memberData?.workspace_id || null
-    }
-
-    if (!workspaceId) {
-      return NextResponse.json({
-        success: false,
-        error: 'No workspace found for user'
-      }, { status: 400 })
-    }
-
-    console.log('🏢 Workspace ID:', workspaceId)
+    console.log('Fetching email providers for user:', userId)
+    console.log('Workspace ID:', workspaceId)
 
     // Get workspace email accounts directly from workspace_accounts
-    const { data: workspaceAccounts, error: wsError } = await supabase
-      .from('workspace_accounts')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('account_type', 'email')
+    const { rows: workspaceAccounts } = await pool.query(
+      `SELECT * FROM workspace_accounts
+       WHERE workspace_id = $1 AND account_type = 'email'`,
+      [workspaceId]
+    );
 
-    if (wsError) {
-      console.error('❌ Workspace accounts error:', wsError)
-    }
+    console.log('Found', workspaceAccounts?.length || 0, 'email accounts in workspace')
 
-    console.log('💾 Found', workspaceAccounts?.length || 0, 'email accounts in workspace')
-
-    const workspaceAccountIds = new Set(workspaceAccounts?.map(a => a.unipile_account_id) || [])
-    console.log('🔑 Workspace account IDs:', Array.from(workspaceAccountIds))
+    const workspaceAccountIds = new Set(workspaceAccounts?.map((a: any) => a.unipile_account_id) || [])
+    console.log('Workspace account IDs:', Array.from(workspaceAccountIds))
 
     // Get all Unipile accounts
     const unipileResponse = await callUnipileAPI('accounts')
     const allAccounts = unipileResponse.items || []
-    console.log('📊 Unipile returned', allAccounts.length, 'total accounts')
+    console.log('Unipile returned', allAccounts.length, 'total accounts')
 
     // Filter to only show workspace email accounts
     const emailAccounts = allAccounts
       .filter((account: any) => {
         // Check if this account belongs to the workspace
         const belongsToWorkspace = workspaceAccountIds.has(account.id)
-        console.log(`🔍 Account ${account.id} (${account.type}):`, belongsToWorkspace ? '✅ belongs to workspace' : '❌ not in workspace')
+        console.log(`Account ${account.id} (${account.type}):`, belongsToWorkspace ? 'belongs to workspace' : 'not in workspace')
 
         if (!belongsToWorkspace) return false
 
         // Include GOOGLE, GOOGLE_OAUTH, OUTLOOK, OUTLOOK_OAUTH, MESSAGING, and MAIL (IMAP/SMTP) types
         const accountType = account.type?.toUpperCase() || ''
         const isEmailType = accountType.includes('GOOGLE') || accountType.includes('OUTLOOK') || accountType === 'MESSAGING' || accountType === 'MAIL'
-        console.log(`  Type check: ${accountType} →`, isEmailType ? '✅ email type' : '❌ not email')
+        console.log(`  Type check: ${accountType} ->`, isEmailType ? 'email type' : 'not email')
 
         return isEmailType
       })
@@ -144,7 +107,7 @@ export async function GET(request: NextRequest) {
 
         return {
           id: account.id,
-          user_id: user.id,
+          user_id: userId,
           provider_type: providerType,
           provider_name: account.name || email || 'Email Account',
           email_address: email,
@@ -156,7 +119,7 @@ export async function GET(request: NextRequest) {
         }
       })
 
-    console.log('✅ Returning', emailAccounts.length, 'email accounts')
+    console.log('Returning', emailAccounts.length, 'email accounts')
 
     return NextResponse.json({
       success: true,
@@ -165,7 +128,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Failed to get email providers:', error)
+    console.error('Failed to get email providers:', error)
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to load email providers'
@@ -185,53 +148,38 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Get current user with new SSR auth pattern (fixes session mixing issue)
-    const supabase = await createSupabaseRouteClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(request);
+    } catch (error) {
+      const authError = error as AuthError;
       return NextResponse.json({
         success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
+        error: authError.message
+      }, { status: authError.statusCode });
     }
 
+    const { userId } = authContext;
+
     // Insert new email provider
-    console.log(`📧 Creating email provider:`, {
-      user_id: user.id,
+    console.log('Creating email provider:', {
+      user_id: userId,
       provider_type,
       provider_name,
       email_address
     })
 
-    const { data: provider, error: insertError } = await supabase
-      .from('email_providers')
-      .insert({
-        user_id: user.id,
-        provider_type,
-        provider_name,
-        email_address,
-        status: 'disconnected',
-        config: config || {}
-      })
-      .select()
-      .single()
+    const { rows } = await pool.query(
+      `INSERT INTO email_providers (user_id, provider_type, provider_name, email_address, status, config)
+       VALUES ($1, $2, $3, $4, 'disconnected', $5)
+       RETURNING *`,
+      [userId, provider_type, provider_name, email_address, JSON.stringify(config || {})]
+    );
 
-    if (insertError) {
-      console.error('❌ Failed to create email provider:', {
-        error: insertError,
-        message: insertError.message,
-        details: insertError.details,
-        hint: insertError.hint
-      })
-      return NextResponse.json({
-        success: false,
-        error: insertError.message || 'Failed to create provider',
-        details: insertError.details
-      }, { status: 500 })
-    }
+    const provider = rows[0];
 
-    console.log(`✅ Created email provider:`, provider)
+    console.log('Created email provider:', provider)
 
     return NextResponse.json({
       success: true,
@@ -241,7 +189,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Failed to create email provider:', error)
+    console.error('Failed to create email provider:', error)
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

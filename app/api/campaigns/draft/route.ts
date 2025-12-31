@@ -1,4 +1,4 @@
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -20,13 +20,7 @@ function normalizeLinkedInUrl(url: string | null | undefined): string | null {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId, workspaceId: authWorkspaceId } = await verifyAuth(request);
 
     const body = await request.json();
     const {
@@ -49,14 +43,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify workspace membership
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
+    const memberResult = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [workspaceId, userId]
+    );
 
-    if (!member) {
+    if (memberResult.rows.length === 0) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -66,32 +58,40 @@ export async function POST(request: NextRequest) {
 
     if (draftId) {
       // Update existing draft
-      const { data: campaign, error: updateError } = await supabase
-        .from('campaigns')
-        .update({
+      const updateResult = await pool.query(
+        `UPDATE campaigns SET
+          name = $1,
+          campaign_type = $2,
+          current_step = $3,
+          connection_message = $4,
+          alternative_message = $5,
+          follow_up_messages = $6,
+          draft_data = $7,
+          updated_at = $8
+        WHERE id = $9 AND workspace_id = $10 AND status = 'draft'
+        RETURNING *`,
+        [
           name,
-          campaign_type: campaignType, // FIXED (Dec 7): Don't default - preserve actual campaign type from frontend
-          // NOTE: Do NOT set 'type' column - it has a CHECK constraint that rejects 'connector'/'messenger'
-          current_step: currentStep,
-          connection_message: connectionMessage,
-          alternative_message: alternativeMessage,
-          follow_up_messages: followUpMessages || [],
-          draft_data: draftData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', draftId)
-        .eq('workspace_id', workspaceId)
-        .eq('status', 'draft') // Only update drafts
-        .select()
-        .single();
+          campaignType,
+          currentStep,
+          connectionMessage,
+          alternativeMessage,
+          JSON.stringify(followUpMessages || []),
+          JSON.stringify(draftData),
+          new Date().toISOString(),
+          draftId,
+          workspaceId
+        ]
+      );
 
-      if (updateError) {
-        console.error('Error updating draft:', updateError);
+      if (updateResult.rows.length === 0) {
         return NextResponse.json(
           { error: 'Failed to update draft' },
           { status: 500 }
         );
       }
+
+      const campaign = updateResult.rows[0];
 
       // DATABASE-FIRST: Upsert to workspace_prospects then campaign_prospects
       console.log('💾 [DRAFT] Received csvData:', csvData?.length || 0, 'prospects');
@@ -102,8 +102,6 @@ export async function POST(request: NextRequest) {
         const masterProspectIds: Map<string, string> = new Map();
 
         // STEP 1: Upsert to workspace_prospects (master table)
-        // CRITICAL FIX (Dec 8): Support prospects with OR without LinkedIn URLs
-        // Email/Messenger campaigns use email, LinkedIn campaigns use linkedin_url
         for (const p of csvData) {
           const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
           const email = p.email || p.contact?.email;
@@ -120,78 +118,82 @@ export async function POST(request: NextRequest) {
           const firstName = p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown';
           const lastName = p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '';
 
-          const workspaceProspectData = {
-            workspace_id: workspaceId,
-            linkedin_url: linkedinUrl || null,
-            linkedin_url_hash: linkedinUrlHash,
-            email: email || null,
-            first_name: firstName,
-            last_name: lastName,
-            company: p.company || p.organization || null,
-            title: p.title || p.job_title || null,
-            source: 'csv_upload',
-            approval_status: 'pending',
-            active_campaign_id: draftId,
-            linkedin_provider_id: p.provider_id || p.providerId || null
-          };
+          try {
+            const upsertResult = await pool.query(
+              `INSERT INTO workspace_prospects (
+                workspace_id, linkedin_url, linkedin_url_hash, email, first_name, last_name,
+                company, title, source, approval_status, active_campaign_id, linkedin_provider_id,
+                created_at, updated_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+              ON CONFLICT (workspace_id, linkedin_url_hash)
+              DO UPDATE SET
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                email = COALESCE(EXCLUDED.email, workspace_prospects.email),
+                updated_at = EXCLUDED.updated_at
+              RETURNING id`,
+              [
+                workspaceId,
+                linkedinUrl || null,
+                linkedinUrlHash,
+                email || null,
+                firstName,
+                lastName,
+                p.company || p.organization || null,
+                p.title || p.job_title || null,
+                'csv_upload',
+                'pending',
+                draftId,
+                p.provider_id || p.providerId || null,
+                new Date().toISOString(),
+                new Date().toISOString()
+              ]
+            );
 
-          const { data: upsertedProspect, error: upsertError } = await supabase
-            .from('workspace_prospects')
-            .upsert(workspaceProspectData, {
-              onConflict: 'workspace_id,linkedin_url_hash',
-              ignoreDuplicates: false
-            })
-            .select('id')
-            .single();
-
-          if (!upsertError && upsertedProspect) {
-            // Store by LinkedIn hash if available, otherwise by email
-            const lookupKey = linkedinUrlHash || email;
-            if (lookupKey) {
-              masterProspectIds.set(lookupKey, upsertedProspect.id);
+            if (upsertResult.rows.length > 0) {
+              const lookupKey = linkedinUrlHash || email;
+              if (lookupKey) {
+                masterProspectIds.set(lookupKey, upsertResult.rows[0].id);
+              }
             }
+          } catch (upsertError: any) {
+            console.warn(`⚠️ Upsert warning: ${upsertError.message}`);
           }
         }
 
         // STEP 2: Insert to campaign_prospects WITH master_prospect_id
-        // CRITICAL FIX (Dec 8): Include prospects with email-only (no LinkedIn URL filter)
-        const prospectsToInsert = csvData
-          .filter((p: any) => {
-            const hasLinkedIn = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
-            const hasEmail = p.email || p.contact?.email;
-            return hasLinkedIn || hasEmail; // Accept either
-          })
-          .map((p: any) => {
-            const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
-            const linkedinUrlHash = linkedinUrl ? normalizeLinkedInUrl(linkedinUrl) : null;
-            const email = p.email || p.contact?.email;
-            const lookupKey = linkedinUrlHash || email;
+        for (const p of csvData) {
+          const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
+          const email = p.email || p.contact?.email;
 
-            return {
-              campaign_id: draftId,
-              workspace_id: workspaceId,
-              master_prospect_id: lookupKey ? masterProspectIds.get(lookupKey) : null,
-              first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
-              last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
-              linkedin_url: linkedinUrl || null,
-              email: email || null,
-              company_name: p.company || p.companyName || p.company_name || p.contact?.company || null,
-              title: p.title || p.jobTitle || p.job_title || p.contact?.title || null,
-              status: 'pending',
-              created_at: new Date().toISOString()
-            };
-          });
+          if (!linkedinUrl && !email) continue;
 
-        if (prospectsToInsert.length > 0) {
-          const { error: insertError } = await supabase
-            .from('campaign_prospects')
-            .upsert(prospectsToInsert, {
-              onConflict: 'campaign_id,linkedin_url',
-              ignoreDuplicates: true
-            });
+          const linkedinUrlHash = linkedinUrl ? normalizeLinkedInUrl(linkedinUrl) : null;
+          const lookupKey = linkedinUrlHash || email;
 
-          if (insertError) {
-            console.error('Error inserting prospects:', insertError);
+          try {
+            await pool.query(
+              `INSERT INTO campaign_prospects (
+                campaign_id, workspace_id, master_prospect_id, first_name, last_name,
+                linkedin_url, email, company_name, title, status, created_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+              ON CONFLICT (campaign_id, linkedin_url) DO NOTHING`,
+              [
+                draftId,
+                workspaceId,
+                lookupKey ? masterProspectIds.get(lookupKey) : null,
+                p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
+                p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
+                linkedinUrl || null,
+                email || null,
+                p.company || p.companyName || p.company_name || p.contact?.company || null,
+                p.title || p.jobTitle || p.job_title || p.contact?.title || null,
+                'pending',
+                new Date().toISOString()
+              ]
+            );
+          } catch (insertError: any) {
+            console.warn(`⚠️ Insert warning: ${insertError.message}`);
           }
         }
       }
@@ -203,37 +205,43 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Create new draft
-      const { data: campaign, error: createError } = await supabase
-        .from('campaigns')
-        .insert({
-          workspace_id: workspaceId,
+      const insertResult = await pool.query(
+        `INSERT INTO campaigns (
+          workspace_id, name, campaign_type, status, current_step,
+          connection_message, alternative_message, follow_up_messages, draft_data,
+          timezone, country_code, working_hours_start, working_hours_end,
+          skip_weekends, skip_holidays, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        RETURNING *`,
+        [
+          workspaceId,
           name,
-          campaign_type: campaignType, // FIXED (Dec 7): Don't default - preserve actual campaign type from frontend
-          // NOTE: Do NOT set 'type' column - it has a CHECK constraint that rejects 'connector'/'messenger'
-          status: 'draft',
-          current_step: currentStep || 1,
-          connection_message: connectionMessage,
-          alternative_message: alternativeMessage,
-          follow_up_messages: followUpMessages || [],
-          draft_data: draftData,
-          // CRITICAL FIX (Dec 9): Default to Pacific Time for all IA accounts
-          timezone: 'America/Los_Angeles',
-          country_code: 'US',
-          working_hours_start: 7,
-          working_hours_end: 18,
-          skip_weekends: true,
-          skip_holidays: true,
-        })
-        .select()
-        .single();
+          campaignType,
+          'draft',
+          currentStep || 1,
+          connectionMessage,
+          alternativeMessage,
+          JSON.stringify(followUpMessages || []),
+          JSON.stringify(draftData),
+          'America/Los_Angeles',
+          'US',
+          7,
+          18,
+          true,
+          true,
+          new Date().toISOString(),
+          new Date().toISOString()
+        ]
+      );
 
-      if (createError) {
-        console.error('Error creating draft:', createError);
+      if (insertResult.rows.length === 0) {
         return NextResponse.json(
-          { error: `Failed to create draft: ${createError.message || createError.code || JSON.stringify(createError)}` },
+          { error: 'Failed to create draft' },
           { status: 500 }
         );
       }
+
+      const campaign = insertResult.rows[0];
 
       // DATABASE-FIRST: Upsert to workspace_prospects then campaign_prospects
       console.log('💾 [DRAFT] Received csvData:', csvData?.length || 0, 'prospects');
@@ -244,8 +252,6 @@ export async function POST(request: NextRequest) {
         const masterProspectIds: Map<string, string> = new Map();
 
         // STEP 1: Upsert to workspace_prospects (master table)
-        // CRITICAL FIX (Dec 8): Support prospects with OR without LinkedIn URLs
-        // Email/Messenger campaigns use email, LinkedIn campaigns use linkedin_url
         for (const p of csvData) {
           const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
           const email = p.email || p.contact?.email;
@@ -262,120 +268,115 @@ export async function POST(request: NextRequest) {
           const firstName = p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown';
           const lastName = p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '';
 
-          const workspaceProspectData = {
-            workspace_id: workspaceId,
-            linkedin_url: linkedinUrl || null,
-            linkedin_url_hash: linkedinUrlHash,
-            email: email || null,
-            first_name: firstName,
-            last_name: lastName,
-            company: p.company || p.organization || null,
-            title: p.title || p.job_title || null,
-            source: 'csv_upload',
-            approval_status: 'pending',
-            active_campaign_id: campaign.id,
-            linkedin_provider_id: p.provider_id || p.providerId || null
-          };
+          try {
+            const upsertResult = await pool.query(
+              `INSERT INTO workspace_prospects (
+                workspace_id, linkedin_url, linkedin_url_hash, email, first_name, last_name,
+                company, title, source, approval_status, active_campaign_id, linkedin_provider_id,
+                created_at, updated_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+              ON CONFLICT (workspace_id, linkedin_url_hash)
+              DO UPDATE SET
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                email = COALESCE(EXCLUDED.email, workspace_prospects.email),
+                updated_at = EXCLUDED.updated_at
+              RETURNING id`,
+              [
+                workspaceId,
+                linkedinUrl || null,
+                linkedinUrlHash,
+                email || null,
+                firstName,
+                lastName,
+                p.company || p.organization || null,
+                p.title || p.job_title || null,
+                'csv_upload',
+                'pending',
+                campaign.id,
+                p.provider_id || p.providerId || null,
+                new Date().toISOString(),
+                new Date().toISOString()
+              ]
+            );
 
-          const { data: upsertedProspect, error: upsertError } = await supabase
-            .from('workspace_prospects')
-            .upsert(workspaceProspectData, {
-              onConflict: 'workspace_id,linkedin_url_hash',
-              ignoreDuplicates: false
-            })
-            .select('id')
-            .single();
-
-          if (!upsertError && upsertedProspect) {
-            // Store by LinkedIn hash if available, otherwise by email
-            const lookupKey = linkedinUrlHash || email;
-            if (lookupKey) {
-              masterProspectIds.set(lookupKey, upsertedProspect.id);
+            if (upsertResult.rows.length > 0) {
+              const lookupKey = linkedinUrlHash || email;
+              if (lookupKey) {
+                masterProspectIds.set(lookupKey, upsertResult.rows[0].id);
+              }
             }
+          } catch (upsertError: any) {
+            console.warn(`⚠️ Upsert warning: ${upsertError.message}`);
           }
         }
 
         // STEP 2: Insert to campaign_prospects WITH master_prospect_id
-        // CRITICAL FIX (Dec 8): Include prospects with email-only (no LinkedIn URL filter)
-        const prospectsToInsert = csvData
-          .filter((p: any) => {
-            const hasLinkedIn = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
-            const hasEmail = p.email || p.contact?.email;
-            return hasLinkedIn || hasEmail; // Accept either
-          })
-          .map((p: any) => {
-            const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
-            const linkedinUrlHash = linkedinUrl ? normalizeLinkedInUrl(linkedinUrl) : null;
-            const email = p.email || p.contact?.email;
-            const lookupKey = linkedinUrlHash || email;
+        let insertedCount = 0;
+        for (const p of csvData) {
+          const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
+          const email = p.email || p.contact?.email;
 
-            return {
-              campaign_id: campaign.id,
-              workspace_id: workspaceId,
-              master_prospect_id: lookupKey ? masterProspectIds.get(lookupKey) : null,
-              first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
-              last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
-              linkedin_url: linkedinUrl || null,
-              email: email || null,
-              company_name: p.company || p.companyName || p.company_name || p.contact?.company || null,
-              title: p.title || p.jobTitle || p.job_title || p.contact?.title || null,
-              status: 'pending',
-              created_at: new Date().toISOString()
-            };
-          });
+          if (!linkedinUrl && !email) continue;
 
-        console.log(`💾 [INSERT CP] Inserting ${prospectsToInsert.length} prospects into campaign_prospects...`);
+          const linkedinUrlHash = linkedinUrl ? normalizeLinkedInUrl(linkedinUrl) : null;
+          const lookupKey = linkedinUrlHash || email;
 
-        if (prospectsToInsert.length > 0) {
-          const { data: insertedData, error: insertError } = await supabase
-            .from('campaign_prospects')
-            .insert(prospectsToInsert)
-            .select('id');
-
-          if (insertError) {
-            console.error('❌ [ERROR] Failed to insert prospects:', insertError);
-            console.error('❌ [ERROR] Prospects that failed:', JSON.stringify(prospectsToInsert, null, 2));
-
-            // CRITICAL FIX (Dec 8): Return error instead of continuing
-            return NextResponse.json({
-              success: false,
-              error: 'Failed to insert prospects into campaign',
-              details: insertError.message
-            }, { status: 500 });
-          } else {
-            console.log(`✅ [SUCCESS] Inserted ${insertedData?.length || 0} prospects successfully`);
-
-            // CRITICAL FIX (Dec 8): Verify insertion by counting prospects
-            const { count, error: countError } = await supabase
-              .from('campaign_prospects')
-              .select('id', { count: 'exact', head: true })
-              .eq('campaign_id', campaign.id);
-
-            if (countError) {
-              console.error('❌ [ERROR] Failed to verify prospect count:', countError);
-            } else {
-              console.log(`✅ [VERIFY] Campaign ${campaign.id} now has ${count} prospects in database`);
-            }
+          try {
+            const insertResult = await pool.query(
+              `INSERT INTO campaign_prospects (
+                campaign_id, workspace_id, master_prospect_id, first_name, last_name,
+                linkedin_url, email, company_name, title, status, created_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+              RETURNING id`,
+              [
+                campaign.id,
+                workspaceId,
+                lookupKey ? masterProspectIds.get(lookupKey) : null,
+                p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
+                p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
+                linkedinUrl || null,
+                email || null,
+                p.company || p.companyName || p.company_name || p.contact?.company || null,
+                p.title || p.jobTitle || p.job_title || p.contact?.title || null,
+                'pending',
+                new Date().toISOString()
+              ]
+            );
+            if (insertResult.rows.length > 0) insertedCount++;
+          } catch (insertError: any) {
+            console.warn(`⚠️ Insert warning: ${insertError.message}`);
           }
-        } else {
-          console.log('⚠️  [SKIP] No prospects to insert (all filtered out)');
         }
+
+        console.log(`✅ [SUCCESS] Inserted ${insertedCount} prospects successfully`);
+
+        // Verify insertion
+        const countResult = await pool.query(
+          `SELECT COUNT(*) as count FROM campaign_prospects WHERE campaign_id = $1`,
+          [campaign.id]
+        );
+        console.log(`✅ [VERIFY] Campaign ${campaign.id} now has ${countResult.rows[0].count} prospects in database`);
       }
 
-      // CRITICAL FIX (Dec 8): Return prospect count in response
-      const { count: finalCount } = await supabase
-        .from('campaign_prospects')
-        .select('id', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id);
+      // Return prospect count in response
+      const finalCountResult = await pool.query(
+        `SELECT COUNT(*) as count FROM campaign_prospects WHERE campaign_id = $1`,
+        [campaign.id]
+      );
 
       return NextResponse.json({
         success: true,
         draftId: campaign.id,
         message: 'Draft created successfully',
-        prospectCount: finalCount || 0
+        prospectCount: parseInt(finalCountResult.rows[0].count) || 0
       });
     }
   } catch (error: any) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Draft save error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -390,13 +391,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId, workspaceId: authWorkspaceId } = await verifyAuth(request);
 
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspaceId');
@@ -410,75 +405,72 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify workspace membership
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
+    const memberResult = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [workspaceId, userId]
+    );
 
-    if (!member) {
+    if (memberResult.rows.length === 0) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     if (draftId) {
       // Get specific draft
-      const { data: draft, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('id', draftId)
-        .eq('workspace_id', workspaceId)
-        .eq('status', 'draft')
-        .single();
+      const draftResult = await pool.query(
+        `SELECT * FROM campaigns WHERE id = $1 AND workspace_id = $2 AND status = 'draft'`,
+        [draftId, workspaceId]
+      );
 
-      if (error) {
-        console.error('Error fetching draft:', error);
+      if (draftResult.rows.length === 0) {
         return NextResponse.json({ drafts: [] });
       }
 
-      // CRITICAL FIX (Dec 8): Enrich single draft with prospects from campaign_prospects table
-      // (was only enriching when fetching ALL drafts - caused prospects to disappear on refresh)
-      const { data: prospects, count } = await supabase
-        .from('campaign_prospects')
-        .select('*', { count: 'exact' })
-        .eq('campaign_id', draft.id);
+      const draft = draftResult.rows[0];
+
+      // Enrich single draft with prospects from campaign_prospects table
+      const prospectsResult = await pool.query(
+        `SELECT * FROM campaign_prospects WHERE campaign_id = $1`,
+        [draft.id]
+      );
+
+      const countResult = await pool.query(
+        `SELECT COUNT(*) as count FROM campaign_prospects WHERE campaign_id = $1`,
+        [draft.id]
+      );
 
       const enrichedDraft = {
         ...draft,
-        prospect_count: count || draft.draft_data?.csvData?.length || 0,
-        prospects: prospects || [] // Include full prospect data for loading
+        prospect_count: parseInt(countResult.rows[0]?.count || '0') || draft.draft_data?.csvData?.length || 0,
+        prospects: prospectsResult.rows || []
       };
 
-      console.log(`✅ [GET DRAFT] Loaded draft ${draftId} with ${prospects?.length || 0} prospects`);
+      console.log(`✅ [GET DRAFT] Loaded draft ${draftId} with ${prospectsResult.rows?.length || 0} prospects`);
 
       return NextResponse.json({ draft: enrichedDraft });
     } else {
       // Get all drafts for workspace
-      const { data: drafts, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('status', 'draft')
-        .order('updated_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching drafts:', error);
-        return NextResponse.json({ drafts: [] });
-      }
+      const draftsResult = await pool.query(
+        `SELECT * FROM campaigns WHERE workspace_id = $1 AND status = 'draft' ORDER BY updated_at DESC`,
+        [workspaceId]
+      );
 
       // Enrich drafts with prospect count AND prospects from campaign_prospects table
-      // (CSV uploads put prospects there, not in draft_data.csvData)
       const enrichedDrafts = await Promise.all(
-        (drafts || []).map(async (draft) => {
-          const { data: prospects, count } = await supabase
-            .from('campaign_prospects')
-            .select('*', { count: 'exact' })
-            .eq('campaign_id', draft.id);
+        (draftsResult.rows || []).map(async (draft) => {
+          const prospectsResult = await pool.query(
+            `SELECT * FROM campaign_prospects WHERE campaign_id = $1`,
+            [draft.id]
+          );
+
+          const countResult = await pool.query(
+            `SELECT COUNT(*) as count FROM campaign_prospects WHERE campaign_id = $1`,
+            [draft.id]
+          );
 
           return {
             ...draft,
-            prospect_count: count || draft.draft_data?.csvData?.length || 0,
-            prospects: prospects || [] // Include full prospect data for loading
+            prospect_count: parseInt(countResult.rows[0]?.count || '0') || draft.draft_data?.csvData?.length || 0,
+            prospects: prospectsResult.rows || []
           };
         })
       );
@@ -486,6 +478,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ drafts: enrichedDrafts });
     }
   } catch (error: any) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Draft fetch error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -500,13 +496,7 @@ export async function GET(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId, workspaceId: authWorkspaceId } = await verifyAuth(request);
 
     const { searchParams } = new URL(request.url);
     const draftId = searchParams.get('draftId');
@@ -520,27 +510,22 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verify workspace membership
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
+    const memberResult = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [workspaceId, userId]
+    );
 
-    if (!member) {
+    if (memberResult.rows.length === 0) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Delete draft
-    const { error: deleteError } = await supabase
-      .from('campaigns')
-      .delete()
-      .eq('id', draftId)
-      .eq('workspace_id', workspaceId)
-      .eq('status', 'draft'); // Only delete drafts
+    const deleteResult = await pool.query(
+      `DELETE FROM campaigns WHERE id = $1 AND workspace_id = $2 AND status = 'draft'`,
+      [draftId, workspaceId]
+    );
 
-    if (deleteError) {
-      console.error('Error deleting draft:', deleteError);
+    if (deleteResult.rowCount === 0) {
       return NextResponse.json(
         { error: 'Failed to delete draft' },
         { status: 500 }
@@ -552,6 +537,10 @@ export async function DELETE(request: NextRequest) {
       message: 'Draft deleted successfully',
     });
   } catch (error: any) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Draft delete error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 // Super admin emails with cross-tenant access
 const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
@@ -22,34 +22,37 @@ export async function GET(
     }
 
     // 2. BUSINESS LOGIC - Only executes if tenant isolation passes
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    
-    // This query will automatically respect RLS policies
-    const { data: campaign, error } = await supabase
-      .from('campaigns')
-      .select(`
-        *,
-        prospects:campaign_prospects(
-          id,
-          status,
-          prospects(name, email, company)
-        )
-      `)
-      .eq('id', params.id)
-      .single();
 
-    if (error) {
-      console.error('Campaign fetch error:', error);
+    // Query campaign with prospects
+    const campaignResult = await pool.query(
+      `SELECT c.*, json_agg(
+         json_build_object(
+           'id', cp.id,
+           'status', cp.status,
+           'prospect', json_build_object('name', cp.first_name || ' ' || cp.last_name, 'email', cp.email, 'company', cp.company_name)
+         )
+       ) FILTER (WHERE cp.id IS NOT NULL) as prospects
+       FROM campaigns c
+       LEFT JOIN campaign_prospects cp ON c.id = cp.campaign_id
+       WHERE c.id = $1
+       GROUP BY c.id`,
+      [params.id]
+    );
+
+    if (campaignResult.rows.length === 0) {
+      console.error('Campaign fetch error: not found');
       return NextResponse.json(
         { error: 'Campaign not found or access denied' },
         { status: 404 }
       );
     }
 
+    const campaign = campaignResult.rows[0];
+
     // 3. AUDIT SUCCESSFUL ACCESS
     await logTenantAccess({
-      userId: tenantCheck.context.userId,
-      workspaceId: tenantCheck.context.workspaceId,
+      userId: tenantCheck.context!.userId,
+      workspaceId: tenantCheck.context!.workspaceId,
       action: 'campaign_view',
       resourceId: params.id,
       resourceType: 'campaign'
@@ -58,13 +61,20 @@ export async function GET(
     return NextResponse.json({
       campaign,
       tenantContext: {
-        workspaceId: tenantCheck.context.workspaceId,
-        organizationId: tenantCheck.context.organizationId
+        workspaceId: tenantCheck.context!.workspaceId,
+        organizationId: tenantCheck.context!.organizationId
       }
     });
 
   } catch (error) {
-    console.error('❌ Tenant-protected endpoint error:', error);
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const authErr = error as AuthError;
+      return NextResponse.json(
+        { error: authErr.message },
+        { status: authErr.statusCode }
+      );
+    }
+    console.error('Tenant-protected endpoint error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -87,15 +97,15 @@ export async function PUT(
 
     // 2. VALIDATE USER PERMISSIONS
     const hasEditPermission = await checkEditPermissions(
-      tenantCheck.context.userId,
-      tenantCheck.context.workspaceId,
-      tenantCheck.context.userRole
+      tenantCheck.context!.userId,
+      tenantCheck.context!.workspaceId,
+      tenantCheck.context!.userRole
     );
 
     if (!hasEditPermission) {
       await logTenantViolation('insufficient_permissions', {
-        userId: tenantCheck.context.userId,
-        workspaceId: tenantCheck.context.workspaceId,
+        userId: tenantCheck.context!.userId,
+        workspaceId: tenantCheck.context!.workspaceId,
         action: 'campaign_edit',
         resourceId: params.id
       });
@@ -108,22 +118,22 @@ export async function PUT(
 
     // 3. BUSINESS LOGIC
     const updates = await request.json();
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    
-    // RLS policies ensure this only updates campaigns in user's workspace
-    const { data, error } = await supabase
-      .from('campaigns')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-        updated_by: tenantCheck.context.userId
-      })
-      .eq('id', params.id)
-      .select()
-      .single();
 
-    if (error) {
-      console.error('Campaign update error:', error);
+    // Build SET clause dynamically
+    const updateKeys = Object.keys(updates);
+    const setClause = updateKeys.map((key, i) => `${key} = $${i + 2}`).join(', ');
+    const values = [params.id, ...Object.values(updates), new Date().toISOString(), tenantCheck.context!.userId];
+
+    const result = await pool.query(
+      `UPDATE campaigns
+       SET ${setClause}, updated_at = $${updateKeys.length + 2}, updated_by = $${updateKeys.length + 3}
+       WHERE id = $1
+       RETURNING *`,
+      values
+    );
+
+    if (result.rows.length === 0) {
+      console.error('Campaign update error: not found');
       return NextResponse.json(
         { error: 'Failed to update campaign' },
         { status: 400 }
@@ -132,18 +142,25 @@ export async function PUT(
 
     // 4. AUDIT SUCCESSFUL UPDATE
     await logTenantAccess({
-      userId: tenantCheck.context.userId,
-      workspaceId: tenantCheck.context.workspaceId,
+      userId: tenantCheck.context!.userId,
+      workspaceId: tenantCheck.context!.workspaceId,
       action: 'campaign_update',
       resourceId: params.id,
       resourceType: 'campaign',
       changes: updates
     });
 
-    return NextResponse.json({ campaign: data });
+    return NextResponse.json({ campaign: result.rows[0] });
 
   } catch (error) {
-    console.error('❌ Campaign update error:', error);
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const authErr = error as AuthError;
+      return NextResponse.json(
+        { error: authErr.message },
+        { status: authErr.statusCode }
+      );
+    }
+    console.error('Campaign update error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -178,37 +195,24 @@ async function enforceTenantIsolation(
   response?: NextResponse;
 }> {
   try {
-    // 1. Get authenticated user
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.user) {
-      return {
-        success: false,
-        response: NextResponse.json(
-          { error: 'Authentication required' },
-          { status: 401 }
-        )
-      };
-    }
-
-    const userId = session.user.id;
-    const userEmail = session.user.email?.toLowerCase() || '';
+    // 1. Get authenticated user via Firebase
+    const authContext = await verifyAuth(request);
+    const userId = authContext.userId;
+    const userEmail = authContext.userEmail.toLowerCase();
 
     // 2. Check super admin status
     const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(userEmail);
     if (isSuperAdmin && options.allowSuperAdmin !== false) {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('current_workspace_id')
-        .eq('id', userId)
-        .single();
+      const userResult = await pool.query(
+        'SELECT current_workspace_id FROM users WHERE id = $1',
+        [userId]
+      );
 
       return {
         success: true,
         context: {
           userId,
-          workspaceId: userData?.current_workspace_id || '',
+          workspaceId: userResult.rows[0]?.current_workspace_id || '',
           organizationId: '',
           userRole: 'super_admin',
           userEmail
@@ -217,23 +221,16 @@ async function enforceTenantIsolation(
     }
 
     // 3. Get user's workspace context
-    const { data: userData } = await supabase
-      .from('users')
-      .select(`
-        current_workspace_id,
-        workspace_members!inner(
-          workspace_id,
-          role,
-          workspaces!inner(
-            id,
-            organization_id
-          )
-        )
-      `)
-      .eq('id', userId)
-      .single();
+    const userResult = await pool.query(
+      `SELECT u.current_workspace_id, wm.role, w.organization_id
+       FROM users u
+       LEFT JOIN workspace_members wm ON wm.user_id = u.id AND wm.workspace_id = u.current_workspace_id
+       LEFT JOIN workspaces w ON w.id = u.current_workspace_id
+       WHERE u.id = $1`,
+      [userId]
+    );
 
-    if (!userData?.current_workspace_id) {
+    if (!userResult.rows[0]?.current_workspace_id) {
       await logTenantViolation('no_workspace_context', {
         userId,
         userEmail,
@@ -250,14 +247,15 @@ async function enforceTenantIsolation(
       };
     }
 
-    // 4. Verify resource belongs to user's workspace
-    const { data: campaign } = await supabase
-      .from('campaigns')
-      .select('workspace_id')
-      .eq('id', resourceId)
-      .single();
+    const userData = userResult.rows[0];
 
-    if (!campaign) {
+    // 4. Verify resource belongs to user's workspace
+    const campaignResult = await pool.query(
+      'SELECT workspace_id FROM campaigns WHERE id = $1',
+      [resourceId]
+    );
+
+    if (campaignResult.rows.length === 0) {
       return {
         success: false,
         response: NextResponse.json(
@@ -267,11 +265,11 @@ async function enforceTenantIsolation(
       };
     }
 
-    if (campaign.workspace_id !== userData.current_workspace_id) {
+    if (campaignResult.rows[0].workspace_id !== userData.current_workspace_id) {
       await logTenantViolation('cross_tenant_access_attempt', {
         userId,
         userWorkspaceId: userData.current_workspace_id,
-        resourceWorkspaceId: campaign.workspace_id,
+        resourceWorkspaceId: campaignResult.rows[0].workspace_id,
         resourceId,
         resourceType: 'campaign'
       });
@@ -286,23 +284,22 @@ async function enforceTenantIsolation(
     }
 
     // 5. Build tenant context
-    const currentWorkspace = userData.workspace_members?.find(
-      (wm: any) => wm.workspace_id === userData.current_workspace_id
-    );
-
     return {
       success: true,
       context: {
         userId,
         workspaceId: userData.current_workspace_id,
-        organizationId: currentWorkspace?.workspaces?.organization_id || '',
-        userRole: currentWorkspace?.role || 'member',
+        organizationId: userData.organization_id || '',
+        userRole: userData.role || 'member',
         userEmail
       }
     };
 
   } catch (error) {
-    console.error('❌ Tenant isolation check failed:', error);
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      throw error;
+    }
+    console.error('Tenant isolation check failed:', error);
     return {
       success: false,
       response: NextResponse.json(
@@ -325,36 +322,38 @@ async function checkEditPermissions(
 
 async function logTenantViolation(eventType: string, details: any) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    await supabase
-      .from('tenant_isolation_audit')
-      .insert({
-        event_type: eventType,
-        user_id: details.userId || null,
-        workspace_id: details.workspaceId || null,
-        attempted_workspace_id: details.resourceWorkspaceId || null,
-        details: details,
-        created_at: new Date().toISOString()
-      });
+    await pool.query(
+      `INSERT INTO tenant_isolation_audit (event_type, user_id, workspace_id, attempted_workspace_id, details, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        eventType,
+        details.userId || null,
+        details.workspaceId || null,
+        details.resourceWorkspaceId || null,
+        JSON.stringify(details),
+        new Date().toISOString()
+      ]
+    );
   } catch (error) {
-    console.error('❌ Failed to log tenant violation:', error);
+    console.error('Failed to log tenant violation:', error);
   }
 }
 
 async function logTenantAccess(details: any) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    await supabase
-      .from('tenant_isolation_audit')
-      .insert({
-        event_type: 'authorized_access',
-        user_id: details.userId,
-        workspace_id: details.workspaceId,
-        details: details,
-        created_at: new Date().toISOString()
-      });
+    await pool.query(
+      `INSERT INTO tenant_isolation_audit (event_type, user_id, workspace_id, details, created_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        'authorized_access',
+        details.userId,
+        details.workspaceId,
+        JSON.stringify(details),
+        new Date().toISOString()
+      ]
+    );
   } catch (error) {
     // Don't fail requests if audit logging fails
-    console.error('⚠️ Failed to log tenant access:', error);
+    console.error('Failed to log tenant access:', error);
   }
 }

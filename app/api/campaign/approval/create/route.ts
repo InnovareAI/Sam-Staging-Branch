@@ -1,72 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    
-    // Get authenticated user
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
-    if (authError || !session) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
+    // Authenticate with Firebase
+    const { userId, workspaceId } = await verifyAuth(request)
 
     const body = await request.json()
-    const { 
-      campaign_id, 
-      campaign_name, 
-      prospect_count, 
-      campaign_type, 
+    const {
+      campaign_id,
+      campaign_name,
+      prospect_count,
+      campaign_type,
       messaging_template,
-      execution_preferences 
+      execution_preferences
     } = body
 
     // Validate required fields
     if (!campaign_id || !campaign_name || !campaign_type) {
-      return NextResponse.json({ 
-        error: 'Missing required fields: campaign_id, campaign_name, campaign_type' 
+      return NextResponse.json({
+        error: 'Missing required fields: campaign_id, campaign_name, campaign_type'
       }, { status: 400 })
-    }
-
-    // Get user's workspace
-    const { data: workspaceMember } = await supabase
-      .from('workspace_members')
-      .select('workspace_id')
-      .eq('user_id', session.user.id)
-      .single()
-
-    if (!workspaceMember) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
     }
 
     // Create campaign approval session
     const sessionId = `approval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    
-    const { data: approvalSession, error } = await supabase
-      .from('campaign_approval_sessions')
-      .insert({
-        session_id: sessionId,
-        user_id: session.user.id,
-        workspace_id: workspaceMember.workspace_id,
+
+    const { rows } = await pool.query(
+      `INSERT INTO campaign_approval_sessions (
+        session_id, user_id, workspace_id, campaign_id, campaign_name,
+        campaign_type, prospect_count, messaging_template, execution_preferences,
+        session_status, approval_stage, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING *`,
+      [
+        sessionId,
+        userId,
+        workspaceId,
         campaign_id,
         campaign_name,
         campaign_type,
-        prospect_count: prospect_count || 0,
-        messaging_template: messaging_template || {},
-        execution_preferences: execution_preferences || {},
-        session_status: 'pending_approval',
-        approval_stage: 'campaign_content',
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single()
+        prospect_count || 0,
+        JSON.stringify(messaging_template || {}),
+        JSON.stringify(execution_preferences || {}),
+        'pending_approval',
+        'campaign_content',
+        new Date().toISOString()
+      ]
+    )
 
-    if (error) {
-      console.error('Failed to create approval session:', error)
-      return NextResponse.json({ 
-        error: 'Failed to create campaign approval session' 
+    const approvalSession = rows[0]
+
+    if (!approvalSession) {
+      console.error('Failed to create approval session')
+      return NextResponse.json({
+        error: 'Failed to create campaign approval session'
       }, { status: 500 })
     }
 

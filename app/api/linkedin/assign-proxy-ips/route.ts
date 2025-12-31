@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment';
 
 // Helper function to extract country from LinkedIn account location
 function detectCountryFromLinkedInAccount(account: any): string {
   // Try to get country from various Unipile fields
   const connectionParams = account.connection_params?.im || {};
-  
+
   // 1. Check for explicit country field
   if (connectionParams.country) {
     return connectionParams.country;
   }
-  
+
   // 2. Check location string and parse it
   const location = connectionParams.location || connectionParams.headline || '';
   if (location) {
@@ -28,7 +28,7 @@ function detectCountryFromLinkedInAccount(account: any): string {
       { pattern: /Netherlands|Amsterdam|Rotterdam|The Hague/i, country: 'Netherlands' },
       { pattern: /France|Paris|Lyon|Marseille/i, country: 'France' },
     ];
-    
+
     for (const { pattern, country } of countryPatterns) {
       if (pattern.test(location)) {
         console.log(`🌍 Detected country "${country}" from location: "${location}"`);
@@ -36,7 +36,7 @@ function detectCountryFromLinkedInAccount(account: any): string {
       }
     }
   }
-  
+
   // 3. Fallback: Use account name patterns (for your specific accounts)
   const accountName = account.name || '';
   const nameFallbacks = [
@@ -45,14 +45,14 @@ function detectCountryFromLinkedInAccount(account: any): string {
     { pattern: /Peter.*Noble/i, country: 'Australia' },
     { pattern: /Irish|Charissa/i, country: 'Philippines' },
   ];
-  
+
   for (const { pattern, country } of nameFallbacks) {
     if (pattern.test(accountName)) {
       console.log(`👤 Detected country "${country}" from account name: "${accountName}"`);
       return country;
     }
   }
-  
+
   // Default fallback
   console.log(`⚠️  Could not detect country for account: ${accountName}, defaulting to United States`);
   return 'United States';
@@ -77,7 +77,7 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET') {
   };
 
   const response = await fetch(url, options);
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`Unipile API error: ${response.status} - ${errorText}`);
@@ -86,21 +86,23 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET') {
   return await response.json();
 }
 
+// Account country mapping (for reference)
+const LINKEDIN_ACCOUNT_COUNTRIES: Record<string, string> = {
+  'Thorsten Linz': 'Germany',
+  'Martin Schechtner': 'Austria',
+  'Peter Noble': 'Australia',
+  'Irish Charissa': 'Philippines'
+};
+
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    
-    // Get user and workspace
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId } = await verifyAuth(req);
 
     const { force_update = false } = await req.json();
 
     // Check if BrightData is configured
     if (!process.env.BRIGHT_DATA_CUSTOMER_ID || !process.env.BRIGHT_DATA_RESIDENTIAL_PASSWORD) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'BrightData not configured',
         details: 'Missing BRIGHT_DATA_CUSTOMER_ID or BRIGHT_DATA_RESIDENTIAL_PASSWORD environment variables',
         next_steps: [
@@ -113,23 +115,22 @@ export async function POST(req: NextRequest) {
 
     // Get LinkedIn accounts from database
     console.log('🔍 Fetching LinkedIn accounts from database...');
-    const { data: dbAccounts, error: dbError } = await supabase
-      .from('user_unipile_accounts')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('platform', 'LINKEDIN')
-      .eq('connection_status', 'active');
+    const { rows: dbAccounts } = await pool.query(`
+      SELECT * FROM user_unipile_accounts
+      WHERE user_id = $1
+      AND platform = 'LINKEDIN'
+      AND connection_status = 'active'
+    `, [userId]);
 
-    if (dbError || !dbAccounts || dbAccounts.length === 0) {
-      return NextResponse.json({ 
+    if (!dbAccounts || dbAccounts.length === 0) {
+      return NextResponse.json({
         error: 'No active LinkedIn accounts found',
-        details: 'Please connect LinkedIn accounts first',
-        db_error: dbError?.message
+        details: 'Please connect LinkedIn accounts first'
       }, { status: 400 });
     }
 
     console.log(`📊 Found ${dbAccounts.length} active LinkedIn accounts in database`);
-    
+
     // Fetch full account details from Unipile for each account
     const linkedinAccounts = [];
     for (const dbAccount of dbAccounts) {
@@ -163,7 +164,7 @@ export async function POST(req: NextRequest) {
       try {
         const accountName = account.name;
         const detectedCountry = detectCountryFromLinkedInAccount(account);
-        
+
         console.log(`🔄 Processing ${accountName}: Detected country = ${detectedCountry}`);
         console.log(`📍 Account location data:`, {
           location: account.connection_params?.im?.location,
@@ -192,35 +193,45 @@ export async function POST(req: NextRequest) {
         }
 
         // Store account-specific proxy configuration
-        const { error: insertError } = await supabase
-          .from('linkedin_proxy_assignments')
-          .upsert({
-            user_id: user.id,
-            linkedin_account_id: account.id,
-            linkedin_account_name: accountName,
-            detected_country: detectedCountry,
-            proxy_country: proxyConfig.country,
-            proxy_state: proxyConfig.state,
-            proxy_city: proxyConfig.city,
-            proxy_session_id: proxyConfig.sessionId,
-            proxy_username: proxyConfig.username,
-            confidence_score: proxyConfig.confidence,
-            connectivity_status: connectivityTest?.success ? 'active' : 'untested',
-            connectivity_details: connectivityTest,
-            is_primary_account: accountName === "Thorsten Linz", // Your main account
-            account_features: account.connection_params?.im?.premiumFeatures || [],
-            last_updated: new Date().toISOString()
-          });
-
-        if (insertError) {
-          console.error(`Failed to store proxy config for ${accountName}:`, insertError);
-          results.push({
-            account: accountName,
-            status: 'error',
-            error: insertError.message
-          });
-          continue;
-        }
+        await pool.query(`
+          INSERT INTO linkedin_proxy_assignments (
+            user_id, linkedin_account_id, linkedin_account_name, detected_country,
+            proxy_country, proxy_state, proxy_city, proxy_session_id, proxy_username,
+            confidence_score, connectivity_status, connectivity_details,
+            is_primary_account, account_features, last_updated
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          ON CONFLICT (user_id, linkedin_account_id)
+          DO UPDATE SET
+            linkedin_account_name = EXCLUDED.linkedin_account_name,
+            detected_country = EXCLUDED.detected_country,
+            proxy_country = EXCLUDED.proxy_country,
+            proxy_state = EXCLUDED.proxy_state,
+            proxy_city = EXCLUDED.proxy_city,
+            proxy_session_id = EXCLUDED.proxy_session_id,
+            proxy_username = EXCLUDED.proxy_username,
+            confidence_score = EXCLUDED.confidence_score,
+            connectivity_status = EXCLUDED.connectivity_status,
+            connectivity_details = EXCLUDED.connectivity_details,
+            is_primary_account = EXCLUDED.is_primary_account,
+            account_features = EXCLUDED.account_features,
+            last_updated = EXCLUDED.last_updated
+        `, [
+          userId,
+          account.id,
+          accountName,
+          detectedCountry,
+          proxyConfig.country,
+          proxyConfig.state,
+          proxyConfig.city,
+          proxyConfig.sessionId,
+          proxyConfig.username,
+          proxyConfig.confidence,
+          connectivityTest?.success ? 'active' : 'untested',
+          JSON.stringify(connectivityTest),
+          accountName === "Thorsten Linz", // Your main account
+          JSON.stringify(account.connection_params?.im?.premiumFeatures || []),
+          new Date().toISOString()
+        ]);
 
         results.push({
           account: accountName,
@@ -252,10 +263,10 @@ export async function POST(req: NextRequest) {
       total_accounts: linkedinAccounts.length,
       successful_assignments: results.filter(r => r.status === 'success').length,
       failed_assignments: results.filter(r => r.status === 'error').length,
-      accounts_with_sales_navigator: results.filter(r => 
+      accounts_with_sales_navigator: results.filter(r =>
         r.features?.includes('sales_navigator')
       ).length,
-      accounts_with_premium: results.filter(r => 
+      accounts_with_premium: results.filter(r =>
         r.features?.includes('premium')
       ).length
     };
@@ -268,6 +279,10 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('LinkedIn proxy assignment error:', error);
     return NextResponse.json(
       { error: 'Failed to assign proxy IPs', details: error.message },
@@ -278,12 +293,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId } = await verifyAuth(req);
 
     const body = await req.json();
     const { linkedin_account_id, country, state, city } = body || {};
@@ -303,21 +313,16 @@ export async function PUT(req: NextRequest) {
     const normalizedState = state ? String(state).toLowerCase() : null;
     const normalizedCity = city ? String(city) : null;
 
-    const { data: existingAssignment, error: fetchError } = await supabase
-      .from('linkedin_proxy_assignments')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('linkedin_account_id', linkedin_account_id)
-      .maybeSingle();
+    const { rows: existingRows } = await pool.query(`
+      SELECT * FROM linkedin_proxy_assignments
+      WHERE user_id = $1 AND linkedin_account_id = $2
+    `, [userId, linkedin_account_id]);
 
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Failed to fetch assignment before update:', fetchError);
-      return NextResponse.json({ error: 'Failed to load proxy assignment' }, { status: 500 });
-    }
-
-    if (!existingAssignment) {
+    if (!existingRows || existingRows.length === 0) {
       return NextResponse.json({ error: 'Proxy assignment not found for this account' }, { status: 404 });
     }
+
+    const existingAssignment = existingRows[0];
 
     const sessionId = `manual_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
     let username = `brd-customer-${process.env.BRIGHT_DATA_CUSTOMER_ID}-zone-residential-country-${normalizedCountry}`;
@@ -353,75 +358,85 @@ export async function PUT(req: NextRequest) {
       console.warn('Connectivity test failed during manual override:', testError);
     }
 
-    const { data: updatedAssignment, error: updateError } = await supabase
-      .from('linkedin_proxy_assignments')
-      .update({
-        proxy_country: normalizedCountry,
-        proxy_state: normalizedState,
-        proxy_city: normalizedCity,
-        proxy_session_id: sessionId,
-        proxy_username: username,
-        confidence_score: 1.0,
-        connectivity_status: connectivityStatus,
-        connectivity_details: connectivityTest,
-        is_primary_account: existingAssignment.is_primary_account,
-        last_updated: new Date().toISOString()
-      })
-      .eq('user_id', user.id)
-      .eq('linkedin_account_id', linkedin_account_id)
-      .select()
-      .single();
+    const { rows: updatedRows } = await pool.query(`
+      UPDATE linkedin_proxy_assignments SET
+        proxy_country = $1,
+        proxy_state = $2,
+        proxy_city = $3,
+        proxy_session_id = $4,
+        proxy_username = $5,
+        confidence_score = $6,
+        connectivity_status = $7,
+        connectivity_details = $8,
+        last_updated = $9
+      WHERE user_id = $10 AND linkedin_account_id = $11
+      RETURNING *
+    `, [
+      normalizedCountry,
+      normalizedState,
+      normalizedCity,
+      sessionId,
+      username,
+      1.0,
+      connectivityStatus,
+      JSON.stringify(connectivityTest),
+      new Date().toISOString(),
+      userId,
+      linkedin_account_id
+    ]);
 
-    if (updateError) {
-      console.error('Failed to update LinkedIn proxy assignment:', updateError);
-      return NextResponse.json({ error: 'Failed to update LinkedIn proxy assignment' }, { status: 500 });
-    }
+    const updatedAssignment = updatedRows[0];
 
     const shouldSyncUserPreference = existingAssignment?.is_primary_account;
 
     if (shouldSyncUserPreference) {
-      const { error: prefError } = await supabase
-        .from('user_proxy_preferences')
-        .upsert({
-          user_id: user.id,
-          preferred_country: normalizedCountry,
-          preferred_state: normalizedState,
-          preferred_city: normalizedCity,
-          confidence_score: 1.0,
-          session_id: sessionId,
-          is_manual_selection: true,
-          is_linkedin_based: true,
-          last_updated: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-
-      if (prefError) {
-        console.error('Failed to align user proxy preference with manual override:', prefError);
-      }
+      await pool.query(`
+        INSERT INTO user_proxy_preferences (
+          user_id, preferred_country, preferred_state, preferred_city,
+          confidence_score, session_id, is_manual_selection, is_linkedin_based, last_updated
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (user_id) DO UPDATE SET
+          preferred_country = EXCLUDED.preferred_country,
+          preferred_state = EXCLUDED.preferred_state,
+          preferred_city = EXCLUDED.preferred_city,
+          confidence_score = EXCLUDED.confidence_score,
+          session_id = EXCLUDED.session_id,
+          is_manual_selection = EXCLUDED.is_manual_selection,
+          is_linkedin_based = EXCLUDED.is_linkedin_based,
+          last_updated = EXCLUDED.last_updated
+      `, [
+        userId,
+        normalizedCountry,
+        normalizedState,
+        normalizedCity,
+        1.0,
+        sessionId,
+        true,
+        true,
+        new Date().toISOString()
+      ]);
     } else {
-      const { data: existingPreference, error: prefFetchError } = await supabase
-        .from('user_proxy_preferences')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const { rows: existingPref } = await pool.query(`
+        SELECT id FROM user_proxy_preferences WHERE user_id = $1
+      `, [userId]);
 
-      if (!prefFetchError && !existingPreference) {
-        const { error: createPrefError } = await supabase
-          .from('user_proxy_preferences')
-          .insert({
-            user_id: user.id,
-            preferred_country: normalizedCountry,
-            preferred_state: normalizedState,
-            preferred_city: normalizedCity,
-            confidence_score: 1.0,
-            session_id: sessionId,
-            is_manual_selection: true,
-            is_linkedin_based: false,
-            last_updated: new Date().toISOString()
-          });
-
-        if (createPrefError) {
-          console.error('Failed to create user proxy preference after manual override:', createPrefError);
-        }
+      if (!existingPref || existingPref.length === 0) {
+        await pool.query(`
+          INSERT INTO user_proxy_preferences (
+            user_id, preferred_country, preferred_state, preferred_city,
+            confidence_score, session_id, is_manual_selection, is_linkedin_based, last_updated
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `, [
+          userId,
+          normalizedCountry,
+          normalizedState,
+          normalizedCity,
+          1.0,
+          sessionId,
+          true,
+          false,
+          new Date().toISOString()
+        ]);
       }
     }
 
@@ -433,6 +448,10 @@ export async function PUT(req: NextRequest) {
     });
 
   } catch (error: any) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Failed to override LinkedIn proxy assignment:', error);
     return NextResponse.json(
       { error: 'Failed to override LinkedIn proxy assignment', details: error.message },
@@ -443,40 +462,27 @@ export async function PUT(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    
-    // Get user and workspace
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId } = await verifyAuth(req);
 
     // Get current proxy assignments for user's LinkedIn accounts
-    const { data: assignments, error } = await supabase
-      .from('linkedin_proxy_assignments')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('last_updated', { ascending: false });
-
-    if (error) {
-      console.error('Failed to fetch proxy assignments:', error);
-      return NextResponse.json({ 
-        error: 'Failed to fetch proxy assignments' 
-      }, { status: 500 });
-    }
+    const { rows: assignments } = await pool.query(`
+      SELECT * FROM linkedin_proxy_assignments
+      WHERE user_id = $1
+      ORDER BY last_updated DESC
+    `, [userId]);
 
     // Get current LinkedIn accounts via Unipile for comparison
     const data = await callUnipileAPI('accounts');
     const accounts = Array.isArray(data) ? data : (data.items || data.accounts || []);
-    const linkedinAccounts = accounts.filter((account: any) => 
-      account.type === 'LINKEDIN' && 
+    const linkedinAccounts = accounts.filter((account: any) =>
+      account.type === 'LINKEDIN' &&
       account.sources?.[0]?.status === 'OK'
     );
 
     const currentAccountNames = linkedinAccounts.map((account: any) => account.name);
     const assignedAccountNames = assignments?.map(a => a.linkedin_account_name) || [];
-    
-    const unassignedAccounts = currentAccountNames.filter(name => 
+
+    const unassignedAccounts = currentAccountNames.filter((name: string) =>
       !assignedAccountNames.includes(name)
     );
 
@@ -493,6 +499,10 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error: any) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Failed to get proxy assignments:', error);
     return NextResponse.json(
       { error: 'Failed to get proxy assignments', details: error.message },

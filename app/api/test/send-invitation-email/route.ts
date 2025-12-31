@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { Client } from 'postmark';
+
+// Note: This is a test endpoint that doesn't require authentication
+// It's used for manually testing invitation email sending
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    
     const { userEmail, company } = await request.json();
-    
+
     if (!userEmail || !company) {
       return NextResponse.json(
         { error: 'userEmail and company are required' },
@@ -15,13 +15,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🧪 TEST: Sending invitation email to:', userEmail, 'from company:', company);
+    console.log('TEST: Sending invitation email to:', userEmail, 'from company:', company);
 
     // Determine which Postmark API key to use based on company
-    const postmarkApiKey = company === '3cubedai' 
-      ? process.env.POSTMARK_3CUBEDAI_API_KEY 
+    const postmarkApiKey = company === '3cubedai'
+      ? process.env.POSTMARK_3CUBEDAI_API_KEY
       : process.env.POSTMARK_INNOVAREAI_API_KEY;
-    
+
     if (!postmarkApiKey) {
       return NextResponse.json(
         { error: `Postmark API key not configured for company: ${company}` },
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const postmarkClient = new Client(postmarkApiKey);
 
     // Determine sender details based on company
-    const senderInfo = company === '3cubedai' 
+    const senderInfo = company === '3cubedai'
       ? {
           from: 'sophia@3cubed.ai',
           fromName: 'Sophia - 3CubedAI',
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     // Generate a secure invitation token (simplified for testing)
     const invitationToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    
+
     // Create invitation link (simplified)
     const invitationLink = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/accept-invitation?token=${invitationToken}`;
 
@@ -79,28 +79,28 @@ export async function POST(request: NextRequest) {
                 <h1>Welcome to SAM AI!</h1>
                 <p>You've been invited to join ${senderInfo.companyName}'s Sales Assistant Platform</p>
               </div>
-              
+
               <div class="content">
-                <h2>🎉 Your SAM AI Account is Ready!</h2>
+                <h2>Your SAM AI Account is Ready!</h2>
                 <p>Hi there!</p>
                 <p>You've been invited to join <strong>${senderInfo.companyName}</strong> on the SAM AI platform. SAM is your intelligent sales assistant that helps streamline your sales processes and boost productivity.</p>
-                
+
                 <p><strong>What you can do with SAM AI:</strong></p>
                 <ul>
-                  <li>💬 Chat with SAM for sales insights and recommendations</li>
-                  <li>📊 Access your personalized sales dashboard</li>
-                  <li>🎯 Manage leads and track your sales pipeline</li>
-                  <li>📚 Build and access your team's knowledge base</li>
-                  <li>🚀 Launch targeted sales campaigns</li>
+                  <li>Chat with SAM for sales insights and recommendations</li>
+                  <li>Access your personalized sales dashboard</li>
+                  <li>Manage leads and track your sales pipeline</li>
+                  <li>Build and access your team's knowledge base</li>
+                  <li>Launch targeted sales campaigns</li>
                 </ul>
-                
+
                 <div style="text-align: center; margin: 32px 0;">
                   <a href="${invitationLink}" class="button">Accept Invitation & Get Started</a>
                 </div>
-                
+
                 <p><small>This invitation link will expire in 7 days. If you have any questions, please contact your team administrator.</small></p>
               </div>
-              
+
               <div class="footer">
                 <p>Best regards,<br>
                 <strong>${senderInfo.fromName}</strong><br>
@@ -122,7 +122,7 @@ Accept your invitation: ${invitationLink}
 
 What you can do with SAM AI:
 - Chat with SAM for sales insights and recommendations
-- Access your personalized sales dashboard  
+- Access your personalized sales dashboard
 - Manage leads and track your sales pipeline
 - Build and access your team's knowledge base
 - Launch targeted sales campaigns
@@ -137,8 +137,8 @@ ${senderInfo.companyName}
       Tag: 'sam-ai-invitation'
     };
 
-    console.log('📧 Sending test invitation email via Postmark...');
-    console.log('📧 Email details:', {
+    console.log('Sending test invitation email via Postmark...');
+    console.log('Email details:', {
       from: emailTemplate.From,
       to: emailTemplate.To,
       subject: emailTemplate.Subject,
@@ -147,8 +147,8 @@ ${senderInfo.companyName}
     });
 
     const emailResult = await postmarkClient.sendEmail(emailTemplate);
-    
-    console.log('✅ Test invitation email sent successfully!', emailResult);
+
+    console.log('Test invitation email sent successfully!', emailResult);
 
     return NextResponse.json({
       success: true,
@@ -161,9 +161,9 @@ ${senderInfo.companyName}
     });
 
   } catch (error: any) {
-    console.error('❌ Test email send error:', error);
+    console.error('Test email send error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to send test invitation email',
         details: error.message,
         code: error.code || 'UNKNOWN_ERROR'
@@ -187,16 +187,16 @@ export async function GET() {
 <body class="bg-gray-900 min-h-screen flex items-center justify-center">
     <div class="max-w-md w-full mx-auto bg-gray-800 rounded-lg shadow-xl p-8">
         <div class="text-center mb-8">
-            <h1 class="text-2xl font-bold text-white mb-2">🧪 Test Invitation Email</h1>
+            <h1 class="text-2xl font-bold text-white mb-2">Test Invitation Email</h1>
             <p class="text-gray-400">Send invitation email to already created users</p>
         </div>
-        
+
         <form id="email-form" class="space-y-6">
             <div>
                 <label for="userEmail" class="block text-sm font-medium text-gray-300 mb-2">User Email</label>
-                <input 
-                    type="email" 
-                    id="userEmail" 
+                <input
+                    type="email"
+                    id="userEmail"
                     name="userEmail"
                     required
                     value="tl@3cubed.ai"
@@ -204,11 +204,11 @@ export async function GET() {
                     placeholder="user@company.com"
                 >
             </div>
-            
+
             <div>
                 <label for="company" class="block text-sm font-medium text-gray-300 mb-2">Company</label>
-                <select 
-                    id="company" 
+                <select
+                    id="company"
                     name="company"
                     required
                     class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -218,26 +218,26 @@ export async function GET() {
                     <option value="3cubedai" selected>3CubedAI</option>
                 </select>
             </div>
-            
-            <button 
+
+            <button
                 type="submit"
                 class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
                 Send Test Email
             </button>
         </form>
-        
+
         <div id="result" class="mt-6 hidden"></div>
     </div>
-    
+
     <script>
         document.getElementById('email-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const userEmail = document.getElementById('userEmail').value;
             const company = document.getElementById('company').value;
             const resultDiv = document.getElementById('result');
-            
+
             try {
                 const response = await fetch('/api/test/send-invitation-email', {
                     method: 'POST',
@@ -246,33 +246,33 @@ export async function GET() {
                     },
                     body: JSON.stringify({ userEmail, company })
                 });
-                
+
                 const data = await response.json();
-                
+
                 resultDiv.className = 'mt-6 p-4 rounded-lg';
-                
+
                 if (response.ok) {
                     resultDiv.className += ' bg-green-600 text-white';
                     resultDiv.innerHTML = \`
-                        <h3 class="font-bold">✅ Success!</h3>
+                        <h3 class="font-bold">Success!</h3>
                         <p>\${data.message}</p>
                         <p class="text-sm mt-2">Message ID: \${data.emailResult?.messageId}</p>
                     \`;
                 } else {
                     resultDiv.className += ' bg-red-600 text-white';
                     resultDiv.innerHTML = \`
-                        <h3 class="font-bold">❌ Error</h3>
+                        <h3 class="font-bold">Error</h3>
                         <p>\${data.error}</p>
                         \${data.details ? \`<p class="text-sm mt-2">Details: \${data.details}</p>\` : ''}
                     \`;
                 }
-                
+
                 resultDiv.classList.remove('hidden');
-                
+
             } catch (error) {
                 resultDiv.className = 'mt-6 p-4 bg-red-600 text-white rounded-lg';
                 resultDiv.innerHTML = \`
-                    <h3 class="font-bold">❌ Network Error</h3>
+                    <h3 class="font-bold">Network Error</h3>
                     <p>Failed to send request: \${error.message}</p>
                 \`;
                 resultDiv.classList.remove('hidden');
@@ -282,7 +282,7 @@ export async function GET() {
 </body>
 </html>
   `;
-  
+
   return new NextResponse(html, {
     headers: { 'Content-Type': 'text/html' },
   });

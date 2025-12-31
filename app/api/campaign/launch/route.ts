@@ -1,38 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler';
 import { requireActiveSubscription } from '@/lib/subscription-guard';
 
 // Campaign launch API - connects Campaign Hub to N8N orchestration
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase authentication
+    const { userId, workspaceId } = await verifyAuth(request);
 
-    // Check authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session) {
-      throw apiError.unauthorized();
-    }
+    // Get user's workspace details
+    const workspaceMemberResult = await pool.query(
+      `SELECT wm.workspace_id, w.id as ws_id, w.name as ws_name
+       FROM workspace_members wm
+       JOIN workspaces w ON wm.workspace_id = w.id
+       WHERE wm.user_id = $1`,
+      [userId]
+    );
 
-    // Get user's workspace
-    const { data: workspaceMember } = await supabase
-      .from('workspace_members')
-      .select('workspace_id, workspaces(id, name)')
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (!workspaceMember) {
+    if (workspaceMemberResult.rows.length === 0) {
       throw apiError.notFound('Workspace');
     }
 
-    const workspaceId = workspaceMember.workspace_id;
+    const workspaceMember = workspaceMemberResult.rows[0];
+    const targetWorkspaceId = workspaceMember.workspace_id;
 
     // CRITICAL: Check subscription status before allowing campaign launch
-    await requireActiveSubscription(supabase, workspaceId);
+    // Note: requireActiveSubscription may need to be adapted for pool queries
+    // For now, we'll do a direct query
+    const subscriptionResult = await pool.query(
+      `SELECT tier_status FROM workspace_tiers WHERE workspace_id = $1`,
+      [targetWorkspaceId]
+    );
+
+    if (subscriptionResult.rows.length === 0 || subscriptionResult.rows[0].tier_status !== 'active') {
+      throw apiError.forbidden('Active subscription required to launch campaigns');
+    }
 
     // Parse campaign configuration from request
     const campaignConfig = await request.json();
-    
+
     // Validate required fields
     const requiredFields = ['campaignName', 'campaignType', 'targetAudience'];
     for (const field of requiredFields) {
@@ -45,11 +52,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get workspace tier and integration settings
-    const { data: workspaceTier } = await supabase
-      .from('workspace_tiers')
-      .select('tier_type, tier_status')
-      .eq('workspace_id', workspaceId)
-      .single();
+    const tierResult = await pool.query(
+      `SELECT tier_type, tier_status FROM workspace_tiers WHERE workspace_id = $1`,
+      [targetWorkspaceId]
+    );
+
+    const workspaceTier = tierResult.rows[0];
 
     if (!workspaceTier || workspaceTier.tier_status !== 'active') {
       throw apiError.forbidden('Workspace tier not active');
@@ -57,19 +65,20 @@ export async function POST(request: NextRequest) {
 
     // Get integration configurations based on tier
     let integrationConfig: any = {};
-    
+
     if (workspaceTier.tier_type === 'startup') {
       // Startup tier: Unipile only
-      const { data: unipileConfig } = await supabase
-        .from('workspace_unipile_integrations')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('instance_status', 'active')
-        .single();
+      const unipileResult = await pool.query(
+        `SELECT * FROM workspace_unipile_integrations
+         WHERE workspace_id = $1 AND instance_status = 'active'`,
+        [targetWorkspaceId]
+      );
 
-      if (!unipileConfig) {
+      if (unipileResult.rows.length === 0) {
         throw apiError.validation('Unipile integration not configured');
       }
+
+      const unipileConfig = unipileResult.rows[0];
 
       integrationConfig = {
         tier: 'startup',
@@ -88,58 +97,58 @@ export async function POST(request: NextRequest) {
     } else {
       // SME/Enterprise tier: ReachInbox + Unipile
       const [unipileResult, reachinboxResult] = await Promise.all([
-        supabase
-          .from('workspace_unipile_integrations')
-          .select('*')
-          .eq('workspace_id', workspaceId)
-          .eq('instance_status', 'active')
-          .single(),
-        supabase
-          .from('workspace_reachinbox_integrations')
-          .select('*')
-          .eq('workspace_id', workspaceId)
-          .eq('integration_status', 'active')
-          .single()
+        pool.query(
+          `SELECT * FROM workspace_unipile_integrations
+           WHERE workspace_id = $1 AND instance_status = 'active'`,
+          [targetWorkspaceId]
+        ),
+        pool.query(
+          `SELECT * FROM workspace_reachinbox_integrations
+           WHERE workspace_id = $1 AND integration_status = 'active'`,
+          [targetWorkspaceId]
+        )
       ]);
 
-      if (!unipileResult.data || !reachinboxResult.data) {
+      if (unipileResult.rows.length === 0 || reachinboxResult.rows.length === 0) {
         throw apiError.validation('Integrations not fully configured');
       }
+
+      const unipileData = unipileResult.rows[0];
+      const reachinboxData = reachinboxResult.rows[0];
 
       integrationConfig = {
         tier: workspaceTier.tier_type,
         unipile: {
-          instance_url: unipileResult.data.unipile_instance_url,
-          linkedin_accounts: unipileResult.data.linkedin_accounts,
+          instance_url: unipileData.unipile_instance_url,
+          linkedin_accounts: unipileData.linkedin_accounts,
           rate_limits: {
-            linkedin_daily: unipileResult.data.linkedin_daily_limit,
-            linkedin_hourly: unipileResult.data.linkedin_hourly_limit
+            linkedin_daily: unipileData.linkedin_daily_limit,
+            linkedin_hourly: unipileData.linkedin_hourly_limit
           }
         },
         reachinbox: {
-          api_key: reachinboxResult.data.reachinbox_api_key,
+          api_key: reachinboxData.reachinbox_api_key,
           domains: [
-            reachinboxResult.data.reachinbox_domain_1,
-            reachinboxResult.data.reachinbox_domain_2
+            reachinboxData.reachinbox_domain_1,
+            reachinboxData.reachinbox_domain_2
           ].filter(Boolean),
-          email_accounts: reachinboxResult.data.email_accounts,
-          reply_inbox: reachinboxResult.data.reply_inbox_email,
+          email_accounts: reachinboxData.email_accounts,
+          reply_inbox: reachinboxData.reply_inbox_email,
           rate_limits: {
-            email_daily: reachinboxResult.data.daily_email_limit,
-            email_hourly: reachinboxResult.data.hourly_email_limit
+            email_daily: reachinboxData.daily_email_limit,
+            email_hourly: reachinboxData.hourly_email_limit
           }
         }
       };
     }
 
     // Get prospect data if targetAudience includes prospect IDs
-    let prospectData = [];
+    let prospectData: any[] = [];
     let filteredOutCount = 0;
 
     if (campaignConfig.targetAudience.prospectIds?.length > 0) {
-      const { data: prospects } = await supabase
-        .from('approved_prospects')
-        .select(`
+      const prospectsResult = await pool.query(
+        `SELECT
           id,
           company_name,
           contact_name,
@@ -155,9 +164,13 @@ export async function POST(request: NextRequest) {
           validation_status,
           validation_errors,
           has_previous_contact
-        `)
-        .eq('workspace_id', workspaceId)
-        .in('id', campaignConfig.targetAudience.prospectIds);
+         FROM approved_prospects
+         WHERE workspace_id = $1
+           AND id = ANY($2)`,
+        [targetWorkspaceId, campaignConfig.targetAudience.prospectIds]
+      );
+
+      const prospects = prospectsResult.rows;
 
       // CRITICAL: Filter out invalid prospects
       // Only include prospects that are:
@@ -166,7 +179,7 @@ export async function POST(request: NextRequest) {
       // 3. Have at least email OR LinkedIn URL
 
       if (prospects) {
-        const validProspects = prospects.filter(prospect => {
+        const validProspects = prospects.filter((prospect: any) => {
           // Check validation status
           const validationStatus = prospect.validation_status || 'valid';
           if (validationStatus === 'error' || validationStatus === 'blocked') {
@@ -195,7 +208,7 @@ export async function POST(request: NextRequest) {
         prospectData = validProspects;
 
         if (filteredOutCount > 0) {
-          console.log(`🚫 Filtered out ${filteredOutCount} invalid prospects from campaign`);
+          console.log(`Filtered out ${filteredOutCount} invalid prospects from campaign`);
         }
       }
     }
@@ -209,18 +222,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Get workspace knowledge base data for personalization
-    const { data: knowledgeBase } = await supabase
-      .from('knowledge_base_items')
-      .select('content, item_type, tags')
-      .eq('workspace_id', workspaceId)
-      .eq('status', 'approved');
+    const knowledgeBaseResult = await pool.query(
+      `SELECT content, item_type, tags
+       FROM knowledge_base_items
+       WHERE workspace_id = $1 AND status = 'approved'`,
+      [targetWorkspaceId]
+    );
+
+    const knowledgeBase = knowledgeBaseResult.rows;
 
     // Prepare N8N payload
     const n8nPayload = {
       // Workspace identification
-      workspace_id: workspaceId,
-      workspace_name: (workspaceMember.workspaces as any)?.name,
-      
+      workspace_id: targetWorkspaceId,
+      workspace_name: workspaceMember.ws_name,
+
       // Campaign configuration
       campaign: {
         name: campaignConfig.campaignName,
@@ -260,23 +276,27 @@ export async function POST(request: NextRequest) {
     };
 
     // Create campaign execution record
-    const { data: campaignExecution, error: insertError } = await supabase
-      .from('n8n_campaign_executions')
-      .insert({
-        workspace_id: workspaceId,
-        campaign_name: campaignConfig.campaignName,
-        campaign_type: campaignConfig.campaignType,
-        campaign_config: n8nPayload,
-        target_audience_size: prospectData.length,
-        execution_status: 'queued',
-        created_by: session.user.id
-      })
-      .select()
-      .single();
+    const executionResult = await pool.query(
+      `INSERT INTO n8n_campaign_executions
+        (workspace_id, campaign_name, campaign_type, campaign_config, target_audience_size, execution_status, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        targetWorkspaceId,
+        campaignConfig.campaignName,
+        campaignConfig.campaignType,
+        JSON.stringify(n8nPayload),
+        prospectData.length,
+        'queued',
+        userId
+      ]
+    );
 
-    if (insertError) {
-      throw apiError.database('campaign execution creation', insertError);
+    if (executionResult.rows.length === 0) {
+      throw apiError.database('campaign execution creation', new Error('Insert failed'));
     }
+
+    const campaignExecution = executionResult.rows[0];
 
     // Add campaign execution ID to N8N payload
     (n8nPayload as any).campaign_execution_id = campaignExecution.id;
@@ -298,13 +318,12 @@ export async function POST(request: NextRequest) {
 
     if (!n8nResponse.ok) {
       // Update campaign status to failed
-      await supabase
-        .from('n8n_campaign_executions')
-        .update({
-          execution_status: 'failed',
-          error_message: `N8N webhook failed: ${n8nResponse.statusText}`
-        })
-        .eq('id', campaignExecution.id);
+      await pool.query(
+        `UPDATE n8n_campaign_executions
+         SET execution_status = 'failed', error_message = $1
+         WHERE id = $2`,
+        [`N8N webhook failed: ${n8nResponse.statusText}`, campaignExecution.id]
+      );
 
       throw apiError.internal(`Failed to trigger N8N campaign: ${n8nResponse.statusText}`);
     }
@@ -312,26 +331,24 @@ export async function POST(request: NextRequest) {
     const n8nResult = await n8nResponse.json();
 
     // Update campaign execution with N8N details
-    await supabase
-      .from('n8n_campaign_executions')
-      .update({
-        n8n_execution_id: n8nResult.execution_id,
-        n8n_workflow_id: n8nResult.workflow_id,
-        execution_status: 'running',
-        started_at: new Date().toISOString()
-      })
-      .eq('id', campaignExecution.id);
+    await pool.query(
+      `UPDATE n8n_campaign_executions
+       SET n8n_execution_id = $1, n8n_workflow_id = $2, execution_status = 'running', started_at = $3
+       WHERE id = $4`,
+      [n8nResult.execution_id, n8nResult.workflow_id, new Date().toISOString(), campaignExecution.id]
+    );
 
     // Send campaign launch notification
     try {
       const { sendCampaignLaunchNotification } = await import('@/lib/notifications/sam-email');
 
       // Get user details
-      const { data: userData } = await supabase
-        .from('users')
-        .select('email, first_name')
-        .eq('id', session.user.id)
-        .single();
+      const userResult = await pool.query(
+        `SELECT email, first_name FROM users WHERE id = $1`,
+        [userId]
+      );
+
+      const userData = userResult.rows[0];
 
       if (userData && userData.email) {
         await sendCampaignLaunchNotification({
@@ -341,7 +358,7 @@ export async function POST(request: NextRequest) {
           campaignId: campaignExecution.id,
           prospectCount: prospectData.length
         });
-        console.log(`✅ Campaign launch notification sent to ${userData.email}`);
+        console.log(`Campaign launch notification sent to ${userData.email}`);
       }
     } catch (emailError) {
       // Don't fail the request if email fails
@@ -358,6 +375,11 @@ export async function POST(request: NextRequest) {
     }, 'Campaign launched successfully');
 
   } catch (error) {
+    // Handle AuthError from verifyAuth
+    if (error && typeof error === 'object' && 'code' in error && 'statusCode' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     return handleApiError(error, 'campaign_launch');
   }
 }

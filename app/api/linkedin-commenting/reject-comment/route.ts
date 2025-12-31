@@ -3,8 +3,7 @@
  * POST /api/linkedin-commenting/reject-comment
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -24,71 +23,57 @@ export async function POST(request: NextRequest) {
 
     console.log('❌ Rejecting comment:', comment_id);
 
-    // Verify user is authenticated
-    const authClient = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    // Authenticate user using Firebase auth
+    await verifyAuth(request);
 
-    if (authError || !user) {
-      console.error('❌ Auth error:', authError);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Use service role to bypass RLS for admin operations
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    // Update comment status to 'rejected' and return the updated comment
+    const updateResult = await pool.query(
+      `UPDATE linkedin_post_comments
+       SET status = 'rejected',
+           rejected_at = $1,
+           updated_at = $2
+       WHERE id = $3
+       RETURNING *`,
+      [new Date().toISOString(), new Date().toISOString(), comment_id]
     );
 
-    // Update comment status to 'rejected'
-    const { data: comment, error: updateError } = await supabase
-      .from('linkedin_post_comments')
-      .update({
-        status: 'rejected',
-        rejected_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', comment_id)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('❌ Error updating comment status:', updateError);
+    if (updateResult.rows.length === 0) {
       return NextResponse.json(
-        { error: 'Failed to reject comment', details: updateError.message },
-        { status: 500 }
+        { error: 'Comment not found' },
+        { status: 404 }
       );
     }
 
+    const comment = updateResult.rows[0];
+
     console.log('✅ Comment rejected successfully');
 
-    // When a comment is rejected, reset the post to 'discovered' status
-    // This allows the system to potentially generate a new comment for this post
-    // OR discover new posts to replace the rejected content
+    // When a comment is rejected, reset the post to 'skipped' status
+    // This marks it so we don't regenerate for same post
     if (comment.post_id) {
-      const { error: resetError } = await supabase
-        .from('linkedin_posts_discovered')
-        .update({
-          status: 'skipped', // Mark as skipped so we don't regenerate for same post
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', comment.post_id);
-
-      if (resetError) {
-        console.warn('⚠️ Could not update post status:', resetError.message);
-      }
+      await pool.query(
+        `UPDATE linkedin_posts_discovered
+         SET status = 'skipped',
+             updated_at = $1
+         WHERE id = $2`,
+        [new Date().toISOString(), comment.post_id]
+      );
     }
 
     // Count remaining pending comments for this workspace
-    const { count: pendingCount } = await supabase
-      .from('linkedin_post_comments')
-      .select('id', { count: 'exact', head: true })
-      .eq('workspace_id', comment.workspace_id)
-      .eq('status', 'pending_approval');
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as count FROM linkedin_post_comments
+       WHERE workspace_id = $1
+       AND status = 'pending_approval'`,
+      [comment.workspace_id]
+    );
+
+    const pendingCount = parseInt(countResult.rows[0]?.count || '0');
 
     // If we're running low on pending comments, trigger async discovery
     // This ensures the approval queue stays populated
     const LOW_THRESHOLD = 5;
-    if ((pendingCount || 0) < LOW_THRESHOLD) {
+    if (pendingCount < LOW_THRESHOLD) {
       console.log(`📬 Low pending count (${pendingCount}), triggering background discovery...`);
 
       // Fire and forget - don't wait for discovery to complete
@@ -105,10 +90,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       comment,
-      pending_remaining: pendingCount || 0
+      pending_remaining: pendingCount
     });
 
   } catch (error) {
+    // Handle auth errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
+
     console.error('❌ Unexpected error:', error);
     return NextResponse.json({
       error: 'Internal server error',

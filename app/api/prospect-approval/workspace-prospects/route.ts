@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 /**
  * GET /api/prospect-approval/workspace-prospects
  * Returns paginated prospects across ALL sessions for the authenticated user's workspace.
  * This is the unified endpoint for the ProspectHub table.
- * 
+ *
  * Query params:
  * - page: number (default 1)
  * - limit: number (default 50, max 100)
@@ -19,6 +17,8 @@ import { supabaseAdmin } from '@/app/lib/supabase';
  */
 export async function GET(request: NextRequest) {
     try {
+        const { userId, workspaceId } = await verifyAuth(request);
+
         const { searchParams } = new URL(request.url);
 
         // Pagination & filtering params
@@ -30,59 +30,16 @@ export async function GET(request: NextRequest) {
         const sortBy = searchParams.get('sort_by') || 'created_at';
         const sortOrder = searchParams.get('sort_order') || 'desc';
 
-        // Auth
-        const cookieStore = await cookies();
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    getAll() { return cookieStore.getAll(); },
-                    setAll(cookiesToSet) {
-                        cookiesToSet.forEach(({ name, value, options }) => {
-                            cookieStore.set(name, value, options);
-                        });
-                    }
-                }
-            }
+        // Get all session IDs for this workspace
+        const sessionsResult = await pool.query(
+            `SELECT id, campaign_name, campaign_tag, prospect_source, metadata, created_at
+             FROM prospect_approval_sessions
+             WHERE workspace_id = $1
+             ORDER BY created_at DESC`,
+            [workspaceId]
         );
 
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
-        }
-
-        const adminClient = supabaseAdmin();
-
-        // Get user's workspace
-        const { data: userProfile } = await adminClient
-            .from('users')
-            .select('current_workspace_id')
-            .eq('id', user.id)
-            .single();
-
-        let workspaceId = userProfile?.current_workspace_id;
-
-        if (!workspaceId) {
-            const { data: membership } = await adminClient
-                .from('workspace_members')
-                .select('workspace_id')
-                .eq('user_id', user.id)
-                .limit(1)
-                .maybeSingle();
-            workspaceId = membership?.workspace_id;
-        }
-
-        if (!workspaceId) {
-            return NextResponse.json({ success: false, error: 'No workspace found' }, { status: 404 });
-        }
-
-        // Get all session IDs for this workspace
-        const { data: sessions } = await adminClient
-            .from('prospect_approval_sessions')
-            .select('id, campaign_name, campaign_tag, prospect_source, metadata, created_at')
-            .eq('workspace_id', workspaceId)
-            .order('created_at', { ascending: false });
+        const sessions = sessionsResult.rows;
 
         if (!sessions || sessions.length === 0) {
             return NextResponse.json({
@@ -119,17 +76,16 @@ export async function GET(request: NextRequest) {
         if (newArchSessions.length > 0) {
             const batchIds = newArchSessions.map(s => (s.metadata as any).batch_id).filter(Boolean);
 
-            let query = adminClient
-                .from('workspace_prospects')
-                .select('*')
-                .eq('workspace_id', workspaceId)
-                .in('batch_id', batchIds);
+            let query = `SELECT * FROM workspace_prospects WHERE workspace_id = $1 AND batch_id = ANY($2)`;
+            const params: any[] = [workspaceId, batchIds];
 
             if (status !== 'all') {
-                query = query.eq('approval_status', status);
+                query += ` AND approval_status = $3`;
+                params.push(status);
             }
 
-            const { data: newProspects } = await query;
+            const newProspectsResult = await pool.query(query, params);
+            const newProspects = newProspectsResult.rows;
 
             if (newProspects) {
                 allProspects.push(...newProspects.map((p: any) => {
@@ -163,20 +119,20 @@ export async function GET(request: NextRequest) {
             const legacySessionIds = legacySessions.map(s => s.id);
 
             // Get decisions for all legacy sessions
-            const { data: decisions } = await adminClient
-                .from('prospect_approval_decisions')
-                .select('prospect_id, decision, session_id')
-                .in('session_id', legacySessionIds);
+            const decisionsResult = await pool.query(
+                `SELECT prospect_id, decision, session_id FROM prospect_approval_decisions WHERE session_id = ANY($1)`,
+                [legacySessionIds]
+            );
 
-            const decisionMap = new Map((decisions || []).map(d => [`${d.session_id}_${d.prospect_id}`, d.decision]));
+            const decisionMap = new Map((decisionsResult.rows || []).map(d => [`${d.session_id}_${d.prospect_id}`, d.decision]));
 
             // Get prospects from legacy table
-            let query = adminClient
-                .from('prospect_approval_data')
-                .select('*')
-                .in('session_id', legacySessionIds);
+            const legacyProspectsResult = await pool.query(
+                `SELECT * FROM prospect_approval_data WHERE session_id = ANY($1)`,
+                [legacySessionIds]
+            );
 
-            const { data: legacyProspects } = await query;
+            const legacyProspects = legacyProspectsResult.rows;
 
             if (legacyProspects) {
                 const mappedLegacy = legacyProspects.map((p: any) => {
@@ -268,6 +224,10 @@ export async function GET(request: NextRequest) {
         });
 
     } catch (error) {
+        if ((error as AuthError).code) {
+            const authError = error as AuthError;
+            return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+        }
         console.error('Workspace prospects error:', error);
         return NextResponse.json({
             success: false,

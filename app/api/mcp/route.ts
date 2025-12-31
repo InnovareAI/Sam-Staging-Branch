@@ -1,12 +1,12 @@
 /**
  * MCP API Endpoints for SAM AI Platform
- * 
+ *
  * Provides REST API interface to MCP servers for prospect intelligence
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { mcpRegistry, createMCPConfig } from '@/lib/mcp/mcp-registry'
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client'
+import { verifyAuth, AuthError } from '@/lib/auth'
 
 // Initialize MCP registry on first request
 let mcpInitialized = false
@@ -17,15 +17,15 @@ async function initializeMCP() {
   try {
     const config = createMCPConfig()
     const result = await mcpRegistry.initialize(config)
-    
+
     if (result.success) {
-      console.log('✅ MCP Registry initialized:', result.servers.join(', '))
+      console.log('MCP Registry initialized:', result.servers.join(', '))
       mcpInitialized = true
     } else {
-      console.error('❌ MCP initialization failed:', result.message)
+      console.error('MCP initialization failed:', result.message)
     }
   } catch (error) {
-    console.error('❌ MCP initialization error:', error)
+    console.error('MCP initialization error:', error)
   }
 }
 
@@ -33,10 +33,10 @@ async function initializeMCP() {
 export async function GET(request: NextRequest) {
   try {
     await initializeMCP()
-    
+
     const tools = await mcpRegistry.listAllTools()
     const status = await mcpRegistry.getServerStatus()
-    
+
     return NextResponse.json({
       success: true,
       tools: tools.tools,
@@ -59,16 +59,19 @@ export async function POST(request: NextRequest) {
   try {
     await initializeMCP()
 
-    // Get user authentication with new SSR auth pattern (fixes session mixing issue)
-    const supabase = await createSupabaseRouteClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(request);
+    } catch (error) {
+      const authError = error as AuthError;
       return NextResponse.json({
         success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
+        error: authError.message
+      }, { status: authError.statusCode });
     }
+
+    const { userId } = authContext;
 
     const body = await request.json()
     const { toolName, arguments: toolArgs, server } = body
@@ -91,9 +94,9 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await mcpRegistry.callTool(mcpRequest)
-    
+
     // Log tool usage for analytics
-    await logToolUsage(user.id, toolName, server || 'auto-detected', result.isError)
+    await logToolUsage(userId, toolName, server || 'auto-detected', result.isError)
 
     return NextResponse.json({
       success: !result.isError,
@@ -118,7 +121,7 @@ export async function POST(request: NextRequest) {
 async function logToolUsage(userId: string, toolName: string, server: string, isError?: boolean) {
   try {
     // Could log to Supabase for analytics
-    console.log(`📊 MCP Tool Usage: ${userId} used ${toolName} on ${server} - ${isError ? 'ERROR' : 'SUCCESS'}`)
+    console.log(`MCP Tool Usage: ${userId} used ${toolName} on ${server} - ${isError ? 'ERROR' : 'SUCCESS'}`)
   } catch (error) {
     // Logging failure shouldn't break the main request
     console.error('Failed to log tool usage:', error)

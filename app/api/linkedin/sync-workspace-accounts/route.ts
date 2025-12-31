@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 /**
  * Sync LinkedIn accounts from Unipile to workspace_accounts table
  * This ensures workspace_accounts is always in sync with what's actually in Unipile
- * 
+ *
  * Call this:
  * - After disconnect/reconnect
  * - When search fails with "No LinkedIn account connected"
@@ -12,34 +12,10 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Authenticate with Firebase
+    const { userId, workspaceId, userEmail } = await verifyAuth(request);
 
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
-
-    console.log(`🔄 Syncing LinkedIn accounts for user ${user.email} (${user.id})`);
-
-    // Get user's workspace
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!userProfile?.current_workspace_id) {
-      return NextResponse.json({
-        success: false,
-        error: 'No active workspace found'
-      }, { status: 400 });
-    }
-
-    const workspaceId = userProfile.current_workspace_id;
+    console.log(`🔄 Syncing LinkedIn accounts for user ${userEmail} (${userId})`);
     console.log(`🏢 User workspace: ${workspaceId}`);
 
     // Fetch ALL accounts from Unipile
@@ -73,29 +49,26 @@ export async function POST(request: NextRequest) {
     console.log(`📊 Found ${linkedInAccounts.length} LinkedIn accounts in Unipile`);
 
     // Get user's LinkedIn accounts from user_unipile_accounts
-    const { data: userLinkedInAccounts } = await supabase
-      .from('user_unipile_accounts')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('platform', 'LINKEDIN');
+    const { rows: userLinkedInAccounts } = await pool.query(
+      "SELECT * FROM user_unipile_accounts WHERE user_id = $1 AND platform = 'LINKEDIN'",
+      [userId]
+    );
 
     const userAccountIds = new Set(userLinkedInAccounts?.map(acc => acc.unipile_account_id) || []);
     console.log(`👤 User has ${userAccountIds.size} LinkedIn account(s) in user_unipile_accounts`);
 
     // Filter to accounts belonging to this user
-    const userLinkedInAccountsFromUnipile = linkedInAccounts.filter((acc: any) => 
+    const userLinkedInAccountsFromUnipile = linkedInAccounts.filter((acc: any) =>
       userAccountIds.has(acc.id)
     );
 
     console.log(`🔍 Matched ${userLinkedInAccountsFromUnipile.length} user account(s) in Unipile`);
 
     // Get existing workspace_accounts for this user
-    const { data: existingWorkspaceAccounts } = await supabase
-      .from('workspace_accounts')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .eq('account_type', 'linkedin');
+    const { rows: existingWorkspaceAccounts } = await pool.query(
+      "SELECT * FROM workspace_accounts WHERE workspace_id = $1 AND user_id = $2 AND account_type = 'linkedin'",
+      [workspaceId, userId]
+    );
 
     const existingAccountIds = new Set(existingWorkspaceAccounts?.map(acc => acc.unipile_account_id) || []);
     console.log(`💾 User has ${existingAccountIds.size} LinkedIn account(s) in workspace_accounts`);
@@ -108,8 +81,8 @@ export async function POST(request: NextRequest) {
     // Add/Update accounts that exist in Unipile
     for (const unipileAccount of userLinkedInAccountsFromUnipile) {
       const connectionParams = unipileAccount.connection_params?.im || {};
-      const accountIdentifier = connectionParams.email?.toLowerCase() || 
-                               connectionParams.username?.toLowerCase() || 
+      const accountIdentifier = connectionParams.email?.toLowerCase() ||
+                               connectionParams.username?.toLowerCase() ||
                                unipileAccount.id;
 
       const connectionStatus = unipileAccount.sources?.some((source: any) => source.status === 'OK')
@@ -118,55 +91,61 @@ export async function POST(request: NextRequest) {
 
       try {
         // Check if account with same identifier but different unipile_account_id exists (reconnection)
-        const { data: oldAccounts } = await supabase
-          .from('workspace_accounts')
-          .select('*')
-          .eq('workspace_id', workspaceId)
-          .eq('user_id', user.id)
-          .eq('account_type', 'linkedin')
-          .eq('account_identifier', accountIdentifier);
+        const { rows: oldAccounts } = await pool.query(
+          "SELECT * FROM workspace_accounts WHERE workspace_id = $1 AND user_id = $2 AND account_type = 'linkedin' AND account_identifier = $3",
+          [workspaceId, userId, accountIdentifier]
+        );
 
         // Delete old accounts with different Unipile IDs
         if (oldAccounts && oldAccounts.length > 0) {
           for (const oldAccount of oldAccounts) {
             if (oldAccount.unipile_account_id !== unipileAccount.id) {
               console.log(`🔄 Reconnection detected - removing old account: ${oldAccount.unipile_account_id}`);
-              await supabase
-                .from('workspace_accounts')
-                .delete()
-                .eq('id', oldAccount.id);
+              await pool.query('DELETE FROM workspace_accounts WHERE id = $1', [oldAccount.id]);
               deletedCount++;
             }
           }
         }
 
         // Upsert the current account
-        const { error: upsertError } = await supabase
-          .from('workspace_accounts')
-          .upsert({
-            workspace_id: workspaceId,
-            user_id: user.id,
-            account_type: 'linkedin',
-            account_identifier: accountIdentifier,
-            account_name: unipileAccount.name || connectionParams.publicIdentifier || accountIdentifier,
-            unipile_account_id: unipileAccount.id,
-            unipile_sources: unipileAccount.sources || [], // CRITICAL FIX: Store sources for campaign execution
-            connection_status: connectionStatus,
-            is_active: true,
-            connected_at: new Date().toISOString(),
-            account_metadata: {
+        const { rows: upsertResult } = await pool.query(
+          `INSERT INTO workspace_accounts (
+            workspace_id, user_id, account_type, account_identifier, account_name,
+            unipile_account_id, unipile_sources, connection_status, is_active,
+            connected_at, account_metadata
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          ON CONFLICT (workspace_id, user_id, account_type, account_identifier)
+          DO UPDATE SET
+            account_name = EXCLUDED.account_name,
+            unipile_account_id = EXCLUDED.unipile_account_id,
+            unipile_sources = EXCLUDED.unipile_sources,
+            connection_status = EXCLUDED.connection_status,
+            is_active = EXCLUDED.is_active,
+            connected_at = EXCLUDED.connected_at,
+            account_metadata = EXCLUDED.account_metadata
+          RETURNING *`,
+          [
+            workspaceId,
+            userId,
+            'linkedin',
+            accountIdentifier,
+            unipileAccount.name || connectionParams.publicIdentifier || accountIdentifier,
+            unipileAccount.id,
+            JSON.stringify(unipileAccount.sources || []),
+            connectionStatus,
+            true,
+            new Date().toISOString(),
+            JSON.stringify({
               unipile_instance: process.env.UNIPILE_DSN || null,
               provider: unipileAccount.type,
               premium_features: connectionParams.premiumFeatures || []
-            }
-          }, {
-            onConflict: 'workspace_id,user_id,account_type,account_identifier',
-            ignoreDuplicates: false
-          });
+            })
+          ]
+        );
 
-        if (upsertError) {
-          console.error(`❌ Failed to upsert account ${unipileAccount.id}:`, upsertError);
-          errors.push({ account_id: unipileAccount.id, error: upsertError.message });
+        if (!upsertResult || upsertResult.length === 0) {
+          console.error(`❌ Failed to upsert account ${unipileAccount.id}`);
+          errors.push({ account_id: unipileAccount.id, error: 'Upsert returned no rows' });
         } else {
           if (existingAccountIds.has(unipileAccount.id)) {
             updatedCount++;
@@ -178,9 +157,9 @@ export async function POST(request: NextRequest) {
         }
       } catch (error) {
         console.error(`❌ Error processing account ${unipileAccount.id}:`, error);
-        errors.push({ 
-          account_id: unipileAccount.id, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
+        errors.push({
+          account_id: unipileAccount.id,
+          error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }
@@ -190,16 +169,12 @@ export async function POST(request: NextRequest) {
     for (const existing of existingWorkspaceAccounts || []) {
       if (!unipileAccountIds.has(existing.unipile_account_id)) {
         console.log(`🗑️  Removing stale account: ${existing.account_name} (${existing.unipile_account_id})`);
-        const { error: deleteError } = await supabase
-          .from('workspace_accounts')
-          .delete()
-          .eq('id', existing.id);
-
-        if (deleteError) {
-          console.error(`❌ Failed to delete stale account:`, deleteError);
-          errors.push({ account_id: existing.unipile_account_id, error: deleteError.message });
-        } else {
+        try {
+          await pool.query('DELETE FROM workspace_accounts WHERE id = $1', [existing.id]);
           deletedCount++;
+        } catch (deleteError) {
+          console.error(`❌ Failed to delete stale account:`, deleteError);
+          errors.push({ account_id: existing.unipile_account_id, error: deleteError instanceof Error ? deleteError.message : 'Delete failed' });
         }
       }
     }
@@ -216,11 +191,15 @@ export async function POST(request: NextRequest) {
         errors: errors.length
       },
       workspace_id: workspaceId,
-      user_email: user.email,
+      user_email: userEmail,
       errors: errors.length > 0 ? errors : undefined
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('💥 Sync error:', error);
     return NextResponse.json({
       success: false,

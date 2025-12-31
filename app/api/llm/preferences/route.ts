@@ -5,36 +5,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 import { getModelById } from '@/lib/llm/approved-models';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    // Authenticate with Firebase
+    const { userId } = await verifyAuth(request);
 
     // Fetch user's preferences
-    const { data: prefs, error } = await supabase
-      .from('customer_llm_preferences')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 = no rows returned (which is fine)
-      console.error('Failed to fetch preferences:', error);
-      return NextResponse.json(
-        { success: false, error: 'Failed to fetch preferences' },
-        { status: 500 }
-      );
-    }
+    const { rows } = await pool.query(
+      'SELECT * FROM customer_llm_preferences WHERE user_id = $1',
+      [userId]
+    );
+    const prefs = rows[0];
 
     // If no preferences exist, return defaults
     if (!prefs) {
@@ -91,15 +75,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    // Authenticate with Firebase
+    const { userId } = await verifyAuth(request);
 
     const body = await request.json();
     const {
@@ -151,45 +128,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare upsert data
-    const upsertData: any = {
-      user_id: user.id,
-      updated_at: new Date().toISOString()
-    };
+    // Build dynamic upsert query
+    const fields = ['user_id', 'updated_at'];
+    const values: any[] = [userId, new Date().toISOString()];
+    let paramIndex = 3;
 
-    if (selected_model !== undefined) upsertData.selected_model = selected_model;
-    if (use_own_openrouter_key !== undefined) upsertData.use_own_openrouter_key = use_own_openrouter_key;
-    if (use_custom_endpoint !== undefined) upsertData.use_custom_endpoint = use_custom_endpoint;
-    if (temperature !== undefined) upsertData.temperature = temperature;
-    if (max_tokens !== undefined) upsertData.max_tokens = max_tokens;
-    if (eu_data_residency !== undefined) upsertData.eu_data_residency = eu_data_residency;
-    if (enabled !== undefined) upsertData.enabled = enabled;
+    if (selected_model !== undefined) { fields.push('selected_model'); values.push(selected_model); }
+    if (use_own_openrouter_key !== undefined) { fields.push('use_own_openrouter_key'); values.push(use_own_openrouter_key); }
+    if (use_custom_endpoint !== undefined) { fields.push('use_custom_endpoint'); values.push(use_custom_endpoint); }
+    if (temperature !== undefined) { fields.push('temperature'); values.push(temperature); }
+    if (max_tokens !== undefined) { fields.push('max_tokens'); values.push(max_tokens); }
+    if (eu_data_residency !== undefined) { fields.push('eu_data_residency'); values.push(eu_data_residency); }
+    if (enabled !== undefined) { fields.push('enabled'); values.push(enabled); }
+    if (openrouter_api_key) { fields.push('openrouter_api_key_encrypted'); values.push(openrouter_api_key); }
+    if (custom_endpoint_config) { fields.push('custom_endpoint_config'); values.push(JSON.stringify(custom_endpoint_config)); }
 
-    // Handle API key encryption (if provided)
-    if (openrouter_api_key) {
-      // TODO: Implement proper encryption
-      // For now, store as-is (in production, encrypt before storing)
-      upsertData.openrouter_api_key_encrypted = openrouter_api_key;
-    }
+    const placeholders = fields.map((_, i) => `$${i + 1}`).join(', ');
+    const updateSet = fields.slice(1).map((f, i) => `${f} = $${i + 2}`).join(', ');
 
-    // Handle custom endpoint config
-    if (custom_endpoint_config) {
-      // TODO: Encrypt API keys in config
-      upsertData.custom_endpoint_config = custom_endpoint_config;
-    }
+    const { rows } = await pool.query(
+      `INSERT INTO customer_llm_preferences (${fields.join(', ')})
+       VALUES (${placeholders})
+       ON CONFLICT (user_id) DO UPDATE SET ${updateSet}
+       RETURNING *`,
+      values
+    );
 
-    // Upsert preferences
-    const { data: savedPrefs, error } = await supabase
-      .from('customer_llm_preferences')
-      .upsert(upsertData, {
-        onConflict: 'user_id',
-        ignoreDuplicates: false
-      })
-      .select()
-      .single();
+    const savedPrefs = rows[0];
 
-    if (error) {
-      console.error('Failed to save preferences:', error);
+    if (!savedPrefs) {
+      console.error('Failed to save preferences');
       return NextResponse.json(
         { success: false, error: 'Failed to save preferences' },
         { status: 500 }
@@ -197,16 +165,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Track usage event
-    await supabase.from('customer_llm_usage').insert({
-      user_id: user.id,
-      event_type: 'preferences_updated',
-      model_used: selected_model || savedPrefs.selected_model,
-      metadata: {
-        use_own_key: use_own_openrouter_key,
-        use_custom_endpoint: use_custom_endpoint,
-        eu_residency: eu_data_residency
-      }
-    });
+    await pool.query(
+      `INSERT INTO customer_llm_usage (user_id, event_type, model_used, metadata)
+       VALUES ($1, $2, $3, $4)`,
+      [
+        userId,
+        'preferences_updated',
+        selected_model || savedPrefs.selected_model,
+        JSON.stringify({
+          use_own_key: use_own_openrouter_key,
+          use_custom_endpoint: use_custom_endpoint,
+          eu_residency: eu_data_residency
+        })
+      ]
+    );
 
     return NextResponse.json({
       success: true,

@@ -1,9 +1,11 @@
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    // Authenticate with Firebase
+    await verifyAuth(request);
+
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');
     const sectionId = searchParams.get('section_id');
@@ -13,33 +15,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Workspace ID is required' }, { status: 400 });
     }
 
-    // Get user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Build query
-    let query = supabase
-      .from('knowledge_base_content')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true);
+    let query = 'SELECT * FROM knowledge_base_content WHERE workspace_id = $1 AND is_active = true';
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (sectionId) {
-      query = query.eq('section_id', sectionId);
+      query += ` AND section_id = $${paramIndex++}`;
+      params.push(sectionId);
     }
 
     if (contentType) {
-      query = query.eq('content_type', contentType);
+      query += ` AND content_type = $${paramIndex++}`;
+      params.push(contentType);
     }
 
-    const { data: content, error } = await query.order('created_at', { ascending: false });
+    query += ' ORDER BY created_at DESC';
 
-    if (error) {
-      console.error('Error fetching KB content:', error);
-      return NextResponse.json({ error: 'Failed to fetch content' }, { status: 500 });
-    }
+    const { rows: content } = await pool.query(query, params);
 
     return NextResponse.json({ content });
   } catch (error) {
@@ -50,7 +43,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    // Authenticate with Firebase
+    const { userId } = await verifyAuth(request);
+
     const body = await request.json();
     const { workspace_id, section_id, content_type, title, content, metadata, tags } = body;
 
@@ -58,30 +53,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Get user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Create new content
-    const { data: newContent, error } = await supabase
-      .from('knowledge_base_content')
-      .insert({
+    const { rows } = await pool.query(
+      `INSERT INTO knowledge_base_content (
+        workspace_id, section_id, content_type, title, content, metadata, tags, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *`,
+      [
         workspace_id,
         section_id,
         content_type,
         title,
         content,
-        metadata: metadata || {},
-        tags: tags || [],
-        created_by: session.user.id
-      })
-      .select()
-      .single();
+        JSON.stringify(metadata || {}),
+        tags || [],
+        userId
+      ]
+    );
 
-    if (error) {
-      console.error('Error creating KB content:', error);
+    const newContent = rows[0];
+
+    if (!newContent) {
+      console.error('Error creating KB content');
       return NextResponse.json({ error: 'Failed to create content' }, { status: 500 });
     }
 
@@ -94,7 +87,9 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    // Authenticate with Firebase
+    await verifyAuth(request);
+
     const body = await request.json();
     const { id, title, content, metadata, tags, is_active } = body;
 
@@ -102,32 +97,28 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Content ID is required' }, { status: 400 });
     }
 
-    // Get user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Build dynamic update query
+    const updates: string[] = ['updated_at = $1'];
+    const params: any[] = [new Date().toISOString()];
+    let paramIndex = 2;
 
-    // Update content
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    };
+    if (title !== undefined) { updates.push(`title = $${paramIndex++}`); params.push(title); }
+    if (content !== undefined) { updates.push(`content = $${paramIndex++}`); params.push(content); }
+    if (metadata !== undefined) { updates.push(`metadata = $${paramIndex++}`); params.push(JSON.stringify(metadata)); }
+    if (tags !== undefined) { updates.push(`tags = $${paramIndex++}`); params.push(tags); }
+    if (is_active !== undefined) { updates.push(`is_active = $${paramIndex++}`); params.push(is_active); }
 
-    if (title !== undefined) updateData.title = title;
-    if (content !== undefined) updateData.content = content;
-    if (metadata !== undefined) updateData.metadata = metadata;
-    if (tags !== undefined) updateData.tags = tags;
-    if (is_active !== undefined) updateData.is_active = is_active;
+    params.push(id);
 
-    const { data: updatedContent, error } = await supabase
-      .from('knowledge_base_content')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+    const { rows } = await pool.query(
+      `UPDATE knowledge_base_content SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      params
+    );
 
-    if (error) {
-      console.error('Error updating KB content:', error);
+    const updatedContent = rows[0];
+
+    if (!updatedContent) {
+      console.error('Error updating KB content');
       return NextResponse.json({ error: 'Failed to update content' }, { status: 500 });
     }
 
@@ -140,7 +131,9 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    // Authenticate with Firebase
+    await verifyAuth(request);
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -148,25 +141,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Content ID is required' }, { status: 400 });
     }
 
-    // Get user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Soft delete by setting is_active to false
-    const { data: deletedContent, error } = await supabase
-      .from('knowledge_base_content')
-      .update({ 
-        is_active: false, 
-        updated_at: new Date().toISOString() 
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    const result = await pool.query(
+      'UPDATE knowledge_base_content SET is_active = false, updated_at = $1 WHERE id = $2 RETURNING *',
+      [new Date().toISOString(), id]
+    );
 
-    if (error) {
-      console.error('Error deleting KB content:', error);
+    if (result.rowCount === 0) {
+      console.error('Error deleting KB content');
       return NextResponse.json({ error: 'Failed to delete content' }, { status: 500 });
     }
 

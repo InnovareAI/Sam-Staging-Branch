@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 /**
  * Debug endpoint to check campaign prospects
@@ -7,24 +7,15 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
  */
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Firebase authentication
+    const { userId, workspaceId } = await verifyAuth(req);
 
     const { searchParams } = new URL(req.url);
     const campaignId = searchParams.get('campaign_id');
     const campaignName = searchParams.get('campaign_name');
 
-    // Get workspace_id from URL params or user metadata
-    const workspaceId = searchParams.get('workspace_id') || user.user_metadata.workspace_id;
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
-    }
+    // Allow workspace_id override from query params for flexibility
+    const targetWorkspaceId = searchParams.get('workspace_id') || workspaceId;
 
     if (!campaignId && !campaignName) {
       return NextResponse.json({
@@ -36,67 +27,70 @@ export async function GET(req: NextRequest) {
 
     // Find campaign by name or ID, filtered by workspace
     if (campaignName) {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .ilike('name', `%${campaignName}%`)
-        .limit(1)
-        .single();
+      const result = await pool.query(
+        `SELECT * FROM campaigns
+         WHERE workspace_id = $1
+           AND name ILIKE $2
+         LIMIT 1`,
+        [targetWorkspaceId, `%${campaignName}%`]
+      );
 
-      if (error) {
+      if (result.rows.length === 0) {
         return NextResponse.json({
           error: 'Campaign not found',
-          details: error.message,
-          workspace_id: workspaceId,
+          workspace_id: targetWorkspaceId,
           searched_name: campaignName
         }, { status: 404 });
       }
-      campaign = data;
+      campaign = result.rows[0];
     } else {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('id', campaignId)
-        .single();
+      const result = await pool.query(
+        `SELECT * FROM campaigns
+         WHERE workspace_id = $1
+           AND id = $2`,
+        [targetWorkspaceId, campaignId]
+      );
 
-      if (error) {
+      if (result.rows.length === 0) {
         return NextResponse.json({
           error: 'Campaign not found',
-          details: error.message,
-          workspace_id: workspaceId,
+          workspace_id: targetWorkspaceId,
           searched_id: campaignId
         }, { status: 404 });
       }
-      campaign = data;
+      campaign = result.rows[0];
     }
 
     // Get prospect count
-    const { count: prospectCount, error: countError } = await supabase
-      .from('campaign_prospects')
-      .select('*', { count: 'exact', head: true })
-      .eq('campaign_id', campaign.id);
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as count FROM campaign_prospects WHERE campaign_id = $1`,
+      [campaign.id]
+    );
+    const prospectCount = parseInt(countResult.rows[0].count);
 
     // Get actual prospects
-    const { data: prospects, error: prospectsError } = await supabase
-      .from('campaign_prospects')
-      .select('id, first_name, last_name, linkedin_url, status, created_at')
-      .eq('campaign_id', campaign.id)
-      .limit(10);
+    const prospectsResult = await pool.query(
+      `SELECT id, first_name, last_name, linkedin_url, status, created_at
+       FROM campaign_prospects
+       WHERE campaign_id = $1
+       LIMIT 10`,
+      [campaign.id]
+    );
 
     // Get LinkedIn sent count
-    const { count: linkedinSent } = await supabase
-      .from('campaign_prospects')
-      .select('*', { count: 'exact', head: true })
-      .eq('campaign_id', campaign.id)
-      .in('status', ['connection_requested', 'queued_in_n8n', 'contacted']);
+    const linkedinSentResult = await pool.query(
+      `SELECT COUNT(*) as count FROM campaign_prospects
+       WHERE campaign_id = $1
+         AND status IN ('connection_requested', 'queued_in_n8n', 'contacted')`,
+      [campaign.id]
+    );
+    const linkedinSent = parseInt(linkedinSentResult.rows[0].count);
 
     // Get message stats
-    const { data: messages } = await supabase
-      .from('campaign_messages')
-      .select('id, status')
-      .eq('campaign_id', campaign.id);
+    const messagesResult = await pool.query(
+      `SELECT id, status FROM campaign_messages WHERE campaign_id = $1`,
+      [campaign.id]
+    );
 
     return NextResponse.json({
       campaign: {
@@ -109,17 +103,18 @@ export async function GET(req: NextRequest) {
       stats: {
         total_prospects: prospectCount || 0,
         linkedin_sent: linkedinSent || 0,
-        email_messages: messages?.length || 0,
-        total_sent: (linkedinSent || 0) + (messages?.length || 0)
+        email_messages: messagesResult.rows?.length || 0,
+        total_sent: (linkedinSent || 0) + (messagesResult.rows?.length || 0)
       },
-      sample_prospects: prospects || [],
-      errors: {
-        count_error: countError?.message || null,
-        prospects_error: prospectsError?.message || null
-      }
+      sample_prospects: prospectsResult.rows || []
     });
 
   } catch (error: any) {
+    // Handle AuthError
+    if (error && typeof error === 'object' && 'code' in error && 'statusCode' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Debug endpoint error:', error);
     return NextResponse.json({
       error: 'Internal server error',

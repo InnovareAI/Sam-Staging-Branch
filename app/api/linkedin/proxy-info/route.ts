@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
@@ -8,25 +8,17 @@ import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
  */
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Authenticate with Firebase
+    const { userId, userEmail } = await verifyAuth(request);
 
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
-
-    console.log(`🔍 Fetching proxy info for user ${user.email}`);
+    console.log(`🔍 Fetching proxy info for user ${userEmail}`);
 
     // Get user's LinkedIn accounts from workspace_accounts
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
+    const { rows: userProfileRows } = await pool.query(
+      'SELECT current_workspace_id FROM users WHERE id = $1',
+      [userId]
+    );
+    const userProfile = userProfileRows[0];
 
     if (!userProfile?.current_workspace_id) {
       return NextResponse.json({
@@ -35,13 +27,15 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const { data: linkedinAccounts } = await supabase
-      .from('workspace_accounts')
-      .select('unipile_account_id, account_name, account_identifier')
-      .eq('workspace_id', userProfile.current_workspace_id)
-      .eq('user_id', user.id)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES);
+    // Build query with IN clause for valid statuses
+    const statusPlaceholders = VALID_CONNECTION_STATUSES.map((_, i) => `$${i + 4}`).join(', ');
+    const { rows: linkedinAccounts } = await pool.query(
+      `SELECT unipile_account_id, account_name, account_identifier
+       FROM workspace_accounts
+       WHERE workspace_id = $1 AND user_id = $2 AND account_type = $3
+       AND connection_status IN (${statusPlaceholders})`,
+      [userProfile.current_workspace_id, userId, 'linkedin', ...VALID_CONNECTION_STATUSES]
+    );
 
     if (!linkedinAccounts || linkedinAccounts.length === 0) {
       return NextResponse.json({

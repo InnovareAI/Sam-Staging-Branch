@@ -1,48 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 export async function DELETE(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
-    
+    // Authenticate with Firebase
+    await verifyAuth(request);
+
     // Delete all LinkedIn accounts from user_unipile_accounts
-    const { error: deleteError, count } = await supabase
-      .from('user_unipile_accounts')
-      .delete()
-      .eq('platform', 'LINKEDIN')
-      .select();
-    
-    if (deleteError) {
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to delete accounts',
-        details: deleteError.message
-      }, { status: 500 });
-    }
-    
+    const result = await pool.query(
+      "DELETE FROM user_unipile_accounts WHERE platform = 'LINKEDIN' RETURNING id"
+    );
+
     // Also delete from workspace_accounts
-    await supabase
-      .from('workspace_accounts')
-      .delete()
-      .eq('account_type', 'linkedin');
-    
+    await pool.query(
+      "DELETE FROM workspace_accounts WHERE account_type = 'linkedin'"
+    );
+
     return NextResponse.json({
       success: true,
       message: 'All LinkedIn accounts deleted from database',
-      deleted_count: count
+      deleted_count: result.rowCount
     });
-    
+
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Delete error:', error);
     return NextResponse.json({
       success: false,

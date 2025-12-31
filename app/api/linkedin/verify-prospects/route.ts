@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 /**
  * Verify prospects against existing campaign data
@@ -33,20 +33,18 @@ interface ExistingProspect {
   campaign_id: string;
   contacted_at: string | null;
   created_at: string;
-  campaigns?: { campaign_name: string };
+  campaign_name?: string;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    const { userId, workspaceId: authWorkspaceId } = await verifyAuth(req);
 
-    // Authenticate user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const body = await req.json();
+    const { prospects, workspaceId: bodyWorkspaceId } = body;
 
-    const { prospects, workspaceId } = await req.json();
+    // Use workspaceId from body if provided, otherwise use from auth
+    const workspaceId = bodyWorkspaceId || authWorkspaceId;
 
     if (!prospects || !Array.isArray(prospects)) {
       return NextResponse.json({
@@ -60,19 +58,18 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Verify workspace access
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!member) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // If body workspaceId differs from auth, verify access
+    if (bodyWorkspaceId && bodyWorkspaceId !== authWorkspaceId) {
+      const memberCheck = await pool.query(
+        'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+        [bodyWorkspaceId, userId]
+      );
+      if (memberCheck.rows.length === 0) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
-    console.log(`🔍 Verifying ${prospects.length} prospects for workspace ${workspaceId}`);
+    console.log(`Verifying ${prospects.length} prospects for workspace ${workspaceId}`);
 
     // Extract all LinkedIn URLs and emails from prospects
     const linkedinUrls: string[] = [];
@@ -95,39 +92,46 @@ export async function POST(req: NextRequest) {
     // Query existing prospects by LinkedIn URL
     let existingByLinkedIn: ExistingProspect[] = [];
     if (linkedinUrls.length > 0) {
-      // Build OR conditions for LinkedIn URL matching
-      const linkedinConditions = linkedinUrls.map(url => `linkedin_url.ilike.%${url}%`).join(',');
+      // Build OR conditions for LinkedIn URL matching (batched)
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < linkedinUrls.length; i += BATCH_SIZE) {
+        const batch = linkedinUrls.slice(i, i + BATCH_SIZE);
+        const placeholders = batch.map((_, idx) => `linkedin_url ILIKE $${idx + 2}`).join(' OR ');
+        const params = [workspaceId, ...batch.map(url => `%${url}%`)];
 
-      const { data, error } = await supabase
-        .from('campaign_prospects')
-        .select(`
-          id, linkedin_url, email, first_name, last_name, status,
-          error_message, campaign_id, contacted_at, created_at,
-          campaigns(campaign_name)
-        `)
-        .eq('workspace_id', workspaceId)
-        .or(linkedinConditions);
-
-      if (!error && data) {
-        existingByLinkedIn = data as ExistingProspect[];
+        try {
+          const result = await pool.query(
+            `SELECT cp.id, cp.linkedin_url, cp.email, cp.first_name, cp.last_name, cp.status,
+                    cp.error_message, cp.campaign_id, cp.contacted_at, cp.created_at,
+                    c.name as campaign_name
+             FROM campaign_prospects cp
+             LEFT JOIN campaigns c ON cp.campaign_id = c.id
+             WHERE cp.workspace_id = $1 AND (${placeholders})`,
+            params
+          );
+          if (result.rows) existingByLinkedIn.push(...result.rows);
+        } catch (err) {
+          console.error('Error querying by LinkedIn URL:', err);
+        }
       }
     }
 
     // Query existing prospects by email
     let existingByEmail: ExistingProspect[] = [];
     if (emails.length > 0) {
-      const { data, error } = await supabase
-        .from('campaign_prospects')
-        .select(`
-          id, linkedin_url, email, first_name, last_name, status,
-          error_message, campaign_id, contacted_at, created_at,
-          campaigns(campaign_name)
-        `)
-        .eq('workspace_id', workspaceId)
-        .in('email', emails);
-
-      if (!error && data) {
-        existingByEmail = data as ExistingProspect[];
+      try {
+        const result = await pool.query(
+          `SELECT cp.id, cp.linkedin_url, cp.email, cp.first_name, cp.last_name, cp.status,
+                  cp.error_message, cp.campaign_id, cp.contacted_at, cp.created_at,
+                  c.name as campaign_name
+           FROM campaign_prospects cp
+           LEFT JOIN campaigns c ON cp.campaign_id = c.id
+           WHERE cp.workspace_id = $1 AND cp.email = ANY($2)`,
+          [workspaceId, emails]
+        );
+        if (result.rows) existingByEmail = result.rows;
+      } catch (err) {
+        console.error('Error querying by email:', err);
       }
     }
 
@@ -202,7 +206,7 @@ export async function POST(req: NextRequest) {
           prospect,
           existingRecord: {
             status: contactedMatch.status,
-            campaignName: contactedMatch.campaigns?.campaign_name || 'Unknown Campaign',
+            campaignName: contactedMatch.campaign_name || 'Unknown Campaign',
             contactedAt: contactedMatch.contacted_at,
             name: `${contactedMatch.first_name} ${contactedMatch.last_name}`.trim()
           }
@@ -212,7 +216,7 @@ export async function POST(req: NextRequest) {
           prospect,
           existingRecord: {
             status: 'already_invited',
-            campaignName: pendingMatch.campaigns?.campaign_name || 'Unknown Campaign',
+            campaignName: pendingMatch.campaign_name || 'Unknown Campaign',
             createdAt: pendingMatch.created_at,
             name: `${pendingMatch.first_name} ${pendingMatch.last_name}`.trim()
           }
@@ -223,7 +227,7 @@ export async function POST(req: NextRequest) {
           existingRecord: {
             status: 'failed',
             errorMessage: failedMatch.error_message || 'Unknown error',
-            campaignName: failedMatch.campaigns?.campaign_name || 'Unknown Campaign',
+            campaignName: failedMatch.campaign_name || 'Unknown Campaign',
             createdAt: failedMatch.created_at,
             name: `${failedMatch.first_name} ${failedMatch.last_name}`.trim()
           }
@@ -234,7 +238,7 @@ export async function POST(req: NextRequest) {
           prospect,
           existingRecords: matches.map(m => ({
             status: m.status,
-            campaignName: m.campaigns?.campaign_name || 'Unknown Campaign',
+            campaignName: m.campaign_name || 'Unknown Campaign',
             createdAt: m.created_at
           }))
         });
@@ -244,7 +248,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log(`📊 Verification complete:
+    console.log(`Verification complete:
       - Clean: ${results.clean.length}
       - Already contacted: ${results.alreadyContacted.length}
       - Pending invitation: ${results.pendingInvitation.length}
@@ -266,6 +270,10 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Prospect verification error:', error);
     return NextResponse.json({
       success: false,

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
@@ -29,47 +27,13 @@ import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          }
-        }
-      }
-    );
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    const { userId, workspaceId } = await verifyAuth(request);
 
     const body = await request.json();
     const { search_criteria, target_count = 50, needs_emails = false, category = 'people' } = body;
 
-    // Get workspace
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
-
-    const workspaceId = userProfile?.current_workspace_id;
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 400 });
-    }
-
     // STEP 1: Detect LinkedIn Account Type
-    const accountType = await detectLinkedInAccountType(supabase, workspaceId, user.id);
+    const accountType = await detectLinkedInAccountType(workspaceId, userId);
     console.log(`🔍 LinkedIn Account Type: ${accountType.type}`);
     console.log(`📊 Unipile Available: ${accountType.hasUnipile ? 'YES' : 'NO'}`);
     console.log(`💰 Cost Strategy: ${accountType.strategy}`);
@@ -85,9 +49,9 @@ export async function POST(request: NextRequest) {
     if (accountType.type === 'sales_navigator' || accountType.type === 'recruiter') {
       console.log('✅ Using Unipile (FREE) - Sales Navigator/Recruiter can search all degrees');
 
-      searchResult = await searchViaUnipile(supabase, {
+      searchResult = await searchViaUnipile({
         workspaceId,
-        userId: user.id,
+        userId,
         accountType: accountType.type,
         search_criteria,
         target_count,
@@ -148,9 +112,9 @@ export async function POST(request: NextRequest) {
         };
       } else {
         console.log('✅ Using Unipile (FREE) - Premium can search 2nd/3rd degree');
-        searchResult = await searchViaUnipile(supabase, {
+        searchResult = await searchViaUnipile({
           workspaceId,
-          userId: user.id,
+          userId,
           accountType: accountType.type,
           search_criteria,
           target_count,
@@ -220,6 +184,10 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Search router error:', error);
     return NextResponse.json({
       success: false,
@@ -232,7 +200,6 @@ export async function POST(request: NextRequest) {
  * Detect LinkedIn Account Type from Workspace
  */
 async function detectLinkedInAccountType(
-  supabase: any,
   workspaceId: string,
   userId: string
 ): Promise<{
@@ -240,15 +207,13 @@ async function detectLinkedInAccountType(
   hasUnipile: boolean;
   strategy: string;
 }> {
-  // Get user's LinkedIn accounts from workspace
-  // CRITICAL: Use admin client to bypass RLS for workspace_accounts
-  const { data: accounts } = await supabaseAdmin()
-    .from('workspace_accounts')
-    .select('unipile_account_id, linkedin_account_type, account_features')
-    .eq('workspace_id', workspaceId)
-    .eq('user_id', userId)
-    .eq('account_type', 'linkedin')
-    .in('connection_status', VALID_CONNECTION_STATUSES);
+  // Get user's LinkedIn accounts from workspace using pool
+  const { rows: accounts } = await pool.query(`
+    SELECT unipile_account_id, linkedin_account_type, account_features
+    FROM workspace_accounts
+    WHERE workspace_id = $1 AND user_id = $2 AND account_type = 'linkedin'
+    AND connection_status = ANY($3)
+  `, [workspaceId, userId, VALID_CONNECTION_STATUSES]);
 
   if (!accounts || accounts.length === 0) {
     return {
@@ -283,7 +248,6 @@ async function detectLinkedInAccountType(
  * Search via Unipile (FREE)
  */
 async function searchViaUnipile(
-  supabase: any,
   params: {
     workspaceId: string;
     userId: string;
@@ -420,48 +384,6 @@ function parseConnectionDegree(degree: string): number {
     '1': 1, '2': 2, '3': 3
   };
   return degreeMap[degree] || 2;
-}
-
-/**
- * Build LinkedIn "My Network" URL for 1st degree connections
- */
-function buildMyNetworkUrl(criteria: any): string {
-  // 1st degree = My Connections page
-  const baseUrl = 'https://www.linkedin.com/mynetwork/invite-connect/connections/';
-
-  // Can add filters via query params if supported
-  const params = new URLSearchParams();
-  if (criteria.title) params.append('title', criteria.title);
-  if (criteria.company) params.append('company', criteria.company);
-
-  return params.toString() ? `${baseUrl}?${params}` : baseUrl;
-}
-
-/**
- * Build LinkedIn Search URL for 2nd/3rd degree connections
- */
-function buildLinkedInSearchUrl(connectionDegree: string, criteria: any): string {
-  const baseUrl = 'https://www.linkedin.com/search/results/people/';
-  const params = new URLSearchParams();
-
-  // Network filter: F=1st (shouldn't be used here), S=2nd, O=3rd
-  const networkMap: Record<string, string> = {
-    '1st': 'F',
-    '2nd': 'S',
-    '3rd': 'O'
-  };
-
-  const networkCode = networkMap[connectionDegree] || 'S';
-  params.append('network', `["${networkCode}"]`);
-  params.append('origin', 'FACETED_SEARCH');
-
-  // Add search filters
-  if (criteria.keywords) params.append('keywords', criteria.keywords);
-  if (criteria.title) params.append('title', criteria.title);
-  if (criteria.location) params.append('geoUrn', criteria.location);
-  if (criteria.company) params.append('company', criteria.company);
-
-  return `${baseUrl}?${params}`;
 }
 
 /**

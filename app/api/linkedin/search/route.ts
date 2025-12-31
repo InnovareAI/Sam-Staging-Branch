@@ -1,34 +1,32 @@
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool } from '@/lib/auth';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 import { unipileRequest } from '@/lib/unipile';
 import { checkSearchQuota, saveSearchResults } from '@/lib/linkedin';
 import { logger } from '@/lib/logging';
+
+// Unipile configuration
+const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
+const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
 
 // Delay helper for rate limiting
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * LinkedIn Search API using Unipile
- * 
+ *
  * Supports:
  * - Classic LinkedIn search (people, companies, posts, jobs)
  * - Sales Navigator search (people, companies)
  * - Recruiter search (people)
  * - Search from URL or structured parameters
- * 
+ *
  * API Docs: https://developer.unipile.com/docs/linkedin-search
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-    // Authenticate user
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    // Authenticate user with Firebase auth
+    const { userId, workspaceId: authWorkspaceId } = await verifyAuth(request);
 
     const body = await request.json();
     let {
@@ -83,21 +81,15 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate Unipile configuration
-    if (!UNIPILE_API_KEY || !UNIPILE_DSN) {
+    if (!UNIPILE_API_KEY || !process.env.UNIPILE_DSN) {
       return NextResponse.json({
         success: false,
         error: 'Unipile not configured. Please contact support.'
       }, { status: 500 });
     }
 
-    // Get user's workspace
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', session.user.id)
-      .single();
-
-    const workspaceId = userProfile?.current_workspace_id;
+    // Use workspace from auth context
+    const workspaceId = authWorkspaceId;
     if (!workspaceId) {
       return NextResponse.json({
         success: false,
@@ -109,12 +101,15 @@ export async function POST(request: NextRequest) {
     let linkedinAccountId = accountId;
     if (!linkedinAccountId) {
       // Get any workspace member's LinkedIn account (can be shared across team)
-      const { data: linkedinAccounts } = await supabase
-        .from('workspace_accounts')
-        .select('unipile_account_id, account_name, account_identifier')
-        .eq('workspace_id', workspaceId)
-        .eq('account_type', 'linkedin')
-        .in('connection_status', VALID_CONNECTION_STATUSES);
+      const statusList = VALID_CONNECTION_STATUSES.map((_, i) => `$${i + 2}`).join(', ');
+      const { rows: linkedinAccounts } = await pool.query(
+        `SELECT unipile_account_id, account_name, account_identifier
+         FROM workspace_accounts
+         WHERE workspace_id = $1
+         AND account_type = 'linkedin'
+         AND connection_status IN (${statusList})`,
+        [workspaceId, ...VALID_CONNECTION_STATUSES]
+      );
 
       console.log('🔵 LinkedIn accounts found:', linkedinAccounts?.length || 0);
 
@@ -171,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     // --- QUOTA CHECK ---
     console.log(`🔍 Checking daily search quota for account: ${linkedinAccountId}`);
-    const quota = await checkSearchQuota(supabase, linkedinAccountId);
+    const quota = await checkSearchQuota(linkedinAccountId);
     if (quota) {
       console.log(`📊 Current usage: ${quota.usage_last_24h}/${quota.daily_limit} results in 24h`);
       if (quota.is_blocked) {
@@ -326,16 +321,15 @@ export async function POST(request: NextRequest) {
     if (enrichProfiles && category === 'people' && allProspects.length > 0) {
       enrichedProspects = await (enrichProspectProfiles as any)(
         allProspects,
-        linkedinAccountId,
-        supabase
+        linkedinAccountId
       );
     }
 
     // Save search to database for quota tracking and history
     if (enrichedProspects.length > 0) {
-      await saveSearchResults(supabase, {
-        user_id: session.user.id,
-        workspace_id: workspaceId, // Add workspace_id for isolation
+      await saveSearchResults({
+        user_id: userId,
+        workspace_id: workspaceId,
         unipile_account_id: linkedinAccountId,
         search_query: keywords || url || 'Advanced search',
         search_params: searchBody,
@@ -499,12 +493,9 @@ function calculateProfileCompleteness(item: any): number {
 // Enrich prospect profiles with full LinkedIn data
 async function enrichProspectProfiles(
   prospects: any[],
-  accountId: string,
-  supabase: any
+  accountId: string
 ): Promise<any[]> {
   // This would make additional API calls to get full profile data
   // For now, return as-is (can be implemented later)
   return prospects;
 }
-
-

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { mcpRegistry } from '@/lib/mcp/mcp-registry';
 
 /**
@@ -13,49 +13,45 @@ import { mcpRegistry } from '@/lib/mcp/mcp-registry';
  */
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase authentication
+    const { userId, workspaceId } = await verifyAuth(req);
 
-    // Authenticate user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { campaignId, workspaceId: requestWorkspaceId } = await req.json();
 
-    const { campaignId, workspaceId } = await req.json();
+    // Use the workspace from auth, but allow override from request for flexibility
+    const targetWorkspaceId = requestWorkspaceId || workspaceId;
 
-    if (!campaignId || !workspaceId) {
+    if (!campaignId) {
       return NextResponse.json({
-        error: 'campaignId and workspaceId are required'
+        error: 'campaignId is required'
       }, { status: 400 });
     }
 
-    // Verify workspace access
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
+    // Verify workspace access (already verified by verifyAuth, but double-check if different workspace)
+    if (targetWorkspaceId !== workspaceId) {
+      const memberResult = await pool.query(
+        `SELECT role FROM workspace_members
+         WHERE workspace_id = $1 AND user_id = $2`,
+        [targetWorkspaceId, userId]
+      );
 
-    if (!member) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      if (memberResult.rows.length === 0) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
-    console.log('🔄 Starting LinkedIn ID sync for campaign:', campaignId);
+    console.log('Starting LinkedIn ID sync for campaign:', campaignId);
 
     // Step 1: Get campaign prospects without LinkedIn IDs
-    const { data: prospects, error: prospectsError } = await supabase
-      .from('campaign_prospects')
-      .select('id, first_name, last_name, linkedin_url, linkedin_user_id')
-      .eq('campaign_id', campaignId)
-      .is('linkedin_user_id', null); // Only get prospects missing LinkedIn IDs
+    const prospectsResult = await pool.query(
+      `SELECT id, first_name, last_name, linkedin_url, linkedin_user_id
+       FROM campaign_prospects
+       WHERE campaign_id = $1
+         AND linkedin_user_id IS NULL`,
+      [campaignId]
+    );
 
-    if (prospectsError) {
-      console.error('Error fetching prospects:', prospectsError);
-      return NextResponse.json({
-        error: 'Failed to fetch prospects'
-      }, { status: 500 });
-    }
+    const prospects = prospectsResult.rows;
 
     if (!prospects || prospects.length === 0) {
       return NextResponse.json({
@@ -65,7 +61,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    console.log(`📋 Found ${prospects.length} prospects missing LinkedIn IDs`);
+    console.log(`Found ${prospects.length} prospects missing LinkedIn IDs`);
 
     // Step 2: Get Unipile LinkedIn account
     let linkedinAccountId: string | null = null;
@@ -88,7 +84,7 @@ export async function POST(req: NextRequest) {
       }
 
       linkedinAccountId = linkedinAccounts[0].id;
-      console.log('✅ Found LinkedIn account:', linkedinAccountId);
+      console.log('Found LinkedIn account:', linkedinAccountId);
 
     } catch (error) {
       console.error('Error getting Unipile accounts:', error);
@@ -115,7 +111,7 @@ export async function POST(req: NextRequest) {
       const messagesData = JSON.parse(messagesResponse.content[0]?.text || '{}');
       messages = messagesData.messages || messagesData.items || [];
 
-      console.log(`📬 Retrieved ${messages.length} recent LinkedIn messages`);
+      console.log(`Retrieved ${messages.length} recent LinkedIn messages`);
 
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -181,7 +177,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log(`🗺️ Built ID map with ${linkedinIdMap.size} profile URLs and ${nameMap.size} names`);
+    console.log(`Built ID map with ${linkedinIdMap.size} profile URLs and ${nameMap.size} names`);
 
     // Step 5: Match prospects to LinkedIn IDs
     const resolvedProspects = [];
@@ -200,7 +196,7 @@ export async function POST(req: NextRequest) {
         linkedinUserId = linkedinIdMap.get(normalizedUrl) || null;
 
         if (linkedinUserId) {
-          console.log(`✅ Matched by URL: ${prospect.first_name} ${prospect.last_name} -> ${linkedinUserId}`);
+          console.log(`Matched by URL: ${prospect.first_name} ${prospect.last_name} -> ${linkedinUserId}`);
         }
       }
 
@@ -210,7 +206,7 @@ export async function POST(req: NextRequest) {
         linkedinUserId = nameMap.get(fullName) || null;
 
         if (linkedinUserId) {
-          console.log(`⚠️ Matched by NAME (less accurate): ${prospect.first_name} ${prospect.last_name} -> ${linkedinUserId}`);
+          console.log(`Matched by NAME (less accurate): ${prospect.first_name} ${prospect.last_name} -> ${linkedinUserId}`);
         }
       }
 
@@ -224,22 +220,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log(`✅ Resolved ${resolvedProspects.length} LinkedIn IDs`);
-    console.log(`❌ Could not resolve ${unresolvedProspects.length} LinkedIn IDs`);
+    console.log(`Resolved ${resolvedProspects.length} LinkedIn IDs`);
+    console.log(`Could not resolve ${unresolvedProspects.length} LinkedIn IDs`);
 
     // Step 6: Update prospects with LinkedIn IDs
-    const updatePromises = resolvedProspects.map(async (resolved) => {
-      return supabase
-        .from('campaign_prospects')
-        .update({ linkedin_user_id: resolved.linkedin_user_id })
-        .eq('id', resolved.id);
-    });
-
-    const updateResults = await Promise.all(updatePromises);
-    const failedUpdates = updateResults.filter(r => r.error);
-
-    if (failedUpdates.length > 0) {
-      console.error('Some updates failed:', failedUpdates);
+    for (const resolved of resolvedProspects) {
+      await pool.query(
+        `UPDATE campaign_prospects
+         SET linkedin_user_id = $1
+         WHERE id = $2`,
+        [resolved.linkedin_user_id, resolved.id]
+      );
     }
 
     // Step 7: Return results
@@ -263,6 +254,11 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
+    // Handle AuthError
+    if (error && typeof error === 'object' && 'code' in error && 'statusCode' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('LinkedIn ID sync error:', error);
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Unknown error',

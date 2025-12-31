@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 import { normalizeFullName } from '@/lib/enrich-prospect-name'
 
 // Prevent 504 timeout on large CSV uploads
@@ -9,20 +7,8 @@ export const maxDuration = 60 // 60 seconds
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-
-    // Create service role client for database operations that bypass RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    
-    // Get authenticated user
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
-    if (authError || !session) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
+    // Firebase auth + workspace context
+    const { userId, workspaceId } = await verifyAuth(request)
 
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -35,54 +21,34 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'upload':
-        return await processCSVUpload(supabase, session.user.id, file, datasetName)
-      
+        return await processCSVUpload(userId, workspaceId, file, datasetName)
+
       case 'validate':
         return await validateCSV(file)
-      
+
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.statusCode === 401 || error?.statusCode === 403) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('CSV upload error:', error)
-    return NextResponse.json({ 
-      error: 'Failed to process CSV upload' 
+    return NextResponse.json({
+      error: 'Failed to process CSV upload'
     }, { status: 500 })
   }
 }
 
-async function processCSVUpload(supabase: any, userId: string, file: File, datasetName: string) {
+async function processCSVUpload(userId: string, workspaceId: string, file: File, datasetName: string) {
   try {
-    // Create service role client for database operations that bypass RLS
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    // Get user's workspace via workspace_members
-    const { data: memberships, error: membershipError } = await supabaseAdmin
-      .from('workspace_members')
-      .select('workspace_id')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .limit(1);
-
-    if (membershipError || !memberships || memberships.length === 0) {
-      console.error('Workspace membership lookup failed:', membershipError);
-      return NextResponse.json({
-        error: 'Workspace not found',
-        details: 'User is not a member of any workspace. Please create or join a workspace first.'
-      }, { status: 404 });
-    }
-
-    const workspaceId = memberships[0].workspace_id;
-    console.log('📤 CSV Upload - Processing for workspace:', workspaceId);
+    console.log('📤 CSV Upload - Processing for workspace:', workspaceId)
 
     // Parse CSV
     const csvText = await file.text()
-    console.log('📄 CSV Upload - Raw CSV length:', csvText.length, 'chars');
-    console.log('📄 CSV Upload - First 500 chars:', csvText.substring(0, 500));
+    console.log('📄 CSV Upload - Raw CSV length:', csvText.length, 'chars')
+    console.log('📄 CSV Upload - First 500 chars:', csvText.substring(0, 500))
 
     const csvData = parseCSV(csvText)
 
@@ -92,7 +58,7 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
       fieldMapping: csvData.field_mapping,
       detectedFields: csvData.detected_fields,
       error: csvData.error
-    });
+    })
 
     if (!csvData.success) {
       return NextResponse.json({
@@ -102,23 +68,23 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
     }
 
     const prospects = csvData.data
-    console.log('📊 CSV Upload - Parsed prospects:', prospects.length);
+    console.log('📊 CSV Upload - Parsed prospects:', prospects.length)
     if (prospects.length > 0) {
-      console.log('📊 CSV Upload - First prospect:', JSON.stringify(prospects[0]));
+      console.log('📊 CSV Upload - First prospect:', JSON.stringify(prospects[0]))
     }
 
-    // Check quota (skip for now if function doesn't exist)
-    let quotaCheck = { has_quota: true };
+    // Check quota (skip if function doesn't exist)
+    let quotaCheck = { has_quota: true }
     try {
-      const { data } = await supabase.rpc('check_approval_quota', {
-        p_user_id: userId,
-        p_workspace_id: workspaceId,
-        p_quota_type: 'campaign_data',
-        p_requested_amount: prospects.length
-      });
-      if (data) quotaCheck = data;
+      const quotaResult = await pool.query(
+        `SELECT check_approval_quota($1, $2, $3, $4) as quota_result`,
+        [userId, workspaceId, 'campaign_data', prospects.length]
+      )
+      if (quotaResult.rows[0]?.quota_result) {
+        quotaCheck = quotaResult.rows[0].quota_result
+      }
     } catch (quotaError) {
-      console.warn('Quota check skipped:', quotaError);
+      console.warn('Quota check skipped:', quotaError)
     }
 
     if (!quotaCheck?.has_quota) {
@@ -140,11 +106,11 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
       sampleProspect: prospects[0],
       sampleValid: validatedData.valid[0],
       issues: validatedData.issues.slice(0, 3)
-    });
+    })
 
     // Generate batch_id for grouping this import
-    const batchId = `csv_${Date.now()}_${userId.slice(0, 8)}`;
-    console.log('📦 CSV Upload - Batch ID:', batchId);
+    const batchId = `csv_${Date.now()}_${userId.slice(0, 8)}`
+    console.log('📦 CSV Upload - Batch ID:', batchId)
 
     // =========================================================================
     // CRITICAL FIX: Insert into workspace_prospects (master table)
@@ -153,24 +119,24 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
 
     // Prepare prospects for workspace_prospects table
     const workspaceProspectsData = validatedData.valid.map((p: any) => {
-      const nameParts = p.name?.split(' ') || ['Unknown'];
-      const firstName = nameParts[0] || 'Unknown';
-      const lastName = nameParts.slice(1).join(' ') || '';
-      const linkedinUrl = p.linkedinUrl || null;
+      const nameParts = p.name?.split(' ') || ['Unknown']
+      const firstName = nameParts[0] || 'Unknown'
+      const lastName = nameParts.slice(1).join(' ') || ''
+      const linkedinUrl = p.linkedinUrl || null
 
       // Normalize LinkedIn URL to hash for deduplication
-      let linkedinUrlHash = null;
+      let linkedinUrlHash = null
       if (linkedinUrl) {
         linkedinUrlHash = linkedinUrl
           .replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//i, '')
           .split('/')[0]
           .split('?')[0]
           .toLowerCase()
-          .trim();
+          .trim()
       }
 
-      const email = p.email || null;
-      const emailHash = email ? email.toLowerCase().trim() : null;
+      const email = p.email || null
+      const emailHash = email ? email.toLowerCase().trim() : null
 
       return {
         workspace_id: workspaceId,
@@ -191,184 +157,198 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
           original_name: p.name,
           confidence: p.confidence || 0.7
         }
-      };
-    });
+      }
+    })
 
     // Insert prospects - use INSERT with conflict handling
-    let insertedCount = 0;
-    let duplicateCount = 0;
-    const insertErrors: string[] = [];
-    const BATCH_SIZE = 50;
+    let insertedCount = 0
+    let duplicateCount = 0
+    const insertErrors: string[] = []
 
-    console.log('💾 CSV Upload - Inserting into workspace_prospects:', workspaceProspectsData.length, 'records');
+    console.log('💾 CSV Upload - Inserting into workspace_prospects:', workspaceProspectsData.length, 'records')
     if (workspaceProspectsData.length > 0) {
-      console.log('💾 CSV Upload - First workspace prospect:', JSON.stringify(workspaceProspectsData[0]));
+      console.log('💾 CSV Upload - First workspace prospect:', JSON.stringify(workspaceProspectsData[0]))
     }
-    const withHash = workspaceProspectsData.filter(p => p.linkedin_url_hash);
-    const withoutHash = workspaceProspectsData.filter(p => !p.linkedin_url_hash);
-    console.log(`💾 CSV Upload - With linkedin_url_hash: ${withHash.length}, Without: ${withoutHash.length}`);
+    const withHash = workspaceProspectsData.filter((p: any) => p.linkedin_url_hash)
+    const withoutHash = workspaceProspectsData.filter((p: any) => !p.linkedin_url_hash)
+    console.log(`💾 CSV Upload - With linkedin_url_hash: ${withHash.length}, Without: ${withoutHash.length}`)
 
     // Insert one by one to handle duplicates gracefully
     for (const prospect of workspaceProspectsData) {
       try {
         // Skip if no linkedin_url_hash (can't dedupe without it)
         if (!prospect.linkedin_url_hash) {
-          console.warn('⚠️ Skipping prospect without linkedin_url_hash:', prospect.first_name);
-          continue;
+          console.warn('⚠️ Skipping prospect without linkedin_url_hash:', prospect.first_name)
+          continue
         }
 
         // Check if exists first
-        const { data: existing } = await supabaseAdmin
-          .from('workspace_prospects')
-          .select('id')
-          .eq('workspace_id', prospect.workspace_id)
-          .eq('linkedin_url_hash', prospect.linkedin_url_hash)
-          .maybeSingle();
+        const existingResult = await pool.query(
+          `SELECT id FROM workspace_prospects WHERE workspace_id = $1 AND linkedin_url_hash = $2`,
+          [prospect.workspace_id, prospect.linkedin_url_hash]
+        )
 
-        if (existing) {
+        if (existingResult.rows.length > 0) {
           // Update existing
-          const { error: updateError } = await supabaseAdmin
-            .from('workspace_prospects')
-            .update({
-              first_name: prospect.first_name,
-              last_name: prospect.last_name,
-              company: prospect.company,
-              title: prospect.title,
-              batch_id: prospect.batch_id,
-              approval_status: 'pending',
-              enrichment_data: prospect.enrichment_data
-            })
-            .eq('id', existing.id);
-
-          if (updateError) {
-            console.error('Update error:', updateError.message);
-            insertErrors.push(updateError.message);
-          } else {
-            duplicateCount++;
-          }
+          const updateResult = await pool.query(
+            `UPDATE workspace_prospects SET
+              first_name = $1,
+              last_name = $2,
+              company = $3,
+              title = $4,
+              batch_id = $5,
+              approval_status = $6,
+              enrichment_data = $7,
+              updated_at = NOW()
+            WHERE id = $8`,
+            [
+              prospect.first_name,
+              prospect.last_name,
+              prospect.company,
+              prospect.title,
+              prospect.batch_id,
+              'pending',
+              JSON.stringify(prospect.enrichment_data),
+              existingResult.rows[0].id
+            ]
+          )
+          duplicateCount++
         } else {
           // Insert new
-          const { data: inserted, error: insertError } = await supabaseAdmin
-            .from('workspace_prospects')
-            .insert(prospect)
-            .select('id')
-            .single();
-
-          if (insertError) {
-            console.error('Insert error:', insertError.message);
-            insertErrors.push(insertError.message);
-          } else {
-            insertedCount++;
-          }
+          const insertResult = await pool.query(
+            `INSERT INTO workspace_prospects
+              (workspace_id, linkedin_url, linkedin_url_hash, email, email_hash, first_name, last_name, company, title, location, phone, source, batch_id, approval_status, enrichment_data)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            RETURNING id`,
+            [
+              prospect.workspace_id,
+              prospect.linkedin_url,
+              prospect.linkedin_url_hash,
+              prospect.email,
+              prospect.email_hash,
+              prospect.first_name,
+              prospect.last_name,
+              prospect.company,
+              prospect.title,
+              prospect.location,
+              prospect.phone,
+              prospect.source,
+              prospect.batch_id,
+              prospect.approval_status,
+              JSON.stringify(prospect.enrichment_data)
+            ]
+          )
+          insertedCount++
         }
       } catch (err: any) {
-        console.error('Prospect processing error:', err.message);
-        insertErrors.push(err.message);
+        console.error('Prospect processing error:', err.message)
+        insertErrors.push(err.message)
       }
     }
 
-    console.log(`✅ CSV Upload - Inserted: ${insertedCount}, Updated: ${duplicateCount}, Errors: ${insertErrors.length}`);
-    console.log('📝 CSV Upload - Insert errors:', insertErrors.slice(0, 5));
+    console.log(`✅ CSV Upload - Inserted: ${insertedCount}, Updated: ${duplicateCount}, Errors: ${insertErrors.length}`)
+    console.log('📝 CSV Upload - Insert errors:', insertErrors.slice(0, 5))
 
     // Count how many are actually new pending approvals
-    const { count: newPendingCount } = await supabaseAdmin
-      .from('workspace_prospects')
-      .select('*', { count: 'exact', head: true })
-      .eq('workspace_id', workspaceId)
-      .eq('batch_id', batchId)
-      .eq('approval_status', 'pending');
+    const pendingCountResult = await pool.query(
+      `SELECT COUNT(*) as count FROM workspace_prospects
+       WHERE workspace_id = $1 AND batch_id = $2 AND approval_status = $3`,
+      [workspaceId, batchId, 'pending']
+    )
+    const newPendingCount = parseInt(pendingCountResult.rows[0].count) || 0
 
     console.log('📊 CSV Upload - workspace_prospects results:', {
       attempted: workspaceProspectsData.length,
       inserted: insertedCount,
       newPending: newPendingCount,
       batchId
-    });
+    })
 
     // =========================================================================
     // Create prospect_approval_sessions record for the approval UI
     // =========================================================================
 
     // Get next batch number
-    const { data: existingSessions } = await supabaseAdmin
-      .from('prospect_approval_sessions')
-      .select('batch_number')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', userId)
-      .order('batch_number', { ascending: false })
-      .limit(1);
+    const batchNumberResult = await pool.query(
+      `SELECT batch_number FROM prospect_approval_sessions
+       WHERE workspace_id = $1 AND user_id = $2
+       ORDER BY batch_number DESC LIMIT 1`,
+      [workspaceId, userId]
+    )
+    const nextBatchNumber = batchNumberResult.rows.length > 0
+      ? (batchNumberResult.rows[0].batch_number || 0) + 1
+      : 1
 
-    const nextBatchNumber = existingSessions && existingSessions.length > 0
-      ? (existingSessions[0].batch_number || 0) + 1
-      : 1;
-
-    const { data: session, error: sessionError } = await supabaseAdmin
-      .from('prospect_approval_sessions')
-      .insert({
-        workspace_id: workspaceId,
-        user_id: userId,
-        campaign_id: null,  // Will be assigned when user selects campaign
-        campaign_name: datasetName,
-        campaign_tag: 'csv-import',
-        prospect_source: 'csv_upload',
-        total_prospects: newPendingCount || validatedData.valid.length,
-        pending_count: newPendingCount || validatedData.valid.length,
-        approved_count: 0,
-        rejected_count: 0,
-        status: 'active',  // Requires approval
-        batch_number: nextBatchNumber
-        // Note: metadata column doesn't exist in this table
-      })
-      .select()
-      .single();
-
-    if (sessionError) {
-      console.error('CSV Upload - Error creating approval session:', sessionError);
+    let session = null
+    try {
+      const sessionResult = await pool.query(
+        `INSERT INTO prospect_approval_sessions
+          (workspace_id, user_id, campaign_id, campaign_name, campaign_tag, prospect_source, total_prospects, pending_count, approved_count, rejected_count, status, batch_number)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING *`,
+        [
+          workspaceId,
+          userId,
+          null,  // Will be assigned when user selects campaign
+          datasetName,
+          'csv-import',
+          'csv_upload',
+          newPendingCount || validatedData.valid.length,
+          newPendingCount || validatedData.valid.length,
+          0,
+          0,
+          'active',  // Requires approval
+          nextBatchNumber
+        ]
+      )
+      session = sessionResult.rows[0]
+      console.log('✅ CSV Upload - Created approval session:', session?.id)
+    } catch (sessionError) {
+      console.error('CSV Upload - Error creating approval session:', sessionError)
       // Don't fail - workspace_prospects is the primary data
-    } else {
-      console.log('✅ CSV Upload - Created approval session:', session?.id);
     }
 
     // =========================================================================
     // Also insert into prospect_approval_data for the approval UI to show individual records
     // =========================================================================
+    const insertedApprovalRecords: any[] = []
     if (session?.id) {
-      console.log('🔑 CSV Upload - WORKSPACE_ID being set:', workspaceId);
-      const approvalData = validatedData.valid.map((p: any) => ({
-        session_id: session.id,
-        workspace_id: workspaceId,  // CRITICAL: This must be set for campaign assignment to work
-        prospect_id: p.id,
-        name: p.name,
-        title: p.title || '',
-        company: { name: p.company || '', industry: '' },
-        contact: {
-          email: p.email || '',
-          linkedin_url: p.linkedinUrl || '',
-          phone: p.phone || ''
-        },
-        location: p.location || '',
-        connection_degree: null,
-        enrichment_score: Math.round((p.confidence || 0.7) * 100),
-        source: 'csv-upload',
-        approval_status: 'pending'
-      }));
+      console.log('🔑 CSV Upload - WORKSPACE_ID being set:', workspaceId)
 
-      // Insert approval data in batches and collect the returned IDs
-      const insertedApprovalRecords: any[] = [];
-      for (let i = 0; i < approvalData.length; i += BATCH_SIZE) {
-        const batch = approvalData.slice(i, i + BATCH_SIZE);
-        const { data: insertedBatch, error: approvalError } = await supabaseAdmin
-          .from('prospect_approval_data')
-          .insert(batch)
-          .select('id, prospect_id, name, title, company, contact, location, connection_degree, approval_status, session_id');
-
-        if (approvalError) {
-          console.warn(`CSV Upload - Approval data batch ${Math.floor(i / BATCH_SIZE) + 1} error:`, approvalError.message);
-        } else if (insertedBatch) {
-          insertedApprovalRecords.push(...insertedBatch);
+      for (const p of validatedData.valid) {
+        try {
+          const approvalResult = await pool.query(
+            `INSERT INTO prospect_approval_data
+              (session_id, workspace_id, prospect_id, name, title, company, contact, location, connection_degree, enrichment_score, source, approval_status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            RETURNING id, prospect_id, name, title, company, contact, location, connection_degree, approval_status, session_id`,
+            [
+              session.id,
+              workspaceId,  // CRITICAL: This must be set for campaign assignment to work
+              p.id,
+              p.name,
+              p.title || '',
+              JSON.stringify({ name: p.company || '', industry: '' }),
+              JSON.stringify({
+                email: p.email || '',
+                linkedin_url: p.linkedinUrl || '',
+                phone: p.phone || ''
+              }),
+              p.location || '',
+              null,
+              Math.round((p.confidence || 0.7) * 100),
+              'csv-upload',
+              'pending'
+            ]
+          )
+          if (approvalResult.rows[0]) {
+            insertedApprovalRecords.push(approvalResult.rows[0])
+          }
+        } catch (approvalError: any) {
+          console.warn('CSV Upload - Approval data insert error:', approvalError.message)
         }
       }
-      console.log('✅ CSV Upload - Created prospect_approval_data records:', insertedApprovalRecords.length);
+      console.log('✅ CSV Upload - Created prospect_approval_data records:', insertedApprovalRecords.length)
 
       // Map the inserted records to the format expected by the frontend
       // CRITICAL: Use the database-generated UUID as the id
@@ -385,7 +365,7 @@ async function processCSVUpload(supabase: any, userId: string, file: File, datas
         connection_degree: record.connection_degree,
         approvalStatus: record.approval_status,
         confidence: 0.7
-      }));
+      }))
     }
 
     return NextResponse.json({
@@ -433,11 +413,11 @@ async function validateCSV(file: File) {
   try {
     const csvText = await file.text()
     const csvData = parseCSV(csvText)
-    
+
     if (!csvData.success) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: csvData.error,
-        details: csvData.details 
+        details: csvData.details
       }, { status: 400 })
     }
 
@@ -474,27 +454,27 @@ function parseCSV(csvText: string) {
   try {
     const lines = csvText.trim().split('\n')
     if (lines.length < 2) {
-      return { 
-        success: false, 
-        error: 'CSV must have at least a header row and one data row' 
+      return {
+        success: false,
+        error: 'CSV must have at least a header row and one data row'
       }
     }
 
     // Detect delimiter (tab or comma)
-    const delimiter = lines[0].includes('\t') ? '\t' : ',';
-    console.log('Detected delimiter:', delimiter === '\t' ? 'TAB' : 'COMMA');
+    const delimiter = lines[0].includes('\t') ? '\t' : ','
+    console.log('Detected delimiter:', delimiter === '\t' ? 'TAB' : 'COMMA')
 
     // Parse header
     const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''))
     console.log('Detected headers:', headers)
-    
+
     // Detect field mapping
     const fieldMapping = detectFieldMapping(headers)
-    
+
     // Check if we have at least one way to identify prospects
-    const hasName = fieldMapping.name || (fieldMapping.first_name && fieldMapping.last_name);
-    const hasIdentifier = hasName || fieldMapping.email || fieldMapping.linkedin;
-    
+    const hasName = fieldMapping.name || (fieldMapping.first_name && fieldMapping.last_name)
+    const hasIdentifier = hasName || fieldMapping.email || fieldMapping.linkedin
+
     if (!hasIdentifier) {
       return {
         success: false,
@@ -509,9 +489,9 @@ function parseCSV(csvText: string) {
     // Parse data rows
     const data = []
     for (let i = 1; i < lines.length; i++) {
-      if (!lines[i].trim()) continue; // Skip empty lines
+      if (!lines[i].trim()) continue // Skip empty lines
       const values = lines[i].split(delimiter).map(v => v.trim().replace(/"/g, ''))
-      
+
       if (values.length !== headers.length) {
         console.warn(`Row ${i + 1} has ${values.length} values but ${headers.length} headers`)
         continue
@@ -540,8 +520,8 @@ function parseCSV(csvText: string) {
     }
 
   } catch (error) {
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: 'Failed to parse CSV file',
       details: error instanceof Error ? error.message : 'Unknown error'
     }
@@ -555,54 +535,54 @@ function detectFieldMapping(headers: string[]) {
     // CRITICAL FIX (Dec 4): Remove BOTH underscores AND spaces for matching
     // "First Name" should match "firstname", "first_name", etc.
     const lowerHeader = header.toLowerCase().replace(/[_\s]/g, '')
-    
+
     // First name detection
     if (lowerHeader.includes('firstname') || lowerHeader === 'first') {
       mapping.first_name = header
     }
-    
+
     // Last name detection
     if (lowerHeader.includes('lastname') || lowerHeader === 'last') {
       mapping.last_name = header
     }
-    
+
     // Name detection (full name)
     if (!mapping.first_name && !mapping.last_name && (lowerHeader.includes('name') || lowerHeader === 'contact')) {
       mapping.name = header
     }
-    
+
     // Email detection
     if (lowerHeader.includes('email') || lowerHeader.includes('mail')) {
       mapping.email = header
     }
-    
+
     // LinkedIn detection (support profile_link, linkedin_url, etc.)
     if (lowerHeader.includes('linkedin') || lowerHeader.includes('profilelink') || lowerHeader.includes('profileurl') || lowerHeader.includes('profile')) {
       mapping.linkedin = header
     }
-    
+
     // Title detection
     if (lowerHeader.includes('title') || lowerHeader.includes('position') || lowerHeader.includes('job')) {
       mapping.title = header
     }
-    
+
     // Company detection
     if (lowerHeader.includes('company') || lowerHeader.includes('organization') || lowerHeader.includes('employer')) {
       mapping.company = header
     }
-    
+
     // Phone detection
     if (lowerHeader.includes('phone') || lowerHeader.includes('mobile') || lowerHeader.includes('tel')) {
       mapping.phone = header
     }
-    
+
     // Location detection
     if (lowerHeader.includes('location') || lowerHeader.includes('city') || lowerHeader.includes('address')) {
       mapping.location = header
     }
   })
-  
-  console.log('🗺️ CSV Upload - Field mapping detected:', JSON.stringify(mapping));
+
+  console.log('🗺️ CSV Upload - Field mapping detected:', JSON.stringify(mapping))
   return mapping
 }
 
@@ -614,47 +594,47 @@ function mapToStandardFields(prospect: any, fieldMapping: any) {
 
   // Handle first_name + last_name with normalization
   // CRITICAL FIX (Dec 4): Support first_name ALONE without last_name
-  let rawName = '';
+  let rawName = ''
   if (fieldMapping.first_name) {
-    const firstName = prospect[fieldMapping.first_name.toLowerCase().replace(/\s+/g, '_')] || '';
+    const firstName = prospect[fieldMapping.first_name.toLowerCase().replace(/\s+/g, '_')] || ''
     const lastName = fieldMapping.last_name
       ? (prospect[fieldMapping.last_name.toLowerCase().replace(/\s+/g, '_')] || '')
-      : '';
-    rawName = `${firstName} ${lastName}`.trim();
+      : ''
+    rawName = `${firstName} ${lastName}`.trim()
   } else if (fieldMapping.name && prospect[fieldMapping.name.toLowerCase().replace(/\s+/g, '_')]) {
     rawName = prospect[fieldMapping.name.toLowerCase().replace(/\s+/g, '_')]
   }
 
   // Normalize the name to remove titles, credentials, and descriptions
   if (rawName) {
-    const normalized = normalizeFullName(rawName);
-    mapped.name = normalized.fullName;
+    const normalized = normalizeFullName(rawName)
+    mapped.name = normalized.fullName
   }
-  
+
   if (fieldMapping.email && prospect[fieldMapping.email.toLowerCase().replace(/\s+/g, '_')]) {
     mapped.email = prospect[fieldMapping.email.toLowerCase().replace(/\s+/g, '_')]
   }
-  
+
   if (fieldMapping.linkedin && prospect[fieldMapping.linkedin.toLowerCase().replace(/\s+/g, '_')]) {
     mapped.linkedinUrl = prospect[fieldMapping.linkedin.toLowerCase().replace(/\s+/g, '_')]
   }
-  
+
   if (fieldMapping.title && prospect[fieldMapping.title.toLowerCase().replace(/\s+/g, '_')]) {
     mapped.title = prospect[fieldMapping.title.toLowerCase().replace(/\s+/g, '_')]
   }
-  
+
   if (fieldMapping.company && prospect[fieldMapping.company.toLowerCase().replace(/\s+/g, '_')]) {
     mapped.company = prospect[fieldMapping.company.toLowerCase().replace(/\s+/g, '_')]
   }
-  
+
   if (fieldMapping.phone && prospect[fieldMapping.phone.toLowerCase().replace(/\s+/g, '_')]) {
     mapped.phone = prospect[fieldMapping.phone.toLowerCase().replace(/\s+/g, '_')]
   }
-  
+
   if (fieldMapping.location && prospect[fieldMapping.location.toLowerCase().replace(/\s+/g, '_')]) {
     mapped.location = prospect[fieldMapping.location.toLowerCase().replace(/\s+/g, '_')]
   }
-  
+
   return mapped
 }
 
@@ -664,34 +644,34 @@ async function validateAndEnrichProspects(prospects: any[]) {
   const duplicates = []
   const issues = []
   let missingLinkedInCount = 0
-  
+
   const seenEmails = new Set()
   const seenLinkedIn = new Set()
-  
+
   for (const prospect of prospects) {
     let isValid = true
     let prospectIssues = []
-    
+
     // LinkedIn URL is REQUIRED for LinkedIn campaigns
     if (!prospect.linkedinUrl) {
       isValid = false
       missingLinkedInCount++
       prospectIssues.push('Missing LinkedIn URL (required for LinkedIn campaigns)')
     }
-    
+
     // Check for required fields - for LinkedIn campaigns, LinkedIn URL alone is sufficient
     // CRITICAL FIX (Dec 4): Accept LinkedIn URL as valid identifier
     if (!prospect.name && !prospect.email && !prospect.linkedinUrl) {
       isValid = false
       prospectIssues.push('Missing name, email, and LinkedIn URL - at least one required')
     }
-    
+
     // Validate email format
     if (prospect.email && !isValidEmail(prospect.email)) {
       isValid = false
       prospectIssues.push('Invalid email format')
     }
-    
+
     // Check for duplicates
     if (prospect.email && seenEmails.has(prospect.email)) {
       duplicates.push(prospect)
@@ -699,17 +679,17 @@ async function validateAndEnrichProspects(prospects: any[]) {
     } else if (prospect.email) {
       seenEmails.add(prospect.email)
     }
-    
+
     if (prospect.linkedinUrl && seenLinkedIn.has(prospect.linkedinUrl)) {
       duplicates.push(prospect)
       prospectIssues.push('Duplicate LinkedIn URL')
     } else if (prospect.linkedinUrl) {
       seenLinkedIn.add(prospect.linkedinUrl)
     }
-    
+
     // Calculate confidence score
     prospect.confidence = calculateConfidenceScore(prospect)
-    
+
     if (isValid) {
       valid.push(prospect)
     } else {
@@ -720,11 +700,11 @@ async function validateAndEnrichProspects(prospects: any[]) {
       })
     }
   }
-  
+
   // Calculate quality scores
   const qualityScore = valid.length / prospects.length
   const completenessScore = calculateCompleteness(valid)
-  
+
   return {
     processed: valid,
     valid: valid,
@@ -755,14 +735,14 @@ function calculateConfidenceScore(prospect: any): number {
 
 function calculateCompleteness(prospects: any[]): number {
   if (!prospects.length) return 0
-  
+
   const requiredFields = ['name', 'title', 'company']
   let totalCompleteness = 0
-  
+
   prospects.forEach(prospect => {
     const filledFields = requiredFields.filter(field => prospect[field]).length
     totalCompleteness += filledFields / requiredFields.length
   })
-  
+
   return Math.round((totalCompleteness / prospects.length) * 100) / 100
 }

@@ -1,35 +1,24 @@
-import { NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool } from '@/lib/auth';
 
 /**
  * GET /api/user/get-timezone
  * Fetch user's saved timezone preference
  * Returns null if never set (first campaign creation)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    // Authenticate with Firebase
+    const { userId } = await verifyAuth(request);
 
     // Get user's timezone preference
-    const { data: userData, error: fetchError } = await supabase
-      .from('users')
-      .select('profile_timezone')
-      .eq('id', user.id)
-      .single();
+    const { rows } = await pool.query(
+      'SELECT profile_timezone FROM users WHERE id = $1',
+      [userId]
+    );
 
-    if (fetchError) {
-      console.error('Failed to fetch timezone:', fetchError);
+    if (rows.length === 0) {
+      console.error('Failed to fetch timezone: user not found');
       return NextResponse.json(
         { timezone: null }, // Return null on error, will use default
         { status: 200 }
@@ -37,7 +26,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      timezone: userData?.profile_timezone || null
+      timezone: rows[0]?.profile_timezone || null
     });
 
   } catch (error) {

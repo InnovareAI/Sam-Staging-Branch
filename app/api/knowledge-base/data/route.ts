@@ -1,45 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspace_id');
+    const providedWorkspaceId = searchParams.get('workspace_id');
     const category = searchParams.get('category');
     const search = searchParams.get('search');
     const icpId = searchParams.get('icp_id'); // Optional ICP filter
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Workspace ID is required' }, { status: 400 });
-    }
+    // Use provided workspace_id if available, otherwise use auth workspace
+    const targetWorkspaceId = providedWorkspaceId || workspaceId;
 
     // Build query for the correct knowledge_base table
-    let query = supabase
-      .from('knowledge_base')
-      .select('*, icp:knowledge_base_icps(id, icp_name)')
-      .eq('is_active', true)
-      .or(`workspace_id.eq.${workspaceId},workspace_id.is.null`);
+    let query = `
+      SELECT kb.*, kbi.id as icp_id, kbi.icp_name
+      FROM knowledge_base kb
+      LEFT JOIN knowledge_base_icps kbi ON kb.icp_id = kbi.id
+      WHERE kb.is_active = true AND (kb.workspace_id = $1 OR kb.workspace_id IS NULL)
+    `;
+    const params: any[] = [targetWorkspaceId];
+    let paramIndex = 2;
 
     // Filter by ICP: show ICP-specific content + global content (icp_id is null)
     if (icpId) {
-      query = query.or(`icp_id.eq.${icpId},icp_id.is.null`);
+      query += ` AND (kb.icp_id = $${paramIndex} OR kb.icp_id IS NULL)`;
+      params.push(icpId);
+      paramIndex++;
     }
 
     if (category) {
-      query = query.eq('category', category);
+      query += ` AND kb.category = $${paramIndex}`;
+      params.push(category);
+      paramIndex++;
     }
 
     if (search) {
-      query = query.or(`content.ilike.%${search}%,title.ilike.%${search}%`);
+      query += ` AND (kb.content ILIKE $${paramIndex} OR kb.title ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
     }
 
-    const { data: content, error } = await query.order('created_at', { ascending: false });
+    query += ` ORDER BY kb.created_at DESC`;
 
-    if (error) {
-      console.error('Error fetching KB data:', error);
-      return NextResponse.json({ error: 'Failed to fetch content' }, { status: 500 });
-    }
+    const result = await pool.query(query, params);
+    const content = result.rows;
 
     // Group by category for easy display
     const groupedContent = content?.reduce((acc: any, item: any) => {
@@ -63,33 +79,51 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const body = await request.json();
     const { workspace_id, category, subcategory, title, content, tags, icp_id } = body;
 
-    if (!workspace_id || !category || !title || !content) {
+    // Use provided workspace_id if available, otherwise use auth workspace
+    const targetWorkspaceId = workspace_id || workspaceId;
+
+    if (!category || !title || !content) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     // Create new knowledge base entry
     // icp_id: null = global (all ICPs), UUID = specific ICP only
-    const { data: newEntry, error } = await supabase
-      .from('knowledge_base')
-      .insert({
-        workspace_id,
-        category,
-        subcategory,
-        title,
-        content,
-        tags: tags || [],
-        icp_id: icp_id || null // null = applies to all ICPs
-      })
-      .select('*, icp:knowledge_base_icps(id, icp_name)')
-      .single();
+    const insertResult = await pool.query(
+      `INSERT INTO knowledge_base (workspace_id, category, subcategory, title, content, tags, icp_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [targetWorkspaceId, category, subcategory, title, content, tags || [], icp_id || null]
+    );
 
-    if (error) {
-      console.error('Error creating KB entry:', error);
+    if (insertResult.rows.length === 0) {
       return NextResponse.json({ error: 'Failed to create entry' }, { status: 500 });
+    }
+
+    const newEntry = insertResult.rows[0];
+
+    // Fetch ICP info if available
+    if (newEntry.icp_id) {
+      const icpResult = await pool.query(
+        `SELECT id, icp_name FROM knowledge_base_icps WHERE id = $1`,
+        [newEntry.icp_id]
+      );
+      if (icpResult.rows.length > 0) {
+        newEntry.icp = icpResult.rows[0];
+      }
     }
 
     return NextResponse.json({ entry: newEntry }, { status: 201 });

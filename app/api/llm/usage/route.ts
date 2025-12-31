@@ -4,25 +4,17 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 import { getModelById } from '@/lib/llm/approved-models';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    // Authenticate with Firebase
+    const { userId } = await verifyAuth(request);
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('range') || '30d'; // '24h', '7d', '30d', '90d', 'all'
-    const groupBy = searchParams.get('groupBy') || 'day'; // 'hour', 'day', 'week', 'month'
 
     // Calculate time range
     let startDate = new Date();
@@ -45,20 +37,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch usage records
-    const { data: usageRecords, error: usageError } = await supabase
-      .from('customer_llm_usage')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: false });
-
-    if (usageError) {
-      console.error('Failed to fetch usage:', usageError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to fetch usage data' },
-        { status: 500 }
-      );
-    }
+    const { rows: usageRecords } = await pool.query(
+      `SELECT * FROM customer_llm_usage
+       WHERE user_id = $1 AND created_at >= $2
+       ORDER BY created_at DESC`,
+      [userId, startDate.toISOString()]
+    );
 
     // Calculate statistics
     const stats = {
@@ -147,11 +131,11 @@ export async function GET(request: NextRequest) {
     });
 
     // Get current preferences
-    const { data: prefs } = await supabase
-      .from('customer_llm_preferences')
-      .select('selected_model, use_own_openrouter_key, use_custom_endpoint')
-      .eq('user_id', user.id)
-      .single();
+    const { rows: prefsRows } = await pool.query(
+      'SELECT selected_model, use_own_openrouter_key, use_custom_endpoint FROM customer_llm_preferences WHERE user_id = $1',
+      [userId]
+    );
+    const prefs = prefsRows[0];
 
     return NextResponse.json({
       success: true,

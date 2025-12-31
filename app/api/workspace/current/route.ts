@@ -1,118 +1,63 @@
-import { NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
-// Force rebuild: 2025-11-09
-export async function GET() {
+// Super admin emails with cross-tenant access
+const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
+
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Cookie setting can fail in API route context
-            }
-          }
-        },
-        cookieOptions: {
-          global: {
-            secure: true,
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7
-          }
-        }
-      }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
-    }
+    // Verify auth with Firebase
+    const authContext = await verifyAuth(request);
+    const userId = authContext.userId;
+    const userEmail = authContext.userEmail;
 
     // Get user's current workspace from users table
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single()
+    const userResult = await pool.query(
+      'SELECT current_workspace_id FROM users WHERE id = $1',
+      [userId]
+    );
 
-    if (userError || !userData?.current_workspace_id) {
+    if (!userResult.rows[0]?.current_workspace_id) {
       return NextResponse.json({
         success: false,
         error: 'No workspace found'
-      }, { status: 404 })
+      }, { status: 404 });
     }
+
+    const currentWorkspaceId = userResult.rows[0].current_workspace_id;
 
     // CRITICAL: Verify user is actually a member of this workspace
     // EXCEPTION: Super admins can access any workspace
-    const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
-    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user.email || '');
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(userEmail || '');
 
     if (!isSuperAdmin) {
-      const { data: membership, error: membershipError } = await supabase
-        .from('workspace_members')
-        .select('role')
-        .eq('workspace_id', userData.current_workspace_id)
-        .eq('user_id', user.id)
-        .single()
+      const membershipResult = await pool.query(
+        'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+        [currentWorkspaceId, userId]
+      );
 
-      if (membershipError || !membership) {
+      if (membershipResult.rows.length === 0) {
         return NextResponse.json({
           success: false,
           error: 'Access denied - not a workspace member'
-        }, { status: 403 })
+        }, { status: 403 });
       }
     }
 
     // Get workspace details
-    // For super admins, use admin client to bypass RLS
-    let workspace;
-    let workspaceError;
+    const workspaceResult = await pool.query(
+      'SELECT id, name, company_name FROM workspaces WHERE id = $1',
+      [currentWorkspaceId]
+    );
 
-    if (isSuperAdmin) {
-      // Use service role key to bypass RLS for super admins
-      const { createClient } = await import('@supabase/supabase-js');
-      const adminClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
-      const result = await adminClient
-        .from('workspaces')
-        .select('id, name, company_name')
-        .eq('id', userData.current_workspace_id)
-        .single();
-      workspace = result.data;
-      workspaceError = result.error;
-    } else {
-      const result = await supabase
-        .from('workspaces')
-        .select('id, name, company_name')
-        .eq('id', userData.current_workspace_id)
-        .single();
-      workspace = result.data;
-      workspaceError = result.error;
-    }
-
-    if (workspaceError || !workspace) {
+    if (workspaceResult.rows.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'Workspace not found'
-      }, { status: 404 })
+      }, { status: 404 });
     }
+
+    const workspace = workspaceResult.rows[0];
 
     return NextResponse.json({
       success: true,
@@ -120,13 +65,21 @@ export async function GET() {
         id: workspace.id,
         name: workspace.name || workspace.company_name || 'Unknown'
       }
-    })
+    });
 
   } catch (error) {
-    console.error('Current workspace API error:', error)
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const authErr = error as AuthError;
+      return NextResponse.json({
+        success: false,
+        error: authErr.message
+      }, { status: authErr.statusCode });
+    }
+
+    console.error('Current workspace API error:', error);
     return NextResponse.json({
       success: false,
       error: 'Internal server error'
-    }, { status: 500 })
+    }, { status: 500 });
   }
 }

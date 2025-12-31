@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
-import { createClient } from '@supabase/supabase-js';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { airtableService } from '@/lib/airtable';
-import { getMessageVarianceContext } from '@/lib/anti-detection/message-variance';
 import { normalizeCompanyName } from '@/lib/prospect-normalization';
 import { extractLinkedInSlug, getBestLinkedInIdentifier } from '@/lib/linkedin-utils';
 import { resolveToProviderId } from '@/lib/resolve-linkedin-id';
@@ -18,12 +16,6 @@ import { resolveToProviderId } from '@/lib/resolve-linkedin-id';
  */
 
 export const maxDuration = 60;
-
-// Service role client for queue operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Public holidays (US 2025-2026)
 const PUBLIC_HOLIDAYS = [
@@ -50,18 +42,14 @@ export async function POST(req: NextRequest) {
     const isActivationTrigger = internalTrigger === 'campaign-activation';
     const isInternalCall = isCronTrigger || isActivationTrigger;
 
-    let user = null;
+    let userId: string | null = null;
+    let userEmail: string | null = null;
 
     if (!isInternalCall) {
       // User-initiated request: require authentication
-      const supabase = await createSupabaseRouteClient();
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-
-      if (authError || !authUser) {
-        console.error('❌ Authentication failed:', authError);
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-      user = authUser;
+      const authResult = await verifyAuth(req);
+      userId = authResult.userId;
+      userEmail = authResult.userEmail;
     } else {
       console.log(`🤖 Internal trigger (${internalTrigger}) - bypassing user auth`);
     }
@@ -72,33 +60,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'campaignId required' }, { status: 400 });
     }
 
-    console.log(`🚀 FAST queue creation for campaign: ${campaignId} (${isInternalCall ? internalTrigger : `user: ${user?.email}`})`);
+    console.log(`🚀 FAST queue creation for campaign: ${campaignId} (${isInternalCall ? internalTrigger : `user: ${userEmail}`})`);
 
     // 1. Fetch campaign - use admin client for cron, or user client for RLS check
     // CRITICAL FIX (Dec 4): Also fetch connection_message column AND linkedin_config
     // CRITICAL FIX (Dec 10): Also fetch linkedin_account_id to validate it exists
     // FIX (Dec 18): Don't join workspace_accounts - fetch LinkedIn account separately
-    const { data: campaign, error: campaignError } = await supabaseAdmin
-      .from('campaigns')
-      .select(`
-        id,
-        campaign_name,
-        name,
-        campaign_type,
-        message_templates,
-        workspace_id,
-        draft_data,
-        linkedin_config,
-        connection_message,
-        linkedin_account_id
-      `)
-      .eq('id', campaignId)
-      .single();
+    const campaignResult = await pool.query(
+      `SELECT id, campaign_name, name, campaign_type, message_templates,
+              workspace_id, draft_data, linkedin_config, connection_message,
+              linkedin_account_id
+       FROM campaigns WHERE id = $1`,
+      [campaignId]
+    );
 
-    if (campaignError || !campaign) {
-      console.error('Campaign not found or access denied:', campaignError);
+    if (campaignResult.rows.length === 0) {
+      console.error('Campaign not found or access denied');
       return NextResponse.json({ error: 'Campaign not found or access denied' }, { status: 404 });
     }
+
+    const campaign = campaignResult.rows[0];
 
     // CRITICAL FIX (Dec 20): Prevent double-sending by rejecting messenger campaigns
     // Messenger campaigns must use /api/campaigns/direct/send-messages-queued
@@ -130,25 +111,25 @@ export async function POST(req: NextRequest) {
     let linkedinAccount: { id: string; unipile_account_id: string; account_name: string; connection_status: string } | null = null;
 
     // First try workspace_accounts
-    const { data: wsAccount } = await supabaseAdmin
-      .from('workspace_accounts')
-      .select('id, unipile_account_id, account_name, connection_status')
-      .eq('id', campaign.linkedin_account_id)
-      .single();
+    const wsAccountResult = await pool.query(
+      `SELECT id, unipile_account_id, account_name, connection_status
+       FROM workspace_accounts WHERE id = $1`,
+      [campaign.linkedin_account_id]
+    );
 
-    if (wsAccount) {
-      linkedinAccount = wsAccount;
+    if (wsAccountResult.rows.length > 0) {
+      linkedinAccount = wsAccountResult.rows[0];
     } else {
       // Fallback to user_unipile_accounts
-      const { data: uniAccount } = await supabaseAdmin
-        .from('user_unipile_accounts')
-        .select('id, unipile_account_id, account_name, connection_status')
-        .eq('id', campaign.linkedin_account_id)
-        .single();
+      const uniAccountResult = await pool.query(
+        `SELECT id, unipile_account_id, account_name, connection_status
+         FROM user_unipile_accounts WHERE id = $1`,
+        [campaign.linkedin_account_id]
+      );
 
-      if (uniAccount) {
-        linkedinAccount = uniAccount;
-        console.log('✅ Found LinkedIn account in user_unipile_accounts:', uniAccount.account_name);
+      if (uniAccountResult.rows.length > 0) {
+        linkedinAccount = uniAccountResult.rows[0];
+        console.log('✅ Found LinkedIn account in user_unipile_accounts:', linkedinAccount.account_name);
       }
     }
 
@@ -172,7 +153,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`✅ LinkedIn account validated: ${linkedinAccount.account_name} (${linkedinAccount.unipile_account_id})`)
+    console.log(`✅ LinkedIn account validated: ${linkedinAccount.account_name} (${linkedinAccount.unipile_account_id})`);
 
     // 1.5. CRITICAL FIX: Transfer draft_data.csvData to campaign_prospects if needed
     // This handles the case where drafts were created with prospects stored in draft_data
@@ -180,40 +161,40 @@ export async function POST(req: NextRequest) {
     const draftData = campaign.draft_data as { csvData?: any[] } | null;
     if (draftData?.csvData && draftData.csvData.length > 0) {
       // Check if campaign_prospects is empty for this campaign
-      const { count: existingCount } = await supabaseAdmin
-        .from('campaign_prospects')
-        .select('*', { count: 'exact', head: true })
-        .eq('campaign_id', campaignId);
+      const countResult = await pool.query(
+        `SELECT COUNT(*) as count FROM campaign_prospects WHERE campaign_id = $1`,
+        [campaignId]
+      );
 
-      if (existingCount === 0) {
+      if (parseInt(countResult.rows[0].count) === 0) {
         console.log(`📦 Transferring ${draftData.csvData.length} prospects from draft_data to campaign_prospects`);
 
         // Map draft_data.csvData to campaign_prospects format
-        const prospectsToInsert = draftData.csvData.map((p: any) => ({
-          campaign_id: campaignId,
-          workspace_id: campaign.workspace_id,
-          first_name: p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
-          last_name: p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
-          linkedin_url: p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url,
-          provider_id: p.provider_id || p.providerId || null,
-          company: p.company || p.organization || null,
-          title: p.title || p.job_title || null,
-          status: 'pending',
-          created_at: new Date().toISOString()
-        })).filter((p: any) => p.linkedin_url); // Only insert prospects with LinkedIn URLs
+        for (const p of draftData.csvData) {
+          const linkedinUrl = p.linkedin_url || p.linkedinUrl || p.contact?.linkedin_url;
+          if (!linkedinUrl) continue;
 
-        if (prospectsToInsert.length > 0) {
-          const { error: insertError } = await supabaseAdmin
-            .from('campaign_prospects')
-            .insert(prospectsToInsert);
-
-          if (insertError) {
-            console.error('❌ Error transferring draft prospects:', insertError);
-            // Continue anyway - don't fail the entire activation
-          } else {
-            console.log(`✅ Transferred ${prospectsToInsert.length} prospects to campaign_prospects`);
-          }
+          await pool.query(
+            `INSERT INTO campaign_prospects (
+              campaign_id, workspace_id, first_name, last_name, linkedin_url,
+              provider_id, company_name, title, status, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT DO NOTHING`,
+            [
+              campaignId,
+              campaign.workspace_id,
+              p.firstName || p.first_name || p.name?.split(' ')[0] || 'Unknown',
+              p.lastName || p.last_name || p.name?.split(' ').slice(1).join(' ') || '',
+              linkedinUrl,
+              p.provider_id || p.providerId || null,
+              p.company || p.organization || null,
+              p.title || p.job_title || null,
+              'pending',
+              new Date().toISOString()
+            ]
+          );
         }
+        console.log(`✅ Transferred prospects to campaign_prospects`);
       }
     }
 
@@ -221,19 +202,17 @@ export async function POST(req: NextRequest) {
     // CRITICAL FIX (Dec 8): Include BOTH 'pending' AND 'approved' statuses
     // Prospects go through approval workflow → status becomes 'approved'
     // We need to queue approved prospects, not just pending ones
-    const { data: prospects, error: prospectsError } = await supabaseAdmin
-      .from('campaign_prospects')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .in('status', ['pending', 'approved'])  // Include both pending and approved
-      .not('linkedin_url', 'is', null)
-      .order('created_at', { ascending: true })
-      .limit(50);
+    const prospectsResult = await pool.query(
+      `SELECT * FROM campaign_prospects
+       WHERE campaign_id = $1
+         AND status IN ('pending', 'approved')
+         AND linkedin_url IS NOT NULL
+       ORDER BY created_at ASC
+       LIMIT 50`,
+      [campaignId]
+    );
 
-    if (prospectsError) {
-      console.error('Error fetching prospects:', prospectsError);
-      return NextResponse.json({ error: 'Failed to fetch prospects' }, { status: 500 });
-    }
+    const prospects = prospectsResult.rows;
 
     if (!prospects || prospects.length === 0) {
       console.log('✅ No pending prospects');
@@ -242,13 +221,12 @@ export async function POST(req: NextRequest) {
 
     // 2.5: Check which prospects are already in queue (to avoid duplicates)
     const prospectIds = prospects.map(p => p.id);
-    const { data: existingQueue } = await supabaseAdmin
-      .from('send_queue')
-      .select('prospect_id')
-      .eq('campaign_id', campaignId)
-      .in('prospect_id', prospectIds);
+    const existingQueueResult = await pool.query(
+      `SELECT prospect_id FROM send_queue WHERE campaign_id = $1 AND prospect_id = ANY($2)`,
+      [campaignId, prospectIds]
+    );
 
-    const existingProspectIds = new Set((existingQueue || []).map(q => q.prospect_id));
+    const existingProspectIds = new Set(existingQueueResult.rows.map(q => q.prospect_id));
     const newProspects = prospects.filter(p => !existingProspectIds.has(p.id));
     const skippedCount = prospects.length - newProspects.length;
 
@@ -283,7 +261,6 @@ export async function POST(req: NextRequest) {
     // Pre-calculate random intervals for each prospect
     const getRandomInterval = () => MIN_SPACING_MINUTES + Math.floor(Math.random() * (MAX_SPACING_MINUTES - MIN_SPACING_MINUTES + 1));
 
-    const queueRecords = [];
     // CRITICAL FIX (Dec 4): Check ALL possible locations for connection message
     // Different campaign types store messages in different places:
     // 1. message_templates.connection_request (standard)
@@ -338,6 +315,8 @@ export async function POST(req: NextRequest) {
     }
 
     let dailyCount = 0;
+    let insertedCount = 0;
+    const insertErrors: string[] = [];
 
     for (let i = 0; i < newProspects.length; i++) {
       const prospect = newProspects[i];
@@ -404,43 +383,37 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      queueRecords.push({
-        campaign_id: campaignId,
-        prospect_id: prospect.id,
-        linkedin_user_id: cleanLinkedInId,
-        message: personalizedMessage,
-        scheduled_for: scheduledTime.toISOString(),
-        status: 'pending'
-      });
-
-      dailyCount++;
-    }
-
-    // 4. Insert queue records ONE BY ONE to prevent batch failures
-    // CRITICAL FIX (Dec 18): Batch inserts fail ALL records if ANY has a constraint violation
-    let insertedCount = 0;
-    const insertErrors: string[] = [];
-
-    for (const record of queueRecords) {
-      const { error: insertError } = await supabaseAdmin
-        .from('send_queue')
-        .insert(record);
-
-      if (insertError) {
-        insertErrors.push(`${record.linkedin_user_id}: ${insertError.message}`);
+      // Insert queue record
+      try {
+        await pool.query(
+          `INSERT INTO send_queue (
+            campaign_id, prospect_id, linkedin_user_id, message, scheduled_for, status
+          ) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            campaignId,
+            prospect.id,
+            cleanLinkedInId,
+            personalizedMessage,
+            scheduledTime.toISOString(),
+            'pending'
+          ]
+        );
+        insertedCount++;
+      } catch (insertError: any) {
+        insertErrors.push(`${cleanLinkedInId}: ${insertError.message}`);
         if (insertErrors.length <= 3) {
           console.warn(`⚠️ Failed to queue: ${insertError.message}`);
         }
-      } else {
-        insertedCount++;
       }
+
+      dailyCount++;
     }
 
     if (insertErrors.length > 0) {
       console.error(`❌ ${insertErrors.length} queue inserts failed`);
     }
 
-    console.log(`✅ Queued ${insertedCount}/${queueRecords.length} prospects successfully (${skippedCount} already in queue)`);
+    console.log(`✅ Queued ${insertedCount}/${newProspects.length} prospects successfully (${skippedCount} already in queue)`);
 
     // A/B TESTING REMOVED (Dec 18, 2025)
 
@@ -455,12 +428,15 @@ export async function POST(req: NextRequest) {
       queued: insertedCount,
       skipped: skippedCount,
       failed: insertErrors.length,
-      firstScheduled: queueRecords[0]?.scheduled_for,
-      lastScheduled: queueRecords[queueRecords.length - 1]?.scheduled_for,
+      firstScheduled: insertedCount > 0 ? scheduledTime.toISOString() : null,
       message: `${insertedCount} prospects queued for sending${skippedCount > 0 ? ` (${skippedCount} already queued)` : ''}${insertErrors.length > 0 ? ` (${insertErrors.length} failed)` : ''}`
     });
 
   } catch (error: any) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('❌ Queue creation error:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }

@@ -1,71 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment'
-import { supabaseAdmin } from '@/app/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    
-    // Get current user via session cookies or Authorization header fallback
-    const { data: { session } } = await supabase.auth.getSession()
-
-    let userId: string | null = session?.user?.id || null
-    let db = supabase
-
-    if (!userId) {
-      const authHeader = request.headers.get('Authorization')
-      const token = authHeader?.toLowerCase().startsWith('bearer ')
-        ? authHeader.slice(7)
-        : null
-      if (token) {
-        try {
-          const admin = supabaseAdmin()
-          const { data: userRes } = await admin.auth.getUser(token)
-          if (userRes?.user?.id) {
-            userId = userRes.user.id
-            db = admin as any
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
-    }
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    }
+    // Authenticate with Firebase
+    const { userId } = await verifyAuth(request)
 
     console.log('🔍 Fetching proxy preferences for user:', userId)
 
     // Get user's proxy preferences
-    const { data: proxyPrefs, error: proxyError } = await db
-      .from('user_proxy_preferences')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
+    const { rows: proxyRows } = await pool.query(
+      'SELECT * FROM user_proxy_preferences WHERE user_id = $1',
+      [userId]
+    )
 
-    if (proxyError && proxyError.code !== 'PGRST116') { // PGRST116 = no rows found
-      console.error('❌ Error fetching proxy preferences:', proxyError)
-      return NextResponse.json({ error: 'Failed to fetch proxy preferences' }, { status: 500 })
-    }
+    let effectivePrefs = proxyRows[0] || null
 
     // Auto-provision preference if missing
-    let effectivePrefs = proxyPrefs
     if (!effectivePrefs) {
       try {
         const autoIP = new AutoIPAssignmentService()
         // Try to use profile country if available
         let profileCountry: string | undefined
         try {
-          const { data: profile } = await db
-            .from('users')
-            .select('profile_country')
-            .eq('id', userId)
-            .maybeSingle()
-          if (profile?.profile_country && typeof profile.profile_country === 'string') {
-            profileCountry = profile.profile_country.toLowerCase()
+          const { rows: profileRows } = await pool.query(
+            'SELECT profile_country FROM users WHERE id = $1',
+            [userId]
+          )
+          if (profileRows[0]?.profile_country && typeof profileRows[0].profile_country === 'string') {
+            profileCountry = profileRows[0].profile_country.toLowerCase()
           }
         } catch (e) {
           // ignore
@@ -77,26 +41,35 @@ export async function GET(request: NextRequest) {
           profileCountry || undefined
         )
 
-        const { data: inserted, error: upsertError } = await db
-          .from('user_proxy_preferences')
-          .upsert({
-            user_id: userId,
-            detected_location: userLocation ? `${userLocation.city}, ${userLocation.regionName}, ${userLocation.country}` : null,
-            linkedin_location: null,
-            preferred_country: proxyConfig.country,
-            preferred_state: proxyConfig.state,
-            preferred_city: proxyConfig.city,
-            confidence_score: proxyConfig.confidence,
-            session_id: proxyConfig.sessionId,
-            last_updated: new Date().toISOString()
-          }, { onConflict: 'user_id' })
-          .select()
-          .single()
+        const { rows: insertedRows } = await pool.query(
+          `INSERT INTO user_proxy_preferences (
+            user_id, detected_location, linkedin_location, preferred_country,
+            preferred_state, preferred_city, confidence_score, session_id, last_updated
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          ON CONFLICT (user_id) DO UPDATE SET
+            detected_location = EXCLUDED.detected_location,
+            preferred_country = EXCLUDED.preferred_country,
+            preferred_state = EXCLUDED.preferred_state,
+            preferred_city = EXCLUDED.preferred_city,
+            confidence_score = EXCLUDED.confidence_score,
+            session_id = EXCLUDED.session_id,
+            last_updated = EXCLUDED.last_updated
+          RETURNING *`,
+          [
+            userId,
+            userLocation ? `${userLocation.city}, ${userLocation.regionName}, ${userLocation.country}` : null,
+            null,
+            proxyConfig.country,
+            proxyConfig.state,
+            proxyConfig.city,
+            proxyConfig.confidence,
+            proxyConfig.sessionId,
+            new Date().toISOString()
+          ]
+        )
 
-        if (upsertError) {
-          console.error('❌ Failed to auto-provision proxy preferences:', upsertError)
-        } else {
-          effectivePrefs = inserted
+        if (insertedRows[0]) {
+          effectivePrefs = insertedRows[0]
         }
       } catch (e) {
         console.error('⚠️ Auto-provisioning proxy failed:', e)
@@ -122,34 +95,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { session } } = await supabase.auth.getSession()
-
-    let userId: string | null = session?.user?.id || null
-    let db = supabase
-
-    if (!userId) {
-      const authHeader = request.headers.get('Authorization')
-      const token = authHeader?.toLowerCase().startsWith('bearer ')
-        ? authHeader.slice(7)
-        : null
-      if (token) {
-        try {
-          const admin = supabaseAdmin()
-          const { data: userRes } = await admin.auth.getUser(token)
-          if (userRes?.user?.id) {
-            userId = userRes.user.id
-            db = admin as any
-          }
-        } catch (e) {
-          console.error('Failed to resolve user from authorization header:', e)
-        }
-      }
-    }
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    }
+    // Authenticate with Firebase
+    const { userId } = await verifyAuth(request)
 
     const { preferred_country, preferred_state, preferred_city } = await request.json()
 
@@ -171,25 +118,36 @@ export async function POST(request: NextRequest) {
     const sessionId = `${Date.now().toString(36)}_${Math.random().toString(36).substring(2)}`
 
     // Update or create proxy preferences
-    const { data: updatedPrefs, error: updateError } = await db
-      .from('user_proxy_preferences')
-      .upsert({
-        user_id: userId,
-        preferred_country: normalizedCountry,
-        preferred_state: preferred_state ? String(preferred_state).toLowerCase() : null,
-        preferred_city: preferred_city || null,
-        session_id: sessionId,
-        is_manual_selection: true,
-        is_auto_assigned: false,
-        last_updated: new Date().toISOString()
-      }, {
-        onConflict: 'user_id'
-      })
-      .select()
-      .single()
+    const { rows } = await pool.query(
+      `INSERT INTO user_proxy_preferences (
+        user_id, preferred_country, preferred_state, preferred_city,
+        session_id, is_manual_selection, is_auto_assigned, last_updated
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (user_id) DO UPDATE SET
+        preferred_country = EXCLUDED.preferred_country,
+        preferred_state = EXCLUDED.preferred_state,
+        preferred_city = EXCLUDED.preferred_city,
+        session_id = EXCLUDED.session_id,
+        is_manual_selection = EXCLUDED.is_manual_selection,
+        is_auto_assigned = EXCLUDED.is_auto_assigned,
+        last_updated = EXCLUDED.last_updated
+      RETURNING *`,
+      [
+        userId,
+        normalizedCountry,
+        preferred_state ? String(preferred_state).toLowerCase() : null,
+        preferred_city || null,
+        sessionId,
+        true,
+        false,
+        new Date().toISOString()
+      ]
+    )
 
-    if (updateError) {
-      console.error('❌ Error updating proxy preferences:', updateError)
+    const updatedPrefs = rows[0]
+
+    if (!updatedPrefs) {
+      console.error('❌ Error updating proxy preferences')
       return NextResponse.json({ error: 'Failed to update proxy preferences' }, { status: 500 })
     }
 

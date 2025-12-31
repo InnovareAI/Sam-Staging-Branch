@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
@@ -41,15 +41,13 @@ async function unipileRequest(endpoint: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    const { userId, workspaceId: authWorkspaceId } = await verifyAuth(req);
 
-    // Authenticate user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const body = await req.json();
+    const { prospects, workspaceId: bodyWorkspaceId } = body;
 
-    const { prospects, workspaceId } = await req.json();
+    // Use workspaceId from body if provided, otherwise use from auth
+    const workspaceId = bodyWorkspaceId || authWorkspaceId;
 
     if (!prospects || !Array.isArray(prospects)) {
       return NextResponse.json({
@@ -63,35 +61,32 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Verify workspace access
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!member) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // If body workspaceId differs from auth, verify access
+    if (bodyWorkspaceId && bodyWorkspaceId !== authWorkspaceId) {
+      const memberCheck = await pool.query(
+        'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+        [bodyWorkspaceId, userId]
+      );
+      if (memberCheck.rows.length === 0) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     // Get Unipile LinkedIn account for this workspace
-    const { data: workspaceAccount } = await supabase
-      .from('workspace_accounts')
-      .select('unipile_account_id')
-      .eq('workspace_id', workspaceId)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES)
-      .single();
+    const accountResult = await pool.query(
+      `SELECT unipile_account_id FROM workspace_accounts
+       WHERE workspace_id = $1 AND account_type = 'linkedin' AND connection_status = ANY($2)`,
+      [workspaceId, VALID_CONNECTION_STATUSES]
+    );
 
-    if (!workspaceAccount?.unipile_account_id) {
+    if (accountResult.rows.length === 0 || !accountResult.rows[0].unipile_account_id) {
       return NextResponse.json({
         error: 'No connected LinkedIn account found for this workspace'
       }, { status: 400 });
     }
 
-    const unipileAccountId = workspaceAccount.unipile_account_id;
-    console.log(`🔍 Resolving LinkedIn IDs for ${prospects.length} prospects using account ${unipileAccountId}`);
+    const unipileAccountId = accountResult.rows[0].unipile_account_id;
+    console.log(`Resolving LinkedIn IDs for ${prospects.length} prospects using account ${unipileAccountId}`);
 
     // Resolve each prospect's LinkedIn URL to provider_id
     const resolvedProspects: any[] = [];
@@ -130,7 +125,7 @@ export async function POST(req: NextRequest) {
             linkedin_user_id: profile.provider_id,
             connection_degree: prospect.connection_degree || (profile.network_distance === 'FIRST_DEGREE' ? '1st' : '2nd')
           });
-          console.log(`  ✅ Resolved ${prospect.name || vanityId}: ${profile.provider_id}`);
+          console.log(`  Resolved ${prospect.name || vanityId}: ${profile.provider_id}`);
         } else {
           failedProspects.push({
             ...prospect,
@@ -142,7 +137,7 @@ export async function POST(req: NextRequest) {
         await new Promise(resolve => setTimeout(resolve, 200));
 
       } catch (error) {
-        console.error(`  ❌ Failed to resolve ${prospect.name || vanityId}:`, error);
+        console.error(`  Failed to resolve ${prospect.name || vanityId}:`, error);
         failedProspects.push({
           ...prospect,
           resolution_error: error instanceof Error ? error.message : 'Unknown error'
@@ -150,7 +145,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log(`📊 Resolution complete: ${resolvedProspects.length} resolved, ${failedProspects.length} failed`);
+    console.log(`Resolution complete: ${resolvedProspects.length} resolved, ${failedProspects.length} failed`);
 
     return NextResponse.json({
       success: true,
@@ -164,6 +159,10 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('LinkedIn ID resolution error:', error);
     return NextResponse.json({
       success: false,

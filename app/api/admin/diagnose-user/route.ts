@@ -1,60 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 
 /**
  * Diagnostic endpoint to check user authentication and workspace access
  */
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    // Try to verify auth
+    let userId: string | null = null;
+    let userEmail: string | null = null;
 
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    try {
+      const authResult = await verifyAuth(request);
+      userId = authResult.userId;
+      userEmail = authResult.userEmail;
+    } catch (authError: any) {
       return NextResponse.json({
         authenticated: false,
-        error: authError?.message || 'No user session',
-        cookies: cookieStore.getAll().map(c => ({ name: c.name, hasValue: !!c.value }))
+        error: authError?.message || 'No user session'
       });
     }
 
     // Get user profile
-    const { data: profile, error: profileError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    const profileResult = await pool.query(
+      'SELECT * FROM users WHERE id = $1',
+      [userId]
+    );
+    const profile = profileResult.rows[0];
 
     // Get workspace memberships using direct query (not join)
-    const { data: memberships, error: membershipError } = await supabase
-      .from('workspace_members')
-      .select('*')
-      .eq('user_id', user.id);
+    const membershipsResult = await pool.query(
+      'SELECT * FROM workspace_members WHERE user_id = $1',
+      [userId]
+    );
+    const memberships = membershipsResult.rows;
 
     // Get workspaces separately
-    let workspaces = [];
+    let workspaces: any[] = [];
     if (memberships && memberships.length > 0) {
       const workspaceIds = memberships.map(m => m.workspace_id);
-      const { data: workspaceData } = await supabase
-        .from('workspaces')
-        .select('*')
-        .in('id', workspaceIds);
-      workspaces = workspaceData || [];
+      const workspacesResult = await pool.query(
+        'SELECT * FROM workspaces WHERE id = ANY($1)',
+        [workspaceIds]
+      );
+      workspaces = workspacesResult.rows || [];
     }
 
     return NextResponse.json({
       authenticated: true,
       user: {
-        id: user.id,
-        email: user.email,
-        created_at: user.created_at
+        id: userId,
+        email: userEmail
       },
       profile: profile || null,
-      profileError: profileError?.message || null,
+      profileError: profile ? null : 'Profile not found',
       memberships: memberships || [],
-      membershipError: membershipError?.message || null,
+      membershipError: memberships?.length ? null : 'No memberships found',
       workspaces: workspaces,
       diagnosis: {
         hasProfile: !!profile,

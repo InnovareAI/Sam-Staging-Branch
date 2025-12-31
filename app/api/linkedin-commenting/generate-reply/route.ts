@@ -5,8 +5,7 @@
  * "Ask Sam" feature - generates contextual, engaging replies
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { claudeClient } from '@/lib/llm/claude-client';
 
@@ -24,7 +23,7 @@ interface GenerateReplyRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: GenerateReplyRequest = await request.json();
-    const { post_id, original_comment_text, original_comment_author, workspace_id } = body;
+    const { post_id, original_comment_text, original_comment_author } = body;
 
     if (!post_id || !original_comment_text || !original_comment_author) {
       return NextResponse.json(
@@ -33,42 +32,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Authenticate user
-    const authClient = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Authenticate user using Firebase auth
+    const { workspaceId } = await verifyAuth(request);
 
     // Get post details
-    const { data: post, error: postError } = await supabase
-      .from('linkedin_posts_discovered')
-      .select('post_content, author_name, author_title')
-      .eq('id', post_id)
-      .single();
+    const postResult = await pool.query(
+      `SELECT post_content, author_name, author_title FROM linkedin_posts_discovered WHERE id = $1`,
+      [post_id]
+    );
 
-    if (postError || !post) {
+    if (postResult.rows.length === 0) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    // Get workspace and brand guidelines
-    const { data: workspace } = await supabase
-      .from('workspaces')
-      .select('name')
-      .eq('id', workspace_id)
-      .single();
+    const post = postResult.rows[0];
 
-    const { data: brandGuidelines } = await supabase
-      .from('linkedin_brand_guidelines')
-      .select('*')
-      .eq('workspace_id', workspace_id)
-      .single();
+    // Get workspace name
+    const workspaceResult = await pool.query(
+      `SELECT name FROM workspaces WHERE id = $1`,
+      [workspaceId]
+    );
+
+    // Get brand guidelines
+    const brandResult = await pool.query(
+      `SELECT * FROM linkedin_brand_guidelines WHERE workspace_id = $1`,
+      [workspaceId]
+    );
+
+    const brandGuidelines = brandResult.rows[0];
 
     console.log(`🤖 Ask Sam: Generating reply to ${original_comment_author}'s comment`);
 
@@ -142,6 +133,12 @@ Generate a thoughtful reply to ${original_comment_author}'s comment. The reply s
     });
 
   } catch (error) {
+    // Handle auth errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
+
     console.error('❌ Error generating reply:', error);
     return NextResponse.json({
       error: 'Internal server error',

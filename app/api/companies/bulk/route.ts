@@ -1,5 +1,5 @@
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 interface CompanyInput {
     name: string;
@@ -15,12 +15,7 @@ interface CompanyInput {
  */
 export async function POST(request: NextRequest) {
     try {
-        const supabase = await createSupabaseRouteClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        const { workspaceId } = await verifyAuth(request);
 
         const body = await request.json();
         const { workspace_id, companies } = body as {
@@ -28,29 +23,15 @@ export async function POST(request: NextRequest) {
             companies: CompanyInput[];
         };
 
-        if (!workspace_id) {
-            return NextResponse.json({ error: 'workspace_id is required' }, { status: 400 });
-        }
+        const targetWorkspaceId = workspace_id || workspaceId;
 
         if (!companies || !Array.isArray(companies) || companies.length === 0) {
             return NextResponse.json({ error: 'companies array is required' }, { status: 400 });
         }
 
-        // Verify user has access to workspace
-        const { data: membership } = await supabase
-            .from('workspace_members')
-            .select('id')
-            .eq('workspace_id', workspace_id)
-            .eq('user_id', user.id)
-            .single();
-
-        if (!membership) {
-            return NextResponse.json({ error: 'Workspace not found or access denied' }, { status: 403 });
-        }
-
         // Prepare companies for insert
         const companiesToInsert = companies.map((company) => ({
-            workspace_id,
+            workspace_id: targetWorkspaceId,
             name: company.name.trim(),
             website: company.website?.trim() || null,
             linkedin_url: company.linkedin_url?.trim() || null,
@@ -63,11 +44,12 @@ export async function POST(request: NextRequest) {
 
         // Check for duplicates by name within the workspace
         const companyNames = companiesToInsert.map(c => c.name.toLowerCase());
-        const { data: existingCompanies } = await supabase
-            .from('workspace_companies')
-            .select('name')
-            .eq('workspace_id', workspace_id)
-            .in('name', companyNames);
+        const namePlaceholders = companyNames.map((_, i) => `$${i + 2}`).join(', ');
+
+        const { rows: existingCompanies } = await pool.query(
+            `SELECT name FROM workspace_companies WHERE workspace_id = $1 AND LOWER(name) IN (${namePlaceholders})`,
+            [targetWorkspaceId, ...companyNames]
+        );
 
         const existingNames = new Set((existingCompanies || []).map(c => c.name.toLowerCase()));
         const newCompanies = companiesToInsert.filter(c => !existingNames.has(c.name.toLowerCase()));
@@ -83,23 +65,40 @@ export async function POST(request: NextRequest) {
         }
 
         // Insert new companies
-        const { data: insertedCompanies, error } = await supabase
-            .from('workspace_companies')
-            .insert(newCompanies)
-            .select();
+        const insertQuery = `
+            INSERT INTO workspace_companies (
+                workspace_id, name, website, linkedin_url, industry, location, status, source, prospects_found
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING *
+        `;
 
-        if (error) {
-            console.error('Error inserting companies:', error);
-            return NextResponse.json({ error: 'Failed to import companies', details: error.message }, { status: 500 });
+        const insertedCompanies = [];
+        for (const company of newCompanies) {
+            const { rows } = await pool.query(insertQuery, [
+                company.workspace_id,
+                company.name,
+                company.website,
+                company.linkedin_url,
+                company.industry,
+                company.location,
+                company.status,
+                company.source,
+                company.prospects_found
+            ]);
+            if (rows[0]) insertedCompanies.push(rows[0]);
         }
 
         return NextResponse.json({
             success: true,
-            imported: insertedCompanies?.length || 0,
+            imported: insertedCompanies.length,
             duplicates: duplicateCount,
             companies: insertedCompanies,
         });
     } catch (error) {
+        if ((error as AuthError).code) {
+            const authError = error as AuthError;
+            return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+        }
         console.error('Error in bulk company import:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

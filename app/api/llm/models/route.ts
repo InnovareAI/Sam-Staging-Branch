@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, AuthError } from '@/lib/auth';
 import {
   APPROVED_MODELS,
   getEUModels,
@@ -17,13 +17,15 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(request);
+    } catch (error) {
+      const authError = error as AuthError;
       return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
+        { success: false, error: authError.message },
+        { status: authError.statusCode }
       );
     }
 

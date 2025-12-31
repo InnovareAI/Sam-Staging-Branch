@@ -1,26 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
-
-async function getWorkspaceId(supabase: any, userId: string) {
-  const { data: profile } = await supabase
-    .from('users')
-    .select('current_workspace_id')
-    .eq('id', userId)
-    .single();
-
-  if (profile?.current_workspace_id) {
-    return profile.current_workspace_id;
-  }
-
-  const { data: membership } = await supabase
-    .from('workspace_members')
-    .select('workspace_id')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
-
-  return membership?.workspace_id ?? null;
-}
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 function generateMarkdownReport(documents: any[], workspace: any, section?: string) {
   const title = section ? `Knowledge Base - ${section}` : 'Knowledge Base - Complete Export';
@@ -143,25 +122,25 @@ function generateJSONReport(documents: any[], workspace: any, section?: string) 
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const { searchParams } = new URL(request.url);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const workspaceId = await getWorkspaceId(supabase, user.id);
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
-    }
-
     // Get workspace info
-    const { data: workspace } = await supabase
-      .from('workspaces')
-      .select('id, name')
-      .eq('id', workspaceId)
-      .single();
+    const workspaceResult = await pool.query(
+      'SELECT id, name FROM workspaces WHERE id = $1',
+      [workspaceId]
+    );
+    const workspace = workspaceResult.rows[0] || { id: workspaceId, name: 'Unknown' };
 
     // Parse query parameters
     const format = searchParams.get('format') || 'json'; // json, csv, markdown
@@ -169,27 +148,27 @@ export async function GET(request: NextRequest) {
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
     // Build query
-    let query = supabase
-      .from('knowledge_base_documents')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('section_id', { ascending: true })
-      .order('created_at', { ascending: false });
+    let query = `
+      SELECT * FROM knowledge_base_documents
+      WHERE workspace_id = $1
+    `;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (!includeInactive) {
-      query = query.eq('is_active', true);
+      query += ` AND is_active = true`;
     }
 
     if (section) {
-      query = query.eq('section_id', section);
+      query += ` AND section_id = $${paramIndex}`;
+      params.push(section);
+      paramIndex++;
     }
 
-    const { data: documents, error: docsError } = await query;
+    query += ` ORDER BY section_id ASC, created_at DESC`;
 
-    if (docsError) {
-      console.error('Failed to fetch documents for export:', docsError);
-      return NextResponse.json({ error: 'Failed to fetch documents' }, { status: 500 });
-    }
+    const docsResult = await pool.query(query, params);
+    const documents = docsResult.rows;
 
     if (!documents || documents.length === 0) {
       return NextResponse.json({ error: 'No documents found to export' }, { status: 404 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,30 +15,21 @@ export async function GET(
 ) {
   try {
     const { jobId } = params;
-
-    const supabase = await createSupabaseRouteClient();
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
+    const { userId } = await verifyAuth(request);
 
     // Get job
-    const { data: job, error: jobError } = await supabase
-      .from('enrichment_jobs')
-      .select('*')
-      .eq('id', jobId)
-      .eq('user_id', user.id) // RLS will enforce this anyway
-      .single();
+    const jobResult = await pool.query(
+      'SELECT * FROM enrichment_jobs WHERE id = $1 AND user_id = $2',
+      [jobId, userId]
+    );
 
-    if (jobError || !job) {
+    if (jobResult.rows.length === 0) {
       return NextResponse.json({
         error: 'Job not found'
       }, { status: 404 });
     }
+
+    const job = jobResult.rows[0];
 
     // Calculate progress
     const progress = job.total_prospects > 0
@@ -62,7 +53,11 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('❌ Error fetching job status:', error);
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
+    console.error('Error fetching job status:', error);
     return NextResponse.json({
       error: 'Failed to fetch job status',
       details: error instanceof Error ? error.message : String(error)
@@ -79,31 +74,18 @@ export async function DELETE(
 ) {
   try {
     const { jobId } = params;
-
-    const supabase = await createSupabaseRouteClient();
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
+    const { userId } = await verifyAuth(request);
 
     // Update job to cancelled
-    const { data: job, error: updateError } = await supabase
-      .from('enrichment_jobs')
-      .update({
-        status: 'cancelled',
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', jobId)
-      .eq('user_id', user.id)
-      .eq('status', 'pending') // Only cancel if not started yet
-      .select()
-      .single();
+    const updateResult = await pool.query(
+      `UPDATE enrichment_jobs
+       SET status = 'cancelled', completed_at = $1
+       WHERE id = $2 AND user_id = $3 AND status = 'pending'
+       RETURNING *`,
+      [new Date().toISOString(), jobId, userId]
+    );
 
-    if (updateError || !job) {
+    if (updateResult.rows.length === 0) {
       return NextResponse.json({
         error: 'Failed to cancel job (may have already started)'
       }, { status: 400 });
@@ -115,7 +97,11 @@ export async function DELETE(
     });
 
   } catch (error) {
-    console.error('❌ Error cancelling job:', error);
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
+    console.error('Error cancelling job:', error);
     return NextResponse.json({
       error: 'Failed to cancel job',
       details: error instanceof Error ? error.message : String(error)

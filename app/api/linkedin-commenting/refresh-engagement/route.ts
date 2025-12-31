@@ -7,8 +7,7 @@
  * - By a cron job to update all posted comments
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
@@ -35,49 +34,42 @@ export async function POST(request: NextRequest) {
     const isCronJob = cronSecret === process.env.CRON_SECRET;
 
     if (!isCronJob) {
-      const authClient = await createSupabaseRouteClient();
-      const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-      if (authError || !user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+      await verifyAuth(request);
     }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
 
     // Build query based on parameters
-    let query = supabase
-      .from('linkedin_post_comments')
-      .select(`
-        id,
-        linkedin_comment_id,
-        workspace_id,
-        post:linkedin_posts_discovered!inner (
-          id, social_id
-        )
-      `)
-      .eq('status', 'posted')
-      .not('linkedin_comment_id', 'is', null);
+    let queryText = `
+      SELECT
+        lpc.id,
+        lpc.linkedin_comment_id,
+        lpc.workspace_id,
+        lpd.id as post_id,
+        lpd.social_id as post_social_id
+      FROM linkedin_post_comments lpc
+      INNER JOIN linkedin_posts_discovered lpd ON lpc.post_id = lpd.id
+      WHERE lpc.status = 'posted'
+      AND lpc.linkedin_comment_id IS NOT NULL
+    `;
+    const queryParams: any[] = [];
+    let paramIndex = 1;
 
     if (comment_id) {
-      // Refresh specific comment
-      query = query.eq('id', comment_id);
+      queryText += ` AND lpc.id = $${paramIndex}`;
+      queryParams.push(comment_id);
+      paramIndex++;
     } else if (workspace_id) {
-      // Refresh all comments for a workspace
-      query = query.eq('workspace_id', workspace_id);
+      queryText += ` AND lpc.workspace_id = $${paramIndex}`;
+      queryParams.push(workspace_id);
+      paramIndex++;
     }
 
-    // Order by oldest engagement check first, limit batch size
-    query = query
-      .order('engagement_checked_at', { ascending: true, nullsFirst: true })
-      .limit(batch_size);
+    queryText += ` ORDER BY lpc.engagement_checked_at ASC NULLS FIRST LIMIT $${paramIndex}`;
+    queryParams.push(batch_size);
 
-    const { data: comments, error: fetchError } = await query;
+    const commentsResult = await pool.query(queryText, queryParams);
+    const comments = commentsResult.rows;
 
-    if (fetchError || !comments || comments.length === 0) {
+    if (comments.length === 0) {
       return NextResponse.json({
         success: true,
         message: 'No comments to update',
@@ -88,20 +80,21 @@ export async function POST(request: NextRequest) {
     console.log(`📊 Refreshing engagement for ${comments.length} comments`);
 
     // Get LinkedIn account for each workspace
-    const workspaceIds = [...new Set(comments.map(c => c.workspace_id))];
+    const workspaceIds = [...new Set(comments.map((c: any) => c.workspace_id))];
     const workspaceAccounts: Record<string, string> = {};
 
     for (const wsId of workspaceIds) {
-      const { data: account } = await supabase
-        .from('workspace_accounts')
-        .select('unipile_account_id')
-        .eq('workspace_id', wsId)
-        .eq('account_type', 'linkedin')
-        .in('connection_status', VALID_CONNECTION_STATUSES)
-        .single();
+      const accountResult = await pool.query(
+        `SELECT unipile_account_id FROM workspace_accounts
+         WHERE workspace_id = $1
+         AND account_type = 'linkedin'
+         AND connection_status = ANY($2)
+         LIMIT 1`,
+        [wsId, VALID_CONNECTION_STATUSES]
+      );
 
-      if (account) {
-        workspaceAccounts[wsId] = account.unipile_account_id;
+      if (accountResult.rows.length > 0) {
+        workspaceAccounts[wsId] = accountResult.rows[0].unipile_account_id;
       }
     }
 
@@ -122,7 +115,7 @@ export async function POST(request: NextRequest) {
         // But Unipile may not support this - we'll try to get it from the post's comment list instead
 
         // First try to get comment info from the post's comments
-        const postSocialId = (comment.post as any).social_id;
+        const postSocialId = comment.post_social_id;
         const commentsUrl = `${UNIPILE_BASE_URL}/api/v1/posts/${encodeURIComponent(postSocialId)}/comments?account_id=${accountId}`;
 
         const commentsResponse = await fetch(commentsUrl, {
@@ -160,14 +153,19 @@ export async function POST(request: NextRequest) {
         }
 
         // Update the comment with engagement metrics
-        await supabase
-          .from('linkedin_post_comments')
-          .update({
-            engagement_metrics: engagement,
-            engagement_checked_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', comment.id);
+        await pool.query(
+          `UPDATE linkedin_post_comments
+           SET engagement_metrics = $1,
+               engagement_checked_at = $2,
+               updated_at = $3
+           WHERE id = $4`,
+          [
+            JSON.stringify(engagement),
+            new Date().toISOString(),
+            new Date().toISOString(),
+            comment.id
+          ]
+        );
 
         updatedCount++;
         results.push({ id: comment.id, status: 'success', engagement });
@@ -195,6 +193,12 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    // Handle auth errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
+
     console.error('❌ Engagement refresh error:', error);
     return NextResponse.json({
       error: 'Internal server error',

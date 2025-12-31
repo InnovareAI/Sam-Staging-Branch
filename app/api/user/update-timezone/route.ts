@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 
 /**
  * POST /api/user/update-timezone
@@ -8,18 +8,8 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    // Authenticate with Firebase
+    const { userId, userEmail } = await verifyAuth(request);
 
     const body = await request.json();
     const { timezone } = body;
@@ -32,20 +22,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user's timezone preference
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ profile_timezone: timezone })
-      .eq('id', user.id);
+    const result = await pool.query(
+      'UPDATE users SET profile_timezone = $1 WHERE id = $2',
+      [timezone, userId]
+    );
 
-    if (updateError) {
-      console.error('Failed to update timezone:', updateError);
+    if (result.rowCount === 0) {
+      console.error('Failed to update timezone: user not found');
       return NextResponse.json(
         { error: 'Failed to update timezone preference' },
         { status: 500 }
       );
     }
 
-    console.log(`✅ Updated timezone for user ${user.email}: ${timezone}`);
+    console.log(`✅ Updated timezone for user ${userEmail}: ${timezone}`);
 
     return NextResponse.json({
       success: true,

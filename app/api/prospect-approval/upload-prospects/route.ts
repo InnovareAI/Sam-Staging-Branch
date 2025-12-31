@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { normalizeCompanyName } from '@/lib/enrich-prospect-name';
 
 // Prevent 504 timeout on large prospect uploads
@@ -44,10 +42,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const { userId, workspaceId: authWorkspaceId } = await verifyAuth(request);
 
     const body = await request.json();
     let { campaign_name, campaign_tag, source, prospects, workspace_id } = body;
@@ -56,52 +51,15 @@ export async function POST(request: NextRequest) {
       campaign_name,
       prospect_count: prospects?.length,
       workspace_id,
-      has_auth: !!request.headers.get('cookie')
+      authWorkspaceId
     });
 
     if (!prospects || prospects.length === 0) {
       return NextResponse.json({ success: false, error: 'No prospects provided' }, { status: 400 });
     }
 
-    // Get authenticated user and validate workspace access
-    const cookieStore = await cookies();
-    const authClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          }
-        }
-      }
-    );
-
-    const { data: { user } } = await authClient.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
-
-    // Try to get workspace_id from request or user's current workspace
-    if (!workspace_id) {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('current_workspace_id')
-        .eq('id', user.id)
-        .single();
-
-      workspace_id = userData?.current_workspace_id;
-      console.log('✅ Got workspace from authenticated user:', workspace_id);
-    }
+    // Use workspace_id from request or auth context
+    workspace_id = workspace_id || authWorkspaceId;
 
     if (!workspace_id) {
       return NextResponse.json({
@@ -111,19 +69,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user has access to this workspace
-    const { data: memberCheck, error: memberError } = await supabase
-      .from('workspace_members')
-      .select('id, role')
-      .eq('workspace_id', workspace_id)
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .single();
+    const memberResult = await pool.query(
+      `SELECT id, role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2 AND status = 'active'`,
+      [workspace_id, userId]
+    );
 
-    if (memberError || !memberCheck) {
+    if (memberResult.rows.length === 0) {
       console.error('Paste Upload - User not authorized for workspace:', {
-        userId: user.id,
-        workspaceId: workspace_id,
-        error: memberError?.message
+        userId,
+        workspaceId: workspace_id
       });
       return NextResponse.json({
         success: false,
@@ -132,54 +86,37 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Paste Upload - Workspace access verified:', {
-      userId: user.id,
+      userId,
       workspaceId: workspace_id,
-      role: memberCheck.role
+      role: memberResult.rows[0].role
     });
 
-    // Get workspace to verify it exists
-    const { data: workspace, error: wsError } = await supabase
-      .from('workspaces')
-      .select('id, name')
-      .eq('id', workspace_id)
-      .single();
+    // Verify workspace exists
+    const workspaceResult = await pool.query(
+      'SELECT id, name FROM workspaces WHERE id = $1',
+      [workspace_id]
+    );
 
-    if (wsError || !workspace) {
-      console.error('Workspace not found:', wsError);
+    if (workspaceResult.rows.length === 0) {
+      console.error('Workspace not found:', workspace_id);
       return NextResponse.json({ success: false, error: 'Workspace not found' }, { status: 404 });
     }
 
-    // Use the authenticated user's ID for the session
-    const userId = user.id;
+    // Create approval session
+    const sessionResult = await pool.query(
+      `INSERT INTO prospect_approval_sessions
+       (workspace_id, user_id, campaign_name, campaign_tag, prospect_source, total_prospects, pending_count, approved_count, rejected_count, status, batch_number, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING *`,
+      [
+        workspace_id, userId, campaign_name || 'Uploaded Prospects', campaign_tag || 'manual-upload',
+        source || 'manual-upload', prospects.length, prospects.length, 0, 0, 'active', 1, new Date().toISOString()
+      ]
+    );
 
-    // Create approval session (note: duplicate checking happens after session creation)
-    const { data: session, error: sessionError} = await supabase
-      .from('prospect_approval_sessions')
-      .insert({
-        workspace_id: workspace_id,
-        user_id: userId,
-        campaign_name: campaign_name || 'Uploaded Prospects',
-        campaign_tag: campaign_tag || 'manual-upload',
-        prospect_source: source || 'manual-upload',
-        total_prospects: prospects.length,
-        pending_count: prospects.length,
-        approved_count: 0,
-        rejected_count: 0,
-        status: 'active',
-        batch_number: 1,
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (sessionError) {
-      console.error('Error creating session:', sessionError);
-      return NextResponse.json({ success: false, error: sessionError.message }, { status: 500 });
-    }
+    const session = sessionResult.rows[0];
 
     // CHECK FOR DUPLICATES: Campaign-type-aware validation
-    // - Email campaigns: Allow duplicates but return warnings for user control
-    // - LinkedIn campaigns (connector/messenger): Block duplicates (hard constraint)
     const linkedinUrls = prospects
       .map((p: any) => p.linkedin_url || p.contact?.linkedin_url)
       .filter(Boolean);
@@ -190,44 +127,49 @@ export async function POST(request: NextRequest) {
 
     let duplicateWarnings: any[] = [];
 
-    // Check LinkedIn URL duplicates (applies to all campaign types)
+    // Check LinkedIn URL duplicates
     if (linkedinUrls.length > 0) {
-      const { data: existingLinkedInProspects } = await supabase
-        .from('campaign_prospects')
-        .select('linkedin_url, campaign_id, campaigns(id, campaign_name, campaign_type)')
-        .in('linkedin_url', linkedinUrls);
+      const existingLinkedInResult = await pool.query(
+        `SELECT cp.linkedin_url, cp.campaign_id, c.id as campaign_id, c.campaign_name, c.campaign_type
+         FROM campaign_prospects cp
+         JOIN campaigns c ON cp.campaign_id = c.id
+         WHERE cp.linkedin_url = ANY($1)`,
+        [linkedinUrls]
+      );
 
-      if (existingLinkedInProspects && existingLinkedInProspects.length > 0) {
+      if (existingLinkedInResult.rows.length > 0) {
         duplicateWarnings = duplicateWarnings.concat(
-          existingLinkedInProspects.map((ep: any) => ({
+          existingLinkedInResult.rows.map((ep: any) => ({
             type: 'linkedin',
             identifier: ep.linkedin_url,
-            existing_campaign_id: ep.campaigns?.id,
-            existing_campaign_name: ep.campaigns?.campaign_name || 'Unknown campaign',
-            existing_campaign_type: ep.campaigns?.campaign_type || 'unknown',
-            blocking: ['connector', 'messenger'].includes(ep.campaigns?.campaign_type || '')
+            existing_campaign_id: ep.campaign_id,
+            existing_campaign_name: ep.campaign_name || 'Unknown campaign',
+            existing_campaign_type: ep.campaign_type || 'unknown',
+            blocking: ['connector', 'messenger'].includes(ep.campaign_type || '')
           }))
         );
       }
     }
 
-    // Check email duplicates (warning only for email campaigns)
+    // Check email duplicates
     if (emails.length > 0) {
-      const { data: existingEmailProspects } = await supabase
-        .from('campaign_prospects')
-        .select('email, campaign_id, campaigns(id, campaign_name, campaign_type)')
-        .in('email', emails)
-        .not('email', 'is', null);
+      const existingEmailResult = await pool.query(
+        `SELECT cp.email, cp.campaign_id, c.id as campaign_id, c.campaign_name, c.campaign_type
+         FROM campaign_prospects cp
+         JOIN campaigns c ON cp.campaign_id = c.id
+         WHERE cp.email = ANY($1) AND cp.email IS NOT NULL`,
+        [emails]
+      );
 
-      if (existingEmailProspects && existingEmailProspects.length > 0) {
+      if (existingEmailResult.rows.length > 0) {
         duplicateWarnings = duplicateWarnings.concat(
-          existingEmailProspects.map((ep: any) => ({
+          existingEmailResult.rows.map((ep: any) => ({
             type: 'email',
             identifier: ep.email,
-            existing_campaign_id: ep.campaigns?.id,
-            existing_campaign_name: ep.campaigns?.campaign_name || 'Unknown campaign',
-            existing_campaign_type: ep.campaigns?.campaign_type || 'unknown',
-            blocking: false // Email duplicates are warnings, not blocking
+            existing_campaign_id: ep.campaign_id,
+            existing_campaign_name: ep.campaign_name || 'Unknown campaign',
+            existing_campaign_type: ep.campaign_type || 'unknown',
+            blocking: false
           }))
         );
       }
@@ -237,7 +179,6 @@ export async function POST(request: NextRequest) {
     const cleanLinkedInUrl = (url: string): string => {
       if (!url) return '';
       try {
-        // Extract just the username from the URL
         const match = url.match(/linkedin\.com\/in\/([^/?#]+)/);
         if (match) {
           const username = match[1];
@@ -252,32 +193,22 @@ export async function POST(request: NextRequest) {
 
     // Save prospects to approval data table
     const approvalData = prospects.map((p: any, index: number) => {
-      // Ensure unique prospect_id
       const prospectId = p.prospect_id || p.id || `upload_${session.id}_${index}_${Date.now()}`;
-
-      // Get name from various possible fields
       const name = p.name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown';
-
-      // Keep LinkedIn URL UNCHANGED - preserve miniProfileUrn and query parameters
-      // miniProfileUrn contains critical context for Unipile API lookups
       const linkedinUrl = p.linkedin_url || p.contact?.linkedin_url || '';
 
-      // Ensure contact is an object with required fields
       const contact = {
         email: p.email || p.contact?.email || '',
-        linkedin_url: linkedinUrl, // UNCHANGED: Full URL with miniProfileUrn for accurate API lookups
-        linkedin_provider_id: p.providerId || p.contact?.linkedin_provider_id || null, // CRITICAL: Store the authoritative provider_id from search results
-        public_identifier: p.publicIdentifier || p.public_identifier || null, // Vanity identifier (e.g., "john-doe") for fallback lookups
+        linkedin_url: linkedinUrl,
+        linkedin_provider_id: p.providerId || p.contact?.linkedin_provider_id || null,
+        public_identifier: p.publicIdentifier || p.public_identifier || null,
         first_name: p.first_name || p.contact?.first_name || name.split(' ')[0] || '',
         last_name: p.last_name || p.contact?.last_name || name.split(' ').slice(1).join(' ') || ''
       };
 
-      // Ensure company is an object and normalize the name
       let companyName = typeof p.company === 'string'
         ? p.company
         : (p.company?.name || p.company_name || '');
-
-      // Normalize company name to remove legal suffixes
       const cleanCompanyName = normalizeCompanyName(companyName);
 
       const company = {
@@ -294,10 +225,10 @@ export async function POST(request: NextRequest) {
         company: company,
         location: p.location || '',
         contact: contact,
-        connection_degree: p.connectionDegree || p.connection_degree || null,  // CRITICAL: Preserve connectionDegree from SAM scrape (DB column is snake_case)
+        connection_degree: p.connectionDegree || p.connection_degree || null,
         source: p.source || source || 'manual-upload',
         enrichment_score: p.enrichment_score || 70,
-        approval_status: p.approval_status || 'pending',  // Respect status sent from client, default to pending
+        approval_status: p.approval_status || 'pending',
         created_at: new Date().toISOString()
       };
     });
@@ -320,23 +251,26 @@ export async function POST(request: NextRequest) {
       source: p.source || 'manual-upload',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
-    })).filter((p: any) => p.linkedin_url_hash); // Only upsert those with valid LinkedIn URLs
+    })).filter((p: any) => p.linkedin_url_hash);
 
     // Batch upsert to workspace_prospects
     if (masterProspects.length > 0) {
-      const { error: masterError } = await supabase
-        .from('workspace_prospects')
-        .upsert(masterProspects, {
-          onConflict: 'workspace_id,linkedin_url_hash',
-          ignoreDuplicates: false
-        });
-
-      if (masterError) {
-        console.error('❌ Master prospect upsert error:', masterError);
-        // Don't fail - continue with approval data insert
-        console.warn('⚠️ Continuing despite master table error');
-      } else {
+      try {
+        for (const prospect of masterProspects) {
+          await pool.query(
+            `INSERT INTO workspace_prospects (workspace_id, linkedin_url, linkedin_url_hash, first_name, last_name, email, company, title, location, linkedin_provider_id, connection_status, source, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+             ON CONFLICT (workspace_id, linkedin_url_hash)
+             DO UPDATE SET first_name = $4, last_name = $5, email = $6, company = $7, title = $8, location = $9, updated_at = $14`,
+            [prospect.workspace_id, prospect.linkedin_url, prospect.linkedin_url_hash, prospect.first_name, prospect.last_name,
+             prospect.email, prospect.company, prospect.title, prospect.location, prospect.linkedin_provider_id,
+             prospect.connection_status, prospect.source, prospect.created_at, prospect.updated_at]
+          );
+        }
         console.log(`✅ Upserted ${masterProspects.length} prospects to workspace_prospects`);
+      } catch (masterError: any) {
+        console.error('❌ Master prospect upsert error:', masterError);
+        console.warn('⚠️ Continuing despite master table error');
       }
     }
 
@@ -347,14 +281,13 @@ export async function POST(request: NextRequest) {
 
     let masterIdMap: Record<string, string> = {};
     if (linkedinHashes.length > 0) {
-      const { data: masterRecords } = await supabase
-        .from('workspace_prospects')
-        .select('id, linkedin_url_hash')
-        .eq('workspace_id', workspace_id)
-        .in('linkedin_url_hash', linkedinHashes);
+      const masterRecordsResult = await pool.query(
+        'SELECT id, linkedin_url_hash FROM workspace_prospects WHERE workspace_id = $1 AND linkedin_url_hash = ANY($2)',
+        [workspace_id, linkedinHashes]
+      );
 
-      if (masterRecords) {
-        masterIdMap = masterRecords.reduce((acc: Record<string, string>, r: any) => {
+      if (masterRecordsResult.rows) {
+        masterIdMap = masterRecordsResult.rows.reduce((acc: Record<string, string>, r: any) => {
           acc[r.linkedin_url_hash] = r.id;
           return acc;
         }, {});
@@ -372,52 +305,48 @@ export async function POST(request: NextRequest) {
 
     console.log(`💾 Step 2: Inserting ${approvalDataWithMasterId.length} prospects into prospect_approval_data`);
 
-    const { data: insertedData, error: dataError } = await supabase
-      .from('prospect_approval_data')
-      .insert(approvalDataWithMasterId);
-
-    if (dataError) {
-      console.error('❌ Error saving prospects:', dataError);
-      console.error('   Message:', dataError.message);
-      console.error('   Details:', dataError.details);
-      console.error('   Hint:', dataError.hint);
-
-      // Rollback session
-      await supabase.from('prospect_approval_sessions').delete().eq('id', session.id);
-
-      return NextResponse.json({
-        success: false,
-        error: dataError.message,
-        details: dataError.details,
-        hint: dataError.hint
-      }, { status: 500 });
+    // Insert prospects into prospect_approval_data
+    let insertedCount = 0;
+    for (const prospect of approvalDataWithMasterId) {
+      try {
+        await pool.query(
+          `INSERT INTO prospect_approval_data
+           (session_id, prospect_id, workspace_id, name, title, company, location, contact, connection_degree, source, enrichment_score, approval_status, created_at, master_prospect_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+          [prospect.session_id, prospect.prospect_id, prospect.workspace_id, prospect.name, prospect.title,
+           JSON.stringify(prospect.company), prospect.location, JSON.stringify(prospect.contact), prospect.connection_degree,
+           prospect.source, prospect.enrichment_score, prospect.approval_status, prospect.created_at, prospect.master_prospect_id]
+        );
+        insertedCount++;
+      } catch (insertError: any) {
+        console.error('❌ Error inserting prospect:', insertError);
+      }
     }
 
-    // Verify prospects were inserted by checking count in database
-    const { count: verifyCount } = await supabase
-      .from('prospect_approval_data')
-      .select('*', { count: 'exact', head: true })
-      .eq('session_id', session.id);
-
-    const expectedCount = prospects.length;
+    // Verify prospects were inserted
+    const verifyCountResult = await pool.query(
+      'SELECT COUNT(*) as count FROM prospect_approval_data WHERE session_id = $1',
+      [session.id]
+    );
+    const verifyCount = parseInt(verifyCountResult.rows[0].count);
 
     console.log('✅ Prospect upload verification:', {
-      expected: expectedCount,
+      expected: prospects.length,
       verified: verifyCount,
-      match: verifyCount === expectedCount,
+      match: verifyCount === prospects.length,
       session_id: session.id
     });
 
-    if (verifyCount !== expectedCount) {
-      console.error(`❌ Insert count mismatch: expected ${expectedCount}, verified ${verifyCount}`);
+    if (verifyCount !== prospects.length) {
+      console.error(`❌ Insert count mismatch: expected ${prospects.length}, verified ${verifyCount}`);
 
       // Rollback session and any partial data
-      await supabase.from('prospect_approval_data').delete().eq('session_id', session.id);
-      await supabase.from('prospect_approval_sessions').delete().eq('id', session.id);
+      await pool.query('DELETE FROM prospect_approval_data WHERE session_id = $1', [session.id]);
+      await pool.query('DELETE FROM prospect_approval_sessions WHERE id = $1', [session.id]);
 
       return NextResponse.json({
         success: false,
-        error: `Failed to insert all prospects: ${verifyCount}/${expectedCount} inserted`,
+        error: `Failed to insert all prospects: ${verifyCount}/${prospects.length} inserted`,
         details: 'This may be due to database constraints or permissions. Check server logs.'
       }, { status: 500 });
     }
@@ -425,7 +354,6 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Successfully inserted ${verifyCount} prospects`);
     console.log(`📋 Session ID: ${session.id}`);
 
-    // Add duplicate warnings to response if any exist
     const responseMessage = duplicateWarnings.length > 0
       ? `Successfully uploaded ${verifyCount} prospects. ${duplicateWarnings.length} duplicate(s) detected - review warnings during approval.`
       : `Successfully uploaded ${verifyCount} prospects. Go to Prospect Approval to review.`;
@@ -440,6 +368,10 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Upload prospects error:', error);
     return NextResponse.json({
       success: false,

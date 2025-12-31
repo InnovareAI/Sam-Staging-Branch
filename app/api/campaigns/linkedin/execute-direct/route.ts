@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { mcpRegistry } from '@/lib/mcp/mcp-registry';
 
 /**
@@ -9,68 +9,66 @@ import { mcpRegistry } from '@/lib/mcp/mcp-registry';
  */
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase authentication
+    const { userId, workspaceId } = await verifyAuth(req);
 
-    // Authenticate
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { campaignId, workspaceId: requestWorkspaceId } = await req.json();
 
-    const { campaignId, workspaceId } = await req.json();
+    // Use the workspace from auth, but allow override from request for flexibility
+    const targetWorkspaceId = requestWorkspaceId || workspaceId;
 
-    if (!campaignId || !workspaceId) {
+    if (!campaignId) {
       return NextResponse.json({
-        error: 'campaignId and workspaceId required'
+        error: 'campaignId is required'
       }, { status: 400 });
     }
 
-    console.log('🚀 Direct Unipile execution:', { campaignId, workspaceId });
+    console.log('Direct Unipile execution:', { campaignId, workspaceId: targetWorkspaceId });
 
-    // Verify workspace access
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
+    // Verify workspace access (already verified by verifyAuth, but double-check if different workspace)
+    if (targetWorkspaceId !== workspaceId) {
+      const memberResult = await pool.query(
+        `SELECT role FROM workspace_members
+         WHERE workspace_id = $1 AND user_id = $2`,
+        [targetWorkspaceId, userId]
+      );
 
-    if (!member) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      if (memberResult.rows.length === 0) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     // Get campaign
-    const { data: campaign, error: campaignError } = await supabase
-      .from('campaigns')
-      .select('*, message_templates')
-      .eq('id', campaignId)
-      .single();
+    const campaignResult = await pool.query(
+      `SELECT *, message_templates FROM campaigns WHERE id = $1`,
+      [campaignId]
+    );
 
-    if (campaignError || !campaign) {
+    if (campaignResult.rows.length === 0) {
       return NextResponse.json({
         error: 'Campaign not found'
       }, { status: 404 });
     }
 
-    // Get prospects with LinkedIn IDs
-    const { data: prospects, error: prospectsError } = await supabase
-      .from('campaign_prospects')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .not('linkedin_user_id', 'is', null);
+    const campaign = campaignResult.rows[0];
 
-    if (prospectsError) {
-      return NextResponse.json({
-        error: 'Failed to fetch prospects'
-      }, { status: 500 });
-    }
+    // Get prospects with LinkedIn IDs
+    const prospectsResult = await pool.query(
+      `SELECT * FROM campaign_prospects
+       WHERE campaign_id = $1
+         AND linkedin_user_id IS NOT NULL`,
+      [campaignId]
+    );
+
+    const prospects = prospectsResult.rows;
 
     if (!prospects || prospects.length === 0) {
       // Check if there are ANY prospects at all
-      const { count: totalProspects } = await supabase
-        .from('campaign_prospects')
-        .select('*', { count: 'exact', head: true })
-        .eq('campaign_id', campaignId);
+      const countResult = await pool.query(
+        `SELECT COUNT(*) as count FROM campaign_prospects WHERE campaign_id = $1`,
+        [campaignId]
+      );
+      const totalProspects = parseInt(countResult.rows[0].count);
 
       return NextResponse.json({
         error: 'No prospects with LinkedIn IDs found',
@@ -84,25 +82,27 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`📊 Found ${prospects.length} prospects with LinkedIn IDs`);
+    console.log(`Found ${prospects.length} prospects with LinkedIn IDs`);
 
     // CRITICAL: Get user's OWN LinkedIn accounts only (LinkedIn ToS compliance)
-    const { data: userAccounts, error: accountsError } = await supabase
-      .from('user_unipile_accounts')
-      .select('unipile_account_id, account_name')
-      .eq('user_id', user.id)
-      .eq('platform', 'LINKEDIN')
-      .eq('connection_status', 'active');
+    const userAccountsResult = await pool.query(
+      `SELECT unipile_account_id, account_name
+       FROM user_unipile_accounts
+       WHERE user_id = $1
+         AND platform = 'LINKEDIN'
+         AND connection_status = 'active'`,
+      [userId]
+    );
 
-    if (accountsError || !userAccounts || userAccounts.length === 0) {
+    if (userAccountsResult.rows.length === 0) {
       return NextResponse.json({
         error: 'No LinkedIn account connected. Please connect your LinkedIn account in Settings.',
         hint: 'You can only use your own LinkedIn account to send campaigns.'
       }, { status: 400 });
     }
 
-    const userAccountIds = userAccounts.map(a => a.unipile_account_id);
-    console.log(`✅ User has ${userAccountIds.length} LinkedIn account(s)`);
+    const userAccountIds = userAccountsResult.rows.map((a: any) => a.unipile_account_id);
+    console.log(`User has ${userAccountIds.length} LinkedIn account(s)`);
 
     // Get Unipile LinkedIn account
     let linkedinAccountId: string | null = null;
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       }
 
       linkedinAccountId = linkedinAccounts[0].id;
-      console.log('✅ Using user LinkedIn account:', linkedinAccountId);
+      console.log('Using user LinkedIn account:', linkedinAccountId);
 
     } catch (error) {
       console.error('Error getting Unipile accounts:', error);
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
           .replace(/\{\{company\}\}/g, prospect.company || '')
           .replace(/\{\{title\}\}/g, prospect.title || '');
 
-        console.log(`📤 Sending to ${prospect.first_name} ${prospect.last_name} (${prospect.linkedin_user_id})`);
+        console.log(`Sending to ${prospect.first_name} ${prospect.last_name} (${prospect.linkedin_user_id})`);
 
         // Send via Unipile MCP
         const sendResponse = await mcpRegistry.callTool({
@@ -172,36 +172,34 @@ export async function POST(req: NextRequest) {
           }
         });
 
-        console.log(`✅ Sent to ${prospect.first_name} ${prospect.last_name}`);
+        console.log(`Sent to ${prospect.first_name} ${prospect.last_name}`);
         results.sent++;
 
         // Update prospect status
-        await supabase
-          .from('campaign_prospects')
-          .update({
-            status: 'messaged',
-            last_contacted_at: new Date().toISOString()
-          })
-          .eq('id', prospect.id);
+        await pool.query(
+          `UPDATE campaign_prospects
+           SET status = 'messaged', last_contacted_at = $1
+           WHERE id = $2`,
+          [new Date().toISOString(), prospect.id]
+        );
 
         // Rate limiting - wait 3 seconds between messages
         await new Promise(resolve => setTimeout(resolve, 3000));
 
       } catch (error) {
-        console.error(`❌ Failed to send to ${prospect.first_name}:`, error);
+        console.error(`Failed to send to ${prospect.first_name}:`, error);
         results.failed++;
         results.errors.push(`${prospect.first_name} ${prospect.last_name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
     // Update campaign status
-    await supabase
-      .from('campaigns')
-      .update({
-        status: 'active',
-        started_at: new Date().toISOString()
-      })
-      .eq('id', campaignId);
+    await pool.query(
+      `UPDATE campaigns
+       SET status = 'active', started_at = $1
+       WHERE id = $2`,
+      [new Date().toISOString(), campaignId]
+    );
 
     return NextResponse.json({
       success: true,
@@ -210,6 +208,11 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
+    // Handle AuthError
+    if (error && typeof error === 'object' && 'code' in error && 'statusCode' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Direct execution error:', error);
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Unknown error',

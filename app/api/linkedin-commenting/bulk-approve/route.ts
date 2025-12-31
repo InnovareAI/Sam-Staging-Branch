@@ -3,8 +3,7 @@
  * POST /api/linkedin-commenting/bulk-approve
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
@@ -26,57 +25,49 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Bulk approving ${comment_ids.length} comments`);
 
-    const authClient = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Authenticate user using Firebase auth
+    await verifyAuth(request);
 
     const results: Array<{ id: string; status: 'success' | 'error'; error?: string }> = [];
 
     for (const comment_id of comment_ids) {
       try {
         // Get comment with post details
-        const { data: comment, error: fetchError } = await supabase
-          .from('linkedin_post_comments')
-          .select(`
-            *,
-            post:linkedin_posts_discovered!inner (
-              id, social_id, share_url, workspace_id
-            )
-          `)
-          .eq('id', comment_id)
-          .single();
+        const commentResult = await pool.query(
+          `SELECT lpc.*, lpd.id as post_db_id, lpd.social_id as post_social_id, lpd.share_url, lpd.workspace_id as post_workspace_id
+           FROM linkedin_post_comments lpc
+           INNER JOIN linkedin_posts_discovered lpd ON lpc.post_id = lpd.id
+           WHERE lpc.id = $1`,
+          [comment_id]
+        );
 
-        if (fetchError || !comment) {
+        if (commentResult.rows.length === 0) {
           results.push({ id: comment_id, status: 'error', error: 'Comment not found' });
           continue;
         }
 
-        // Get LinkedIn account
-        const { data: linkedinAccount } = await supabase
-          .from('workspace_accounts')
-          .select('unipile_account_id')
-          .eq('workspace_id', comment.workspace_id)
-          .eq('account_type', 'linkedin')
-          .in('connection_status', VALID_CONNECTION_STATUSES)
-          .limit(1)
-          .single();
+        const comment = commentResult.rows[0];
 
-        if (!linkedinAccount) {
+        // Get LinkedIn account
+        const accountResult = await pool.query(
+          `SELECT unipile_account_id FROM workspace_accounts
+           WHERE workspace_id = $1
+           AND account_type = 'linkedin'
+           AND connection_status = ANY($2)
+           LIMIT 1`,
+          [comment.workspace_id, VALID_CONNECTION_STATUSES]
+        );
+
+        if (accountResult.rows.length === 0) {
           results.push({ id: comment_id, status: 'error', error: 'No LinkedIn account' });
           continue;
         }
 
+        const linkedinAccount = accountResult.rows[0];
+
         // Post to LinkedIn
         const unipileResponse = await fetch(
-          `${UNIPILE_BASE_URL}/api/v1/posts/${encodeURIComponent(comment.post.social_id)}/comments`,
+          `${UNIPILE_BASE_URL}/api/v1/posts/${encodeURIComponent(comment.post_social_id)}/comments`,
           {
             method: 'POST',
             headers: {
@@ -92,9 +83,10 @@ export async function POST(request: NextRequest) {
 
         if (!unipileResponse.ok) {
           const errorText = await unipileResponse.text();
-          await supabase.from('linkedin_post_comments').update({
-            status: 'failed', failure_reason: errorText
-          }).eq('id', comment_id);
+          await pool.query(
+            `UPDATE linkedin_post_comments SET status = 'failed', failure_reason = $1 WHERE id = $2`,
+            [errorText, comment_id]
+          );
           results.push({ id: comment_id, status: 'error', error: 'LinkedIn API error' });
           continue;
         }
@@ -105,17 +97,27 @@ export async function POST(request: NextRequest) {
         const linkedinCommentId = unipileData.id || unipileData.comment_id || unipileData.object_id || null;
 
         // Update status with LinkedIn comment ID
-        await supabase.from('linkedin_post_comments').update({
-          status: 'posted',
-          approved_at: new Date().toISOString(),
-          posted_at: new Date().toISOString(),
-          post_response: unipileData,
-          linkedin_comment_id: linkedinCommentId
-        }).eq('id', comment_id);
+        await pool.query(
+          `UPDATE linkedin_post_comments
+           SET status = 'posted',
+               approved_at = $1,
+               posted_at = $2,
+               post_response = $3,
+               linkedin_comment_id = $4
+           WHERE id = $5`,
+          [
+            new Date().toISOString(),
+            new Date().toISOString(),
+            JSON.stringify(unipileData),
+            linkedinCommentId,
+            comment_id
+          ]
+        );
 
-        await supabase.from('linkedin_posts_discovered')
-          .update({ status: 'commented' })
-          .eq('id', comment.post_id);
+        await pool.query(
+          `UPDATE linkedin_posts_discovered SET status = 'commented' WHERE id = $1`,
+          [comment.post_id]
+        );
 
         results.push({ id: comment_id, status: 'success' });
 
@@ -141,6 +143,12 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    // Handle auth errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
+
     console.error('❌ Bulk approve error:', error);
     return NextResponse.json({
       error: 'Internal server error',

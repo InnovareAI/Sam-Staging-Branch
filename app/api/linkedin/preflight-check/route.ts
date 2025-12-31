@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Increase timeout for large prospect batches
@@ -65,27 +65,22 @@ interface ProspectCheck {
 }
 
 export async function POST(req: NextRequest) {
-  console.log('🚀 Pre-flight check started');
+  console.log('Pre-flight check started');
   let step = 'init';
 
   try {
-    step = 'createSupabaseClient';
-    const supabase = await createSupabaseRouteClient();
-    console.log('✅ Supabase client created');
-
-    // Authenticate user
-    step = 'authenticateUser';
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.log('❌ User authentication failed:', userError?.message);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    console.log(`✅ User authenticated: ${user.id}`);
+    step = 'verifyAuth';
+    const { userId, workspaceId: authWorkspaceId } = await verifyAuth(req);
+    console.log(`User authenticated: ${userId}`);
 
     step = 'parseRequestBody';
     const body = await req.json();
-    const { prospects, workspaceId, campaignType } = body;
-    console.log(`✅ Request parsed: ${prospects?.length || 0} prospects, workspace: ${workspaceId}, type: ${campaignType}`);
+    const { prospects, workspaceId: bodyWorkspaceId, campaignType } = body;
+
+    // Use workspaceId from body if provided, otherwise use from auth
+    const workspaceId = bodyWorkspaceId || authWorkspaceId;
+
+    console.log(`Request parsed: ${prospects?.length || 0} prospects, workspace: ${workspaceId}, type: ${campaignType}`);
 
     if (!prospects || !Array.isArray(prospects)) {
       return NextResponse.json({
@@ -99,48 +94,32 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Verify workspace access
-    step = 'verifyWorkspaceAccess';
-    const { data: member, error: memberError } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (memberError) {
-      console.log('❌ Workspace member query error:', memberError.message);
-      return NextResponse.json({
-        error: 'Failed to verify workspace access',
-        details: memberError.message
-      }, { status: 500 });
+    // If body workspaceId differs from auth, verify access
+    if (bodyWorkspaceId && bodyWorkspaceId !== authWorkspaceId) {
+      const memberCheck = await pool.query(
+        'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+        [bodyWorkspaceId, userId]
+      );
+      if (memberCheck.rows.length === 0) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
-    if (!member) {
-      console.log('❌ User not a member of workspace');
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    console.log(`✅ Workspace access verified, role: ${member.role}`);
+    console.log(`Workspace access verified`);
 
     // Get Unipile LinkedIn account for this workspace
     step = 'getLinkedInAccount';
-    const { data: workspaceAccount, error: accountError } = await supabase
-      .from('workspace_accounts')
-      .select('unipile_account_id')
-      .eq('workspace_id', workspaceId)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES)
-      .single();
+    const accountResult = await pool.query(
+      `SELECT unipile_account_id FROM workspace_accounts
+       WHERE workspace_id = $1 AND account_type = 'linkedin' AND connection_status = ANY($2)`,
+      [workspaceId, VALID_CONNECTION_STATUSES]
+    );
 
-    if (accountError && accountError.code !== 'PGRST116') { // PGRST116 = no rows found (not an error)
-      console.log('❌ LinkedIn account query error:', accountError.message);
-    }
-
-    const unipileAccountId = workspaceAccount?.unipile_account_id;
+    const unipileAccountId = accountResult.rows[0]?.unipile_account_id;
     const canVerifyLinkedIn = !!unipileAccountId;
-    console.log(`✅ LinkedIn account: ${unipileAccountId || 'not connected'}`);
+    console.log(`LinkedIn account: ${unipileAccountId || 'not connected'}`);
 
-    console.log(`🔍 Pre-flight check for ${prospects.length} prospects (campaign type: ${campaignType})`);
+    console.log(`Pre-flight check for ${prospects.length} prospects (campaign type: ${campaignType})`);
     const startTime = Date.now();
 
     // Step 1: Check for duplicates within the batch
@@ -164,13 +143,13 @@ export async function POST(req: NextRequest) {
         emails.push(email.toLowerCase().trim());
       }
     }
-    console.log(`✅ Extracted ${linkedinUrls.length} LinkedIn URLs and ${emails.length} emails`);
+    console.log(`Extracted ${linkedinUrls.length} LinkedIn URLs and ${emails.length} emails`);
 
     // Query existing prospects
     step = 'fetchExistingProspects';
-    console.log(`⏱️ Starting existing prospects query (${linkedinUrls.length} URLs, ${emails.length} emails) at ${Date.now() - startTime}ms`);
-    const existingProspects = await fetchExistingProspects(supabase, workspaceId, linkedinUrls, emails);
-    console.log(`⏱️ Existing prospects query complete (${existingProspects.length} found) at ${Date.now() - startTime}ms`);
+    console.log(`Starting existing prospects query (${linkedinUrls.length} URLs, ${emails.length} emails) at ${Date.now() - startTime}ms`);
+    const existingProspects = await fetchExistingProspects(workspaceId, linkedinUrls, emails);
+    console.log(`Existing prospects query complete (${existingProspects.length} found) at ${Date.now() - startTime}ms`);
 
     // Step 3: Check rate limit status based on campaign type
     step = 'checkRateLimits';
@@ -179,16 +158,16 @@ export async function POST(req: NextRequest) {
     // - Email: 40/day per account
     let rateLimitStatus = null;
     if (campaignType === 'connector') {
-      rateLimitStatus = await checkConnectorRateLimitStatus(supabase, workspaceId);
+      rateLimitStatus = await checkConnectorRateLimitStatus(workspaceId);
     } else if (campaignType === 'messenger') {
-      rateLimitStatus = await checkMessengerRateLimitStatus(supabase, workspaceId);
+      rateLimitStatus = await checkMessengerRateLimitStatus(workspaceId);
     } else if (campaignType === 'email') {
-      rateLimitStatus = await checkEmailRateLimitStatus(supabase, workspaceId);
+      rateLimitStatus = await checkEmailRateLimitStatus(workspaceId);
     }
 
     // Step 4: Process each prospect
     step = 'processProspects';
-    console.log(`⏱️ Starting prospect processing at ${Date.now() - startTime}ms`);
+    console.log(`Starting prospect processing at ${Date.now() - startTime}ms`);
     const results: ProspectCheck[] = [];
     let processedCount = 0;
 
@@ -292,8 +271,8 @@ export async function POST(req: NextRequest) {
       rateLimitStatus
     };
 
-    console.log(`⏱️ Total preflight time: ${Date.now() - startTime}ms`);
-    console.log(`📊 Pre-flight complete:
+    console.log(`Total preflight time: ${Date.now() - startTime}ms`);
+    console.log(`Pre-flight complete:
       - Can proceed: ${summary.canProceed}
       - Blocked: ${summary.blocked}
       - Already contacted: ${summary.alreadyContacted}
@@ -316,7 +295,11 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error(`❌ Pre-flight check error at step "${step}":`, error);
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
+    console.error(`Pre-flight check error at step "${step}":`, error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
     console.error('Full error details:', {
@@ -345,7 +328,6 @@ function normalizeLinkedInUrl(url: string): string | null {
 // Helper: Fetch existing prospects from database
 // FIX (Dec 9, 2025): Batch queries to handle 200+ prospects without OR query overflow
 async function fetchExistingProspects(
-  supabase: any,
   workspaceId: string,
   linkedinUrls: string[],
   emails: string[]
@@ -357,20 +339,21 @@ async function fetchExistingProspects(
   if (linkedinUrls.length > 0) {
     for (let i = 0; i < linkedinUrls.length; i += BATCH_SIZE) {
       const batch = linkedinUrls.slice(i, i + BATCH_SIZE);
-      const linkedinConditions = batch.map(url => `linkedin_url.ilike.%${url}%`).join(',');
 
       try {
-        const { data, error } = await supabase
-          .from('campaign_prospects')
-          .select('linkedin_url, email, status, error_message, campaigns(campaign_name)')
-          .eq('workspace_id', workspaceId)
-          .or(linkedinConditions);
+        // Build OR conditions for LinkedIn URL matching
+        const placeholders = batch.map((_, idx) => `linkedin_url ILIKE $${idx + 2}`).join(' OR ');
+        const params = [workspaceId, ...batch.map(url => `%${url}%`)];
 
-        if (error) {
-          console.error(`Error fetching batch ${i / BATCH_SIZE + 1}:`, error);
-          continue;
-        }
-        if (data) results.push(...data);
+        const result = await pool.query(
+          `SELECT cp.linkedin_url, cp.email, cp.status, cp.error_message, c.name as campaign_name
+           FROM campaign_prospects cp
+           LEFT JOIN campaigns c ON cp.campaign_id = c.id
+           WHERE cp.workspace_id = $1 AND (${placeholders})`,
+          params
+        );
+
+        if (result.rows) results.push(...result.rows);
       } catch (batchError) {
         console.error(`Exception in batch ${i / BATCH_SIZE + 1}:`, batchError);
         continue;
@@ -384,17 +367,15 @@ async function fetchExistingProspects(
       const batch = emails.slice(i, i + BATCH_SIZE);
 
       try {
-        const { data, error } = await supabase
-          .from('campaign_prospects')
-          .select('linkedin_url, email, status, error_message, campaigns(campaign_name)')
-          .eq('workspace_id', workspaceId)
-          .in('email', batch);
+        const result = await pool.query(
+          `SELECT cp.linkedin_url, cp.email, cp.status, cp.error_message, c.name as campaign_name
+           FROM campaign_prospects cp
+           LEFT JOIN campaigns c ON cp.campaign_id = c.id
+           WHERE cp.workspace_id = $1 AND cp.email = ANY($2)`,
+          [workspaceId, batch]
+        );
 
-        if (error) {
-          console.error(`Error fetching email batch ${i / BATCH_SIZE + 1}:`, error);
-          continue;
-        }
-        if (data) results.push(...data);
+        if (result.rows) results.push(...result.rows);
       } catch (batchError) {
         console.error(`Exception in email batch ${i / BATCH_SIZE + 1}:`, batchError);
         continue;
@@ -422,7 +403,7 @@ function findPreviousContact(
         (normalizedEmail && existingEmail === normalizedEmail)) {
       return {
         status: existing.status,
-        campaign_name: existing.campaigns?.campaign_name || 'Unknown Campaign',
+        campaign_name: existing.campaign_name || 'Unknown Campaign',
         error_message: existing.error_message
       };
     }
@@ -432,7 +413,7 @@ function findPreviousContact(
 }
 
 // Helper: Check Connector (LinkedIn CR) rate limit status
-async function checkConnectorRateLimitStatus(supabase: any, workspaceId: string): Promise<{
+async function checkConnectorRateLimitStatus(workspaceId: string): Promise<{
   dailyUsed: number;
   dailyLimit: number;
   weeklyUsed: number;
@@ -445,26 +426,24 @@ async function checkConnectorRateLimitStatus(supabase: any, workspaceId: string)
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   // Count CRs sent today
-  const { count: dailyCount } = await supabase
-    .from('campaign_prospects')
-    .select('*', { count: 'exact', head: true })
-    .eq('workspace_id', workspaceId)
-    .eq('status', 'connection_request_sent')
-    .gte('contacted_at', todayStart);
+  const dailyResult = await pool.query(
+    `SELECT COUNT(*) as count FROM campaign_prospects
+     WHERE workspace_id = $1 AND status = 'connection_request_sent' AND contacted_at >= $2`,
+    [workspaceId, todayStart]
+  );
 
   // Count CRs sent this week
-  const { count: weeklyCount } = await supabase
-    .from('campaign_prospects')
-    .select('*', { count: 'exact', head: true })
-    .eq('workspace_id', workspaceId)
-    .eq('status', 'connection_request_sent')
-    .gte('contacted_at', weekStart);
+  const weeklyResult = await pool.query(
+    `SELECT COUNT(*) as count FROM campaign_prospects
+     WHERE workspace_id = $1 AND status = 'connection_request_sent' AND contacted_at >= $2`,
+    [workspaceId, weekStart]
+  );
 
   const dailyLimit = 20; // LinkedIn daily limit
   const weeklyLimit = 100; // LinkedIn weekly limit
 
-  const dailyUsed = dailyCount || 0;
-  const weeklyUsed = weeklyCount || 0;
+  const dailyUsed = parseInt(dailyResult.rows[0].count, 10) || 0;
+  const weeklyUsed = parseInt(weeklyResult.rows[0].count, 10) || 0;
 
   let warning: string | undefined;
   if (dailyUsed >= dailyLimit) {
@@ -488,7 +467,7 @@ async function checkConnectorRateLimitStatus(supabase: any, workspaceId: string)
 }
 
 // Helper: Check Email rate limit status (40 emails/day per account)
-async function checkEmailRateLimitStatus(supabase: any, workspaceId: string): Promise<{
+async function checkEmailRateLimitStatus(workspaceId: string): Promise<{
   dailyUsed: number;
   dailyLimit: number;
   weeklyUsed: number;
@@ -500,16 +479,17 @@ async function checkEmailRateLimitStatus(supabase: any, workspaceId: string): Pr
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
   // Count emails sent today from email campaigns
-  const { count: dailyCount } = await supabase
-    .from('campaign_prospects')
-    .select('*, campaigns!inner(campaign_type)', { count: 'exact', head: true })
-    .eq('workspace_id', workspaceId)
-    .eq('campaigns.campaign_type', 'email')
-    .in('status', ['contacted', 'messaging', 'replied', 'completed'])
-    .gte('contacted_at', todayStart);
+  const dailyResult = await pool.query(
+    `SELECT COUNT(*) as count FROM campaign_prospects cp
+     INNER JOIN campaigns c ON cp.campaign_id = c.id
+     WHERE cp.workspace_id = $1 AND c.campaign_type = 'email'
+     AND cp.status IN ('contacted', 'messaging', 'replied', 'completed')
+     AND cp.contacted_at >= $2`,
+    [workspaceId, todayStart]
+  );
 
   const dailyLimit = 40; // Email daily limit per account
-  const dailyUsed = dailyCount || 0;
+  const dailyUsed = parseInt(dailyResult.rows[0].count, 10) || 0;
 
   let warning: string | undefined;
   if (dailyUsed >= dailyLimit) {
@@ -529,7 +509,7 @@ async function checkEmailRateLimitStatus(supabase: any, workspaceId: string): Pr
 }
 
 // Helper: Check Messenger (LinkedIn DM) rate limit status - 100/day, 700/week
-async function checkMessengerRateLimitStatus(supabase: any, workspaceId: string): Promise<{
+async function checkMessengerRateLimitStatus(workspaceId: string): Promise<{
   dailyUsed: number;
   dailyLimit: number;
   weeklyUsed: number;
@@ -547,27 +527,29 @@ async function checkMessengerRateLimitStatus(supabase: any, workspaceId: string)
   const weekStartISO = weekStart.toISOString();
 
   // Count messages sent today from messenger campaigns
-  const { count: dailyCount } = await supabase
-    .from('campaign_prospects')
-    .select('*, campaigns!inner(campaign_type)', { count: 'exact', head: true })
-    .eq('workspace_id', workspaceId)
-    .eq('campaigns.campaign_type', 'messenger')
-    .in('status', ['contacted', 'messaging', 'replied', 'completed'])
-    .gte('contacted_at', todayStart);
+  const dailyResult = await pool.query(
+    `SELECT COUNT(*) as count FROM campaign_prospects cp
+     INNER JOIN campaigns c ON cp.campaign_id = c.id
+     WHERE cp.workspace_id = $1 AND c.campaign_type = 'messenger'
+     AND cp.status IN ('contacted', 'messaging', 'replied', 'completed')
+     AND cp.contacted_at >= $2`,
+    [workspaceId, todayStart]
+  );
 
   // Count messages sent this week from messenger campaigns
-  const { count: weeklyCount } = await supabase
-    .from('campaign_prospects')
-    .select('*, campaigns!inner(campaign_type)', { count: 'exact', head: true })
-    .eq('workspace_id', workspaceId)
-    .eq('campaigns.campaign_type', 'messenger')
-    .in('status', ['contacted', 'messaging', 'replied', 'completed'])
-    .gte('contacted_at', weekStartISO);
+  const weeklyResult = await pool.query(
+    `SELECT COUNT(*) as count FROM campaign_prospects cp
+     INNER JOIN campaigns c ON cp.campaign_id = c.id
+     WHERE cp.workspace_id = $1 AND c.campaign_type = 'messenger'
+     AND cp.status IN ('contacted', 'messaging', 'replied', 'completed')
+     AND cp.contacted_at >= $2`,
+    [workspaceId, weekStartISO]
+  );
 
   const dailyLimit = 100;
   const weeklyLimit = 700;
-  const dailyUsed = dailyCount || 0;
-  const weeklyUsed = weeklyCount || 0;
+  const dailyUsed = parseInt(dailyResult.rows[0].count, 10) || 0;
+  const weeklyUsed = parseInt(weeklyResult.rows[0].count, 10) || 0;
 
   let warning: string | undefined;
   if (dailyUsed >= dailyLimit) {

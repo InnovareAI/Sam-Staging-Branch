@@ -2,11 +2,11 @@
  * Knowledge Base Document Upload API
  *
  * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
+ * Updated Dec 31, 2025: Migrated to Firebase auth
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
-import { createClient } from '@supabase/supabase-js';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { claudeClient } from '@/lib/llm/claude-client';
 
@@ -95,9 +95,9 @@ async function extractContentFromURL(url: string): Promise<string> {
     if (!response.ok) {
       throw new Error(`Failed to fetch URL: ${response.statusText}`);
     }
-    
+
     const contentType = response.headers.get('content-type');
-    
+
     if (contentType?.includes('text/html')) {
       // Basic HTML extraction - would implement proper HTML parser like cheerio
       const html = await response.text();
@@ -119,56 +119,26 @@ async function extractContentFromURL(url: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    // Use user-context client for auth and workspace lookup
-    const userSupabase = await createSupabaseRouteClient();
-    const { data: { session }, error: authError } = await userSupabase.auth.getSession();
+    // Firebase auth verification
+    let userId: string;
+    let workspaceId: string;
 
-    if (authError || !session?.user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
-
-    const userId = session.user.id;
-
-    // Try to get workspace from user profile first
-    const { data: userProfile } = await userSupabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', userId)
-      .single();
-
-    let workspaceId = userProfile?.current_workspace_id;
-
-    // If no workspace in profile, check workspace_members
-    if (!workspaceId) {
-      const { data: membership } = await userSupabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', userId)
-        .limit(1)
-        .maybeSingle();
-
-      workspaceId = membership?.workspace_id;
-    }
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Please select a workspace before uploading knowledge base documents.' }, { status: 400 });
+    try {
+      const auth = await verifyAuth(request);
+      userId = auth.userId;
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message || 'Authentication required' }, { status: authError.statusCode || 401 });
     }
 
     // Ensure KB sections are initialized for this workspace
-    const { error: rpcError } = await userSupabase.rpc('initialize_knowledge_base_sections', {
-      p_workspace_id: workspaceId
-    });
-
-    if (rpcError) {
+    try {
+      await pool.query('SELECT initialize_knowledge_base_sections($1)', [workspaceId]);
+    } catch (rpcError) {
       console.error('RPC initialize_knowledge_base_sections error:', rpcError);
       // Continue anyway - sections might already exist
     }
-
-    // Create service-role client for database writes (bypasses RLS)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -224,22 +194,25 @@ export async function POST(request: NextRequest) {
 
     // Store document in knowledge_base table (NOT knowledge_base_documents)
     // icp_id: null = global content (all ICPs), UUID = ICP-specific content
-    const { data: document, error: dbError } = await supabase
-      .from('knowledge_base')
-      .insert({
-        id: documentId,
-        workspace_id: workspaceId,
-        category: section, // section maps to category
-        subcategory: null,
-        title: filename,
-        content: extractedContent,
-        tags: [],
-        version: '1.0',
-        is_active: true,
-        icp_id: icpId || null, // null = applies to all ICPs
-        source_attachment_id: null,
-        source_type: 'document_upload',
-        source_metadata: {
+    const insertResult = await pool.query(
+      `INSERT INTO knowledge_base (
+        id, workspace_id, category, subcategory, title, content, tags, version, is_active, icp_id, source_attachment_id, source_type, source_metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING id, workspace_id, category, icp_id`,
+      [
+        documentId,
+        workspaceId,
+        section, // section maps to category
+        null,
+        filename,
+        extractedContent,
+        [],
+        '1.0',
+        true,
+        icpId || null, // null = applies to all ICPs
+        null,
+        'document_upload',
+        JSON.stringify({
           upload_mode: uploadMode,
           source_url: uploadMode === 'url' ? url : null,
           mime_type: mimeType || 'text/plain',
@@ -247,23 +220,11 @@ export async function POST(request: NextRequest) {
           original_filename: filename,
           uploaded_by: userId,
           icp_id: icpId || null // Store in metadata for reference
-        }
-      })
-      .select('id, workspace_id, category, icp_id')
-      .single();
+        })
+      ]
+    );
 
-    if (dbError) {
-      console.error('Database error:', dbError);
-      console.error('Database error details:', JSON.stringify(dbError, null, 2));
-      return NextResponse.json({
-        error: 'Failed to store document',
-        details: dbError.message || dbError.toString(),
-        code: dbError.code
-      }, { status: 500 });
-    }
-
-    // Verify document was actually created
-    if (!document || !document.id) {
+    if (insertResult.rows.length === 0) {
       console.error('Document was not created - no data returned from INSERT');
       return NextResponse.json({
         error: 'Document creation failed - no data returned',
@@ -271,6 +232,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
+    const document = insertResult.rows[0];
     console.log('[Upload] Document created successfully:', document.id);
 
     return NextResponse.json({

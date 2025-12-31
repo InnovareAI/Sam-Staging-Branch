@@ -3,8 +3,7 @@
  * GET /api/linkedin-commenting/get-post-comments?post_id=...
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
@@ -38,43 +37,36 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing post_id parameter' }, { status: 400 });
     }
 
-    // Authenticate user
-    const authClient = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Authenticate user using Firebase auth
+    await verifyAuth(request);
 
     // Get post details
-    const { data: post, error: postError } = await supabase
-      .from('linkedin_posts_discovered')
-      .select('id, social_id, workspace_id')
-      .eq('id', postId)
-      .single();
+    const postResult = await pool.query(
+      `SELECT id, social_id, workspace_id FROM linkedin_posts_discovered WHERE id = $1`,
+      [postId]
+    );
 
-    if (postError || !post) {
+    if (postResult.rows.length === 0) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    // Get LinkedIn account for this workspace
-    const { data: linkedinAccount, error: accountError } = await supabase
-      .from('workspace_accounts')
-      .select('unipile_account_id')
-      .eq('workspace_id', post.workspace_id)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES)
-      .limit(1)
-      .single();
+    const post = postResult.rows[0];
 
-    if (accountError || !linkedinAccount) {
+    // Get LinkedIn account for this workspace
+    const accountResult = await pool.query(
+      `SELECT unipile_account_id FROM workspace_accounts
+       WHERE workspace_id = $1
+       AND account_type = 'linkedin'
+       AND connection_status = ANY($2)
+       LIMIT 1`,
+      [post.workspace_id, VALID_CONNECTION_STATUSES]
+    );
+
+    if (accountResult.rows.length === 0) {
       return NextResponse.json({ error: 'No connected LinkedIn account' }, { status: 400 });
     }
+
+    const linkedinAccount = accountResult.rows[0];
 
     console.log(`📬 Fetching comments for post ${post.social_id}`);
 
@@ -127,6 +119,12 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
+    // Handle auth errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
+
     console.error('❌ Error fetching comments:', error);
     return NextResponse.json({
       error: 'Internal server error',

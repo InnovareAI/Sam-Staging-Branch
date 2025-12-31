@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user first
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required',
-        timestamp: new Date().toISOString()
-      }, { status: 401 })
-    }
+    // Authenticate with Firebase
+    const { userId, userEmail } = await verifyAuth(request)
 
-    console.log(`🔧 Manual LinkedIn association for user: ${user.email}`)
+    console.log(`🔧 Manual LinkedIn association for user: ${userEmail}`)
 
     // Get the latest Thorsten Linz LinkedIn account from the request (created today)
     const thorstenLinkedInAccountId = 'isCX0_ZQStWs1xxqilsw5Q' // From Unipile accounts list
@@ -24,45 +14,61 @@ export async function POST(request: NextRequest) {
     const accountName = 'Thorsten Linz'
 
     // Check if association already exists
-    const { data: existingAssociation, error: checkError } = await supabase
-      .from('user_unipile_accounts')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('unipile_account_id', thorstenLinkedInAccountId)
-      .single()
+    const { rows: existingRows } = await pool.query(
+      'SELECT * FROM user_unipile_accounts WHERE user_id = $1 AND unipile_account_id = $2',
+      [userId, thorstenLinkedInAccountId]
+    )
 
-    if (existingAssociation) {
+    if (existingRows.length > 0) {
       return NextResponse.json({
         success: true,
         message: 'LinkedIn account already associated',
-        association: existingAssociation,
+        association: existingRows[0],
         timestamp: new Date().toISOString()
       })
     }
 
-    // Create the association using the robust function that bypasses schema cache issues
-    const { data: newAssociation, error: insertError } = await supabase
-      .rpc('create_user_association', {
-        p_user_id: user.id,
-        p_unipile_account_id: thorstenLinkedInAccountId,
-        p_platform: 'LINKEDIN',
-        p_account_name: accountName,
-        p_account_email: null,
-        p_linkedin_public_identifier: publicIdentifier,
-        p_linkedin_profile_url: `https://linkedin.com/in/${publicIdentifier}`,
-        p_connection_status: 'active'
-      })
+    // Create the association using upsert
+    const { rows } = await pool.query(
+      `INSERT INTO user_unipile_accounts (
+        user_id, unipile_account_id, platform, account_name, account_email,
+        linkedin_public_identifier, linkedin_profile_url, connection_status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (unipile_account_id)
+      DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        platform = EXCLUDED.platform,
+        account_name = EXCLUDED.account_name,
+        account_email = EXCLUDED.account_email,
+        linkedin_public_identifier = EXCLUDED.linkedin_public_identifier,
+        linkedin_profile_url = EXCLUDED.linkedin_profile_url,
+        connection_status = EXCLUDED.connection_status,
+        updated_at = NOW()
+      RETURNING *`,
+      [
+        userId,
+        thorstenLinkedInAccountId,
+        'LINKEDIN',
+        accountName,
+        null,
+        publicIdentifier,
+        `https://linkedin.com/in/${publicIdentifier}`,
+        'active'
+      ]
+    )
 
-    if (insertError) {
-      console.error('Error creating LinkedIn association:', insertError)
+    const newAssociation = rows[0]
+
+    if (!newAssociation) {
+      console.error('Error creating LinkedIn association')
       return NextResponse.json({
         success: false,
-        error: `Failed to create association: ${insertError.message}`,
+        error: 'Failed to create association',
         timestamp: new Date().toISOString()
       }, { status: 500 })
     }
 
-    console.log(`✅ Successfully associated LinkedIn account ${accountName} with user ${user.email}`)
+    console.log(`✅ Successfully associated LinkedIn account ${accountName} with user ${userEmail}`)
 
     return NextResponse.json({
       success: true,

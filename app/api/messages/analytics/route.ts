@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    
-    // Verify authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
-    }
+    // Authenticate with Firebase
+    await verifyAuth(request)
 
     const { searchParams } = new URL(request.url)
     const view = searchParams.get('view') || 'overview'
@@ -24,164 +15,150 @@ export async function GET(request: NextRequest) {
     let response: any = {}
 
     switch (view) {
-      case 'overview':
+      case 'overview': {
         // Unified message overview with optional filtering
-        let overviewQuery = supabase
-          .from('unified_message_overview')
-          .select('*')
-          .order('sent_at', { ascending: false })
-          .limit(100)
+        let query = 'SELECT * FROM unified_message_overview WHERE 1=1'
+        const params: any[] = []
+        let paramIndex = 1
 
         if (workspaceId) {
-          overviewQuery = overviewQuery.eq('workspace_id', workspaceId)
+          query += ` AND workspace_id = $${paramIndex++}`
+          params.push(workspaceId)
         }
         if (platform) {
-          overviewQuery = overviewQuery.eq('platform', platform)
+          query += ` AND platform = $${paramIndex++}`
+          params.push(platform)
         }
         if (days > 0) {
           const cutoffDate = new Date()
           cutoffDate.setDate(cutoffDate.getDate() - days)
-          overviewQuery = overviewQuery.gte('sent_at', cutoffDate.toISOString())
+          query += ` AND sent_at >= $${paramIndex++}`
+          params.push(cutoffDate.toISOString())
         }
+        query += ' ORDER BY sent_at DESC LIMIT 100'
 
-        const { data: overview, error: overviewError } = await overviewQuery
-        if (overviewError) throw overviewError
-        response.overview = overview
+        const { rows } = await pool.query(query, params)
+        response.overview = rows
         break
+      }
 
-      case 'analytics':
+      case 'analytics': {
         // Response analytics dashboard
-        let analyticsQuery = supabase
-          .from('response_analytics_dashboard')
-          .select('*')
-          .order('total_messages_sent', { ascending: false })
+        let query = 'SELECT * FROM response_analytics_dashboard WHERE 1=1'
+        const params: any[] = []
+        let paramIndex = 1
 
         if (workspaceId) {
-          analyticsQuery = analyticsQuery.eq('workspace_id', workspaceId)
+          query += ` AND workspace_id = $${paramIndex++}`
+          params.push(workspaceId)
         }
         if (platform) {
-          analyticsQuery = analyticsQuery.eq('platform', platform)
+          query += ` AND platform = $${paramIndex++}`
+          params.push(platform)
         }
+        query += ' ORDER BY total_messages_sent DESC'
 
-        const { data: analytics, error: analyticsError } = await analyticsQuery
-        if (analyticsError) throw analyticsError
-        response.analytics = analytics
+        const { rows } = await pool.query(query, params)
+        response.analytics = rows
         break
+      }
 
-      case 'activity':
+      case 'activity': {
         // Recent activity feed
-        let activityQuery = supabase
-          .from('recent_activity_feed')
-          .select('*')
-          .order('activity_timestamp', { ascending: false })
-          .limit(50)
+        let query = 'SELECT * FROM recent_activity_feed WHERE 1=1'
+        const params: any[] = []
+        let paramIndex = 1
 
         if (workspaceId) {
-          activityQuery = activityQuery.eq('workspace_id', workspaceId)
+          query += ` AND workspace_id = $${paramIndex++}`
+          params.push(workspaceId)
         }
         if (platform) {
-          activityQuery = activityQuery.eq('platform', platform)
+          query += ` AND platform = $${paramIndex++}`
+          params.push(platform)
         }
         if (days > 0) {
           const cutoffDate = new Date()
           cutoffDate.setDate(cutoffDate.getDate() - days)
-          activityQuery = activityQuery.gte('activity_timestamp', cutoffDate.toISOString())
+          query += ` AND activity_timestamp >= $${paramIndex++}`
+          params.push(cutoffDate.toISOString())
         }
+        query += ' ORDER BY activity_timestamp DESC LIMIT 50'
 
-        const { data: activity, error: activityError } = await activityQuery
-        if (activityError) throw activityError
-        response.activity = activity
+        const { rows } = await pool.query(query, params)
+        response.activity = rows
         break
+      }
 
-      case 'platform_comparison':
+      case 'platform_comparison': {
         // Platform performance comparison
-        const { data: platformComparison, error: platformError } = await supabase
-          .from('platform_performance_comparison')
-          .select('*')
-          .order('total_messages', { ascending: false })
-
-        if (platformError) throw platformError
-        response.platform_comparison = platformComparison
+        const { rows } = await pool.query(
+          'SELECT * FROM platform_performance_comparison ORDER BY total_messages DESC'
+        )
+        response.platform_comparison = rows
         break
+      }
 
-      case 'conversations':
+      case 'conversations': {
         // Conversation threads
-        let conversationsQuery = supabase
-          .from('conversation_threads')
-          .select('*')
-          .order('last_activity_at', { ascending: false })
-          .limit(100)
+        let query = 'SELECT * FROM conversation_threads WHERE 1=1'
+        const params: any[] = []
+        let paramIndex = 1
 
         if (workspaceId) {
-          conversationsQuery = conversationsQuery.eq('workspace_id', workspaceId)
+          query += ` AND workspace_id = $${paramIndex++}`
+          params.push(workspaceId)
         }
         if (platform) {
-          conversationsQuery = conversationsQuery.eq('platform', platform)
+          query += ` AND platform = $${paramIndex++}`
+          params.push(platform)
         }
+        query += ' ORDER BY last_activity_at DESC LIMIT 100'
 
-        const { data: conversations, error: conversationsError } = await conversationsQuery
-        if (conversationsError) throw conversationsError
-        response.conversations = conversations
+        const { rows } = await pool.query(query, params)
+        response.conversations = rows
         break
+      }
 
-      case 'trends':
+      case 'trends': {
         // Daily message trends
-        let trendsQuery = supabase
-          .from('daily_message_trends')
-          .select('*')
-          .order('message_date', { ascending: false })
-          .limit(days > 0 ? days : 30)
+        let query = 'SELECT * FROM daily_message_trends WHERE 1=1'
+        const params: any[] = []
+        let paramIndex = 1
 
         if (workspaceId) {
-          trendsQuery = trendsQuery.eq('workspace_id', workspaceId)
+          query += ` AND workspace_id = $${paramIndex++}`
+          params.push(workspaceId)
         }
         if (platform) {
-          trendsQuery = trendsQuery.eq('platform', platform)
+          query += ` AND platform = $${paramIndex++}`
+          params.push(platform)
         }
+        query += ` ORDER BY message_date DESC LIMIT $${paramIndex++}`
+        params.push(days > 0 ? days : 30)
 
-        const { data: trends, error: trendsError } = await trendsQuery
-        if (trendsError) throw trendsError
-        response.trends = trends
+        const { rows } = await pool.query(query, params)
+        response.trends = rows
         break
+      }
 
-      case 'summary':
+      case 'summary': {
         // Get all key metrics in one response for dashboard
         const [overviewRes, analyticsRes, activityRes, trendsRes] = await Promise.all([
-          supabase
-            .from('unified_message_overview')
-            .select('*')
-            .order('sent_at', { ascending: false })
-            .limit(10)
-            .then(res => res.data || []),
-          
-          supabase
-            .from('response_analytics_dashboard')
-            .select('*')
-            .order('total_messages_sent', { ascending: false })
-            .then(res => res.data || []),
-          
-          supabase
-            .from('recent_activity_feed')
-            .select('*')
-            .order('activity_timestamp', { ascending: false })
-            .limit(20)
-            .then(res => res.data || []),
-          
-          supabase
-            .from('daily_message_trends')
-            .select('*')
-            .order('message_date', { ascending: false })
-            .limit(7)
-            .then(res => res.data || [])
+          pool.query('SELECT * FROM unified_message_overview ORDER BY sent_at DESC LIMIT 10'),
+          pool.query('SELECT * FROM response_analytics_dashboard ORDER BY total_messages_sent DESC'),
+          pool.query('SELECT * FROM recent_activity_feed ORDER BY activity_timestamp DESC LIMIT 20'),
+          pool.query('SELECT * FROM daily_message_trends ORDER BY message_date DESC LIMIT 7')
         ])
 
         response = {
-          recent_messages: overviewRes,
-          analytics_summary: analyticsRes,
-          recent_activity: activityRes,
-          weekly_trends: trendsRes
+          recent_messages: overviewRes.rows,
+          analytics_summary: analyticsRes.rows,
+          recent_activity: activityRes.rows,
+          weekly_trends: trendsRes.rows
         }
         break
+      }
 
       default:
         return NextResponse.json({
@@ -214,16 +191,8 @@ export async function GET(request: NextRequest) {
 // POST endpoint for generating custom analytics queries
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    
-    // Verify authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
-    }
+    // Authenticate with Firebase
+    await verifyAuth(request)
 
     const body = await request.json()
     const { query_type, filters = {}, date_range = {} } = body
@@ -232,81 +201,87 @@ export async function POST(request: NextRequest) {
       workspace_id,
       campaign_id,
       platform,
-      status,
       sentiment
     } = filters
 
     const {
       start_date,
-      end_date,
-      days_back = 30
+      end_date
     } = date_range
 
     let response: any = {}
 
     switch (query_type) {
-      case 'campaign_performance':
+      case 'campaign_performance': {
         // Get detailed campaign performance metrics
-        let campaignQuery = supabase
-          .from('campaign_performance_summary')
-          .select('*')
-          .order('reply_rate_percent', { ascending: false })
+        let query = 'SELECT * FROM campaign_performance_summary WHERE 1=1'
+        const params: any[] = []
+        let paramIndex = 1
 
         if (workspace_id) {
-          // Note: campaign_performance_summary view needs workspace_id added
-          // For now, we'll use a different approach
-          const { data: campaigns } = await supabase
-            .from('campaigns')
-            .select('id')
-            .eq('workspace_id', workspace_id)
-          
-          const campaignIds = campaigns?.map(c => c.id) || []
+          // Get campaign IDs for this workspace first
+          const { rows: campaigns } = await pool.query(
+            'SELECT id FROM campaigns WHERE workspace_id = $1',
+            [workspace_id]
+          )
+          const campaignIds = campaigns.map(c => c.id)
           if (campaignIds.length > 0) {
-            campaignQuery = campaignQuery.in('campaign_id', campaignIds)
+            query += ` AND campaign_id = ANY($${paramIndex++})`
+            params.push(campaignIds)
           }
         }
 
         if (campaign_id) {
-          campaignQuery = campaignQuery.eq('campaign_id', campaign_id)
+          query += ` AND campaign_id = $${paramIndex++}`
+          params.push(campaign_id)
         }
+        query += ' ORDER BY reply_rate_percent DESC'
 
-        const { data: campaignPerformance, error: campaignError } = await campaignQuery
-        if (campaignError) throw campaignError
-        response.campaign_performance = campaignPerformance
+        const { rows } = await pool.query(query, params)
+        response.campaign_performance = rows
         break
+      }
 
-      case 'response_analysis':
-        // Detailed response analysis
-        let responseQuery = supabase
-          .from('campaign_replies')
-          .select(`
-            *,
-            campaigns:campaign_id(name, campaign_type),
-            campaign_messages:campaign_message_id(recipient_name, subject_line)
-          `)
-          .order('received_at', { ascending: false })
-          .limit(100)
+      case 'response_analysis': {
+        // Detailed response analysis with joins
+        let query = `
+          SELECT cr.*,
+            c.name as campaign_name, c.campaign_type,
+            cm.recipient_name, cm.subject_line
+          FROM campaign_replies cr
+          LEFT JOIN campaigns c ON cr.campaign_id = c.id
+          LEFT JOIN campaign_messages cm ON cr.campaign_message_id = cm.id
+          WHERE 1=1
+        `
+        const params: any[] = []
+        let paramIndex = 1
 
         if (workspace_id) {
-          responseQuery = responseQuery.eq('workspace_id', workspace_id)
+          query += ` AND cr.workspace_id = $${paramIndex++}`
+          params.push(workspace_id)
         }
         if (platform) {
-          responseQuery = responseQuery.eq('platform', platform)
+          query += ` AND cr.platform = $${paramIndex++}`
+          params.push(platform)
         }
         if (sentiment) {
-          responseQuery = responseQuery.eq('reply_sentiment', sentiment)
+          query += ` AND cr.reply_sentiment = $${paramIndex++}`
+          params.push(sentiment)
         }
         if (start_date) {
-          responseQuery = responseQuery.gte('received_at', start_date)
+          query += ` AND cr.received_at >= $${paramIndex++}`
+          params.push(start_date)
         }
         if (end_date) {
-          responseQuery = responseQuery.lte('received_at', end_date)
+          query += ` AND cr.received_at <= $${paramIndex++}`
+          params.push(end_date)
         }
+        query += ' ORDER BY cr.received_at DESC LIMIT 100'
 
-        const { data: responses, error: responseError } = await responseQuery
-        if (responseError) throw responseError
-        response.responses = responses
+        const { rows } = await pool.query(query, params)
+        response.responses = rows
         break
+      }
 
       default:
         return NextResponse.json({

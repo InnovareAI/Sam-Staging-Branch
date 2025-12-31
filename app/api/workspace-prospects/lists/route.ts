@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 /**
  * GET /api/workspace-prospects/lists
@@ -7,76 +7,48 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
  */
 export async function GET(req: NextRequest) {
     try {
-        const supabase = await createSupabaseRouteClient();
-
-        // Get user
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // Firebase auth - workspace comes from header
+        let authContext;
+        try {
+            authContext = await verifyAuth(req);
+        } catch (error) {
+            const authError = error as AuthError;
+            return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
         }
 
-        // Get workspace_id from query params
-        const { searchParams } = new URL(req.url);
-        const workspaceId = searchParams.get('workspace_id');
-
-        if (!workspaceId) {
-            return NextResponse.json({ error: 'workspace_id is required' }, { status: 400 });
-        }
-
-        // Verify user has access to this workspace
-        const { data: membership } = await supabase
-            .from('workspace_members')
-            .select('role')
-            .eq('workspace_id', workspaceId)
-            .eq('user_id', user.id)
-            .single();
-
-        if (!membership) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
+        const { workspaceId } = authContext;
 
         // Get approval sessions with prospect counts
-        const { data: sessions, error: sessionError } = await supabase
-            .from('prospect_approval_sessions')
-            .select(`
-        id,
-        campaign_name,
-        campaign_tag,
-        status,
-        created_at,
-        approved_count,
-        total_prospects
-      `)
-            .eq('workspace_id', workspaceId)
-            .order('created_at', { ascending: false });
-
-        if (sessionError) {
-            console.error('Error fetching approval sessions:', sessionError);
-            return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
-        }
+        const { rows: sessions } = await pool.query(
+            `SELECT id, campaign_name, campaign_tag, status, created_at, approved_count, total_prospects
+             FROM prospect_approval_sessions
+             WHERE workspace_id = $1
+             ORDER BY created_at DESC`,
+            [workspaceId]
+        );
 
         // For each session, get available (not yet in campaign) prospect count
         const listsWithAvailable = await Promise.all(
-            (sessions || []).map(async (session) => {
+            (sessions || []).map(async (session: any) => {
                 // Get approved prospects for this session
-                const { data: approvedProspects } = await supabase
-                    .from('prospect_approval_data')
-                    .select('id, contact')
-                    .eq('session_id', session.id)
-                    .eq('approval_status', 'approved');
+                const { rows: approvedProspects } = await pool.query(
+                    `SELECT id, contact FROM prospect_approval_data
+                     WHERE session_id = $1 AND approval_status = 'approved'`,
+                    [session.id]
+                );
 
                 const linkedinUrls = (approvedProspects || [])
-                    .map(p => p.contact?.linkedin_url || p.contact?.linkedin_profile_url)
+                    .map((p: any) => p.contact?.linkedin_url || p.contact?.linkedin_profile_url)
                     .filter(Boolean);
 
                 // Check which are already in campaigns
                 let availableCount = linkedinUrls.length;
                 if (linkedinUrls.length > 0) {
-                    const { data: campaignProspects } = await supabase
-                        .from('campaign_prospects')
-                        .select('linkedin_url')
-                        .eq('workspace_id', workspaceId)
-                        .in('linkedin_url', linkedinUrls);
+                    const { rows: campaignProspects } = await pool.query(
+                        `SELECT linkedin_url FROM campaign_prospects
+                         WHERE workspace_id = $1 AND linkedin_url = ANY($2)`,
+                        [workspaceId, linkedinUrls]
+                    );
 
                     const inCampaignCount = (campaignProspects || []).length;
                     availableCount = linkedinUrls.length - inCampaignCount;

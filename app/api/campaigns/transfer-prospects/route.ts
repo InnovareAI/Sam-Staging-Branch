@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 import { extractLinkedInSlug } from '@/lib/linkedin-utils';
 
@@ -20,19 +20,11 @@ function normalizeLinkedInUrl(url: string | null | undefined): string | null {
  */
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId, workspaceId } = await verifyAuth(req);
 
     const body = await req.json();
     const { campaign_id, session_id, campaign_name } = body;
 
-    // Get workspace_id
-    const workspaceId = user.user_metadata.workspace_id;
     if (!workspaceId) {
       return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
     }
@@ -40,37 +32,31 @@ export async function POST(req: NextRequest) {
     // Find campaign
     let campaign;
     if (campaign_id) {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('id', campaign_id)
-        .single();
+      const result = await pool.query(
+        `SELECT * FROM campaigns WHERE workspace_id = $1 AND id = $2`,
+        [workspaceId, campaign_id]
+      );
 
-      if (error) {
+      if (result.rows.length === 0) {
         return NextResponse.json({
           error: 'Campaign not found',
-          details: error.message
+          details: 'Campaign not found in this workspace'
         }, { status: 404 });
       }
-      campaign = data;
+      campaign = result.rows[0];
     } else if (campaign_name) {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .ilike('name', `%${campaign_name}%`)
-        .limit(1)
-        .single();
+      const result = await pool.query(
+        `SELECT * FROM campaigns WHERE workspace_id = $1 AND name ILIKE $2 LIMIT 1`,
+        [workspaceId, `%${campaign_name}%`]
+      );
 
-      if (error) {
+      if (result.rows.length === 0) {
         return NextResponse.json({
           error: 'Campaign not found by name',
-          details: error.message,
           searched_name: campaign_name
         }, { status: 404 });
       }
-      campaign = data;
+      campaign = result.rows[0];
     } else {
       return NextResponse.json({
         error: 'Either campaign_id or campaign_name required'
@@ -87,18 +73,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Get approved prospects from the specific session only
-    const { data: approvedProspects, error: prospectsError } = await supabase
-      .from('prospect_approval_data')
-      .select('*')
-      .eq('approval_status', 'approved')
-      .eq('session_id', session_id);
+    const approvedResult = await pool.query(
+      `SELECT * FROM prospect_approval_data
+       WHERE approval_status = 'approved' AND session_id = $1`,
+      [session_id]
+    );
 
-    if (prospectsError) {
-      return NextResponse.json({
-        error: 'Failed to fetch approved prospects',
-        details: prospectsError.message
-      }, { status: 500 });
-    }
+    const approvedProspects = approvedResult.rows;
 
     if (!approvedProspects || approvedProspects.length === 0) {
       return NextResponse.json({
@@ -109,22 +90,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Get LinkedIn account for prospect ownership
-    const { data: linkedInAccount } = await supabase
-      .from('workspace_accounts')
-      .select('unipile_account_id')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES)
-      .single();
+    const linkedInAccountResult = await pool.query(
+      `SELECT unipile_account_id FROM workspace_accounts
+       WHERE workspace_id = $1 AND user_id = $2 AND account_type = 'linkedin'
+         AND connection_status = ANY($3)
+       LIMIT 1`,
+      [workspaceId, userId, VALID_CONNECTION_STATUSES]
+    );
 
-    const unipileAccountId = linkedInAccount?.unipile_account_id || null;
+    const unipileAccountId = linkedInAccountResult.rows[0]?.unipile_account_id || null;
 
     // DATABASE-FIRST: Upsert all prospects to workspace_prospects master table first
     console.log(`💾 Step 1: Upserting ${approvedProspects.length} prospects to workspace_prospects`);
 
-    // Prepare master prospects data
-    const masterProspectsData = approvedProspects.map(prospect => {
+    // Prepare master prospects data and upsert
+    let masterIdMap: Record<string, string> = {};
+
+    for (const prospect of approvedProspects) {
       const contact = prospect.contact || {};
       const linkedinUrl = contact.linkedin_url || contact.linkedinUrl || prospect.linkedin_url || null;
       const fullName = prospect.name || `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
@@ -141,59 +123,58 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      return {
-        workspace_id: workspaceId,
-        linkedin_url: linkedinUrl,
-        linkedin_url_hash: normalizeLinkedInUrl(linkedinUrl),
-        first_name: firstName,
-        last_name: lastName,
-        email: contact.email || null,
-        company: prospect.company?.name || contact.company || contact.companyName || '',
-        title: prospect.title || contact.title || contact.headline || '',
-        location: prospect.location || contact.location || null,
-        linkedin_provider_id: contact.linkedin_provider_id || null,
-        source: 'transfer',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-    }).filter(p => p.linkedin_url_hash); // Only upsert those with valid LinkedIn URLs
+      const linkedinUrlHash = normalizeLinkedInUrl(linkedinUrl);
 
-    // Batch upsert to workspace_prospects
-    let masterIdMap: Record<string, string> = {};
-    if (masterProspectsData.length > 0) {
-      const { error: masterError } = await supabase
-        .from('workspace_prospects')
-        .upsert(masterProspectsData, {
-          onConflict: 'workspace_id,linkedin_url_hash',
-          ignoreDuplicates: false
-        });
+      if (linkedinUrlHash) {
+        try {
+          const upsertResult = await pool.query(
+            `INSERT INTO workspace_prospects (
+              workspace_id, linkedin_url, linkedin_url_hash, first_name, last_name,
+              email, company, title, location, linkedin_provider_id, source,
+              created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            ON CONFLICT (workspace_id, linkedin_url_hash)
+            DO UPDATE SET
+              first_name = EXCLUDED.first_name,
+              last_name = EXCLUDED.last_name,
+              email = COALESCE(EXCLUDED.email, workspace_prospects.email),
+              updated_at = EXCLUDED.updated_at
+            RETURNING id`,
+            [
+              workspaceId,
+              linkedinUrl,
+              linkedinUrlHash,
+              firstName,
+              lastName,
+              contact.email || null,
+              prospect.company?.name || contact.company || contact.companyName || '',
+              prospect.title || contact.title || contact.headline || '',
+              prospect.location || contact.location || null,
+              contact.linkedin_provider_id || null,
+              'transfer',
+              new Date().toISOString(),
+              new Date().toISOString()
+            ]
+          );
 
-      if (masterError) {
-        console.error('⚠️ Master prospect upsert warning:', masterError.message);
-      } else {
-        console.log(`✅ Upserted ${masterProspectsData.length} prospects to workspace_prospects`);
-      }
-
-      // Get master_prospect_ids for linking
-      const linkedinHashes = masterProspectsData.map(p => p.linkedin_url_hash).filter(Boolean);
-      const { data: masterRecords } = await supabase
-        .from('workspace_prospects')
-        .select('id, linkedin_url_hash')
-        .eq('workspace_id', workspaceId)
-        .in('linkedin_url_hash', linkedinHashes);
-
-      if (masterRecords) {
-        masterIdMap = masterRecords.reduce((acc: Record<string, string>, r: any) => {
-          acc[r.linkedin_url_hash] = r.id;
-          return acc;
-        }, {});
+          if (upsertResult.rows.length > 0) {
+            masterIdMap[linkedinUrlHash] = upsertResult.rows[0].id;
+          }
+        } catch (err) {
+          console.warn(`⚠️ Master prospect upsert warning for ${linkedinUrlHash}:`, err);
+        }
       }
     }
+
+    console.log(`✅ Upserted ${Object.keys(masterIdMap).length} prospects to workspace_prospects`);
 
     // Transform and insert prospects with master_prospect_id
     console.log(`💾 Step 2: Inserting ${approvedProspects.length} prospects to campaign_prospects`);
 
-    const campaignProspects = approvedProspects.map(prospect => {
+    let insertedCount = 0;
+    const insertErrors: string[] = [];
+
+    for (const prospect of approvedProspects) {
       const contact = prospect.contact || {};
       const linkedinUrl = contact.linkedin_url || contact.linkedinUrl || prospect.linkedin_url || null;
       const linkedinHash = normalizeLinkedInUrl(linkedinUrl);
@@ -218,49 +199,43 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      return {
-        campaign_id: campaign.id,
-        workspace_id: workspaceId,
-        master_prospect_id: linkedinHash ? masterIdMap[linkedinHash] || null : null,  // FK to workspace_prospects
-        first_name: firstName,
-        last_name: lastName,
-        email: contact.email || null,
-        company_name: prospect.company?.name || contact.company || contact.companyName || '',
-        linkedin_url: linkedinUrl,
-        // CRITICAL FIX (Dec 18): Extract slug from URL to prevent "User ID does not match format" errors
-        linkedin_user_id: extractLinkedInSlug(contact.linkedin_provider_id || linkedinUrl),
-        title: prospect.title || contact.title || contact.headline || '',
-        location: prospect.location || contact.location || null,
-        industry: prospect.company?.industry?.[0] || 'Not specified',
-        status: 'approved',
-        notes: null,
-        added_by_unipile_account: unipileAccountId,
-        personalization_data: {
-          source: 'manual_transfer',
-          session_id: session_id || null,
-          approval_data_id: prospect.id,
-          transferred_at: new Date().toISOString()
-        }
-      };
-    });
-
-    // Insert prospects into campaign_prospects ONE BY ONE to prevent batch failures
-    // CRITICAL FIX (Dec 18): Batch inserts fail ALL records if ANY has a constraint violation
-    let insertedCount = 0;
-    const insertErrors: string[] = [];
-
-    for (const prospect of campaignProspects) {
-      const { error: insertError } = await supabase
-        .from('campaign_prospects')
-        .insert(prospect);
-
-      if (insertError) {
-        insertErrors.push(`${prospect.first_name} ${prospect.last_name}: ${insertError.message}`);
+      try {
+        await pool.query(
+          `INSERT INTO campaign_prospects (
+            campaign_id, workspace_id, master_prospect_id, first_name, last_name,
+            email, company_name, linkedin_url, linkedin_user_id, title, location,
+            industry, status, notes, added_by_unipile_account, personalization_data
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+          [
+            campaign.id,
+            workspaceId,
+            linkedinHash ? masterIdMap[linkedinHash] || null : null,
+            firstName,
+            lastName,
+            contact.email || null,
+            prospect.company?.name || contact.company || contact.companyName || '',
+            linkedinUrl,
+            extractLinkedInSlug(contact.linkedin_provider_id || linkedinUrl),
+            prospect.title || contact.title || contact.headline || '',
+            prospect.location || contact.location || null,
+            prospect.company?.industry?.[0] || 'Not specified',
+            'approved',
+            null,
+            unipileAccountId,
+            JSON.stringify({
+              source: 'manual_transfer',
+              session_id: session_id || null,
+              approval_data_id: prospect.id,
+              transferred_at: new Date().toISOString()
+            })
+          ]
+        );
+        insertedCount++;
+      } catch (insertError: any) {
+        insertErrors.push(`${firstName} ${lastName}: ${insertError.message}`);
         if (insertErrors.length <= 3) {
           console.warn(`⚠️ Failed to insert prospect: ${insertError.message}`);
         }
-      } else {
-        insertedCount++;
       }
     }
 
@@ -268,7 +243,7 @@ export async function POST(req: NextRequest) {
       console.error(`❌ ${insertErrors.length} prospect inserts failed`);
     }
 
-    console.log(`✅ Transferred ${insertedCount}/${campaignProspects.length} prospects`);
+    console.log(`✅ Transferred ${insertedCount}/${approvedProspects.length} prospects`);
 
     return NextResponse.json({
       success: true,
@@ -285,6 +260,10 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Transfer prospects error:', error);
     return NextResponse.json({
       error: 'Internal server error',

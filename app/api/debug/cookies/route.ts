@@ -1,48 +1,65 @@
 /**
  * Debug endpoint to inspect cookies and auth state
+ * Updated for Firebase authentication
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { cookies } from 'next/headers';
+import { getAdminAuth } from '@/lib/firebase-admin';
 
 export async function GET(req: NextRequest) {
   try {
-    // Get all cookies
-    const cookies = req.cookies.getAll();
+    // Get all cookies from request
+    const requestCookies = req.cookies.getAll();
 
-    // Try to create Supabase client
-    const supabase = await createSupabaseRouteClient();
+    // Get cookies from server
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
 
-    // Try to get user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Try to verify session if present
+    let sessionInfo = null;
+    let userInfo = null;
 
-    // Get session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionCookie) {
+      try {
+        const auth = getAdminAuth();
+        const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+        sessionInfo = {
+          valid: true,
+          expiresAt: decodedClaims.exp,
+          issuedAt: decodedClaims.iat,
+          authTime: decodedClaims.auth_time
+        };
+        userInfo = {
+          uid: decodedClaims.uid,
+          email: decodedClaims.email,
+          emailVerified: decodedClaims.email_verified
+        };
+      } catch (error) {
+        sessionInfo = {
+          valid: false,
+          error: error instanceof Error ? error.message : 'Session verification failed'
+        };
+      }
+    }
 
     return NextResponse.json({
-      cookies: cookies.map(c => ({
+      cookies: requestCookies.map(c => ({
         name: c.name,
         value: c.value.substring(0, 20) + '...', // Truncate for security
         hasValue: !!c.value
       })),
-      supabaseCookies: cookies
-        .filter(c => c.name.startsWith('sb-'))
+      firebaseCookies: requestCookies
+        .filter(c => c.name === 'session')
         .map(c => ({
           name: c.name,
           length: c.value.length,
           preview: c.value.substring(0, 30) + '...'
         })),
       auth: {
-        hasUser: !!user,
-        userId: user?.id,
-        userEmail: user?.email,
-        authError: authError?.message,
-        authErrorName: authError?.name
-      },
-      session: {
-        hasSession: !!session,
-        expiresAt: session?.expires_at,
-        sessionError: sessionError?.message
+        hasSession: !!sessionCookie,
+        sessionInfo,
+        userInfo
       }
     });
   } catch (error) {

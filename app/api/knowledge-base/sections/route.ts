@@ -1,9 +1,11 @@
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    // Authenticate with Firebase
+    await verifyAuth(request);
+
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');
 
@@ -11,51 +13,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Workspace ID is required' }, { status: 400 });
     }
 
-    // Get user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Get sections for the workspace
-    const { data: sections, error } = await supabase
-      .from('knowledge_base_sections')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true)
-      .order('sort_order');
-
-    if (error) {
-      console.error('Error fetching KB sections:', error);
-      return NextResponse.json({ error: 'Failed to fetch sections' }, { status: 500 });
-    }
+    const { rows: sections } = await pool.query(
+      `SELECT * FROM knowledge_base_sections
+       WHERE workspace_id = $1 AND is_active = true
+       ORDER BY sort_order`,
+      [workspaceId]
+    );
 
     // If no sections exist, initialize default sections
     if (!sections || sections.length === 0) {
-      const { error: initError } = await supabase.rpc(
-        'initialize_knowledge_base_sections',
-        { p_workspace_id: workspaceId }
-      );
+      try {
+        await pool.query(
+          'SELECT initialize_knowledge_base_sections($1)',
+          [workspaceId]
+        );
 
-      if (initError) {
+        // Fetch the newly created sections
+        const { rows: newSections } = await pool.query(
+          `SELECT * FROM knowledge_base_sections
+           WHERE workspace_id = $1 AND is_active = true
+           ORDER BY sort_order`,
+          [workspaceId]
+        );
+
+        return NextResponse.json({ sections: newSections });
+      } catch (initError) {
         console.error('Error initializing KB sections:', initError);
         return NextResponse.json({ error: 'Failed to initialize sections' }, { status: 500 });
       }
-
-      // Fetch the newly created sections
-      const { data: newSections, error: fetchError } = await supabase
-        .from('knowledge_base_sections')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .eq('is_active', true)
-        .order('sort_order');
-
-      if (fetchError) {
-        console.error('Error fetching new KB sections:', fetchError);
-        return NextResponse.json({ error: 'Failed to fetch new sections' }, { status: 500 });
-      }
-
-      return NextResponse.json({ sections: newSections });
     }
 
     return NextResponse.json({ sections });
@@ -67,7 +53,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    // Authenticate with Firebase
+    await verifyAuth(request);
+
     const body = await request.json();
     const { workspace_id, section_id, title, description, icon, sort_order } = body;
 
@@ -75,28 +63,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Get user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Create new section
-    const { data: section, error } = await supabase
-      .from('knowledge_base_sections')
-      .insert({
+    const { rows } = await pool.query(
+      `INSERT INTO knowledge_base_sections (
+        workspace_id, section_id, title, description, icon, sort_order
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *`,
+      [
         workspace_id,
         section_id,
         title,
         description,
         icon,
-        sort_order: sort_order || 0
-      })
-      .select()
-      .single();
+        sort_order || 0
+      ]
+    );
 
-    if (error) {
-      console.error('Error creating KB section:', error);
+    const section = rows[0];
+
+    if (!section) {
+      console.error('Error creating KB section');
       return NextResponse.json({ error: 'Failed to create section' }, { status: 500 });
     }
 
@@ -109,7 +95,9 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    // Authenticate with Firebase
+    await verifyAuth(request);
+
     const body = await request.json();
     const { id, title, description, icon, sort_order, is_active } = body;
 
@@ -117,29 +105,28 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Section ID is required' }, { status: 400 });
     }
 
-    // Get user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Build dynamic update query
+    const updates: string[] = ['updated_at = $1'];
+    const params: any[] = [new Date().toISOString()];
+    let paramIndex = 2;
 
-    // Update section
-    const { data: section, error } = await supabase
-      .from('knowledge_base_sections')
-      .update({
-        title,
-        description,
-        icon,
-        sort_order,
-        is_active,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    if (title !== undefined) { updates.push(`title = $${paramIndex++}`); params.push(title); }
+    if (description !== undefined) { updates.push(`description = $${paramIndex++}`); params.push(description); }
+    if (icon !== undefined) { updates.push(`icon = $${paramIndex++}`); params.push(icon); }
+    if (sort_order !== undefined) { updates.push(`sort_order = $${paramIndex++}`); params.push(sort_order); }
+    if (is_active !== undefined) { updates.push(`is_active = $${paramIndex++}`); params.push(is_active); }
 
-    if (error) {
-      console.error('Error updating KB section:', error);
+    params.push(id);
+
+    const { rows } = await pool.query(
+      `UPDATE knowledge_base_sections SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      params
+    );
+
+    const section = rows[0];
+
+    if (!section) {
+      console.error('Error updating KB section');
       return NextResponse.json({ error: 'Failed to update section' }, { status: 500 });
     }
 

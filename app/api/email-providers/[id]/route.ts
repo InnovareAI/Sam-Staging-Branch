@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 export async function DELETE(
   request: NextRequest,
@@ -16,29 +15,17 @@ export async function DELETE(
       }, { status: 400 })
     }
 
-    // Get current user - use the same pattern as other routes
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
+    // Authenticate with Firebase
+    const { userId } = await verifyAuth(request)
 
-    if (authError || !session || !session.user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
-    }
+    // Delete the email provider ensuring user owns it
+    const result = await pool.query(
+      'DELETE FROM email_providers WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, userId]
+    )
 
-    const user = session.user
-
-    // Delete the email provider (RLS will ensure user owns it)
-    const { error: deleteError } = await supabase
-      .from('email_providers')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id) // Ensure user owns this provider
-
-    if (deleteError) {
-      console.error('❌ Failed to delete email provider:', deleteError)
+    if (result.rowCount === 0) {
+      console.error('❌ Failed to delete email provider: not found or not owned by user')
       return NextResponse.json({
         success: false,
         error: 'Failed to delete provider'

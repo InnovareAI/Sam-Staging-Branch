@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 /**
  * POST /api/knowledge-base/validate
  * Mark KB entry as validated by user or update with corrected data
- * 
+ *
  * Body:
  * {
  *   "entry_id": "uuid",
@@ -15,13 +15,17 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Firebase auth verification
+    let userId: string;
 
-    if (authError || !user) {
+    try {
+      const auth = await verifyAuth(request);
+      userId = auth.userId;
+    } catch (error) {
+      const authError = error as AuthError;
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { status: authError.statusCode || 401 }
       );
     }
 
@@ -36,85 +40,98 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the entry first to check workspace access
-    const { data: entry, error: fetchError } = await supabase
-      .from('knowledge_base')
-      .select('*, workspace_id')
-      .eq('id', entry_id)
-      .single();
+    const entryResult = await pool.query(
+      'SELECT *, workspace_id FROM knowledge_base WHERE id = $1',
+      [entry_id]
+    );
 
-    if (fetchError || !entry) {
+    if (entryResult.rows.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Entry not found' },
         { status: 404 }
       );
     }
 
-    // Verify user has access to workspace
-    const { data: membership } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', entry.workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const entry = entryResult.rows[0];
 
-    if (!membership) {
+    // Verify user has access to workspace
+    const memberResult = await pool.query(
+      'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+      [entry.workspace_id, userId]
+    );
+
+    if (memberResult.rows.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Access denied' },
         { status: 403 }
       );
     }
 
-    // Build update object
-    const updates: any = {
-      source_metadata: {
-        ...entry.source_metadata,
-        validated: validated !== false, // Default to true
-        validation_required: false,
-        validated_by: user.id,
-        validated_at: new Date().toISOString(),
-        validation_note: validation_note || 'User confirmed via conversation'
-      },
-      updated_at: new Date().toISOString()
+    // Parse existing source_metadata
+    const existingMetadata = typeof entry.source_metadata === 'string'
+      ? JSON.parse(entry.source_metadata)
+      : (entry.source_metadata || {});
+
+    // Build updated metadata
+    const updatedMetadata = {
+      ...existingMetadata,
+      validated: validated !== false, // Default to true
+      validation_required: false,
+      validated_by: userId,
+      validated_at: new Date().toISOString(),
+      validation_note: validation_note || 'User confirmed via conversation'
     };
+
+    // Parse existing tags
+    const existingTags = entry.tags || [];
+
+    let newTags: string[];
+    let newContent = entry.content;
 
     // If content was corrected, update it and add tags
     if (corrected_content) {
-      updates.content = corrected_content;
-      updates.tags = [...(entry.tags || []).filter((t: string) => t !== 'unvalidated'), 'user_corrected', 'validated'];
-      updates.source_metadata.correction_applied = true;
-      updates.source_metadata.original_content = entry.content; // Keep original for reference
+      newContent = corrected_content;
+      newTags = [...existingTags.filter((t: string) => t !== 'unvalidated'), 'user_corrected', 'validated'];
+      updatedMetadata.correction_applied = true;
+      updatedMetadata.original_content = entry.content; // Keep original for reference
     } else {
       // Just mark as validated (data was correct)
-      updates.tags = [...(entry.tags || []).filter((t: string) => !['unvalidated', 'needs_review'].includes(t)), 'validated'];
+      newTags = [...existingTags.filter((t: string) => !['unvalidated', 'needs_review'].includes(t)), 'validated'];
     }
 
     // Update the entry
-    const { data: updatedEntry, error: updateError } = await supabase
-      .from('knowledge_base')
-      .update(updates)
-      .eq('id', entry_id)
-      .select()
-      .single();
+    const updateResult = await pool.query(
+      `UPDATE knowledge_base
+       SET content = $1, tags = $2, source_metadata = $3, updated_at = NOW()
+       WHERE id = $4
+       RETURNING *`,
+      [newContent, newTags, JSON.stringify(updatedMetadata), entry_id]
+    );
 
-    if (updateError) throw updateError;
+    if (updateResult.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to update entry' },
+        { status: 500 }
+      );
+    }
 
-    console.log(`✅ Validated KB entry ${entry_id} - ${corrected_content ? 'with corrections' : 'as-is'}`);
+    console.log(`Validated KB entry ${entry_id} - ${corrected_content ? 'with corrections' : 'as-is'}`);
 
     return NextResponse.json({
       success: true,
-      entry: updatedEntry,
-      message: corrected_content 
+      entry: updateResult.rows[0],
+      message: corrected_content
         ? 'Entry validated and updated with corrections'
         : 'Entry validated as accurate',
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('❌ KB validation error:', error);
+    console.error('KB validation error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to validate entry' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to validate entry'
       },
       { status: 500 }
     );
@@ -127,67 +144,65 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Firebase auth verification
+    let userId: string;
+    let authWorkspaceId: string;
 
-    if (authError || !user) {
+    try {
+      const auth = await verifyAuth(request);
+      userId = auth.userId;
+      authWorkspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { status: authError.statusCode || 401 }
       );
     }
 
     const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspace_id');
+    const workspaceId = searchParams.get('workspace_id') || authWorkspaceId;
 
-    if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: 'workspace_id required' },
-        { status: 400 }
+    // Verify access if different workspace provided
+    if (workspaceId !== authWorkspaceId) {
+      const memberResult = await pool.query(
+        'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+        [workspaceId, userId]
       );
-    }
 
-    // Verify access
-    const { data: membership } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied' },
-        { status: 403 }
-      );
+      if (memberResult.rows.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Access denied' },
+          { status: 403 }
+        );
+      }
     }
 
     // Get unvalidated entries
-    const { data: unvalidatedEntries, error } = await supabase
-      .from('knowledge_base')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .contains('tags', ['unvalidated'])
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
+    const result = await pool.query(
+      `SELECT * FROM knowledge_base
+       WHERE workspace_id = $1 AND 'unvalidated' = ANY(tags) AND is_active = true
+       ORDER BY created_at DESC`,
+      [workspaceId]
+    );
 
-    if (error) throw error;
+    const unvalidatedEntries = result.rows;
 
     return NextResponse.json({
       success: true,
       unvalidated_count: unvalidatedEntries?.length || 0,
       entries: unvalidatedEntries || [],
-      message: unvalidatedEntries?.length 
+      message: unvalidatedEntries?.length
         ? `Found ${unvalidatedEntries.length} entries needing validation`
         : 'All entries validated'
     });
 
   } catch (error) {
-    console.error('❌ Get unvalidated entries error:', error);
+    console.error('Get unvalidated entries error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to fetch unvalidated entries' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch unvalidated entries'
       },
       { status: 500 }
     );

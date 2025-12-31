@@ -1,4 +1,4 @@
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, AuthError } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -13,13 +13,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
     // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    await verifyAuth(request);
 
     const body = await request.json();
     const { pastedText, campaignType } = body;
@@ -220,6 +215,10 @@ Please parse this into the JSON structure with proper placeholder replacement.`
     });
 
   } catch (error: any) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Template parsing error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -1,5 +1,5 @@
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -76,34 +76,30 @@ interface UpsertResult {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId, workspaceId: authWorkspaceId } = await verifyAuth(request);
 
     const body = await request.json();
     const { workspaceId, prospect, prospects, batch_id, source = 'api' } = body;
 
-    if (!workspaceId) {
+    // Use workspaceId from body if provided, otherwise use from auth
+    const effectiveWorkspaceId = workspaceId || authWorkspaceId;
+
+    if (!effectiveWorkspaceId) {
       return NextResponse.json(
         { error: 'workspaceId is required' },
         { status: 400 }
       );
     }
 
-    // Verify workspace membership
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!member) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // If body workspaceId differs from auth, verify access
+    if (workspaceId && workspaceId !== authWorkspaceId) {
+      const memberCheck = await pool.query(
+        'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+        [workspaceId, userId]
+      );
+      if (memberCheck.rows.length === 0) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     // Handle single or batch
@@ -117,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate batch_id if not provided (for grouping imports)
-    const effectiveBatchId = batch_id || `batch_${Date.now()}_${user.id.slice(0, 8)}`;
+    const effectiveBatchId = batch_id || `batch_${Date.now()}_${userId.slice(0, 8)}`;
 
     const results: UpsertResult[] = [];
     const errors: { index: number; error: string }[] = [];
@@ -138,51 +134,76 @@ export async function POST(request: NextRequest) {
       let existingProspect = null;
 
       if (linkedinHash) {
-        const { data } = await supabase
-          .from('workspace_prospects')
-          .select('id, approval_status, active_campaign_id')
-          .eq('workspace_id', workspaceId)
-          .eq('linkedin_url_hash', linkedinHash)
-          .single();
-        existingProspect = data;
+        const existingResult = await pool.query(
+          'SELECT id, approval_status, active_campaign_id FROM workspace_prospects WHERE workspace_id = $1 AND linkedin_url_hash = $2',
+          [effectiveWorkspaceId, linkedinHash]
+        );
+        if (existingResult.rows.length > 0) {
+          existingProspect = existingResult.rows[0];
+        }
       }
 
       if (!existingProspect && emailHash) {
-        const { data } = await supabase
-          .from('workspace_prospects')
-          .select('id, approval_status, active_campaign_id')
-          .eq('workspace_id', workspaceId)
-          .eq('email_hash', emailHash)
-          .single();
-        existingProspect = data;
+        const existingResult = await pool.query(
+          'SELECT id, approval_status, active_campaign_id FROM workspace_prospects WHERE workspace_id = $1 AND email_hash = $2',
+          [effectiveWorkspaceId, emailHash]
+        );
+        if (existingResult.rows.length > 0) {
+          existingProspect = existingResult.rows[0];
+        }
       }
 
       if (existingProspect) {
         // Update existing prospect (enrich data, but preserve approval status)
-        const updateData: Record<string, unknown> = {
-          updated_at: new Date().toISOString(),
-        };
+        const updateFields: string[] = ['updated_at = $1'];
+        const updateValues: any[] = [new Date().toISOString()];
+        let paramIndex = 2;
 
         // Only update fields if provided and not empty
-        if (p.first_name) updateData.first_name = p.first_name;
-        if (p.last_name) updateData.last_name = p.last_name;
-        if (p.company) updateData.company = p.company;
-        if (p.title) updateData.title = p.title;
-        if (p.location) updateData.location = p.location;
-        if (p.phone) updateData.phone = p.phone;
-        if (p.linkedin_provider_id) updateData.linkedin_provider_id = p.linkedin_provider_id;
-        if (p.connection_degree) updateData.connection_degree = p.connection_degree;
+        if (p.first_name) {
+          updateFields.push(`first_name = $${paramIndex++}`);
+          updateValues.push(p.first_name);
+        }
+        if (p.last_name) {
+          updateFields.push(`last_name = $${paramIndex++}`);
+          updateValues.push(p.last_name);
+        }
+        if (p.company) {
+          updateFields.push(`company = $${paramIndex++}`);
+          updateValues.push(p.company);
+        }
+        if (p.title) {
+          updateFields.push(`title = $${paramIndex++}`);
+          updateValues.push(p.title);
+        }
+        if (p.location) {
+          updateFields.push(`location = $${paramIndex++}`);
+          updateValues.push(p.location);
+        }
+        if (p.phone) {
+          updateFields.push(`phone = $${paramIndex++}`);
+          updateValues.push(p.phone);
+        }
+        if (p.linkedin_provider_id) {
+          updateFields.push(`linkedin_provider_id = $${paramIndex++}`);
+          updateValues.push(p.linkedin_provider_id);
+        }
+        if (p.connection_degree) {
+          updateFields.push(`connection_degree = $${paramIndex++}`);
+          updateValues.push(p.connection_degree);
+        }
         if (p.enrichment_data) {
-          // Merge enrichment data
-          updateData.enrichment_data = p.enrichment_data;
+          updateFields.push(`enrichment_data = $${paramIndex++}`);
+          updateValues.push(JSON.stringify(p.enrichment_data));
         }
 
         // Update if we have any fields to update
-        if (Object.keys(updateData).length > 1) {
-          await supabase
-            .from('workspace_prospects')
-            .update(updateData)
-            .eq('id', existingProspect.id);
+        if (updateFields.length > 1) {
+          updateValues.push(existingProspect.id);
+          await pool.query(
+            `UPDATE workspace_prospects SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
+            updateValues
+          );
         }
 
         results.push({
@@ -193,35 +214,44 @@ export async function POST(request: NextRequest) {
         });
       } else {
         // Insert new prospect with pending approval status
-        const insertData = {
-          workspace_id: workspaceId,
-          linkedin_url: p.linkedin_url || null,
-          linkedin_url_hash: linkedinHash,
-          email: p.email || null,
-          email_hash: emailHash,
-          first_name: p.first_name || null,
-          last_name: p.last_name || null,
-          company: p.company || null,
-          title: p.title || null,
-          location: p.location || null,
-          phone: p.phone || null,
-          linkedin_provider_id: p.linkedin_provider_id || null,
-          connection_degree: p.connection_degree || null,
-          source: p.source || source,
-          batch_id: effectiveBatchId,
-          approval_status: 'pending',
-          enrichment_data: p.enrichment_data || {},
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
+        const now = new Date().toISOString();
+        try {
+          const insertResult = await pool.query(
+            `INSERT INTO workspace_prospects (
+              workspace_id, linkedin_url, linkedin_url_hash, email, email_hash,
+              first_name, last_name, company, title, location, phone,
+              linkedin_provider_id, connection_degree, source, batch_id,
+              approval_status, enrichment_data, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+            RETURNING id`,
+            [
+              effectiveWorkspaceId,
+              p.linkedin_url || null,
+              linkedinHash,
+              p.email || null,
+              emailHash,
+              p.first_name || null,
+              p.last_name || null,
+              p.company || null,
+              p.title || null,
+              p.location || null,
+              p.phone || null,
+              p.linkedin_provider_id || null,
+              p.connection_degree || null,
+              p.source || source,
+              effectiveBatchId,
+              'pending',
+              JSON.stringify(p.enrichment_data || {}),
+              now,
+              now
+            ]
+          );
 
-        const { data: newProspect, error: insertError } = await supabase
-          .from('workspace_prospects')
-          .insert(insertData)
-          .select('id')
-          .single();
-
-        if (insertError) {
+          results.push({
+            prospect_id: insertResult.rows[0].id,
+            is_new: true,
+          });
+        } catch (insertError: any) {
           // Handle unique constraint violations gracefully
           if (insertError.code === '23505') {
             errors.push({
@@ -233,11 +263,6 @@ export async function POST(request: NextRequest) {
           }
           continue;
         }
-
-        results.push({
-          prospect_id: newProspect.id,
-          is_new: true,
-        });
       }
     }
 
@@ -253,6 +278,10 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: unknown) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Prospect upsert error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -268,16 +297,10 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId, workspaceId: authWorkspaceId } = await verifyAuth(request);
 
     const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspaceId');
+    const workspaceId = searchParams.get('workspaceId') || authWorkspaceId;
     const batchId = searchParams.get('batch_id');
 
     if (!workspaceId) {
@@ -287,37 +310,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify workspace membership
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!member) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // If query workspaceId differs from auth, verify access
+    if (workspaceId !== authWorkspaceId) {
+      const memberCheck = await pool.query(
+        'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+        [workspaceId, userId]
+      );
+      if (memberCheck.rows.length === 0) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
-    let query = supabase
-      .from('workspace_prospects')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false });
+    let query = 'SELECT * FROM workspace_prospects WHERE workspace_id = $1';
+    const params: any[] = [workspaceId];
 
     if (batchId) {
-      query = query.eq('batch_id', batchId);
+      query += ' AND batch_id = $2';
+      params.push(batchId);
     }
 
-    const { data: prospects, error } = await query.limit(500);
+    query += ' ORDER BY created_at DESC LIMIT 500';
 
-    if (error) {
-      console.error('Error fetching prospects:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch prospects' },
-        { status: 500 }
-      );
-    }
+    const prospectsResult = await pool.query(query, params);
+    const prospects = prospectsResult.rows;
 
     return NextResponse.json({
       success: true,
@@ -326,6 +341,10 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: unknown) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Prospect fetch error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

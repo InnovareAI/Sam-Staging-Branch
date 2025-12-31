@@ -1,77 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    
-    // Get user and workspace
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Authenticate user with Firebase
+    const authContext = await verifyAuth(req);
+    const userId = authContext.userId;
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || 'all'; // 'pending', 'approved', 'rejected', 'all'
     const campaignId = searchParams.get('campaign_id');
-    const workspaceId = searchParams.get('workspace_id');
+    const workspaceId = searchParams.get('workspace_id') || authContext.workspaceId;
 
     if (!workspaceId) {
       return NextResponse.json({ error: 'workspace_id is required' }, { status: 400 });
     }
 
     // Verify user has access to this workspace
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
+    const memberResult = await pool.query(
+      'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+      [workspaceId, userId]
+    );
 
-    if (!member) {
+    if (memberResult.rows.length === 0) {
       return NextResponse.json({ error: 'Access denied to workspace' }, { status: 403 });
     }
 
-    // Base query for messages requiring approval
-    // FIXED: Removed campaign_prospects join - no FK relationship exists
-    // campaign_messages only relates to campaigns, not directly to campaign_prospects
-    let query = supabase
-      .from('campaign_messages')
-      .select(`
-        *,
-        campaigns!inner(
-          id,
-          name,
-          workspace_id
-        )
-      `)
-      .eq('campaigns.workspace_id', workspaceId);
+    // Build query for messages requiring approval
+    let query = `
+      SELECT cm.*, c.id as campaign_id, c.name as campaign_name, c.workspace_id
+      FROM campaign_messages cm
+      INNER JOIN campaigns c ON cm.campaign_id = c.id
+      WHERE c.workspace_id = $1
+    `;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     // Filter by campaign if specified
     if (campaignId) {
-      query = query.eq('campaign_id', campaignId);
+      query += ` AND cm.campaign_id = $${paramIndex}`;
+      params.push(campaignId);
+      paramIndex++;
     }
 
     // Filter by status
     if (status !== 'all') {
-      query = query.eq('approval_status', status);
+      query += ` AND cm.approval_status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
     }
 
     // Order by creation date (newest first)
-    query = query.order('created_at', { ascending: false });
+    query += ' ORDER BY cm.created_at DESC';
 
-    const { data: messages, error } = await query;
-
-    if (error) {
-      console.error('Failed to fetch messages for approval:', error);
-      return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
-    }
+    const result = await pool.query(query, params);
+    const messages = result.rows;
 
     // Group messages by status
     const groupedMessages = {
-      pending: messages?.filter(m => m.approval_status === 'pending') || [],
-      approved: messages?.filter(m => m.approval_status === 'approved') || [],
-      rejected: messages?.filter(m => m.approval_status === 'rejected') || []
+      pending: messages.filter(m => m.approval_status === 'pending') || [],
+      approved: messages.filter(m => m.approval_status === 'approved') || [],
+      rejected: messages.filter(m => m.approval_status === 'rejected') || []
     };
 
     return NextResponse.json({
@@ -86,6 +75,10 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error: any) {
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const authErr = error as AuthError;
+      return NextResponse.json({ error: authErr.message }, { status: authErr.statusCode });
+    }
     console.error('Message approval fetch error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch messages for approval', details: error.message },
@@ -96,13 +89,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Get user and workspace
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Authenticate user with Firebase
+    const authContext = await verifyAuth(req);
+    const userId = authContext.userId;
 
     const {
       action,
@@ -113,25 +102,27 @@ export async function POST(req: NextRequest) {
       workspace_id
     } = await req.json();
 
-    if (!workspace_id) {
+    const workspaceId = workspace_id || authContext.workspaceId;
+
+    if (!workspaceId) {
       return NextResponse.json({ error: 'workspace_id is required' }, { status: 400 });
     }
 
     // Verify user has access to this workspace
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const memberResult = await pool.query(
+      'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+      [workspaceId, userId]
+    );
 
-    if (!member) {
+    if (memberResult.rows.length === 0) {
       return NextResponse.json({ error: 'Access denied to workspace' }, { status: 403 });
     }
 
     if (!['approve', 'reject', 'bulk_approve', 'bulk_reject'].includes(action)) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
+
+    const now = new Date().toISOString();
 
     // Handle bulk actions
     if (action === 'bulk_approve' || action === 'bulk_reject') {
@@ -140,40 +131,36 @@ export async function POST(req: NextRequest) {
       }
 
       const newStatus = action === 'bulk_approve' ? 'approved' : 'rejected';
-      
-      const { data: updatedMessages, error } = await supabase
-        .from('campaign_messages')
-        .update({
-          approval_status: newStatus,
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-          rejection_reason: action === 'bulk_reject' ? rejection_reason || 'Bulk rejection' : null,
-          updated_at: new Date().toISOString()
-        })
-        .in('id', message_ids)
-        .select(`
-          *,
-          campaigns!inner(
-            id,
-            name,
-            workspace_id
-          )
-        `)
-        .eq('campaigns.workspace_id', workspace_id);
 
-      if (error) {
-        console.error('Failed to update messages:', error);
-        return NextResponse.json({ 
-          error: 'Failed to update messages',
-          details: error.message 
-        }, { status: 500 });
-      }
+      // Update messages and verify workspace ownership
+      const result = await pool.query(
+        `UPDATE campaign_messages cm
+         SET approval_status = $1,
+             approved_by = $2,
+             approved_at = $3,
+             rejection_reason = $4,
+             updated_at = $5
+         FROM campaigns c
+         WHERE cm.campaign_id = c.id
+           AND c.workspace_id = $6
+           AND cm.id = ANY($7)
+         RETURNING cm.*, c.id as campaign_id, c.name as campaign_name, c.workspace_id`,
+        [
+          newStatus,
+          userId,
+          now,
+          action === 'bulk_reject' ? rejection_reason || 'Bulk rejection' : null,
+          now,
+          workspaceId,
+          message_ids
+        ]
+      );
 
       return NextResponse.json({
-        message: `Successfully ${newStatus} ${updatedMessages?.length || 0} messages`,
+        message: `Successfully ${newStatus} ${result.rows.length || 0} messages`,
         action: action,
-        updated_messages: updatedMessages,
-        count: updatedMessages?.length || 0
+        updated_messages: result.rows,
+        count: result.rows.length || 0
       });
     }
 
@@ -184,46 +171,44 @@ export async function POST(req: NextRequest) {
 
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
-    const { data: updatedMessage, error } = await supabase
-      .from('campaign_messages')
-      .update({
-        approval_status: newStatus,
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-        rejection_reason: action === 'reject' ? rejection_reason || 'Message rejected' : null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', message_id)
-      .select(`
-        *,
-        campaigns!inner(
-          id,
-          name,
-          workspace_id
-        )
-      `)
-      .eq('campaigns.workspace_id', workspace_id)
-      .single();
+    const result = await pool.query(
+      `UPDATE campaign_messages cm
+       SET approval_status = $1,
+           approved_by = $2,
+           approved_at = $3,
+           rejection_reason = $4,
+           updated_at = $5
+       FROM campaigns c
+       WHERE cm.campaign_id = c.id
+         AND c.workspace_id = $6
+         AND cm.id = $7
+       RETURNING cm.*, c.id as campaign_id, c.name as campaign_name, c.workspace_id`,
+      [
+        newStatus,
+        userId,
+        now,
+        action === 'reject' ? rejection_reason || 'Message rejected' : null,
+        now,
+        workspaceId,
+        message_id
+      ]
+    );
 
-    if (error) {
-      console.error('Failed to update message:', error);
-      return NextResponse.json({ 
-        error: 'Failed to update message',
-        details: error.message 
-      }, { status: 500 });
-    }
-
-    if (!updatedMessage) {
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Message not found or access denied' }, { status: 404 });
     }
 
     return NextResponse.json({
       message: `Message ${newStatus} successfully`,
       action: action,
-      updated_message: updatedMessage
+      updated_message: result.rows[0]
     });
 
   } catch (error: any) {
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const authErr = error as AuthError;
+      return NextResponse.json({ error: authErr.message }, { status: authErr.statusCode });
+    }
     console.error('Message approval action error:', error);
     return NextResponse.json(
       { error: 'Failed to process approval action', details: error.message },
@@ -234,14 +219,8 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-    // Get user and workspace
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Authenticate user with Firebase
+    await verifyAuth(req);
 
     return NextResponse.json({
       message: 'Message Approval API',
@@ -256,7 +235,7 @@ export async function PUT(req: NextRequest) {
       },
       actions: {
         approve: 'Approve single message',
-        reject: 'Reject single message', 
+        reject: 'Reject single message',
         bulk_approve: 'Approve multiple messages',
         bulk_reject: 'Reject multiple messages'
       },
@@ -268,6 +247,10 @@ export async function PUT(req: NextRequest) {
     });
 
   } catch (error: any) {
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const authErr = error as AuthError;
+      return NextResponse.json({ error: authErr.message }, { status: authErr.statusCode });
+    }
     console.error('Message approval API info error:', error);
     return NextResponse.json(
       { error: 'Request failed', details: error.message },

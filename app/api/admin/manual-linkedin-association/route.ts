@@ -1,58 +1,51 @@
-
-import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/security/route-auth';
+import { pool } from '@/lib/auth';
 
 // Admin endpoint to manually associate LinkedIn accounts with users
 export async function POST(request: NextRequest) {
-
   // Require admin authentication
   const { error: authError } = await requireAdmin(request);
   if (authError) return authError;
+
   try {
-    const { user_email, unipile_account_id, account_name, linkedin_username, public_identifier } = await request.json()
-    
+    const { user_email, unipile_account_id, account_name, linkedin_username, public_identifier } = await request.json();
+
     if (!user_email || !unipile_account_id) {
       return NextResponse.json({
         success: false,
         error: 'user_email and unipile_account_id are required'
-      }, { status: 400 })
+      }, { status: 400 });
     }
 
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    
     // Find the user by email
-    const { data: users, error: userError } = await supabase
-      .from('users') // Try users table first
-      .select('id, email')
-      .eq('email', user_email)
-      .limit(1)
+    const usersResult = await pool.query(
+      'SELECT id, email FROM users WHERE email = $1 LIMIT 1',
+      [user_email]
+    );
+    const users = usersResult.rows;
 
-    let userId = users?.[0]?.id
+    let userId = users?.[0]?.id;
 
-    // If not found in users table, try auth.users view (if accessible)
+    // If not found in users table
     if (!userId) {
-      console.log(`User not found in users table, searching by email: ${user_email}`)
-      
-      // Try to find user by getting all users and filtering (if we have any existing associations)
-      const { data: existingAssociations, error: assocError } = await supabase
-        .from('user_unipile_accounts')
-        .select('user_id')
-        .limit(1)
-      
-      if (existingAssociations?.length > 0) {
-        // We have some user associations, so we know the table structure works
-        // For now, we'll create a manual entry - you'll need to provide the actual user ID
+      console.log(`User not found in users table, searching by email: ${user_email}`);
+
+      // Check if we have any existing associations
+      const existingAssocResult = await pool.query(
+        'SELECT user_id FROM user_unipile_accounts LIMIT 1'
+      );
+
+      if (existingAssocResult.rows?.length > 0) {
         return NextResponse.json({
           success: false,
           error: `Cannot automatically find user ID for ${user_email}. Please provide the user_id directly.`,
           debug_info: {
             searched_email: user_email,
             found_in_users_table: !!users?.length,
-            existing_associations_count: existingAssociations?.length || 0
+            existing_associations_count: existingAssocResult.rows?.length || 0
           }
-        }, { status: 404 })
+        }, { status: 404 });
       }
     }
 
@@ -60,45 +53,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         error: `User not found with email: ${user_email}`
-      }, { status: 404 })
+      }, { status: 404 });
     }
 
-    console.log(`Creating LinkedIn association for user ${user_email} (${userId}) with account ${unipile_account_id}`)
+    console.log(`Creating LinkedIn association for user ${user_email} (${userId}) with account ${unipile_account_id}`);
 
     // Create the association
-    const { data: association, error: insertError } = await supabase
-      .from('user_unipile_accounts')
-      .insert({
-        user_id: userId,
-        unipile_account_id: unipile_account_id,
-        platform: 'LINKEDIN',
-        account_name: account_name || 'LinkedIn Account',
-        account_email: linkedin_username,
-        linkedin_public_identifier: public_identifier,
-        linkedin_profile_url: public_identifier ? `https://linkedin.com/in/${public_identifier}` : null,
-        connection_status: 'active'
-      })
-      .select()
+    const insertResult = await pool.query(`
+      INSERT INTO user_unipile_accounts
+      (user_id, unipile_account_id, platform, account_name, account_email, linkedin_public_identifier, linkedin_profile_url, connection_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `, [
+      userId,
+      unipile_account_id,
+      'LINKEDIN',
+      account_name || 'LinkedIn Account',
+      linkedin_username,
+      public_identifier,
+      public_identifier ? `https://linkedin.com/in/${public_identifier}` : null,
+      'active'
+    ]);
 
-    if (insertError) {
-      console.error('Error creating LinkedIn association:', insertError)
+    if (insertResult.rows.length === 0) {
       return NextResponse.json({
         success: false,
-        error: `Failed to create association: ${insertError.message}`,
+        error: 'Failed to create association',
         debug_info: {
           user_id: userId,
-          unipile_account_id: unipile_account_id,
-          insert_error: insertError
+          unipile_account_id: unipile_account_id
         }
-      }, { status: 500 })
+      }, { status: 500 });
     }
 
-    console.log(`✅ Successfully created LinkedIn association for ${user_email}`)
+    console.log(`✅ Successfully created LinkedIn association for ${user_email}`);
 
     return NextResponse.json({
       success: true,
       message: 'LinkedIn account successfully associated',
-      association: association,
+      association: insertResult.rows[0],
       user_info: {
         user_id: userId,
         user_email: user_email
@@ -109,75 +102,70 @@ export async function POST(request: NextRequest) {
         public_identifier: public_identifier,
         platform: 'LINKEDIN'
       }
-    })
+    });
 
-  } catch (error) {
-    console.error('Manual LinkedIn association error:', error)
+  } catch (error: any) {
+    console.error('Manual LinkedIn association error:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error'
-    }, { status: 500 })
+    }, { status: 500 });
   }
 }
 
 // GET method to check existing associations
 export async function GET(request: NextRequest) {
-
   // Require admin authentication
   const { error: authError } = await requireAdmin(request);
   if (authError) return authError;
+
   try {
-    const url = new URL(request.url)
-    const user_email = url.searchParams.get('user_email')
-    
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    
+    const url = new URL(request.url);
+    const user_email = url.searchParams.get('user_email');
+
     if (user_email) {
       // Find user and their associations
-      const { data: users } = await supabase
-        .from('users')
-        .select('id, email')
-        .eq('email', user_email)
-        .limit(1)
+      const usersResult = await pool.query(
+        'SELECT id, email FROM users WHERE email = $1 LIMIT 1',
+        [user_email]
+      );
 
-      if (!users?.length) {
+      if (!usersResult.rows?.length) {
         return NextResponse.json({
           success: false,
           error: `User not found: ${user_email}`
-        }, { status: 404 })
+        }, { status: 404 });
       }
 
-      const userId = users[0].id
+      const userId = usersResult.rows[0].id;
 
-      const { data: associations } = await supabase
-        .from('user_unipile_accounts')
-        .select('*')
-        .eq('user_id', userId)
+      const associationsResult = await pool.query(
+        'SELECT * FROM user_unipile_accounts WHERE user_id = $1',
+        [userId]
+      );
 
       return NextResponse.json({
         success: true,
-        user: users[0],
-        associations: associations || []
-      })
+        user: usersResult.rows[0],
+        associations: associationsResult.rows || []
+      });
     } else {
       // Get all associations
-      const { data: associations } = await supabase
-        .from('user_unipile_accounts')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20)
+      const associationsResult = await pool.query(
+        'SELECT * FROM user_unipile_accounts ORDER BY created_at DESC LIMIT 20'
+      );
 
       return NextResponse.json({
         success: true,
-        associations: associations || []
-      })
+        associations: associationsResult.rows || []
+      });
     }
 
   } catch (error) {
-    console.error('Error checking associations:', error)
+    console.error('Error checking associations:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error'
-    }, { status: 500 })
+    }, { status: 500 });
   }
 }

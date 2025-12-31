@@ -9,12 +9,12 @@
  * 2. AI generates draft → status = pending_approval
  * 3. Human reviews in UI → approve/reject/edit
  * 4. Approved drafts sent by send cron
+ *
+ * Migrated Dec 31, 2025: Firebase auth + Cloud SQL
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import {
   generateFollowUpMessage,
   createFollowUpDraft,
@@ -24,80 +24,77 @@ import {
   FollowUpScenario
 } from '@/lib/services/follow-up-agent-v2';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 /**
  * GET /api/follow-up-agent/drafts
  * List pending follow-up drafts for workspace
  */
 export async function GET(req: NextRequest) {
   try {
-    // Auth check
-    const cookieStore = cookies();
-    const authClient = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { user } } = await authClient.auth.getUser();
+    // Auth check via Firebase
+    let userId: string;
+    let workspaceId: string;
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    try {
+      const auth = await verifyAuth(req);
+      userId = auth.userId;
+      workspaceId = auth.workspaceId;
+    } catch (authError) {
+      const err = authError as AuthError;
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
     }
 
     const { searchParams } = new URL(req.url);
-    const workspaceId = searchParams.get('workspace_id');
+    // Allow query param to override header workspace_id if provided
+    const queryWorkspaceId = searchParams.get('workspace_id');
+    const effectiveWorkspaceId = queryWorkspaceId || workspaceId;
     const status = searchParams.get('status') || 'pending_approval';
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    if (!workspaceId) {
+    if (!effectiveWorkspaceId) {
       return NextResponse.json({ error: 'workspace_id required' }, { status: 400 });
     }
 
-    // Verify user has access to workspace
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!member) {
-      return NextResponse.json({ error: 'Not a member of this workspace' }, { status: 403 });
+    // Verify user has access to workspace (if different from auth workspace)
+    if (queryWorkspaceId && queryWorkspaceId !== workspaceId) {
+      const memberResult = await pool.query(
+        'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+        [queryWorkspaceId, userId]
+      );
+      if (memberResult.rows.length === 0) {
+        return NextResponse.json({ error: 'Not a member of this workspace' }, { status: 403 });
+      }
     }
 
-    // Fetch drafts with prospect and campaign info
-    const { data: drafts, error } = await supabase
-      .from('follow_up_drafts')
-      .select(`
-        *,
-        campaign_prospects!prospect_id (
-          id,
-          first_name,
-          last_name,
-          company_name,
-          title,
-          linkedin_url,
-          email
-        ),
-        campaigns!campaign_id (
-          id,
-          campaign_name
-        )
-      `)
-      .eq('workspace_id', workspaceId)
-      .eq('status', status)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error('Error fetching drafts:', error);
-      return NextResponse.json({ error: 'Failed to fetch drafts' }, { status: 500 });
-    }
+    // Fetch drafts with prospect and campaign info using raw SQL
+    const draftsResult = await pool.query(
+      `SELECT
+        d.*,
+        json_build_object(
+          'id', p.id,
+          'first_name', p.first_name,
+          'last_name', p.last_name,
+          'company_name', p.company_name,
+          'title', p.title,
+          'linkedin_url', p.linkedin_url,
+          'email', p.email
+        ) as campaign_prospects,
+        json_build_object(
+          'id', c.id,
+          'campaign_name', c.campaign_name
+        ) as campaigns
+      FROM follow_up_drafts d
+      LEFT JOIN campaign_prospects p ON d.prospect_id = p.id
+      LEFT JOIN campaigns c ON d.campaign_id = c.id
+      WHERE d.workspace_id = $1 AND d.status = $2
+      ORDER BY d.created_at DESC
+      LIMIT $3`,
+      [effectiveWorkspaceId, status, limit]
+    );
 
     return NextResponse.json({
       success: true,
-      drafts,
-      count: drafts?.length || 0
+      drafts: draftsResult.rows,
+      count: draftsResult.rows.length
     });
 
   } catch (error) {
@@ -130,59 +127,57 @@ export async function POST(req: NextRequest) {
     const isCron = cronSecret === process.env.CRON_SECRET;
 
     if (!isCron) {
-      // Auth check for non-cron requests
-      const cookieStore = cookies();
-      const authClient = createRouteHandlerClient({ cookies: () => cookieStore });
-      const { data: { user } } = await authClient.auth.getUser();
-
-      if (!user) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-
-      // Verify workspace access
-      const { data: member } = await supabase
-        .from('workspace_members')
-        .select('role')
-        .eq('workspace_id', workspace_id)
-        .eq('user_id', user.id)
-        .single();
-
-      if (!member) {
-        return NextResponse.json({ error: 'Not a member of this workspace' }, { status: 403 });
+      // Auth check for non-cron requests via Firebase
+      try {
+        const auth = await verifyAuth(req);
+        // Verify workspace access (verifyAuth already checks this, but double-check if different workspace)
+        if (auth.workspaceId !== workspace_id) {
+          const memberResult = await pool.query(
+            'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+            [workspace_id, auth.userId]
+          );
+          if (memberResult.rows.length === 0) {
+            return NextResponse.json({ error: 'Not a member of this workspace' }, { status: 403 });
+          }
+        }
+      } catch (authError) {
+        const err = authError as AuthError;
+        return NextResponse.json({ error: err.message }, { status: err.statusCode });
       }
     }
 
-    // Fetch prospect details
-    const { data: prospect, error: prospectError } = await supabase
-      .from('campaign_prospects')
-      .select(`
-        *,
-        campaigns!campaign_id (
-          id,
-          campaign_name,
-          workspace_id,
-          message_templates
-        )
-      `)
-      .eq('id', prospect_id)
-      .single();
+    // Fetch prospect details with campaign info
+    const prospectResult = await pool.query(
+      `SELECT
+        p.*,
+        json_build_object(
+          'id', c.id,
+          'campaign_name', c.campaign_name,
+          'workspace_id', c.workspace_id,
+          'message_templates', c.message_templates
+        ) as campaigns
+      FROM campaign_prospects p
+      LEFT JOIN campaigns c ON p.campaign_id = c.id
+      WHERE p.id = $1`,
+      [prospect_id]
+    );
 
-    if (prospectError || !prospect) {
+    if (prospectResult.rows.length === 0) {
       return NextResponse.json({ error: 'Prospect not found' }, { status: 404 });
     }
 
-    // Check for existing pending draft
-    const { data: existingDraft } = await supabase
-      .from('follow_up_drafts')
-      .select('id')
-      .eq('prospect_id', prospect_id)
-      .eq('status', 'pending_approval')
-      .single();
+    const prospect = prospectResult.rows[0];
 
-    if (existingDraft) {
+    // Check for existing pending draft
+    const existingDraftResult = await pool.query(
+      'SELECT id FROM follow_up_drafts WHERE prospect_id = $1 AND status = $2',
+      [prospect_id, 'pending_approval']
+    );
+
+    if (existingDraftResult.rows.length > 0) {
       return NextResponse.json({
         error: 'Pending draft already exists for this prospect',
-        draft_id: existingDraft.id
+        draft_id: existingDraftResult.rows[0].id
       }, { status: 409 });
     }
 
@@ -221,12 +216,10 @@ export async function POST(req: NextRequest) {
     );
 
     // Get previous follow-ups
-    const { data: previousFollowUps } = await supabase
-      .from('follow_up_drafts')
-      .select('message')
-      .eq('prospect_id', prospect_id)
-      .eq('status', 'sent')
-      .order('created_at', { ascending: true });
+    const previousFollowUpsResult = await pool.query(
+      'SELECT message FROM follow_up_drafts WHERE prospect_id = $1 AND status = $2 ORDER BY created_at ASC',
+      [prospect_id, 'sent']
+    );
 
     // Build context
     const context: FollowUpContext = {
@@ -258,10 +251,10 @@ export async function POST(req: NextRequest) {
         last_topic_discussed: prospect.last_topic
       },
       check_back_date: prospect.check_back_date,
-      previous_follow_ups: previousFollowUps?.map(f => f.message) || []
+      previous_follow_ups: previousFollowUpsResult.rows.map(f => f.message) || []
     };
 
-    console.log('📝 Generating follow-up draft:', {
+    console.log('Generating follow-up draft:', {
       prospect: `${context.prospect.first_name} ${context.prospect.last_name}`,
       scenario,
       touch: touchNumber,
@@ -274,7 +267,7 @@ export async function POST(req: NextRequest) {
     // Create draft
     const draft = await createFollowUpDraft(context, generated);
 
-    console.log('✅ Draft created:', draft.id);
+    console.log('Draft created:', draft.id);
 
     return NextResponse.json({
       success: true,

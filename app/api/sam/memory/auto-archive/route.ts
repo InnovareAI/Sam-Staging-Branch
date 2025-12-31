@@ -4,17 +4,15 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 // Background job endpoint (can be called by cron/scheduler)
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    
     // Check for API key authentication for background jobs
     const authHeader = request.headers.get('Authorization');
     const expectedApiKey = process.env.MEMORY_ARCHIVAL_API_KEY;
-    
+
     if (expectedApiKey && authHeader !== `Bearer ${expectedApiKey}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -22,13 +20,12 @@ export async function POST(request: NextRequest) {
     console.log('Starting automatic memory archival job...');
 
     // Call the database function to process auto-archival
-    // First, try with rpc. If that fails, we'll handle gracefully
     let result, error;
-    
+
     try {
-      const response = await supabase.rpc('auto_archive_memories');
-      result = response.data;
-      error = response.error;
+      const response = await pool.query('SELECT auto_archive_memories()');
+      result = response.rows[0]?.auto_archive_memories ?? 0;
+      error = null;
     } catch (rpcError) {
       console.log('RPC failed, trying alternative approach:', rpcError);
       // Alternative: For now, simulate successful run since this is infrastructure setup
@@ -40,9 +37,9 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Auto-archive error:', error);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Failed to run auto-archive',
-        details: error.message 
+        details: error
       }, { status: 500 });
     }
 
@@ -67,13 +64,8 @@ export async function POST(request: NextRequest) {
 // Manual trigger endpoint (for authenticated users)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    
     // Check authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId } = await verifyAuth(request);
 
     // Only allow admin users to manually trigger (optional check)
     const { searchParams } = new URL(request.url);
@@ -90,15 +82,15 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.log(`Manual memory archival triggered by user ${session.user.id}`);
+    console.log(`Manual memory archival triggered by user ${userId}`);
 
     // Call the database function to process auto-archival
     let result, error;
-    
+
     try {
-      const response = await supabase.rpc('auto_archive_memories');
-      result = response.data;
-      error = response.error;
+      const response = await pool.query('SELECT auto_archive_memories()');
+      result = response.rows[0]?.auto_archive_memories ?? 0;
+      error = null;
     } catch (rpcError) {
       console.log('RPC failed, using fallback approach:', rpcError);
       // Fallback: Return successful simulation
@@ -109,9 +101,9 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Manual auto-archive error:', error);
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Failed to run manual auto-archive',
-        details: error.message 
+        details: error
       }, { status: 500 });
     }
 
@@ -121,11 +113,15 @@ export async function GET(request: NextRequest) {
       success: true,
       processed_users: result,
       message: `Manual memory archival completed. Processed ${result} users.`,
-      triggered_by: session.user.id,
+      triggered_by: userId,
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Manual auto-archive error:', error);
     return NextResponse.json(
       { error: 'Manual auto-archive failed' },

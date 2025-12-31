@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 /**
  * DEBUG ENDPOINT: Test entire approval data flow
@@ -12,41 +12,30 @@ export async function GET(request: NextRequest) {
   };
 
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
     // Step 1: Auth Check
     results.steps.push({ step: 1, name: 'Auth Check', status: 'running' });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      results.steps[0].status = 'failed';
-      results.steps[0].error = authError?.message || 'No user';
-      return NextResponse.json(results);
-    }
+    const authContext = await verifyAuth(request);
 
     results.steps[0].status = 'success';
-    results.steps[0].data = { userId: user.id, email: user.email };
+    results.steps[0].data = { userId: authContext.userId, email: authContext.userEmail };
 
     // Step 2: Get Workspace
     results.steps.push({ step: 2, name: 'Get Workspace', status: 'running' });
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
 
-    let workspaceId = userProfile?.current_workspace_id;
+    const userResult = await pool.query(
+      'SELECT current_workspace_id FROM users WHERE id = $1',
+      [authContext.userId]
+    );
+
+    let workspaceId = userResult.rows[0]?.current_workspace_id || authContext.workspaceId;
 
     if (!workspaceId) {
-      const { data: membership } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle();
-
-      workspaceId = membership?.workspace_id;
+      const membershipResult = await pool.query(
+        'SELECT workspace_id FROM workspace_members WHERE user_id = $1 LIMIT 1',
+        [authContext.userId]
+      );
+      workspaceId = membershipResult.rows[0]?.workspace_id;
     }
 
     if (!workspaceId) {
@@ -60,17 +49,15 @@ export async function GET(request: NextRequest) {
 
     // Step 3: Get Approval Sessions
     results.steps.push({ step: 3, name: 'Get Approval Sessions', status: 'running' });
-    const { data: sessions, error: sessionsError } = await supabase
-      .from('prospect_approval_sessions')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false });
 
-    if (sessionsError) {
-      results.steps[2].status = 'failed';
-      results.steps[2].error = sessionsError.message;
-      return NextResponse.json(results);
-    }
+    const sessionsResult = await pool.query(
+      `SELECT * FROM prospect_approval_sessions
+       WHERE workspace_id = $1
+       ORDER BY created_at DESC`,
+      [workspaceId]
+    );
+
+    const sessions = sessionsResult.rows;
 
     results.steps[2].status = 'success';
     results.steps[2].data = {
@@ -92,16 +79,16 @@ export async function GET(request: NextRequest) {
       const allProspects: any[] = [];
 
       for (const session of activeSessions) {
-        const { data: prospects, error: prospectsError } = await supabase
-          .from('prospect_approval_data')
-          .select('*')
-          .eq('session_id', session.id);
+        const prospectsResult = await pool.query(
+          'SELECT * FROM prospect_approval_data WHERE session_id = $1',
+          [session.id]
+        );
 
-        if (!prospectsError && prospects) {
+        if (prospectsResult.rows) {
           allProspects.push({
             sessionId: session.id.slice(0, 20) + '...',
-            count: prospects.length,
-            sample: prospects.slice(0, 3).map(p => ({
+            count: prospectsResult.rows.length,
+            sample: prospectsResult.rows.slice(0, 3).map(p => ({
               name: p.name,
               title: p.title,
               company: p.company,
@@ -125,6 +112,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(results, { status: 200 });
 
   } catch (error) {
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const authErr = error as AuthError;
+      results.steps[0].status = 'failed';
+      results.steps[0].error = authErr.message;
+      return NextResponse.json(results);
+    }
+
     results.overallStatus = 'error';
     results.error = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(results, { status: 500 });

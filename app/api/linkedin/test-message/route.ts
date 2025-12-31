@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 // Unipile API configuration
 const UNIPILE_BASE_URL = process.env.UNIPILE_DSN || 'https://api6.unipile.com:13670';
@@ -37,7 +37,7 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
   }
 
   const response = await fetch(url, options);
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`Unipile API error: ${response.status} - ${errorText}`);
@@ -52,33 +52,34 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 // Helper function to extract LinkedIn user ID from profile URL
 function extractLinkedInUserId(profileUrl: string): string | null {
   if (!profileUrl) return null;
-  
+
   // Extract from various LinkedIn URL formats
   const patterns = [
     /linkedin\.com\/in\/([^\/\?]+)/,
     /linkedin\.com\/pub\/[^\/]+\/[^\/]+\/[^\/]+\/([^\/\?]+)/,
     /linkedin\.com\/profile\/view\?id=([^&]+)/
   ];
-  
+
   for (const pattern of patterns) {
     const match = profileUrl.match(pattern);
     if (match && match[1]) {
       return match[1];
     }
   }
-  
+
   return null;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    // Skip authentication for testing - this is internal testing only
-    console.log('🚀 Testing LinkedIn message sending...');
+    // Authenticate user using Firebase auth
+    const { userId, userEmail } = await verifyAuth(req);
+    console.log(`Testing LinkedIn message sending for user ${userEmail}...`);
 
     const { from_account, to_linkedin_profile, to_linkedin_id, message = "Test message from SAM AI system - checking messaging functionality!" } = await req.json();
 
     if (!from_account || (!to_linkedin_profile && !to_linkedin_id)) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'from_account and either to_linkedin_profile (URL) or to_linkedin_id are required',
         available_accounts: [
           'Hut6zgezT_SWmwL-XIkjSg', // Thorsten Linz
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
     if (to_linkedin_profile && !recipientLinkedInId) {
       recipientLinkedInId = extractLinkedInUserId(to_linkedin_profile);
       if (!recipientLinkedInId) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: 'Could not extract LinkedIn user ID from profile URL',
           profile_url: to_linkedin_profile,
           help: 'Please provide a valid LinkedIn profile URL or the LinkedIn user ID directly'
@@ -109,11 +110,11 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`Testing message from ${from_account} to LinkedIn ID: ${recipientLinkedInId}`);
-    console.log(`⚠️ Note: LinkedIn requires internal ID format (ACoAAA...), not public identifier`);
-    
+    console.log(`Note: LinkedIn requires internal ID format (ACoAAA...), not public identifier`);
+
     // Validate LinkedIn ID format
     if (recipientLinkedInId && !recipientLinkedInId.startsWith('ACoA')) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Invalid LinkedIn ID format',
         provided_id: recipientLinkedInId,
         help: 'LinkedIn internal IDs start with "ACoA" (e.g., ACoAAACYv0MB5sgfg5P09EbKyGzp2OH-qwKEmgc)',
@@ -124,11 +125,11 @@ export async function POST(req: NextRequest) {
     // Get account information for sender
     const fromAccountData = await callUnipileAPI('accounts');
     const accounts = Array.isArray(fromAccountData) ? fromAccountData : (fromAccountData.items || [fromAccountData]);
-    
+
     const fromAccount = accounts.find(acc => acc.id === from_account);
 
     if (!fromAccount) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Sender account not found',
         available_accounts: accounts.map(acc => ({ id: acc.id, name: acc.name }))
       }, { status: 404 });
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
       };
 
       const messageResponse = await callUnipileAPI('messages', 'POST', messageData);
-      
+
       return NextResponse.json({
         success: true,
         message: 'Test message sent successfully!',
@@ -160,7 +161,7 @@ export async function POST(req: NextRequest) {
 
     } catch (messageError) {
       console.log('Direct message failed, trying invitation method...', messageError);
-      
+
       // Method 2: Try sending via invitation with message
       try {
         const invitationData = {
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
         };
 
         const invitationResponse = await callUnipileAPI('users/invite', 'POST', invitationData);
-        
+
         return NextResponse.json({
           success: true,
           method: 'invitation_with_message',
@@ -185,7 +186,7 @@ export async function POST(req: NextRequest) {
 
       } catch (invitationError) {
         console.error('Both message methods failed:', { messageError, invitationError });
-        
+
         return NextResponse.json({
           success: false,
           error: 'Unable to send test message',
@@ -201,6 +202,10 @@ export async function POST(req: NextRequest) {
     }
 
   } catch (error: any) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Test message error:', error);
     return NextResponse.json(
       { error: 'Failed to send test message', details: error.message },
@@ -211,15 +216,16 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    // Skip authentication for testing - this is internal testing only
-    console.log('📋 Getting LinkedIn accounts for messaging test...');
+    // Authenticate user using Firebase auth
+    const { userId, userEmail } = await verifyAuth(req);
+    console.log(`Getting LinkedIn accounts for messaging test for user ${userEmail}...`);
 
     // Get available accounts for testing
     const accountsData = await callUnipileAPI('accounts');
     const accounts = Array.isArray(accountsData) ? accountsData : (accountsData.items || [accountsData]);
-    
-    const linkedinAccounts = accounts.filter(account => 
-      account.type === 'LINKEDIN' && 
+
+    const linkedinAccounts = accounts.filter(account =>
+      account.type === 'LINKEDIN' &&
       account.sources?.[0]?.status === 'OK'
     );
 
@@ -249,6 +255,10 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error: any) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Failed to get test message info:', error);
     return NextResponse.json(
       { error: 'Failed to get test info', details: error.message },

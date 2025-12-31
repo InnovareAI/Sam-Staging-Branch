@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 
 // MCP function declarations
 declare global {
@@ -17,33 +17,29 @@ declare global {
  */
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    const { userId, workspaceId: authWorkspaceId, userEmail } = await verifyAuth(req);
 
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const body = await req.json();
+    const { workspaceId: providedWorkspaceId, campaignId } = body;
 
-    const { workspaceId, campaignId } = await req.json();
+    // Use provided workspace or fall back to auth context
+    const workspaceId = providedWorkspaceId || authWorkspaceId;
 
     if (!workspaceId) {
       return NextResponse.json({ error: 'workspaceId is required' }, { status: 400 });
     }
 
     // Verify workspace membership
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
+    const { rows: memberRows } = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [workspaceId, userId]
+    );
 
-    if (!member) {
+    if (!memberRows || memberRows.length === 0) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    console.log(`🔄 Syncing LinkedIn connections for user ${user.email}...`);
+    console.log(`Syncing LinkedIn connections for user ${userEmail}...`);
 
     // Step 1: Get LinkedIn accounts via MCP
     const availableAccounts = await mcp__unipile__unipile_get_accounts();
@@ -63,12 +59,12 @@ export async function POST(req: NextRequest) {
     // Step 2: Scan message history to discover connections (1st degree contacts)
     let syncedCount = 0;
     let resolvedCount = 0;
-    const errors = [];
+    const errors: any[] = [];
     const discoveredContacts = new Map<string, any>();
 
     for (const account of linkedinAccounts) {
       try {
-        console.log(`📨 Scanning message history for account: ${account.name}`);
+        console.log(`Scanning message history for account: ${account.name}`);
 
         // Get recent messages using MCP - these are from 1st degree connections
         const recentMessages = await mcp__unipile__unipile_get_recent_messages({
@@ -93,7 +89,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        console.log(`✅ Discovered ${discoveredContacts.size} unique contacts from messages`);
+        console.log(`Discovered ${discoveredContacts.size} unique contacts from messages`);
 
       } catch (accountError: any) {
         console.error(`Error scanning account ${account.name}:`, accountError);
@@ -104,69 +100,68 @@ export async function POST(req: NextRequest) {
     // Step 3: Store discovered connections in linkedin_contacts table
     for (const [senderId, contact] of discoveredContacts) {
       try {
-        // Upsert to linkedin_contacts table using database function
-        const { error: upsertError } = await supabase.rpc('upsert_linkedin_contact', {
-          p_user_id: user.id,
-          p_workspace_id: workspaceId,
-          p_linkedin_profile_url: contact.profileUrl,
-          p_linkedin_internal_id: contact.internalId,
-          p_full_name: contact.name,
-          p_discovery_method: 'message_history',
-          p_connection_status: 'connected',
-          p_can_message: true
-        });
-
-        if (upsertError) {
-          errors.push({ contact: contact.name, error: upsertError.message });
-          console.error(`❌ Failed to store contact ${contact.name}:`, upsertError);
-        } else {
-          syncedCount++;
-        }
-
+        // Upsert to linkedin_contacts table using raw SQL
+        await pool.query(
+          `INSERT INTO linkedin_contacts
+           (user_id, workspace_id, linkedin_profile_url, linkedin_internal_id, full_name, discovery_method, connection_status, can_message)
+           VALUES ($1, $2, $3, $4, $5, 'message_history', 'connected', true)
+           ON CONFLICT (user_id, linkedin_internal_id)
+           DO UPDATE SET
+             full_name = EXCLUDED.full_name,
+             discovery_method = EXCLUDED.discovery_method,
+             connection_status = EXCLUDED.connection_status,
+             can_message = EXCLUDED.can_message,
+             updated_at = NOW()`,
+          [userId, workspaceId, contact.profileUrl, contact.internalId, contact.name]
+        );
+        syncedCount++;
       } catch (error: any) {
         errors.push({ contact: contact.name, error: error.message });
-        console.error(`❌ Error processing contact:`, error);
+        console.error(`Error processing contact:`, error);
       }
     }
 
-    console.log(`✅ Synced ${syncedCount} LinkedIn connections from message history`);
+    console.log(`Synced ${syncedCount} LinkedIn connections from message history`);
 
-    // Step 3: If campaignId provided, resolve LinkedIn IDs for campaign prospects
+    // Step 4: If campaignId provided, resolve LinkedIn IDs for campaign prospects
     if (campaignId) {
-      console.log(`🔍 Resolving LinkedIn IDs for campaign ${campaignId}...`);
+      console.log(`Resolving LinkedIn IDs for campaign ${campaignId}...`);
 
-      const { data: resolutions, error: resError } = await supabase.rpc('resolve_campaign_linkedin_ids', {
-        p_campaign_id: campaignId,
-        p_user_id: user.id
-      });
+      // Get campaign prospects that need resolution
+      const { rows: prospects } = await pool.query(
+        `SELECT cp.prospect_id, cp.linkedin_url
+         FROM campaign_prospects cp
+         WHERE cp.campaign_id = $1 AND cp.linkedin_user_id IS NULL`,
+        [campaignId]
+      );
 
-      if (!resError && resolutions) {
-        resolvedCount = resolutions.filter((r: any) => r.resolution_status === 'found').length;
+      for (const prospect of prospects) {
+        // Try to find matching linkedin_contact
+        const { rows: contacts } = await pool.query(
+          `SELECT linkedin_internal_id FROM linkedin_contacts
+           WHERE user_id = $1 AND linkedin_profile_url ILIKE $2`,
+          [userId, `%${prospect.linkedin_url}%`]
+        );
 
-        // Update campaign_prospects with resolved LinkedIn IDs
-        for (const resolution of resolutions) {
-          if (resolution.resolution_status === 'found' && resolution.linkedin_internal_id) {
-            await supabase
-              .from('campaign_prospects')
-              .update({
-                linkedin_user_id: resolution.linkedin_internal_id,
-                status: 'ready',
-                updated_at: new Date().toISOString()
-              })
-              .eq('campaign_id', campaignId)
-              .eq('prospect_id', resolution.prospect_id);
-          }
+        if (contacts.length > 0) {
+          await pool.query(
+            `UPDATE campaign_prospects
+             SET linkedin_user_id = $1, status = 'ready', updated_at = NOW()
+             WHERE campaign_id = $2 AND prospect_id = $3`,
+            [contacts[0].linkedin_internal_id, campaignId, prospect.prospect_id]
+          );
+          resolvedCount++;
         }
-
-        console.log(`✅ Resolved ${resolvedCount} LinkedIn IDs for campaign prospects`);
       }
+
+      console.log(`Resolved ${resolvedCount} LinkedIn IDs for campaign prospects`);
     }
 
     return NextResponse.json({
       success: true,
       message: `Successfully synced LinkedIn connections`,
       stats: {
-        total_connections: connections.length,
+        total_connections: discoveredContacts.size,
         synced: syncedCount,
         errors: errors.length,
         campaign_prospects_resolved: resolvedCount
@@ -191,18 +186,14 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId } = await verifyAuth(req);
 
     // Get count of stored LinkedIn contacts
-    const { count } = await supabase
-      .from('linkedin_contacts')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int as count FROM linkedin_contacts WHERE user_id = $1`,
+      [userId]
+    );
+    const count = countRows[0]?.count || 0;
 
     return NextResponse.json({
       endpoint: 'LinkedIn Connection Sync API',
@@ -215,7 +206,7 @@ export async function GET(req: NextRequest) {
         }
       },
       status: {
-        stored_connections: count || 0,
+        stored_connections: count,
         discovery_method: 'message_history'
       },
       features: [

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 /**
  * Admin API: Data Integrity Dashboard
@@ -14,55 +13,62 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
  * - Overall system health
  */
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function GET(req: NextRequest) {
   try {
-    // Auth check
-    const supabase = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(req);
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
     }
 
     // Check prospect data integrity
-    const { data: integrityStats } = await supabaseAdmin
-      .from('prospect_data_integrity')
-      .select('*')
-      .single();
+    const { rows: integrityRows } = await pool.query(
+      `SELECT * FROM prospect_data_integrity LIMIT 1`
+    ).catch(() => ({ rows: [{}] }));
+
+    const integrityStats = integrityRows[0] || {};
 
     // Check for duplicate queue records
-    const { data: duplicates } = await supabaseAdmin
-      .rpc('check_duplicate_queue_records');
+    const { rows: duplicateRows } = await pool.query(
+      `SELECT * FROM check_duplicate_queue_records()`
+    ).catch(() => ({ rows: [{ count: 0 }] }));
+
+    const duplicates = duplicateRows[0]?.count || 0;
 
     // Get list of campaigns with corrupted prospects
-    const { data: corruptedCampaigns } = await supabaseAdmin
-      .from('campaign_prospects')
-      .select('campaign_id, campaigns(campaign_name, created_by)')
-      .eq('status', 'connection_request_sent')
-      .is('contacted_at', null);
+    const { rows: corruptedCampaigns } = await pool.query(
+      `SELECT cp.campaign_id, c.campaign_name, c.created_by
+       FROM campaign_prospects cp
+       JOIN campaigns c ON cp.campaign_id = c.id
+       WHERE cp.status = 'connection_request_sent' AND cp.contacted_at IS NULL`
+    );
 
     const uniqueCorruptedCampaigns = Array.from(
-      new Set(corruptedCampaigns?.map(c => c.campaign_id) || [])
+      new Set(corruptedCampaigns?.map((c: any) => c.campaign_id) || [])
     );
 
     // Check queue health
-    const { data: queueStats } = await supabaseAdmin
-      .from('send_queue')
-      .select('status')
-      .then(({ data }) => {
-        const stats = {
-          total: data?.length || 0,
-          pending: data?.filter(q => q.status === 'pending').length || 0,
-          sent: data?.filter(q => q.status === 'sent').length || 0,
-          failed: data?.filter(q => q.status === 'failed').length || 0
-        };
-        return { data: stats };
-      });
+    const { rows: queueRows } = await pool.query(
+      `SELECT status, COUNT(*) as count FROM send_queue GROUP BY status`
+    );
+
+    const queueStats = {
+      total: 0,
+      pending: 0,
+      sent: 0,
+      failed: 0
+    };
+
+    queueRows?.forEach((row: any) => {
+      const count = parseInt(row.count, 10);
+      queueStats.total += count;
+      if (row.status === 'pending') queueStats.pending = count;
+      else if (row.status === 'sent') queueStats.sent = count;
+      else if (row.status === 'failed') queueStats.failed = count;
+    });
 
     // Calculate overall health score (0-100)
     const totalProspects = integrityStats?.total_prospects || 1;
@@ -78,12 +84,12 @@ export async function GET(req: NextRequest) {
         count: uniqueCorruptedCampaigns.length,
         campaign_ids: uniqueCorruptedCampaigns
       },
-      duplicate_queue_records: duplicates || 0,
+      duplicate_queue_records: duplicates,
       recommendations: generateRecommendations(integrityStats, queueStats, uniqueCorruptedCampaigns.length)
     });
 
   } catch (error: any) {
-    console.error('❌ Data integrity check error:', error);
+    console.error('Data integrity check error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to check data integrity' },
       { status: 500 }
@@ -111,7 +117,7 @@ function generateRecommendations(
   }
 
   if (recommendations.length === 0) {
-    recommendations.push('✅ All systems healthy');
+    recommendations.push('All systems healthy');
   }
 
   return recommendations;
@@ -119,20 +125,22 @@ function generateRecommendations(
 
 export async function POST(req: NextRequest) {
   try {
-    // Auth check
-    const supabase = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(req);
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
     }
 
     // Run cleanup
-    const { data: result, error } = await supabaseAdmin
-      .rpc('cleanup_corrupted_prospect_statuses');
+    const { rows: result } = await pool.query(
+      `SELECT * FROM cleanup_corrupted_prospect_statuses()`
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!result || result.length === 0) {
+      return NextResponse.json({ error: 'Cleanup function returned no results' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -143,7 +151,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Cleanup error:', error);
+    console.error('Cleanup error:', error);
     return NextResponse.json(
       { error: error.message || 'Cleanup failed' },
       { status: 500 }

@@ -1,95 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
-
-async function getWorkspaceId(supabase: any, userId: string) {
-  // Try to get workspace from user profile first
-  const { data: profile } = await supabase
-    .from('users')
-    .select('current_workspace_id')
-    .eq('id', userId)
-    .single();
-
-  if (profile?.current_workspace_id) {
-    return profile.current_workspace_id;
-  }
-
-  // If no workspace in profile, check workspace_members
-  const { data: membership } = await supabase
-    .from('workspace_members')
-    .select('workspace_id')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
-
-  return membership?.workspace_id ?? null;
-}
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let userId: string;
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      userId = auth.userId;
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      console.error('[KB Documents API] Auth error:', authError);
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const icpId = searchParams.get('icp_id'); // Optional ICP filter
 
     console.log('[KB Documents API] GET request started, icp_id:', icpId);
-
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) {
-      console.error('[KB Documents API] Auth error:', error);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    console.log('[KB Documents API] User authenticated:', user.id);
-
-    const workspaceId = await getWorkspaceId(supabase, user.id);
-    if (!workspaceId) {
-      console.error('[KB Documents API] No workspace found for user');
-      return NextResponse.json({ error: 'Workspace not found for user' }, { status: 400 });
-    }
-
+    console.log('[KB Documents API] User authenticated:', userId);
     console.log('[KB Documents API] Fetching documents for workspace:', workspaceId);
 
     // Build query with ICP filtering
     // icp_id = null means global content (visible to all ICPs)
     // icp_id = UUID means ICP-specific content
-    let query = supabase
-      .from('knowledge_base')
-      .select('id, category, title, tags, source_metadata, created_at, updated_at, icp_id')
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true);
+    let query = `
+      SELECT id, category, title, tags, source_metadata, created_at, updated_at, icp_id
+      FROM knowledge_base
+      WHERE workspace_id = $1 AND is_active = true
+    `;
+    const params: any[] = [workspaceId];
 
     // Filter by ICP: show ICP-specific content + global content (icp_id is null)
     if (icpId) {
-      query = query.or(`icp_id.eq.${icpId},icp_id.is.null`);
+      query += ` AND (icp_id = $2 OR icp_id IS NULL)`;
+      params.push(icpId);
     }
 
-    const { data: documents, error: docsError } = await query
-      .order('updated_at', { ascending: false })
-      .limit(20);
+    query += ` ORDER BY updated_at DESC LIMIT 20`;
 
-    if (docsError) {
-      console.error('[KB Documents API] Documents query error:', docsError);
-      return NextResponse.json({
-        error: 'Failed to fetch documents',
-        details: docsError.message
-      }, { status: 500 });
-    }
+    const docsResult = await pool.query(query, params);
+    const documents = docsResult.rows;
 
     console.log('[KB Documents API] Found', documents?.length || 0, 'documents');
 
-    const { data: summaries, error: summaryError } = await supabase
-      .from('sam_knowledge_summaries')
-      .select('document_id, quick_summary, tags, updated_at')
-      .eq('workspace_id', workspaceId);
+    // Fetch summaries
+    const summariesResult = await pool.query(
+      `SELECT document_id, quick_summary, tags, updated_at
+       FROM sam_knowledge_summaries
+       WHERE workspace_id = $1`,
+      [workspaceId]
+    );
 
-    if (summaryError) {
-      console.error('Failed to fetch knowledge summaries:', summaryError);
-    }
-
-    const summaryMap = new Map((summaries || []).map((item) => [item.document_id, item]));
+    const summaryMap = new Map((summariesResult.rows || []).map((item: any) => [item.document_id, item]));
 
     console.log('[KB Documents API] Processing documents...');
 
-    const merged = (documents || []).map((doc) => {
+    const merged = (documents || []).map((doc: any) => {
       try {
         const sourceMetadata = typeof doc.source_metadata === 'string' ? JSON.parse(doc.source_metadata) : (doc.source_metadata || {});
         const aiAnalysis = sourceMetadata.ai_analysis || {};
@@ -101,7 +71,7 @@ export async function GET(request: NextRequest) {
           .replace(/\.[^/.]+$/, '')
           .replace(/\s+/g, ' ')
           .trim()
-          .replace(/\b\w/g, (char) => char.toUpperCase());
+          .replace(/\b\w/g, (char: string) => char.toUpperCase());
 
         const summary = summaryMap.get(doc.id);
 
@@ -153,7 +123,17 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -161,26 +141,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Document ID is required' }, { status: 400 });
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const workspaceId = await getWorkspaceId(supabase, user.id);
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
-    }
-
     // Soft delete using is_active column
-    const { error } = await supabase
-      .from('knowledge_base')
-      .update({ is_active: false })
-      .eq('id', id)
-      .eq('workspace_id', workspaceId);
+    const result = await pool.query(
+      `UPDATE knowledge_base SET is_active = false WHERE id = $1 AND workspace_id = $2`,
+      [id, workspaceId]
+    );
 
-    if (error) {
-      console.error('Error deleting document:', error);
-      return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 });
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Document not found or access denied' }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'Document deleted successfully' });

@@ -1,48 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/auth'
 
 // Helper function to check for duplicate LinkedIn accounts
 async function checkAndHandleDuplicateAccounts(userId: string, newAccountData: any) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    
     // Get all existing LinkedIn accounts for this user
-    const { data: existingAccounts, error } = await supabase
-      .from('user_unipile_accounts')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('platform', 'LINKEDIN')
-      .eq('connection_status', 'active')
-    
-    if (error) {
-      console.error('Error checking for duplicates:', error)
-      return { isDuplicate: false, existingAccount: null }
-    }
-    
+    const { rows: existingAccounts } = await pool.query(
+      `SELECT * FROM user_unipile_accounts
+       WHERE user_id = $1 AND platform = 'LINKEDIN' AND connection_status = 'active'`,
+      [userId]
+    )
+
     if (!existingAccounts || existingAccounts.length === 0) {
       return { isDuplicate: false, existingAccount: null }
     }
-    
+
     // Check if this account is a duplicate based on LinkedIn profile info
     const connectionParams = newAccountData.connection_params?.im || {}
     const newProfileId = connectionParams.publicIdentifier || connectionParams.email
-    
+
     for (const existing of existingAccounts) {
       // If same Unipile account ID, it's the same account (reconnect case)
       if (existing.unipile_account_id === newAccountData.id) {
         return { isDuplicate: false, existingAccount: existing }
       }
-      
+
       // If same LinkedIn profile, it's a duplicate
       if (existing.linkedin_public_identifier === newProfileId ||
           existing.account_email === connectionParams.email) {
         return { isDuplicate: true, existingAccount: existing }
       }
     }
-    
+
     return { isDuplicate: false, existingAccount: null }
   } catch (error) {
     console.error('Exception checking for duplicates:', error)
@@ -55,12 +44,12 @@ async function deleteDuplicateUnipileAccount(accountId: string) {
   try {
     const unipileDsn = process.env.UNIPILE_DSN
     const unipileApiKey = process.env.UNIPILE_API_KEY
-    
+
     if (!unipileDsn || !unipileApiKey) {
       console.error('Missing Unipile credentials for account deletion')
       return false
     }
-    
+
     const response = await fetch(`https://${unipileDsn}/api/v1/accounts/${accountId}`, {
       method: 'DELETE',
       headers: {
@@ -68,7 +57,7 @@ async function deleteDuplicateUnipileAccount(accountId: string) {
         'Accept': 'application/json'
       }
     })
-    
+
     if (response.ok) {
       console.log(`✅ Successfully deleted duplicate account ${accountId} from Unipile`)
       return true
@@ -85,68 +74,52 @@ async function deleteDuplicateUnipileAccount(accountId: string) {
 
 // Helper function to store user account association
 async function storeUserAccountAssociation(
-  supabase: SupabaseClient,
   userId: string,
   unipileAccount: any
 ) {
   try {
     console.log(`🔗 Starting association storage for user ${userId} and account ${unipileAccount.id}`)
-    
+
     const connectionParams = unipileAccount.connection_params?.im || {}
-    
-    // Use the robust RPC function that bypasses schema cache issues
-    const { data, error } = await supabase.rpc('create_user_association', {
-      p_user_id: userId,
-      p_unipile_account_id: unipileAccount.id,
-      p_platform: unipileAccount.type,
-      p_account_name: unipileAccount.name,
-      p_account_email: connectionParams.email || connectionParams.username,
-      p_linkedin_public_identifier: connectionParams.publicIdentifier,
-      p_linkedin_profile_url: connectionParams.publicIdentifier ? 
-        `https://www.linkedin.com/in/${connectionParams.publicIdentifier}` : null,
-      p_connection_status: 'active'
-    })
-    
-    if (error) {
-      console.error('❌ Failed to store user account association via RPC:', error)
-      
-      // Fallback: Try direct insert as a last resort
-      console.log('🔄 Attempting fallback direct insert...')
-      const fallbackData = {
-        user_id: userId,
-        unipile_account_id: unipileAccount.id,
-        platform: unipileAccount.type,
-        account_name: unipileAccount.name,
-        account_email: connectionParams.email || connectionParams.username,
-        connection_status: 'active',
-        account_metadata: unipileAccount
-      }
-      
-      const { data: fallbackResult, error: fallbackError } = await supabase
-        .from('user_unipile_accounts')
-        .upsert(fallbackData, { 
-          onConflict: 'unipile_account_id',
-          ignoreDuplicates: false 
-        })
-        .select()
-      
-      if (fallbackError) {
-        console.error('❌ Fallback also failed:', fallbackError)
-        return false
-      }
-      
-      console.log(`✅ Fallback association successful:`, fallbackResult)
-      return true
-    }
-    
-    console.log(`✅ Stored user account association successfully via RPC:`, {
+
+    // Try direct insert/upsert
+    const { rows } = await pool.query(
+      `INSERT INTO user_unipile_accounts
+       (user_id, unipile_account_id, platform, account_name, account_email,
+        linkedin_public_identifier, linkedin_profile_url, connection_status, account_metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (unipile_account_id)
+       DO UPDATE SET
+         user_id = EXCLUDED.user_id,
+         platform = EXCLUDED.platform,
+         account_name = EXCLUDED.account_name,
+         account_email = EXCLUDED.account_email,
+         linkedin_public_identifier = EXCLUDED.linkedin_public_identifier,
+         linkedin_profile_url = EXCLUDED.linkedin_profile_url,
+         connection_status = EXCLUDED.connection_status,
+         account_metadata = EXCLUDED.account_metadata,
+         updated_at = NOW()
+       RETURNING *`,
+      [
+        userId,
+        unipileAccount.id,
+        unipileAccount.type,
+        unipileAccount.name,
+        connectionParams.email || connectionParams.username,
+        connectionParams.publicIdentifier,
+        connectionParams.publicIdentifier ? `https://www.linkedin.com/in/${connectionParams.publicIdentifier}` : null,
+        'active',
+        JSON.stringify(unipileAccount)
+      ]
+    )
+
+    console.log(`✅ Stored user account association successfully:`, {
       userId,
       unipileAccountId: unipileAccount.id,
       accountName: unipileAccount.name,
-      platform: unipileAccount.type,
-      data: data
+      platform: unipileAccount.type
     })
-    
+
     return true
   } catch (error) {
     console.error('💥 Exception in storing user account association:', error)
@@ -155,7 +128,6 @@ async function storeUserAccountAssociation(
 }
 
 async function upsertWorkspaceAccount(
-  supabase: SupabaseClient,
   workspaceId: string | null,
   userId: string,
   unipileAccount: any
@@ -185,7 +157,7 @@ async function upsertWorkspaceAccount(
     account_id: unipileAccount.id,
     account_name: unipileAccount.name
   })
-  
+
   const accountType = unipileType === 'LINKEDIN' ? 'linkedin' :
                       unipileType.includes('GOOGLE') ? 'email' :
                       unipileType.includes('OUTLOOK') ? 'email' :
@@ -194,17 +166,15 @@ async function upsertWorkspaceAccount(
                       unipileType.includes('OFFICE365') ? 'email' :
                       unipileType.includes('GMAIL') ? 'email' :
                       'email' // Default to email for non-LinkedIn accounts
-  
+
   console.log(`✅ Mapped Unipile type "${unipileType}" → account_type "${accountType}"`)
 
   // First, check if there's an existing account with different Unipile ID (reconnection case)
-  const { data: existingAccounts } = await supabase
-    .from('workspace_accounts')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .eq('user_id', userId)
-    .eq('account_type', accountType)
-    .eq('account_identifier', accountIdentifier)
+  const { rows: existingAccounts } = await pool.query(
+    `SELECT * FROM workspace_accounts
+     WHERE workspace_id = $1 AND user_id = $2 AND account_type = $3 AND account_identifier = $4`,
+    [workspaceId, userId, accountType, accountIdentifier]
+  )
 
   if (existingAccounts && existingAccounts.length > 0) {
     // Found existing account(s) with same identifier
@@ -212,51 +182,45 @@ async function upsertWorkspaceAccount(
       if (existing.unipile_account_id !== unipileAccount.id) {
         // Different Unipile ID = reconnection, delete old entry
         console.log(`🔄 Reconnection detected - removing old account: ${existing.unipile_account_id}`)
-        await supabase
-          .from('workspace_accounts')
-          .delete()
-          .eq('id', existing.id)
+        await pool.query('DELETE FROM workspace_accounts WHERE id = $1', [existing.id])
       }
     }
   }
 
   // Now insert/update the new account
-  const { error } = await supabase
-    .from('workspace_accounts')
-    .upsert(
-      {
-        workspace_id: workspaceId,
-        user_id: userId,
-        account_type: accountType,
-        account_identifier: accountIdentifier,
-        account_name: unipileAccount.name || connectionParams.publicIdentifier || accountIdentifier,
-        unipile_account_id: unipileAccount.id,
-        connection_status: connectionStatus,
-        is_active: true,
-        connected_at: new Date().toISOString(), // Update connection timestamp
-        account_metadata: {
+  try {
+    await pool.query(
+      `INSERT INTO workspace_accounts
+       (workspace_id, user_id, account_type, account_identifier, account_name,
+        unipile_account_id, connection_status, is_active, connected_at, account_metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (workspace_id, user_id, account_type, account_identifier)
+       DO UPDATE SET
+         unipile_account_id = EXCLUDED.unipile_account_id,
+         connection_status = EXCLUDED.connection_status,
+         is_active = EXCLUDED.is_active,
+         connected_at = EXCLUDED.connected_at,
+         account_metadata = EXCLUDED.account_metadata,
+         updated_at = NOW()`,
+      [
+        workspaceId,
+        userId,
+        accountType,
+        accountIdentifier,
+        unipileAccount.name || connectionParams.publicIdentifier || accountIdentifier,
+        unipileAccount.id,
+        connectionStatus,
+        true,
+        new Date().toISOString(),
+        JSON.stringify({
           unipile_instance: process.env.UNIPILE_DSN || null,
           product_type: unipileAccount.connection_params?.product_type || null,
-          provider: unipileAccount.type, // Store original provider type
-          premium_features: connectionParams.premiumFeatures || [] // Store detected features
-        }
-      },
-      { onConflict: 'workspace_id,user_id,account_type,account_identifier', ignoreDuplicates: false }
+          provider: unipileAccount.type,
+          premium_features: connectionParams.premiumFeatures || []
+        })
+      ]
     )
 
-  if (error) {
-    console.error('❌ FAILED to upsert workspace account during hosted auth callback:', {
-      error: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code,
-      accountType,
-      accountId: unipileAccount.id,
-      workspaceId,
-      userId,
-      accountIdentifier
-    })
-  } else {
     console.log('✅ Workspace account upserted successfully:', {
       accountType,
       accountId: unipileAccount.id,
@@ -265,13 +229,22 @@ async function upsertWorkspaceAccount(
       userId,
       connectionStatus
     })
+  } catch (error: any) {
+    console.error('❌ FAILED to upsert workspace account during hosted auth callback:', {
+      error: error.message,
+      accountType,
+      accountId: unipileAccount.id,
+      workspaceId,
+      userId,
+      accountIdentifier
+    })
+    throw error
   }
 }
 
 // GET - Handle hosted auth callback from Unipile
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get('session_id')
     const accountId = searchParams.get('account_id')
@@ -346,32 +319,32 @@ export async function GET(request: NextRequest) {
                   parsedUserContext.user_id,
                   accountData
                 )
-                
+
                 if (duplicateCheck.isDuplicate) {
                   console.log(`🔄 Duplicate LinkedIn account detected, cleaning up: ${accountData.id}`)
                   // Delete the duplicate account from Unipile to avoid billing
                   await deleteDuplicateUnipileAccount(accountData.id)
                   console.log(`✅ Duplicate account cleaned up successfully`)
-                  
+
                   // Redirect to LinkedIn page with duplicate warning
                   const redirectUrl = `/linkedin-integration?warning=duplicate_account_removed`
                   return NextResponse.redirect(new URL(redirectUrl, request.url))
                 }
               }
-              
+
               // CRITICAL FIX: Always use the connector's workspace (person who clicked "Connect")
               // DO NOT try to match by LinkedIn email - this causes cross-workspace pollution
               const targetUserId = parsedUserContext.user_id;
               const targetWorkspaceId = parsedUserContext.workspace_id;
 
               console.log(`✅ Assigning account to connector: user=${targetUserId}, workspace=${targetWorkspaceId}`);
-              
+
               // Auto-set profile_country from LinkedIn location if not already set
               if (accountType === 'LINKEDIN' && accountData.connection_params?.im?.location) {
                 try {
                   const linkedinLocation = accountData.connection_params.im.location;
                   console.log(`🌍 LinkedIn location detected: ${linkedinLocation}`);
-                  
+
                   // Extract country code from LinkedIn location (e.g., "Germany" -> "de")
                   const countryMapping: { [key: string]: string } = {
                     'germany': 'de', 'deutschland': 'de',
@@ -393,10 +366,10 @@ export async function GET(request: NextRequest) {
                     'japan': 'jp',
                     'china': 'cn'
                   };
-                  
+
                   const locationLower = linkedinLocation.toLowerCase();
                   let countryCode = null;
-                  
+
                   // Find matching country
                   for (const [key, code] of Object.entries(countryMapping)) {
                     if (locationLower.includes(key)) {
@@ -404,29 +377,23 @@ export async function GET(request: NextRequest) {
                       break;
                     }
                   }
-                  
+
                   if (countryCode) {
                     // Check if user already has a profile_country set
-                    const { data: userData } = await supabase
-                      .from('users')
-                      .select('profile_country')
-                      .eq('id', targetUserId)
-                      .single();
-                    
+                    const { rows: userData } = await pool.query(
+                      'SELECT profile_country FROM users WHERE id = $1',
+                      [targetUserId]
+                    )
+
                     // Only update if not already set
-                    if (!userData?.profile_country) {
-                      const { error: updateError } = await supabase
-                        .from('users')
-                        .update({ profile_country: countryCode })
-                        .eq('id', targetUserId);
-                      
-                      if (!updateError) {
-                        console.log(`✅ Auto-set profile_country to ${countryCode} from LinkedIn location`);
-                      } else {
-                        console.error('Failed to set profile_country:', updateError);
-                      }
+                    if (!userData[0]?.profile_country) {
+                      await pool.query(
+                        'UPDATE users SET profile_country = $1 WHERE id = $2',
+                        [countryCode, targetUserId]
+                      )
+                      console.log(`✅ Auto-set profile_country to ${countryCode} from LinkedIn location`);
                     } else {
-                      console.log(`ℹ️ User already has profile_country set: ${userData.profile_country}`);
+                      console.log(`ℹ️ User already has profile_country set: ${userData[0].profile_country}`);
                     }
                   } else {
                     console.log(`⚠️ Could not map LinkedIn location "${linkedinLocation}" to country code`);
@@ -435,24 +402,21 @@ export async function GET(request: NextRequest) {
                   console.error('Error setting profile_country from LinkedIn:', locationError);
                 }
               }
-              
-              // ATOMIC: Store account in both tables atomically using RPC function
-              // This prevents silent failures and table drift
-              console.log(`🔗 Atomically associating ${accountType} account ${accountId} for user ${targetUserId} in workspace ${targetWorkspaceId}`)
 
-              const { data: rpcResult, error: rpcError } = await supabase.rpc('associate_account_atomic', {
-                p_user_id: targetUserId,
-                p_workspace_id: targetWorkspaceId,
-                p_unipile_account_id: accountId,
-                p_account_data: accountData
-              })
+              // Store account in both tables
+              console.log(`🔗 Storing ${accountType} account ${accountId} for user ${targetUserId} in workspace ${targetWorkspaceId}`)
 
-              if (rpcError) {
-                console.error(`❌ CRITICAL: Atomic account association failed:`, rpcError)
-                throw new Error(`Failed to associate ${accountType} account: ${rpcError.message}`)
+              // Store user account association
+              const associationStored = await storeUserAccountAssociation(targetUserId, accountData)
+
+              if (!associationStored) {
+                console.error(`❌ Failed to store user association for account ${accountId}`)
+                throw new Error(`Failed to associate ${accountType} account`)
               }
 
-              console.log(`✅ Atomic account association successful:`, rpcResult)
+              // Store workspace account association
+              await upsertWorkspaceAccount(targetWorkspaceId, targetUserId, accountData)
+
               console.log(`✅ ${accountType} account stored in both user_unipile_accounts AND workspace_accounts`)
 
               // Redirect based on account type
@@ -508,7 +472,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('💥 Hosted auth callback error:', error)
-    
+
     // Redirect to LinkedIn integration page with callback error
     const errorMessage = 'Authentication callback failed'
     const redirectUrl = `/linkedin-integration?error=${encodeURIComponent(errorMessage)}`
@@ -535,7 +499,6 @@ export async function POST(request: NextRequest) {
 
     if (status === 'success' && account_id) {
       // If we have user context, store the association
-      const supabase = createRouteHandlerClient({ cookies })
       if (user_context?.user_id) {
         try {
           // Fetch account details and store association (same logic as GET)
@@ -554,7 +517,6 @@ export async function POST(request: NextRequest) {
               const accountData = await accountResponse.json()
 
               const associationStored = await storeUserAccountAssociation(
-                supabase,
                 user_context.user_id,
                 accountData
               )
@@ -568,7 +530,6 @@ export async function POST(request: NextRequest) {
               // CRITICAL: Store in workspace_accounts
               try {
                 await upsertWorkspaceAccount(
-                  supabase,
                   user_context.workspace_id,
                   user_context.user_id,
                   accountData
@@ -604,7 +565,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('💥 Hosted auth webhook error:', error)
-    
+
     return NextResponse.json({
       success: false,
       error: 'Webhook processing failed',

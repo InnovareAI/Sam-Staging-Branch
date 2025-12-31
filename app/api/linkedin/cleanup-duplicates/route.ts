@@ -1,35 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
-    
+    const { userId } = await verifyAuth(request);
+
     // Get all LinkedIn accounts for this user
-    const { data: accounts, error: fetchError } = await supabase
-      .from('user_unipile_accounts')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('platform', 'LINKEDIN')
-      .order('created_at', { ascending: true });
-    
-    if (fetchError || !accounts) {
+    const { rows: accounts } = await pool.query(
+      `SELECT * FROM user_unipile_accounts
+       WHERE user_id = $1 AND platform = 'LINKEDIN'
+       ORDER BY created_at ASC`,
+      [userId]
+    );
+
+    if (!accounts || accounts.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'Failed to fetch accounts'
       }, { status: 500 });
     }
-    
+
     if (accounts.length <= 1) {
       return NextResponse.json({
         success: true,
@@ -37,28 +27,22 @@ export async function POST(request: NextRequest) {
         total_accounts: accounts.length
       });
     }
-    
+
     // Keep the oldest account, delete the rest
     const keepAccount = accounts[0];
     const duplicates = accounts.slice(1);
-    
+
     // Delete from database
-    const { error: deleteError } = await supabase
-      .from('user_unipile_accounts')
-      .delete()
-      .in('id', duplicates.map(d => d.id));
-    
-    if (deleteError) {
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to delete duplicates from database'
-      }, { status: 500 });
-    }
-    
+    const duplicateIds = duplicates.map((d: any) => d.id);
+    await pool.query(
+      `DELETE FROM user_unipile_accounts WHERE id = ANY($1)`,
+      [duplicateIds]
+    );
+
     // Delete from Unipile
     const unipileDsn = process.env.UNIPILE_DSN;
     const unipileApiKey = process.env.UNIPILE_API_KEY;
-    
+
     if (unipileDsn && unipileApiKey) {
       for (const dup of duplicates) {
         try {
@@ -74,7 +58,7 @@ export async function POST(request: NextRequest) {
         }
       }
     }
-    
+
     return NextResponse.json({
       success: true,
       message: `Cleaned up ${duplicates.length} duplicate account(s)`,
@@ -85,7 +69,7 @@ export async function POST(request: NextRequest) {
       },
       deleted_count: duplicates.length
     });
-    
+
   } catch (error) {
     console.error('Cleanup error:', error);
     return NextResponse.json({

@@ -1,37 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Use new SSR auth pattern (fixes session mixing issue)
-    const supabase = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(request);
+    } catch (error) {
+      const authError = error as AuthError;
       return NextResponse.json({
         success: false,
-        error: 'Authentication required'
-      }, { status: 401 });
+        error: authError.message
+      }, { status: authError.statusCode });
     }
-    
+
+    const { userId } = authContext;
+
     // 1. Check user profile country (used by Unipile for proxy assignment)
-    const { data: profile } = await supabase
-      .from('users')
-      .select('id, email, profile_country, created_at')
-      .eq('id', user.id)
-      .single();
-    
+    const { rows: profileRows } = await pool.query(
+      `SELECT id, email, profile_country, created_at FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    const profile = profileRows[0];
+
     // 2. Get Unipile LinkedIn accounts
-    const { data: unipileAccounts } = await supabase
-      .from('user_unipile_accounts')
-      .select('unipile_account_id, platform, account_name, account_email, connection_status, created_at')
-      .eq('user_id', user.id)
-      .eq('platform', 'LINKEDIN');
-    
+    const { rows: unipileAccounts } = await pool.query(
+      `SELECT unipile_account_id, platform, account_name, account_email, connection_status, created_at
+       FROM user_unipile_accounts
+       WHERE user_id = $1 AND platform = 'LINKEDIN'`,
+      [userId]
+    );
+
     return NextResponse.json({
       success: true,
       user: {
-        auth_user_id: user.id,
+        auth_user_id: userId,
         profile_id: profile?.id,
         email: profile?.email,
         created_at: profile?.created_at,
@@ -41,7 +46,7 @@ export async function GET(request: NextRequest) {
         proxy_country: profile?.profile_country || 'Not set',
         note: 'This country is sent to Unipile when connecting LinkedIn accounts. Unipile handles the actual proxy assignment on their backend.',
       },
-      unipile_linkedin_accounts: unipileAccounts?.map(acc => ({
+      unipile_linkedin_accounts: unipileAccounts?.map((acc: any) => ({
         unipile_account_id: acc.unipile_account_id,
         account_name: acc.account_name,
         account_email: acc.account_email,
@@ -54,7 +59,7 @@ export async function GET(request: NextRequest) {
         proxy_managed_by: 'Unipile (backend)',
       }
     });
-    
+
   } catch (error) {
     console.error('Proxy diagnostic error:', error);
     return NextResponse.json({

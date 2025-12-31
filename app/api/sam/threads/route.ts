@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
   try {
     const { userId, userEmail } = await verifyAuth(request);
 
-    const body = await req.json(); // Fix req -> request
+    const body = await request.json();
     const {
       title,
       thread_type,

@@ -4,54 +4,31 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { getDefaultSettings } from '@/lib/services/reply-draft-generator';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const authClient = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(request);
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
     }
 
-    const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspace_id');
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 });
-    }
-
-    // Verify membership
-    const { data: membership } = await authClient
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    const supabase = supabaseAdmin();
+    const { workspaceId } = authContext;
 
     // Get settings or return defaults
-    const { data: settings, error } = await supabase
-      .from('reply_agent_settings')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .single();
+    const { rows } = await pool.query(
+      `SELECT * FROM reply_agent_settings WHERE workspace_id = $1`,
+      [workspaceId]
+    );
 
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 = not found, which is ok
-      console.error('Error fetching settings:', error);
-      return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
-    }
+    const settings = rows[0] || null;
 
     // Merge with defaults
     const defaults = getDefaultSettings();
@@ -75,55 +52,43 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const authClient = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(request);
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
     }
 
-    const body = await request.json();
-    const { workspace_id, ...settingsData } = body;
-
-    if (!workspace_id) {
-      return NextResponse.json({ error: 'Missing workspace_id' }, { status: 400 });
-    }
+    const { workspaceId, workspaceRole } = authContext;
 
     // Verify admin/owner role
-    const { data: membership } = await authClient
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspace_id)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    if (!['owner', 'admin'].includes(workspaceRole)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const supabase = supabaseAdmin();
+    const body = await request.json();
+    const { workspace_id: bodyWorkspaceId, ...settingsData } = body;
+
+    // Build dynamic upsert query
+    const columns = Object.keys(settingsData);
+    const values = Object.values(settingsData);
+    const placeholders = columns.map((_, i) => `$${i + 2}`);
 
     // Upsert settings
-    const { data: settings, error } = await supabase
-      .from('reply_agent_settings')
-      .upsert({
-        workspace_id,
-        ...settingsData,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'workspace_id'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error saving settings:', error);
-      return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
-    }
+    const { rows } = await pool.query(
+      `INSERT INTO reply_agent_settings (workspace_id, ${columns.join(', ')}, updated_at)
+       VALUES ($1, ${placeholders.join(', ')}, NOW())
+       ON CONFLICT (workspace_id)
+       DO UPDATE SET ${columns.map((col, i) => `${col} = $${i + 2}`).join(', ')}, updated_at = NOW()
+       RETURNING *`,
+      [workspaceId, ...values]
+    );
 
     return NextResponse.json({
       success: true,
-      settings
+      settings: rows[0]
     });
 
   } catch (error) {

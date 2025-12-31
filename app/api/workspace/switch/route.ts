@@ -1,15 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { getAdminAuth } from '@/lib/firebase-admin'
+import { pool } from '@/lib/auth'
+
+const SESSION_COOKIE_NAME = 'session'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() })
-    const { data: { session } } = await supabase.auth.getSession()
-    
-    if (!session?.user) {
+    // Verify Firebase session
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
+
+    if (!sessionCookie) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+
+    let decodedClaims
+    try {
+      const auth = getAdminAuth()
+      decodedClaims = await auth.verifySessionCookie(sessionCookie, true)
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
+    }
+
+    if (!decodedClaims?.email) {
+      return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
+    }
+
+    // Get user from database by email
+    const { rows: userRows } = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [decodedClaims.email]
+    )
+
+    if (userRows.length === 0) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 })
+    }
+
+    const userId = userRows[0].id
 
     const { workspace_id } = await request.json()
 
@@ -18,24 +46,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user has access to this workspace
-    const { data: membership } = await supabase
-      .from('workspace_members')
-      .select('workspace_id')
-      .eq('user_id', session.user.id)
-      .eq('workspace_id', workspace_id)
-      .single()
+    const { rows: membershipRows } = await pool.query(
+      'SELECT workspace_id FROM workspace_members WHERE user_id = $1 AND workspace_id = $2',
+      [userId, workspace_id]
+    )
 
-    if (!membership) {
+    if (membershipRows.length === 0) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
     // Update current workspace
-    const { error } = await supabase
-      .from('users')
-      .update({ current_workspace_id: workspace_id })
-      .eq('id', session.user.id)
+    const { rowCount } = await pool.query(
+      'UPDATE users SET current_workspace_id = $1 WHERE id = $2',
+      [workspace_id, userId]
+    )
 
-    if (error) {
+    if (rowCount === 0) {
       return NextResponse.json({ error: 'Failed to switch workspace' }, { status: 500 })
     }
 

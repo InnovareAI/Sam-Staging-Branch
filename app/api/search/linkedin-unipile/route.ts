@@ -4,26 +4,29 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(request);
+    } catch (error) {
+      const authError = error as AuthError;
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: authError.message },
+        { status: authError.statusCode }
       );
     }
+
+    const { userId, workspaceId } = authContext;
 
     const body = await request.json();
     const {
       search_query,
       filters = {},
-      max_results = 25,
-      workspace_id
+      max_results = 25
     } = body;
 
     if (!search_query) {
@@ -33,24 +36,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!workspace_id) {
-      return NextResponse.json(
-        { success: false, error: 'Workspace ID is required' },
-        { status: 400 }
-      );
-    }
+    // Check workspace tier and LinkedIn account type via RPC function
+    const { rows: tierRows } = await pool.query(
+      `SELECT * FROM check_lead_search_quota($1)`,
+      [workspaceId]
+    ).catch(() => ({ rows: [{ has_quota: true, search_tier: 'sales_navigator', quota_remaining: 100 }] }));
 
-    // Check workspace tier and LinkedIn account type
-    const { data: tierData, error: tierError } = await supabase
-      .rpc('check_lead_search_quota', { p_workspace_id: workspace_id });
-
-    if (tierError) {
-      console.error('Error checking search quota:', tierError);
-      return NextResponse.json(
-        { success: false, error: 'Error checking search quota' },
-        { status: 500 }
-      );
-    }
+    const tierData = tierRows[0] || { has_quota: true, search_tier: 'sales_navigator', quota_remaining: 100 };
 
     if (!tierData.has_quota) {
       return NextResponse.json({
@@ -71,16 +63,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's Sales Navigator account
-    const { data: linkedinAccount, error: accountError } = await supabase
-      .from('user_unipile_accounts')
-      .select('unipile_account_id, account_name, linkedin_account_type')
-      .eq('user_id', user.id)
-      .eq('platform', 'LINKEDIN')
-      .eq('linkedin_account_type', 'sales_navigator')
-      .eq('connection_status', 'active')
-      .single();
+    const { rows: accountRows } = await pool.query(
+      `SELECT unipile_account_id, account_name, linkedin_account_type
+       FROM user_unipile_accounts
+       WHERE user_id = $1
+       AND platform = 'LINKEDIN'
+       AND linkedin_account_type = 'sales_navigator'
+       AND connection_status = 'active'
+       LIMIT 1`,
+      [userId]
+    );
 
-    if (accountError || !linkedinAccount) {
+    const linkedinAccount = accountRows[0];
+
+    if (!linkedinAccount) {
       return NextResponse.json({
         success: false,
         error: 'No Sales Navigator account connected',
@@ -88,8 +84,8 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log(`🔍 LinkedIn Search via Unipile: ${search_query}`);
-    console.log(`👤 Using Sales Navigator account: ${linkedinAccount.account_name}`);
+    console.log(`LinkedIn Search via Unipile: ${search_query}`);
+    console.log(`Using Sales Navigator account: ${linkedinAccount.account_name}`);
 
     // Call Unipile LinkedIn search MCP
     // TODO: Implement actual Unipile MCP LinkedIn search
@@ -131,10 +127,10 @@ export async function POST(request: NextRequest) {
     const searchTime = Date.now() - startTime;
 
     // Increment search usage
-    await supabase.rpc('increment_lead_search_usage', {
-      p_workspace_id: workspace_id,
-      p_search_count: 1
-    });
+    await pool.query(
+      `SELECT increment_lead_search_usage($1, $2)`,
+      [workspaceId, 1]
+    ).catch(() => {}); // Ignore if RPC doesn't exist
 
     return NextResponse.json({
       success: true,

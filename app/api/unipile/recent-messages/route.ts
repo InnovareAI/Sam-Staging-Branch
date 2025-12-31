@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 
-// Helper function to make Unipile API calls  
+// Helper function to make Unipile API calls
 async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: any) {
   const unipileDsn = process.env.UNIPILE_DSN;
   const unipileApiKey = process.env.UNIPILE_API_KEY;
@@ -22,7 +22,7 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
   };
 
   const response = await fetch(url, options);
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`Unipile API error: ${response.status} - ${errorText}`);
@@ -33,16 +33,8 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user first
-    const supabase = createRouteHandlerClient({ cookies: cookies });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
+    // Authenticate user using Firebase/Cloud SQL
+    const { userId, userEmail } = await verifyAuth(request);
 
     const { account_id } = await request.json();
 
@@ -53,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`👤 User ${user.email} requesting messages for account: ${account_id}`);
+    console.log(`👤 User ${userEmail} requesting messages for account: ${account_id}`);
 
     console.log('🔍 Fetching recent messages from Unipile for account:', account_id);
 
@@ -67,18 +59,17 @@ export async function POST(request: NextRequest) {
 
     try {
       // First, verify the account belongs to the authenticated user
-      console.log('🔒 Verifying account ownership for user:', user.email);
+      console.log('🔒 Verifying account ownership for user:', userEmail);
       const accountsData = await callUnipileAPI('accounts');
       const allAccounts = Array.isArray(accountsData) ? accountsData : (accountsData.items || accountsData.accounts || []);
-      
+
       // Filter to user's accounts using same privacy logic as accounts API
-      const userEmail = user.email;
       const userOwnedAccounts = allAccounts.filter((account: any) => {
         const connectionParams = account.connection_params?.im || {};
         const accountEmail = connectionParams.email || connectionParams.username;
         const publicIdentifier = connectionParams.publicIdentifier;
-        
-        return accountEmail === userEmail || 
+
+        return accountEmail === userEmail ||
                (publicIdentifier && userEmail.includes(publicIdentifier)) ||
                account.name?.toLowerCase().includes(userEmail.split('@')[0].toLowerCase());
       });
@@ -98,7 +89,7 @@ export async function POST(request: NextRequest) {
       // Call Unipile API to get messages for the specific account
       console.log('🌐 Making direct call to Unipile messages API...');
       const messagesData = await callUnipileAPI(`messages`, 'GET');
-      
+
       console.log('📨 Raw messages response:', {
         total: messagesData.length || 0,
         first_few: messagesData.slice ? messagesData.slice(0, 2) : 'Not an array'
@@ -106,11 +97,11 @@ export async function POST(request: NextRequest) {
 
       // Filter messages for the specific account and format them
       const messages = Array.isArray(messagesData) ? messagesData : (messagesData.items || messagesData.messages || []);
-      
+
       const recentMessages = messages
         .filter((msg: any) => {
           // Filter by account ID or source ID
-          return msg.account_id === account_id || 
+          return msg.account_id === account_id ||
                  msg.source_id?.includes(account_id) ||
                  msg.account === account_id;
         })
@@ -147,7 +138,7 @@ export async function POST(request: NextRequest) {
             chat_id: 'demo_chat_1'
           },
           {
-            id: 'demo_msg_2', 
+            id: 'demo_msg_2',
             from: { name: 'Sarah Johnson', email: 'sarah@startup.co' },
             subject: 'Integration question',
             text: 'Hi! Can your platform integrate with our existing CRM? We use Salesforce.',
@@ -158,14 +149,14 @@ export async function POST(request: NextRequest) {
           {
             id: 'demo_msg_3',
             from: { name: 'Mike Chen', email: 'mike@techcorp.com' },
-            subject: 'Follow up on proposal', 
+            subject: 'Follow up on proposal',
             text: 'When can we schedule a call to discuss the implementation timeline?',
             date: '1 day ago',
             platform: 'linkedin',
             chat_id: 'demo_chat_3'
           }
         ];
-        
+
         return NextResponse.json({
           success: true,
           messages: mockMessages,
@@ -186,7 +177,7 @@ export async function POST(request: NextRequest) {
 
     } catch (unipileError) {
       console.error('🚨 Unipile API call failed:', unipileError);
-      
+
       // Fall back to mock data if API fails
       const mockMessages = [
         {
@@ -199,7 +190,7 @@ export async function POST(request: NextRequest) {
           chat_id: 'fallback_chat'
         }
       ];
-      
+
       return NextResponse.json({
         success: true,
         messages: mockMessages,
@@ -209,11 +200,19 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       });
     }
-    
-  } catch (error) {
+
+  } catch (error: any) {
+    // Handle auth errors
+    if (error?.code === 'UNAUTHORIZED' || error?.code === 'FORBIDDEN' || error?.code === 'WORKSPACE_ACCESS_DENIED') {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: error.statusCode || 401 });
+    }
+
     console.error('❌ Error in recent messages endpoint:', error);
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: 'Failed to fetch recent messages',
         timestamp: new Date().toISOString()

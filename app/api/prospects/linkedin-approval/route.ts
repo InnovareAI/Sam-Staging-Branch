@@ -1,69 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    
-    // Get authenticated user
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
-    if (authError || !session) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
+    // Firebase auth + workspace context
+    const { userId, workspaceId } = await verifyAuth(request)
 
     const body = await request.json()
     const { action, session_id, prospect_data, linkedin_data } = body
 
     switch (action) {
       case 'create_session':
-        return await createApprovalSession(supabase, session.user.id, linkedin_data)
-      
+        return await createApprovalSession(userId, workspaceId, linkedin_data)
+
       case 'approve_prospects':
-        return await approveProspects(supabase, session_id, prospect_data)
-      
+        return await approveProspects(session_id, prospect_data)
+
       case 'reject_prospects':
-        return await rejectProspects(supabase, session_id, prospect_data)
-      
+        return await rejectProspects(session_id, prospect_data)
+
       case 'get_session':
-        return await getApprovalSession(supabase, session_id)
-      
+        return await getApprovalSession(session_id)
+
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.statusCode === 401 || error?.statusCode === 403) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode })
+    }
     console.error('LinkedIn approval error:', error)
-    return NextResponse.json({ 
-      error: 'Failed to process LinkedIn approval request' 
+    return NextResponse.json({
+      error: 'Failed to process LinkedIn approval request'
     }, { status: 500 })
   }
 }
 
-async function createApprovalSession(supabase: any, userId: string, linkedinData: any) {
+async function createApprovalSession(userId: string, workspaceId: string, linkedinData: any) {
   try {
-    // Get user's workspace
-    const { data: workspaces } = await supabase
-      .from('workspaces')
-      .select('id')
-      .eq('user_id', userId)
-      .single()
-
-    if (!workspaces) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+    // Check quota availability
+    let quotaCheck = { has_quota: true }
+    try {
+      const quotaResult = await pool.query(
+        `SELECT check_approval_quota($1, $2, $3, $4) as quota_result`,
+        [userId, workspaceId, 'campaign_data', linkedinData.prospects?.length || 0]
+      )
+      if (quotaResult.rows[0]?.quota_result) {
+        quotaCheck = quotaResult.rows[0].quota_result
+      }
+    } catch (quotaError) {
+      console.warn('Quota check skipped:', quotaError)
     }
 
-    // Check quota availability
-    const { data: quotaCheck } = await supabase.rpc('check_approval_quota', {
-      p_user_id: userId,
-      p_workspace_id: workspaces.id,
-      p_quota_type: 'campaign_data',
-      p_requested_amount: linkedinData.prospects?.length || 0
-    })
-
     if (!quotaCheck?.has_quota) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Quota exceeded',
         quota_info: quotaCheck
       }, { status: 429 })
@@ -71,28 +62,30 @@ async function createApprovalSession(supabase: any, userId: string, linkedinData
 
     // Create approval session
     const sessionId = `linkedin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    
-    const { data: session, error } = await supabase
-      .from('data_approval_sessions')
-      .insert({
-        session_id: sessionId,
-        user_id: userId,
-        workspace_id: workspaces.id,
-        dataset_name: linkedinData.campaign_name || 'LinkedIn Prospects',
-        dataset_type: 'prospect_list',
-        dataset_source: 'unipile_linkedin',
-        raw_data: linkedinData,
-        processed_data: processLinkedInData(linkedinData),
-        data_preview: linkedinData.prospects?.slice(0, 10) || [],
-        total_count: linkedinData.prospects?.length || 0,
-        quota_limit: 2500, // LinkedIn Premium allows exporting up to 2,500 connections
-        data_quality_score: calculateDataQuality(linkedinData.prospects),
-        completeness_score: calculateCompleteness(linkedinData.prospects)
-      })
-      .select()
-      .single()
 
-    if (error) throw error
+    const sessionResult = await pool.query(
+      `INSERT INTO data_approval_sessions
+        (session_id, user_id, workspace_id, dataset_name, dataset_type, dataset_source, raw_data, processed_data, data_preview, total_count, quota_limit, data_quality_score, completeness_score)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING *`,
+      [
+        sessionId,
+        userId,
+        workspaceId,
+        linkedinData.campaign_name || 'LinkedIn Prospects',
+        'prospect_list',
+        'unipile_linkedin',
+        JSON.stringify(linkedinData),
+        JSON.stringify(processLinkedInData(linkedinData)),
+        JSON.stringify(linkedinData.prospects?.slice(0, 10) || []),
+        linkedinData.prospects?.length || 0,
+        2500, // LinkedIn Premium allows exporting up to 2,500 connections
+        calculateDataQuality(linkedinData.prospects),
+        calculateCompleteness(linkedinData.prospects)
+      ]
+    )
+
+    const session = sessionResult.rows[0]
 
     return NextResponse.json({
       success: true,
@@ -107,55 +100,65 @@ async function createApprovalSession(supabase: any, userId: string, linkedinData
   }
 }
 
-async function approveProspects(supabase: any, sessionId: string, prospectData: any[]) {
+async function approveProspects(sessionId: string, prospectData: any[]) {
   try {
     // Get session
-    const { data: session } = await supabase
-      .from('data_approval_sessions')
-      .select('*')
-      .eq('session_id', sessionId)
-      .single()
+    const sessionResult = await pool.query(
+      `SELECT * FROM data_approval_sessions WHERE session_id = $1`,
+      [sessionId]
+    )
 
-    if (!session) {
+    if (sessionResult.rows.length === 0) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
+    const session = sessionResult.rows[0]
+
     // Create approval decisions
-    const decisions = prospectData.map((prospect, index) => ({
-      session_id: sessionId,
-      record_index: index,
-      record_data: prospect,
-      decision: 'approved',
-      decision_reason: 'User approved',
-      confidence_score: prospect.confidence || 0.8,
-      data_quality_score: calculateProspectQuality(prospect)
-    }))
-
-    const { error: decisionsError } = await supabase
-      .from('data_record_decisions')
-      .upsert(decisions)
-
-    if (decisionsError) throw decisionsError
+    for (let i = 0; i < prospectData.length; i++) {
+      const prospect = prospectData[i]
+      await pool.query(
+        `INSERT INTO data_record_decisions
+          (session_id, record_index, record_data, decision, decision_reason, confidence_score, data_quality_score)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (session_id, record_index) DO UPDATE SET
+          decision = $4,
+          decision_reason = $5,
+          confidence_score = $6,
+          data_quality_score = $7`,
+        [
+          sessionId,
+          i,
+          JSON.stringify(prospect),
+          'approved',
+          'User approved',
+          prospect.confidence || 0.8,
+          calculateProspectQuality(prospect)
+        ]
+      )
+    }
 
     // Update session counts
-    const { error: updateError } = await supabase
-      .from('data_approval_sessions')
-      .update({
-        approved_count: (session.approved_count || 0) + prospectData.length,
-        status: prospectData.length === session.total_count ? 'approved' : 'partial',
-        approved_at: prospectData.length === session.total_count ? new Date().toISOString() : null
-      })
-      .eq('session_id', sessionId)
+    const newApprovedCount = (session.approved_count || 0) + prospectData.length
+    const newStatus = prospectData.length === session.total_count ? 'approved' : 'partial'
+    const approvedAt = prospectData.length === session.total_count ? new Date().toISOString() : null
 
-    if (updateError) throw updateError
+    await pool.query(
+      `UPDATE data_approval_sessions
+       SET approved_count = $1, status = $2, approved_at = $3
+       WHERE session_id = $4`,
+      [newApprovedCount, newStatus, approvedAt, sessionId]
+    )
 
     // Consume quota
-    await supabase.rpc('consume_approval_quota', {
-      p_user_id: session.user_id,
-      p_workspace_id: session.workspace_id,
-      p_quota_type: 'campaign_data',
-      p_amount: prospectData.length
-    })
+    try {
+      await pool.query(
+        `SELECT consume_approval_quota($1, $2, $3, $4)`,
+        [session.user_id, session.workspace_id, 'campaign_data', prospectData.length]
+      )
+    } catch (quotaError) {
+      console.warn('Quota consumption skipped:', quotaError)
+    }
 
     return NextResponse.json({
       success: true,
@@ -169,36 +172,45 @@ async function approveProspects(supabase: any, sessionId: string, prospectData: 
   }
 }
 
-async function rejectProspects(supabase: any, sessionId: string, prospectData: any[]) {
+async function rejectProspects(sessionId: string, prospectData: any[]) {
   try {
-    const decisions = prospectData.map((prospect, index) => ({
-      session_id: sessionId,
-      record_index: index,
-      record_data: prospect,
-      decision: 'rejected',
-      decision_reason: 'User rejected',
-      confidence_score: prospect.confidence || 0.5
-    }))
-
-    const { error } = await supabase
-      .from('data_record_decisions')
-      .upsert(decisions)
-
-    if (error) throw error
+    // Create rejection decisions
+    for (let i = 0; i < prospectData.length; i++) {
+      const prospect = prospectData[i]
+      await pool.query(
+        `INSERT INTO data_record_decisions
+          (session_id, record_index, record_data, decision, decision_reason, confidence_score)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (session_id, record_index) DO UPDATE SET
+          decision = $4,
+          decision_reason = $5,
+          confidence_score = $6`,
+        [
+          sessionId,
+          i,
+          JSON.stringify(prospect),
+          'rejected',
+          'User rejected',
+          prospect.confidence || 0.5
+        ]
+      )
+    }
 
     // Update session
-    const { data: session } = await supabase
-      .from('data_approval_sessions')
-      .select('rejected_count, total_count')
-      .eq('session_id', sessionId)
-      .single()
+    const sessionResult = await pool.query(
+      `SELECT rejected_count, total_count FROM data_approval_sessions WHERE session_id = $1`,
+      [sessionId]
+    )
 
-    await supabase
-      .from('data_approval_sessions')
-      .update({
-        rejected_count: (session.rejected_count || 0) + prospectData.length
-      })
-      .eq('session_id', sessionId)
+    if (sessionResult.rows.length > 0) {
+      const session = sessionResult.rows[0]
+      await pool.query(
+        `UPDATE data_approval_sessions
+         SET rejected_count = $1
+         WHERE session_id = $2`,
+        [(session.rejected_count || 0) + prospectData.length, sessionId]
+      )
+    }
 
     return NextResponse.json({
       success: true,
@@ -212,22 +224,31 @@ async function rejectProspects(supabase: any, sessionId: string, prospectData: a
   }
 }
 
-async function getApprovalSession(supabase: any, sessionId: string) {
+async function getApprovalSession(sessionId: string) {
   try {
-    const { data: session, error } = await supabase
-      .from('data_approval_sessions')
-      .select(`
-        *,
-        data_record_decisions (*)
-      `)
-      .eq('session_id', sessionId)
-      .single()
+    const sessionResult = await pool.query(
+      `SELECT * FROM data_approval_sessions WHERE session_id = $1`,
+      [sessionId]
+    )
 
-    if (error) throw error
+    if (sessionResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+
+    const session = sessionResult.rows[0]
+
+    // Get associated decisions
+    const decisionsResult = await pool.query(
+      `SELECT * FROM data_record_decisions WHERE session_id = $1 ORDER BY record_index`,
+      [sessionId]
+    )
 
     return NextResponse.json({
       success: true,
-      session: session
+      session: {
+        ...session,
+        data_record_decisions: decisionsResult.rows
+      }
     })
 
   } catch (error) {

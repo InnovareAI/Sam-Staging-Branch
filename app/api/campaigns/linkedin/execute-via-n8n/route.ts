@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 /**
  * LinkedIn Campaign Execution - SIMPLIFIED
@@ -31,18 +29,17 @@ const N8N_MESSENGER_WEBHOOK = process.env.N8N_MESSENGER_WEBHOOK_URL || 'https://
  * - Each day has different pattern seeded by date
  */
 async function calculateHumanSendDelay(
-  supabase: any,
   unipileAccountId: string,
   totalProspects: number,
   prospectIndex: number,
   campaignSettings?: any  // Pass campaign schedule settings
 ): Promise<number> {
   // 1. Get account's daily limit and today's sent count
-  const { data: account } = await supabase
-    .from('workspace_accounts')
-    .select('daily_message_limit, messages_sent_today, last_message_date')
-    .eq('unipile_account_id', unipileAccountId)
-    .single();
+  const accountResult = await pool.query(
+    'SELECT daily_message_limit, messages_sent_today, last_message_date FROM workspace_accounts WHERE unipile_account_id = $1',
+    [unipileAccountId]
+  );
+  const account = accountResult.rows[0];
 
   const dailyLimit = account?.daily_message_limit || 20; // Default: Free LinkedIn limit
   const sentToday = account?.messages_sent_today || 0;
@@ -55,7 +52,7 @@ async function calculateHumanSendDelay(
   const actualSentToday = isNewDay ? 0 : sentToday;
   const remainingToday = Math.max(0, dailyLimit - actualSentToday);
 
-  console.log(`📊 Account ${unipileAccountId}: ${actualSentToday}/${dailyLimit} sent today, ${remainingToday} remaining`);
+  console.log(`Account ${unipileAccountId}: ${actualSentToday}/${dailyLimit} sent today, ${remainingToday} remaining`);
 
   // 2. Check if today is weekend or holiday (respect campaign settings)
   // DEFAULT: Monday to Friday messaging only (skip_weekends: true)
@@ -68,14 +65,14 @@ async function calculateHumanSendDelay(
 
   // Get current time in campaign's timezone
   const now = new Date();
-  
+
   // CRITICAL: Convert to campaign's timezone for accurate hour checking
   const campaignTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
   const dayOfWeek = campaignTime.getDay(); // 0 = Sunday, 6 = Saturday
   const currentHour = campaignTime.getHours();
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-  
-  console.log(`🕐 Server time: ${now.toISOString()} | Campaign timezone (${timezone}): ${campaignTime.toLocaleString()} | Hour: ${currentHour}`);
+
+  console.log(`Server time: ${now.toISOString()} | Campaign timezone (${timezone}): ${campaignTime.toLocaleString()} | Hour: ${currentHour}`);
 
   // Check if we're outside working hours
   const isOutsideWorkingHours = currentHour < workingHoursStart || currentHour >= workingHoursEnd;
@@ -85,19 +82,19 @@ async function calculateHumanSendDelay(
     const hoursUntilStart = currentHour < workingHoursStart
       ? workingHoursStart - currentHour
       : (24 - currentHour) + workingHoursStart;
-    console.log(`⏸️  Outside working hours (${workingHoursStart}:00-${workingHoursEnd}:00) - waiting ${hoursUntilStart}h`);
+    console.log(`Outside working hours (${workingHoursStart}:00-${workingHoursEnd}:00) - waiting ${hoursUntilStart}h`);
     return hoursUntilStart * 60;
   }
 
   if (isWeekend && skipWeekends) {
-    console.log(`⏸️  Weekend detected, skip_weekends=true - skipping until Monday`);
+    console.log(`Weekend detected, skip_weekends=true - skipping until Monday`);
     const daysUntilMonday = dayOfWeek === 0 ? 1 : 2; // Sunday = 1 day, Saturday = 2 days
     return daysUntilMonday * 24 * 60;
   }
 
   // 3. Can't send more today
   if (remainingToday === 0) {
-    console.log(`⏸️  Daily limit reached, delaying to tomorrow`);
+    console.log(`Daily limit reached, delaying to tomorrow`);
     return 24 * 60; // Wait 24 hours
   }
 
@@ -145,7 +142,7 @@ async function calculateHumanSendDelay(
     return Math.floor(spreadOverMinutes / Math.min(totalProspects, remainingToday)) * prospectIndex;
   }
 
-  console.log(`⏱️  Prospect ${prospectIndex}: ${delayMinutes}min delay (${hourlyRate.toFixed(1)} msg/hr pattern)`);
+  console.log(`Prospect ${prospectIndex}: ${delayMinutes}min delay (${hourlyRate.toFixed(1)} msg/hr pattern)`);
 
   return Math.max(0, delayMinutes);
 }
@@ -153,72 +150,56 @@ async function calculateHumanSendDelay(
 /**
  * Get workspace ID for a given account
  */
-async function getWorkspaceIdForAccount(supabase: any, unipileAccountId: string): Promise<string> {
-  const { data } = await supabase
-    .from('workspace_accounts')
-    .select('workspace_id')
-    .eq('unipile_account_id', unipileAccountId)
-    .single();
-
-  return data?.workspace_id;
+async function getWorkspaceIdForAccount(unipileAccountId: string): Promise<string> {
+  const result = await pool.query(
+    'SELECT workspace_id FROM workspace_accounts WHERE unipile_account_id = $1',
+    [unipileAccountId]
+  );
+  return result.rows[0]?.workspace_id;
 }
 
 /**
  * Update account's daily message counter after sending
  */
-async function incrementAccountMessageCount(supabase: any, unipileAccountId: string) {
+async function incrementAccountMessageCount(unipileAccountId: string) {
   const today = new Date().toISOString().split('T')[0];
 
-  const { data: account } = await supabase
-    .from('workspace_accounts')
-    .select('messages_sent_today, last_message_date')
-    .eq('unipile_account_id', unipileAccountId)
-    .single();
+  const accountResult = await pool.query(
+    'SELECT messages_sent_today, last_message_date FROM workspace_accounts WHERE unipile_account_id = $1',
+    [unipileAccountId]
+  );
+  const account = accountResult.rows[0];
 
   const lastMessageDate = account?.last_message_date?.split('T')[0];
   const isNewDay = lastMessageDate !== today;
 
-  await supabase
-    .from('workspace_accounts')
-    .update({
-      messages_sent_today: isNewDay ? 1 : (account?.messages_sent_today || 0) + 1,
-      last_message_date: new Date().toISOString()
-    })
-    .eq('unipile_account_id', unipileAccountId);
+  await pool.query(
+    'UPDATE workspace_accounts SET messages_sent_today = $1, last_message_date = $2 WHERE unipile_account_id = $3',
+    [isNewDay ? 1 : (account?.messages_sent_today || 0) + 1, new Date().toISOString(), unipileAccountId]
+  );
 }
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('🚀 ========== CAMPAIGN EXECUTE CALLED ==========');
+    console.log('========== CAMPAIGN EXECUTE CALLED ==========');
 
     // Check if this is an internal cron trigger
     const isInternalTrigger = req.headers.get('x-internal-trigger') === 'cron';
 
     // 1. Authenticate user (skip for internal cron triggers)
-    let user = null;
+    let userId: string | null = null;
 
     if (!isInternalTrigger) {
-      const cookieStore = cookies();
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() { return cookieStore.getAll(); },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options);
-              });
-            },
-          },
+      try {
+        const authContext = await verifyAuth(req);
+        userId = authContext.userId;
+      } catch (error) {
+        if (error && typeof error === 'object' && 'statusCode' in error) {
+          const authErr = error as AuthError;
+          return NextResponse.json({ error: authErr.message }, { status: authErr.statusCode });
         }
-      );
-
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      if (authError || !authUser) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      user = authUser;
     }
 
     // 2. Get request data
@@ -232,71 +213,59 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Verify workspace access (skip for internal cron triggers)
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    if (!isInternalTrigger && userId) {
+      const memberResult = await pool.query(
+        'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+        [workspaceId, userId]
+      );
 
-    if (!isInternalTrigger) {
-      const { data: member } = await supabaseAdmin
-        .from('workspace_members')
-        .select('role')
-        .eq('workspace_id', workspaceId)
-        .eq('user_id', user!.id)
-        .single();
-
-      if (!member) {
+      if (memberResult.rows.length === 0) {
         return NextResponse.json({ error: 'Access denied to workspace' }, { status: 403 });
       }
     }
 
-    console.log(`🚀 LinkedIn Campaign Launch: ${campaignId}`);
+    console.log(`LinkedIn Campaign Launch: ${campaignId}`);
 
     // 4. Get campaign with LinkedIn account
-    const { data: campaign, error: campaignError } = await supabaseAdmin
-      .from('campaigns')
-      .select(`
-        *,
-        linkedin_account:workspace_accounts!linkedin_account_id (
-          id,
-          account_name,
-          unipile_account_id,
-          is_active
-        )
-      `)
-      .eq('id', campaignId)
-      .eq('workspace_id', workspaceId)
-      .single();
+    const campaignResult = await pool.query(
+      `SELECT c.*,
+              wa.id as linkedin_account_id,
+              wa.account_name as linkedin_account_name,
+              wa.unipile_account_id,
+              wa.is_active as linkedin_account_active
+       FROM campaigns c
+       LEFT JOIN workspace_accounts wa ON c.linkedin_account_id = wa.id
+       WHERE c.id = $1 AND c.workspace_id = $2`,
+      [campaignId, workspaceId]
+    );
 
-    if (campaignError || !campaign) {
+    if (campaignResult.rows.length === 0) {
       return NextResponse.json({
         error: 'Campaign not found',
-        details: campaignError?.message
+        details: 'Campaign does not exist or does not belong to workspace'
       }, { status: 404 });
     }
 
-    // 5. Get campaign prospects separately (RLS bypass for service role)
-    const { data: prospects, error: prospectsError } = await supabaseAdmin
-      .from('campaign_prospects')
-      .select('id, first_name, last_name, email, company_name, title, linkedin_url, linkedin_user_id, status')
-      .eq('campaign_id', campaignId);
+    const campaign = campaignResult.rows[0];
 
-    if (prospectsError) {
-      console.error('Error fetching prospects:', prospectsError);
-    }
+    // 5. Get campaign prospects separately
+    const prospectsResult = await pool.query(
+      `SELECT id, first_name, last_name, email, company_name, title, linkedin_url, linkedin_user_id, status
+       FROM campaign_prospects WHERE campaign_id = $1`,
+      [campaignId]
+    );
 
-    // Attach prospects to campaign object
-    campaign.campaign_prospects = prospects || [];
+    const prospects = prospectsResult.rows || [];
 
     // 6. Validate LinkedIn account
-    if (!campaign.linkedin_account?.unipile_account_id) {
+    if (!campaign.unipile_account_id) {
       return NextResponse.json({
         error: 'No LinkedIn account connected',
         message: 'Please connect a LinkedIn account to this campaign'
       }, { status: 400 });
     }
 
-    if (!campaign.linkedin_account.is_active) {
+    if (!campaign.linkedin_account_active) {
       return NextResponse.json({
         error: 'LinkedIn account inactive',
         message: 'Please reconnect your LinkedIn account'
@@ -304,7 +273,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 7. Get prospects ready to contact
-    const pendingProspects = campaign.campaign_prospects.filter(
+    const pendingProspects = prospects.filter(
       (p: any) => ['pending', 'approved', 'ready_to_message', 'queued_in_n8n'].includes(p.status) && p.linkedin_url
     );
 
@@ -315,13 +284,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    console.log(`📋 Processing ${pendingProspects.length} prospects`);
+    console.log(`Processing ${pendingProspects.length} prospects`);
 
     // 8. Determine campaign type
     // connector = send CR first (default)
     // messenger = direct message only
     const campaignType = campaign.campaign_type || 'connector';
-    console.log(`📋 Campaign Type from DB: "${campaign.campaign_type}" → Using: "${campaignType}"`);
+    console.log(`Campaign Type from DB: "${campaign.campaign_type}" -> Using: "${campaignType}"`);
 
     if (!['connector', 'messenger'].includes(campaignType)) {
       return NextResponse.json({
@@ -332,16 +301,36 @@ export async function POST(req: NextRequest) {
     }
 
     // 9. Get account tracking data for N8N
-    const { data: accountTracking } = await supabaseAdmin
-      .from('workspace_accounts')
-      .select('daily_message_limit, messages_sent_today, last_message_date')
-      .eq('unipile_account_id', campaign.linkedin_account.unipile_account_id)
-      .single();
+    const accountTrackingResult = await pool.query(
+      'SELECT daily_message_limit, messages_sent_today, last_message_date FROM workspace_accounts WHERE unipile_account_id = $1',
+      [campaign.unipile_account_id]
+    );
+    const accountTracking = accountTrackingResult.rows[0];
 
     const today = new Date().toISOString().split('T')[0];
     const lastMessageDate = accountTracking?.last_message_date?.split('T')[0];
     const isNewDay = !lastMessageDate || lastMessageDate !== today;
     const currentSentToday = isNewDay ? 0 : (accountTracking?.messages_sent_today || 0);
+
+    // Parse message_templates if it's a string
+    let messageTemplates = campaign.message_templates;
+    if (typeof messageTemplates === 'string') {
+      try {
+        messageTemplates = JSON.parse(messageTemplates);
+      } catch {
+        messageTemplates = {};
+      }
+    }
+
+    // Parse schedule_settings if it's a string
+    let scheduleSettings = campaign.schedule_settings;
+    if (typeof scheduleSettings === 'string') {
+      try {
+        scheduleSettings = JSON.parse(scheduleSettings);
+      } catch {
+        scheduleSettings = null;
+      }
+    }
 
     // 10. Build N8N payload
     const n8nPayload = {
@@ -349,8 +338,8 @@ export async function POST(req: NextRequest) {
       campaign_id: campaignId,
       channel: 'linkedin',
       campaign_type: campaignType,
-      unipile_account_id: campaign.linkedin_account.unipile_account_id,
-      unipileAccountId: campaign.linkedin_account.unipile_account_id, // CRITICAL: N8N expects camelCase
+      unipile_account_id: campaign.unipile_account_id,
+      unipileAccountId: campaign.unipile_account_id, // CRITICAL: N8N expects camelCase
 
       // CRITICAL: Account tracking data for N8N to update message counters
       account_tracking: {
@@ -363,7 +352,7 @@ export async function POST(req: NextRequest) {
       // Schedule settings for N8N to enforce timing
       // DEFAULT: Monday to Friday messaging only (skip_weekends: true)
       // Wide window (5 AM - 6 PM PT) to cover all US timezones
-      schedule_settings: campaign.schedule_settings || {
+      schedule_settings: scheduleSettings || {
         timezone: 'America/Los_Angeles',  // Pacific Time for US/CAN
         working_hours_start: 5,    // 5 AM PT (covers 8 AM ET)
         working_hours_end: 18,      // 6 PM PT (covers 9 PM ET)
@@ -392,21 +381,21 @@ export async function POST(req: NextRequest) {
       messages: campaignType === 'messenger' ? {
         // Messenger campaigns: array of messages to send in sequence
         message_sequence: [
-          campaign.message_templates?.connection_request || '',
-          ...(campaign.message_templates?.follow_up_messages || [])
-        ].filter(msg => msg && msg.trim() !== '')
+          messageTemplates?.connection_request || '',
+          ...(messageTemplates?.follow_up_messages || [])
+        ].filter((msg: string) => msg && msg.trim() !== '')
       } : {
         // Connector campaigns: connection request + follow-ups (N8N expects snake_case)
-        connection_request: campaign.connection_message || campaign.message_templates?.connection_request || '',
-        cr: campaign.connection_message || campaign.message_templates?.connection_request || '',
-        follow_up_1: campaign.message_templates?.follow_up_messages?.[0] || '',
-        follow_up_2: campaign.message_templates?.follow_up_messages?.[1] || '',
-        follow_up_3: campaign.message_templates?.follow_up_messages?.[2] || '',
-        follow_up_4: campaign.message_templates?.follow_up_messages?.[3] || '',
-        goodbye_message: campaign.message_templates?.follow_up_messages?.[4] || '',
+        connection_request: campaign.connection_message || messageTemplates?.connection_request || '',
+        cr: campaign.connection_message || messageTemplates?.connection_request || '',
+        follow_up_1: messageTemplates?.follow_up_messages?.[0] || '',
+        follow_up_2: messageTemplates?.follow_up_messages?.[1] || '',
+        follow_up_3: messageTemplates?.follow_up_messages?.[2] || '',
+        follow_up_4: messageTemplates?.follow_up_messages?.[3] || '',
+        goodbye_message: messageTemplates?.follow_up_messages?.[4] || '',
         // CRITICAL FIX (Dec 12): Don't fallback to follow_up_messages[0] - alternative_message is separate!
         // alternative_message is for 1st degree connections, NOT a follow-up message
-        alternative_message: campaign.message_templates?.alternative_message || ''
+        alternative_message: messageTemplates?.alternative_message || ''
       },
       timing: {
         fu1_delay_days: 2,
@@ -421,38 +410,35 @@ export async function POST(req: NextRequest) {
       unipile_api_key: process.env.UNIPILE_API_KEY
     };
 
-    console.log(`📦 Sending to N8N:`, {
+    console.log(`Sending to N8N:`, {
       campaign_type: campaignType,
       prospect_count: pendingProspects.length,
-      linkedin_account: campaign.linkedin_account.account_name,
+      linkedin_account: campaign.linkedin_account_name,
       daily_limit: accountTracking?.daily_message_limit || 20,
       sent_today: currentSentToday,
       remaining_today: Math.max(0, (accountTracking?.daily_message_limit || 20) - currentSentToday)
     });
 
-    console.log(`📋 FULL N8N PAYLOAD:`, JSON.stringify(n8nPayload, null, 2));
+    console.log(`FULL N8N PAYLOAD:`, JSON.stringify(n8nPayload, null, 2));
 
     // 10. Determine which N8N webhook to call based on campaign type
     const N8N_WEBHOOK_URL = campaignType === 'messenger' ? N8N_MESSENGER_WEBHOOK : N8N_CONNECTOR_WEBHOOK;
 
-    console.log(`🎯 Calling ${campaignType} workflow: ${N8N_WEBHOOK_URL}`);
+    console.log(`Calling ${campaignType} workflow: ${N8N_WEBHOOK_URL}`);
 
     // 11. Update prospect statuses FIRST (BATCH UPDATE for performance)
     // Do this BEFORE calling N8N so API can return quickly
-    const prospectIds = pendingProspects.map(p => p.id);
-    await supabaseAdmin
-      .from('campaign_prospects')
-      .update({ status: 'queued_in_n8n' })
-      .in('id', prospectIds);
+    const prospectIds = pendingProspects.map((p: any) => p.id);
+    await pool.query(
+      `UPDATE campaign_prospects SET status = 'queued_in_n8n' WHERE id = ANY($1)`,
+      [prospectIds]
+    );
 
     // 12. Update campaign
-    await supabaseAdmin
-      .from('campaigns')
-      .update({
-        status: 'active',
-        last_executed_at: new Date().toISOString()
-      })
-      .eq('id', campaignId);
+    await pool.query(
+      `UPDATE campaigns SET status = 'active', last_executed_at = $1 WHERE id = $2`,
+      [new Date().toISOString(), campaignId]
+    );
 
     // 13. Call N8N webhook ASYNC (fire and forget - don't wait for response)
     fetch(N8N_WEBHOOK_URL, {
@@ -461,7 +447,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(n8nPayload)
     }).catch(err => console.error('N8N webhook error:', err));
 
-    console.log(`✅ Campaign queued - N8N processing asynchronously`);
+    console.log(`Campaign queued - N8N processing asynchronously`);
 
     return NextResponse.json({
       success: true,
@@ -471,7 +457,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Campaign execution error:', error);
+    console.error('Campaign execution error:', error);
     console.error('Error stack:', error.stack);
     return NextResponse.json({
       error: 'Campaign launch failed',

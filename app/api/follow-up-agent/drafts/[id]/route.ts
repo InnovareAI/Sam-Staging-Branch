@@ -9,17 +9,12 @@
  * - pending_approval → approved (with optional edit)
  * - pending_approval → rejected (with reason)
  * - approved → sent (by cron job)
+ *
+ * Migrated Dec 31, 2025: Firebase auth + Cloud SQL
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -33,55 +28,57 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { id: draftId } = await params;
 
-    // Auth check
-    const cookieStore = cookies();
-    const authClient = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { user } } = await authClient.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Auth check via Firebase
+    let userId: string;
+    try {
+      const auth = await verifyAuth(req);
+      userId = auth.userId;
+    } catch (authError) {
+      const err = authError as AuthError;
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
     }
 
     // Fetch draft with related data
-    const { data: draft, error } = await supabase
-      .from('follow_up_drafts')
-      .select(`
-        *,
-        campaign_prospects!prospect_id (
-          id,
-          first_name,
-          last_name,
-          company_name,
-          title,
-          linkedin_url,
-          email,
-          status,
-          connection_accepted_at,
-          last_follow_up_at
-        ),
-        campaigns!campaign_id (
-          id,
-          campaign_name,
-          workspace_id
-        )
-      `)
-      .eq('id', draftId)
-      .single();
+    const draftResult = await pool.query(
+      `SELECT
+        d.*,
+        json_build_object(
+          'id', p.id,
+          'first_name', p.first_name,
+          'last_name', p.last_name,
+          'company_name', p.company_name,
+          'title', p.title,
+          'linkedin_url', p.linkedin_url,
+          'email', p.email,
+          'status', p.status,
+          'connection_accepted_at', p.connection_accepted_at,
+          'last_follow_up_at', p.last_follow_up_at
+        ) as campaign_prospects,
+        json_build_object(
+          'id', c.id,
+          'campaign_name', c.campaign_name,
+          'workspace_id', c.workspace_id
+        ) as campaigns
+      FROM follow_up_drafts d
+      LEFT JOIN campaign_prospects p ON d.prospect_id = p.id
+      LEFT JOIN campaigns c ON d.campaign_id = c.id
+      WHERE d.id = $1`,
+      [draftId]
+    );
 
-    if (error || !draft) {
-      console.error('Error fetching draft:', error);
+    if (draftResult.rows.length === 0) {
       return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
     }
 
-    // Verify user has access to workspace
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', draft.workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const draft = draftResult.rows[0];
 
-    if (!member) {
+    // Verify user has access to workspace
+    const memberResult = await pool.query(
+      'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+      [draft.workspace_id, userId]
+    );
+
+    if (memberResult.rows.length === 0) {
       return NextResponse.json({ error: 'Not a member of this workspace' }, { status: 403 });
     }
 
@@ -123,35 +120,35 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       }, { status: 400 });
     }
 
-    // Auth check
-    const cookieStore = cookies();
-    const authClient = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { user } } = await authClient.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Auth check via Firebase
+    let userId: string;
+    try {
+      const auth = await verifyAuth(req);
+      userId = auth.userId;
+    } catch (authError) {
+      const err = authError as AuthError;
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
     }
 
     // Fetch current draft
-    const { data: draft, error: fetchError } = await supabase
-      .from('follow_up_drafts')
-      .select('*')
-      .eq('id', draftId)
-      .single();
+    const draftResult = await pool.query(
+      'SELECT * FROM follow_up_drafts WHERE id = $1',
+      [draftId]
+    );
 
-    if (fetchError || !draft) {
+    if (draftResult.rows.length === 0) {
       return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
     }
 
-    // Verify user has access
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', draft.workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const draft = draftResult.rows[0];
 
-    if (!member) {
+    // Verify user has access
+    const memberResult = await pool.query(
+      'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+      [draft.workspace_id, userId]
+    );
+
+    if (memberResult.rows.length === 0) {
       return NextResponse.json({ error: 'Not a member of this workspace' }, { status: 403 });
     }
 
@@ -165,7 +162,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       }
     }
 
-    let updateData: Record<string, any> = {};
+    let updateFields: string[] = [];
+    let updateValues: any[] = [];
+    let paramIndex = 1;
 
     switch (action) {
       case 'approve':
@@ -194,24 +193,28 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           if (day === 6) scheduleTime.setDate(scheduleTime.getDate() + 2); // Saturday -> Monday
         }
 
-        updateData = {
-          status: 'approved',
-          approved_by: user.id,
-          approved_at: new Date().toISOString(),
-          scheduled_for: scheduleTime.toISOString()
-        };
+        updateFields.push(`status = $${paramIndex++}`);
+        updateValues.push('approved');
+        updateFields.push(`approved_by = $${paramIndex++}`);
+        updateValues.push(userId);
+        updateFields.push(`approved_at = $${paramIndex++}`);
+        updateValues.push(new Date().toISOString());
+        updateFields.push(`scheduled_for = $${paramIndex++}`);
+        updateValues.push(scheduleTime.toISOString());
 
         // If message was edited, include it
         if (message) {
-          updateData.message = message;
+          updateFields.push(`message = $${paramIndex++}`);
+          updateValues.push(message);
         }
         if (subject) {
-          updateData.subject = subject;
+          updateFields.push(`subject = $${paramIndex++}`);
+          updateValues.push(subject);
         }
 
-        console.log('✅ Approving draft:', {
+        console.log('Approving draft:', {
           draftId,
-          approvedBy: user.id,
+          approvedBy: userId,
           scheduledFor: scheduleTime.toISOString()
         });
         break;
@@ -223,12 +226,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           }, { status: 400 });
         }
 
-        updateData = {
-          status: 'rejected',
-          rejected_reason
-        };
+        updateFields.push(`status = $${paramIndex++}`);
+        updateValues.push('rejected');
+        updateFields.push(`rejected_reason = $${paramIndex++}`);
+        updateValues.push(rejected_reason);
 
-        console.log('❌ Rejecting draft:', {
+        console.log('Rejecting draft:', {
           draftId,
           reason: rejected_reason
         });
@@ -241,15 +244,15 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           }, { status: 400 });
         }
 
-        updateData = {
-          message
-        };
+        updateFields.push(`message = $${paramIndex++}`);
+        updateValues.push(message);
 
         if (subject !== undefined) {
-          updateData.subject = subject;
+          updateFields.push(`subject = $${paramIndex++}`);
+          updateValues.push(subject);
         }
 
-        console.log('✏️ Editing draft:', {
+        console.log('Editing draft:', {
           draftId,
           messageLength: message.length
         });
@@ -257,25 +260,22 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
 
     // Update the draft
-    const { data: updatedDraft, error: updateError } = await supabase
-      .from('follow_up_drafts')
-      .update(updateData)
-      .eq('id', draftId)
-      .select()
-      .single();
+    updateValues.push(draftId);
+    const updateResult = await pool.query(
+      `UPDATE follow_up_drafts SET ${updateFields.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+      updateValues
+    );
 
-    if (updateError) {
-      console.error('Error updating draft:', updateError);
+    if (updateResult.rows.length === 0) {
       return NextResponse.json({
-        error: 'Failed to update draft',
-        details: updateError.message
+        error: 'Failed to update draft'
       }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
       action,
-      draft: updatedDraft
+      draft: updateResult.rows[0]
     });
 
   } catch (error) {
@@ -295,35 +295,35 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
     const { id: draftId } = await params;
 
-    // Auth check
-    const cookieStore = cookies();
-    const authClient = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { user } } = await authClient.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Auth check via Firebase
+    let userId: string;
+    try {
+      const auth = await verifyAuth(req);
+      userId = auth.userId;
+    } catch (authError) {
+      const err = authError as AuthError;
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
     }
 
     // Fetch draft to verify ownership and status
-    const { data: draft, error: fetchError } = await supabase
-      .from('follow_up_drafts')
-      .select('*')
-      .eq('id', draftId)
-      .single();
+    const draftResult = await pool.query(
+      'SELECT * FROM follow_up_drafts WHERE id = $1',
+      [draftId]
+    );
 
-    if (fetchError || !draft) {
+    if (draftResult.rows.length === 0) {
       return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
     }
 
-    // Verify user has access
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', draft.workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const draft = draftResult.rows[0];
 
-    if (!member) {
+    // Verify user has access
+    const memberResult = await pool.query(
+      'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+      [draft.workspace_id, userId]
+    );
+
+    if (memberResult.rows.length === 0) {
       return NextResponse.json({ error: 'Not a member of this workspace' }, { status: 403 });
     }
 
@@ -336,20 +336,18 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     }
 
     // Delete the draft
-    const { error: deleteError } = await supabase
-      .from('follow_up_drafts')
-      .delete()
-      .eq('id', draftId);
+    const deleteResult = await pool.query(
+      'DELETE FROM follow_up_drafts WHERE id = $1',
+      [draftId]
+    );
 
-    if (deleteError) {
-      console.error('Error deleting draft:', deleteError);
+    if (deleteResult.rowCount === 0) {
       return NextResponse.json({
-        error: 'Failed to delete draft',
-        details: deleteError.message
+        error: 'Failed to delete draft'
       }, { status: 500 });
     }
 
-    console.log('🗑️ Deleted draft:', draftId);
+    console.log('Deleted draft:', draftId);
 
     return NextResponse.json({
       success: true,

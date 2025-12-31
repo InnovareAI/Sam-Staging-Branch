@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
@@ -11,14 +11,7 @@ import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    const { userId, workspaceId, userEmail } = await verifyAuth(request);
 
     const body = await request.json();
     const {
@@ -30,82 +23,19 @@ export async function POST(request: NextRequest) {
     // Hard limit to 100 for speed (fits in 10s Netlify timeout)
     const limitedTarget = Math.min(target_count, 100);
 
-    console.log(`🔍 Direct search for ${user.email}: ${limitedTarget} prospects`);
+    console.log(`🔍 Direct search for ${userEmail}: ${limitedTarget} prospects`);
 
-    // Get user's workspace with fallback logic
-    let workspaceId: string | null = null;
-
-    // Try to get current workspace from users table
-    const { data: userProfile, error: profileError } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
-
-    console.log('📊 Workspace check:', {
-      userId: user.id,
-      currentWorkspaceId: userProfile?.current_workspace_id,
-      profileError: profileError?.message
-    });
-
-    if (userProfile?.current_workspace_id) {
-      workspaceId = userProfile.current_workspace_id;
-      console.log('✅ Using workspace from users table:', workspaceId);
-    } else {
-      // Fallback: get first workspace from memberships
-      console.log('⚠️ No current_workspace_id, trying workspace_members...');
-
-      const { data: membership, error: membershipError } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle();
-
-      console.log('📊 Membership check:', {
-        found: !!membership,
-        workspaceId: membership?.workspace_id,
-        error: membershipError?.message
-      });
-
-      if (membership?.workspace_id) {
-        workspaceId = membership.workspace_id;
-        console.log('✅ Using workspace from memberships:', workspaceId);
-
-        // Update user's current workspace for next time
-        await supabase
-          .from('users')
-          .update({ current_workspace_id: membership.workspace_id })
-          .eq('id', user.id);
-
-        console.log('💾 Updated user current_workspace_id');
-      }
-    }
-
-    if (!workspaceId) {
-      console.error('❌ No workspace found for user:', user.id);
-      return NextResponse.json({
-        success: false,
-        error: 'No workspace found. Please create or join a workspace first.',
-        debug: {
-          userId: user.id,
-          userEmail: user.email,
-          hadCurrentWorkspace: !!userProfile?.current_workspace_id,
-          checkedMemberships: true
-        }
-      }, { status: 400 });
-    }
-
-    console.log('✅ Final workspace ID:', workspaceId);
+    console.log('✅ Using workspace:', workspaceId);
 
     // Get LinkedIn account from workspace_accounts table
     // Get any workspace member's LinkedIn account (can be shared across team)
-    const { data: linkedinAccounts } = await supabase
-      .from('workspace_accounts')
-      .select('unipile_account_id, account_name, account_identifier')
-      .eq('workspace_id', workspaceId)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES);
+    const { rows: linkedinAccounts } = await pool.query(`
+      SELECT unipile_account_id, account_name, account_identifier
+      FROM workspace_accounts
+      WHERE workspace_id = $1
+      AND account_type = 'linkedin'
+      AND connection_status = ANY($2)
+    `, [workspaceId, VALID_CONNECTION_STATUSES]);
 
     console.log('🔵 LinkedIn accounts found:', linkedinAccounts?.length || 0);
 
@@ -291,75 +221,75 @@ export async function POST(request: NextRequest) {
 
       try {
         // Step 1: Create approval session
-        const { data: session, error: sessionError } = await supabase
-          .from('prospect_approval_sessions')
-          .insert({
-            user_id: user.id,
-            workspace_id: workspaceId,
-            campaign_name: campaignName,
-            campaign_tag: campaignTag,
-            status: 'active',
-            total_prospects: prospects.length,
-            pending_count: prospects.length,
-            approved_count: 0,
-            rejected_count: 0,
-            source: 'linkedin_direct_search',
-            icp_criteria: search_criteria,
-            created_at: new Date().toISOString()
-          })
-          .select()
-          .single();
+        const { rows: sessionRows } = await pool.query(`
+          INSERT INTO prospect_approval_sessions (
+            user_id, workspace_id, campaign_name, campaign_tag,
+            status, total_prospects, pending_count, approved_count,
+            rejected_count, source, icp_criteria, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          RETURNING *
+        `, [
+          userId,
+          workspaceId,
+          campaignName,
+          campaignTag,
+          'active',
+          prospects.length,
+          prospects.length,
+          0,
+          0,
+          'linkedin_direct_search',
+          JSON.stringify(search_criteria),
+          new Date().toISOString()
+        ]);
 
-        if (sessionError) {
-          console.error('❌ Failed to create approval session:', sessionError);
-          throw sessionError;
+        if (!sessionRows || sessionRows.length === 0) {
+          throw new Error('Failed to create approval session');
         }
 
-        sessionId = session.id;
+        sessionId = sessionRows[0].id;
         console.log(`✅ Created approval session: ${sessionId.substring(0, 8)}`);
 
         // Step 2: Insert prospects into approval_data
-        const prospectsToInsert = prospects.map((p, index) => ({
-          session_id: sessionId,
-          prospect_id: `linkedin_${p.publicIdentifier || index}_${Date.now()}`,
-          name: p.name,
-          title: p.title,
-          company: p.company,
-          location: p.location,
-          profile_image: null, // LinkedIn doesn't provide images via search API
-          contact: {
-            linkedin: p.linkedinUrl,
-            linkedin_provider_id: p.providerId, // Store authoritative LinkedIn ID
-            public_identifier: p.publicIdentifier,
-            email: null // Not available from search
-          },
-          recent_activity: p.headline,
-          connection_degree: p.connectionDegree || 'Unknown',
-          enrichment_score: 50, // Default score
-          source: 'linkedin_direct_search',
-          enriched_at: new Date().toISOString(),
-          created_at: new Date().toISOString()
-        }));
-
-        const { data: insertedProspects, error: insertError } = await supabase
-          .from('prospect_approval_data')
-          .insert(prospectsToInsert)
-          .select();
-
-        if (insertError) {
-          console.error('❌ Failed to save prospects to approval_data:', insertError);
-          // Clean up session on failure
-          await supabase
-            .from('prospect_approval_sessions')
-            .delete()
-            .eq('id', sessionId);
-          throw insertError;
+        for (let i = 0; i < prospects.length; i++) {
+          const p = prospects[i];
+          await pool.query(`
+            INSERT INTO prospect_approval_data (
+              session_id, prospect_id, name, title, company, location,
+              profile_image, contact, recent_activity, connection_degree,
+              enrichment_score, source, enriched_at, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          `, [
+            sessionId,
+            `linkedin_${p.publicIdentifier || i}_${Date.now()}`,
+            p.name,
+            p.title,
+            p.company,
+            p.location,
+            null, // LinkedIn doesn't provide images via search API
+            JSON.stringify({
+              linkedin: p.linkedinUrl,
+              linkedin_provider_id: p.providerId,
+              public_identifier: p.publicIdentifier,
+              email: null
+            }),
+            p.headline,
+            p.connectionDegree || 'Unknown',
+            50, // Default score
+            'linkedin_direct_search',
+            new Date().toISOString(),
+            new Date().toISOString()
+          ]);
         }
 
-        console.log(`✅ Saved ${insertedProspects?.length || 0} prospects to approval system (session: ${sessionId.substring(0, 8)})`);
+        console.log(`✅ Saved ${prospects.length} prospects to approval system (session: ${sessionId.substring(0, 8)})`);
 
       } catch (saveError) {
         console.error('❌ Error saving to approval system:', saveError);
+        // Clean up session on failure
+        if (sessionId) {
+          await pool.query('DELETE FROM prospect_approval_sessions WHERE id = $1', [sessionId]);
+        }
         // Don't fail the request - we still have the data
       }
     }
@@ -375,6 +305,10 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('❌ Direct search error:', error);
     console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack');
     return NextResponse.json({

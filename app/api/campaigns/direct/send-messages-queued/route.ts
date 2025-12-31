@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import moment from 'moment-timezone';
 import {
   PUBLIC_HOLIDAYS,
@@ -133,23 +132,10 @@ function calculateNextSendTime(
   return scheduledTime.toDate();
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(req: NextRequest) {
   try {
     // Authenticate user
-    const authClient = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Unauthorized'
-      }, { status: 401 });
-    }
+    const { userId, workspaceId } = await verifyAuth(req);
 
     const { campaignId } = await req.json();
 
@@ -163,32 +149,25 @@ export async function POST(req: NextRequest) {
     console.log(`🚀 Queuing messenger campaign: ${campaignId}`);
 
     // 1. Fetch campaign details
-    const { data: campaign, error: campaignError } = await supabase
-      .from('campaigns')
-      .select(`
-        id,
-        name,
-        campaign_type,
-        message_templates,
-        schedule_settings,
-        linkedin_account_id,
-        workspace_id,
-        workspace_accounts!linkedin_account_id (
-          id,
-          unipile_account_id,
-          account_name
-        )
-      `)
-      .eq('id', campaignId)
-      .single();
+    const campaignResult = await pool.query(
+      `SELECT c.id, c.name, c.campaign_type, c.message_templates, c.schedule_settings,
+              c.linkedin_account_id, c.workspace_id,
+              wa.id as wa_id, wa.unipile_account_id, wa.account_name
+       FROM campaigns c
+       LEFT JOIN workspace_accounts wa ON c.linkedin_account_id = wa.id
+       WHERE c.id = $1`,
+      [campaignId]
+    );
 
-    if (campaignError || !campaign) {
-      console.error('Campaign not found:', campaignError);
+    if (campaignResult.rows.length === 0) {
+      console.error('Campaign not found');
       return NextResponse.json({
         success: false,
         error: 'Campaign not found'
       }, { status: 404 });
     }
+
+    const campaign = campaignResult.rows[0];
 
     // Validate campaign type is messenger
     if (campaign.campaign_type !== 'messenger') {
@@ -198,9 +177,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const linkedinAccount = campaign.workspace_accounts as any;
-
-    if (!linkedinAccount || !linkedinAccount.unipile_account_id) {
+    if (!campaign.unipile_account_id) {
       console.error('❌ No LinkedIn account configuration found for campaign:', campaignId);
       return NextResponse.json({
         success: false,
@@ -208,27 +185,22 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const unipileAccountId = linkedinAccount.unipile_account_id;
+    const unipileAccountId = campaign.unipile_account_id;
 
     console.log(`📋 Campaign: ${campaign.name} (Messenger)`);
-    console.log(`👤 LinkedIn Account: ${linkedinAccount.account_name || 'Unnamed Account'} (${unipileAccountId})`);
+    console.log(`👤 LinkedIn Account: ${campaign.account_name || 'Unnamed Account'} (${unipileAccountId})`);
 
     // 2. Fetch pending prospects
-    const { data: prospects, error: prospectsError } = await supabase
-      .from('campaign_prospects')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .in('status', ['pending', 'approved', 'connected']) // Must be connected or marked as such
-      .not('linkedin_url', 'is', null)
-      .order('created_at', { ascending: true });
+    const prospectsResult = await pool.query(
+      `SELECT * FROM campaign_prospects
+       WHERE campaign_id = $1
+         AND status IN ('pending', 'approved', 'connected')
+         AND linkedin_url IS NOT NULL
+       ORDER BY created_at ASC`,
+      [campaignId]
+    );
 
-    if (prospectsError) {
-      console.error('Error fetching prospects:', prospectsError);
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch prospects'
-      }, { status: 500 });
-    }
+    const prospects = prospectsResult.rows;
 
     if (!prospects || prospects.length === 0) {
       return NextResponse.json({
@@ -417,10 +389,10 @@ export async function POST(req: NextRequest) {
             providerId = profile.provider_id;
 
             // Update prospect with resolved provider_id
-            await supabase
-              .from('campaign_prospects')
-              .update({ linkedin_user_id: providerId })
-              .eq('id', prospect.id);
+            await pool.query(
+              `UPDATE campaign_prospects SET linkedin_user_id = $1 WHERE id = $2`,
+              [providerId, prospect.id]
+            );
 
           } catch (profileError: any) {
             console.error(`❌ Failed to resolve LinkedIn profile for ${prospect.first_name}:`, profileError.message);
@@ -463,14 +435,18 @@ export async function POST(req: NextRequest) {
           console.warn(`⚠️  ${prospect.first_name} is NOT connected (distance: ${profile.network_distance})`);
 
           // Update prospect status
-          await supabase
-            .from('campaign_prospects')
-            .update({
-              status: 'failed',
-              notes: `Messenger campaign requires connection - current distance: ${profile.network_distance}. Use connector campaign instead.`,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', prospect.id);
+          await pool.query(
+            `UPDATE campaign_prospects
+             SET status = 'failed',
+                 notes = $1,
+                 updated_at = $2
+             WHERE id = $3`,
+            [
+              `Messenger campaign requires connection - current distance: ${profile.network_distance}. Use connector campaign instead.`,
+              new Date().toISOString(),
+              prospect.id
+            ]
+          );
 
           validationResults.push({
             prospectId: prospect.id,
@@ -558,15 +534,15 @@ export async function POST(req: NextRequest) {
         }
 
         // Update prospect status (and A/B variant if applicable)
-        await supabase
-          .from('campaign_prospects')
-          .update({
-            status: 'connected', // Mark as connected
-            linkedin_user_id: providerId,
-            ab_variant: variant, // A/B testing variant assignment
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', prospect.id);
+        await pool.query(
+          `UPDATE campaign_prospects
+           SET status = 'connected',
+               linkedin_user_id = $1,
+               ab_variant = $2,
+               updated_at = $3
+           WHERE id = $4`,
+          [providerId, variant, new Date().toISOString(), prospect.id]
+        );
 
         validationResults.push({
           prospectId: prospect.id,
@@ -595,17 +571,33 @@ export async function POST(req: NextRequest) {
       console.log(`\n💾 Inserting ${queueRecords.length} queue records one by one...`);
 
       for (const record of queueRecords) {
-        const { error: insertError } = await supabase
-          .from('send_queue')
-          .insert(record);
+        const insertResult = await pool.query(
+          `INSERT INTO send_queue (
+            campaign_id, prospect_id, linkedin_user_id, message, scheduled_for,
+            status, message_type, requires_connection, variant, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            record.campaign_id,
+            record.prospect_id,
+            record.linkedin_user_id,
+            record.message,
+            record.scheduled_for,
+            record.status,
+            record.message_type,
+            record.requires_connection,
+            record.variant,
+            record.created_at,
+            record.updated_at
+          ]
+        );
 
-        if (insertError) {
-          queueInsertErrors.push(`${record.linkedin_user_id}: ${insertError.message}`);
-          if (queueInsertErrors.length <= 3) {
-            console.warn(`⚠️ Failed to queue: ${insertError.message}`);
-          }
-        } else {
+        if (insertResult.rowCount && insertResult.rowCount > 0) {
           queueInsertedCount++;
+        } else {
+          queueInsertErrors.push(`${record.linkedin_user_id}: Insert returned no rows`);
+          if (queueInsertErrors.length <= 3) {
+            console.warn(`⚠️ Failed to queue`);
+          }
         }
       }
 
@@ -638,6 +630,10 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('❌ Messenger queue creation error:', error);
     return NextResponse.json({
       success: false,

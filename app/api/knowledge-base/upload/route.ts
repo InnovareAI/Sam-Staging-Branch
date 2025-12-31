@@ -1,5 +1,5 @@
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool } from '@/lib/auth';
 
 async function extractText(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -15,13 +15,8 @@ async function extractText(file: File): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
-
-    // Get user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Authenticate with Firebase
+    const { userId } = await verifyAuth(request);
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -46,7 +41,7 @@ export async function POST(request: NextRequest) {
     const text = await extractText(file);
     const fileName = file.name;
     const fileSize = file.size;
-    
+
     // Parse tags
     const parsedTags = tags ? tags.split(',').map(tag => tag.trim()) : [];
     parsedTags.push('uploaded', contentType);
@@ -55,30 +50,35 @@ export async function POST(request: NextRequest) {
     const title = fileName.replace(/\.[^/.]+$/, '');
 
     // Insert into knowledge_base_content
-    const { data: content, error: insertError } = await supabase
-      .from('knowledge_base_content')
-      .insert({
-        workspace_id: workspaceId,
-        section_id: sectionId,
-        content_type: contentType,
-        title: title,
-        content: text,
-        metadata: {
+    const { rows } = await pool.query(
+      `INSERT INTO knowledge_base_content (
+        workspace_id, section_id, content_type, title, content,
+        metadata, tags, is_active, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *`,
+      [
+        workspaceId,
+        sectionId,
+        contentType,
+        title,
+        text,
+        JSON.stringify({
           filename: fileName,
           file_size: fileSize,
           uploaded_at: new Date().toISOString(),
-          uploaded_by: session.user.id,
+          uploaded_by: userId,
           tags: parsedTags
-        },
-        tags: parsedTags,
-        is_active: true,
-        created_by: session.user.id
-      })
-      .select()
-      .single();
+        }),
+        parsedTags,
+        true,
+        userId
+      ]
+    );
 
-    if (insertError) {
-      console.error('Error inserting KB content:', insertError);
+    const content = rows[0];
+
+    if (!content) {
+      console.error('Error inserting KB content');
       return NextResponse.json({ error: 'Failed to save document' }, { status: 500 });
     }
 
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Knowledge Base upload error:', error);
     return NextResponse.json(
-      { error: 'Failed to upload document' }, 
+      { error: 'Failed to upload document' },
       { status: 500 }
     );
   }
@@ -100,7 +100,9 @@ export async function POST(request: NextRequest) {
 // GET method to retrieve upload history for a section
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: await cookies() });
+    // Authenticate with Firebase
+    await verifyAuth(request);
+
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get('workspace_id');
     const sectionId = searchParams.get('section_id');
@@ -110,34 +112,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Workspace ID is required' }, { status: 400 });
     }
 
-    // Get user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Build query
-    let query = supabase
-      .from('knowledge_base_content')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true);
+    let query = 'SELECT * FROM knowledge_base_content WHERE workspace_id = $1 AND is_active = true';
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (sectionId) {
-      query = query.eq('section_id', sectionId);
+      query += ` AND section_id = $${paramIndex++}`;
+      params.push(sectionId);
     }
 
-    // Only show uploaded documents
-    query = query.contains('tags', ['uploaded']);
+    // Only show uploaded documents (tags contains 'uploaded')
+    query += ` AND $${paramIndex++} = ANY(tags)`;
+    params.push('uploaded');
 
-    const { data: uploads, error } = await query
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    query += ` ORDER BY created_at DESC LIMIT $${paramIndex++}`;
+    params.push(limit);
 
-    if (error) {
-      console.error('Error fetching uploads:', error);
-      return NextResponse.json({ error: 'Failed to fetch uploads' }, { status: 500 });
-    }
+    const { rows: uploads } = await pool.query(query, params);
 
     return NextResponse.json({ uploads });
   } catch (error) {

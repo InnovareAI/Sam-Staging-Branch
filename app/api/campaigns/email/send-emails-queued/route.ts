@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import moment from 'moment-timezone';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 import { personalizeMessage as personalizeMessageUniversal } from '@/lib/personalization';
@@ -22,9 +21,6 @@ import { personalizeMessage as personalizeMessageUniversal } from '@/lib/persona
  */
 
 export const maxDuration = 10; // 10 seconds max
-
-const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;
-const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY!;
 
 // Public holidays - International only (most campaigns target global prospects)
 // Removed US-only holidays (Thanksgiving, MLK, Presidents Day, etc.)
@@ -91,15 +87,7 @@ function calculateNextSendTime(baseTime: Date, prospectIndex: number, timezone =
 export async function POST(request: NextRequest) {
   try {
     // Authenticate user
-    const authClient = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Unauthorized'
-      }, { status: 401 });
-    }
+    const { userId, workspaceId } = await verifyAuth(request);
 
     const body = await request.json();
     const { campaignId } = body;
@@ -111,35 +99,28 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create Supabase client with service role key (bypasses RLS)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    // Get campaign details
+    const campaignResult = await pool.query(
+      `SELECT * FROM campaigns WHERE id = $1`,
+      [campaignId]
     );
 
-    // Get campaign details
-    const { data: campaign, error: campaignError } = await supabase
-      .from('campaigns')
-      .select('*')
-      .eq('id', campaignId)
-      .single();
-
-    if (campaignError || !campaign) {
+    if (campaignResult.rows.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'Campaign not found'
       }, { status: 404 });
     }
 
-    // Verify user has access to this campaign's workspace
-    const { data: membership } = await authClient
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', campaign.workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const campaign = campaignResult.rows[0];
 
-    if (!membership) {
+    // Verify user has access to this campaign's workspace
+    const membershipResult = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [campaign.workspace_id, userId]
+    );
+
+    if (membershipResult.rows.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'Access denied to this campaign'
@@ -147,19 +128,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get pending prospects (haven't been sent email yet)
-    const { data: prospects, error: prospectsError } = await supabase
-      .from('campaign_prospects')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .eq('status', 'pending');
+    const prospectsResult = await pool.query(
+      `SELECT * FROM campaign_prospects WHERE campaign_id = $1 AND status = 'pending'`,
+      [campaignId]
+    );
 
-    if (prospectsError) {
-      console.error('Error fetching prospects:', prospectsError);
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch prospects'
-      }, { status: 500 });
-    }
+    const prospects = prospectsResult.rows;
 
     if (!prospects || prospects.length === 0) {
       return NextResponse.json({
@@ -178,30 +152,22 @@ export async function POST(request: NextRequest) {
     // Get email account for this campaign
     // Table: workspace_accounts (not workspace_integration_accounts)
     // Filter: account_type='email', connection_status='connected'
-    const { data: emailAccounts, error: emailAccountError } = await supabase
-      .from('workspace_accounts')
-      .select('id, unipile_account_id, account_name, account_identifier')
-      .eq('workspace_id', campaign.workspace_id)
-      .eq('account_type', 'email')
-      .in('connection_status', VALID_CONNECTION_STATUSES)
-      .limit(1);
+    const emailAccountResult = await pool.query(
+      `SELECT id, unipile_account_id, account_name, account_identifier
+       FROM workspace_accounts
+       WHERE workspace_id = $1 AND account_type = 'email' AND connection_status = ANY($2)
+       LIMIT 1`,
+      [campaign.workspace_id, VALID_CONNECTION_STATUSES]
+    );
 
-    if (emailAccountError) {
-      console.error('Error fetching email account:', emailAccountError);
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch email account'
-      }, { status: 500 });
-    }
-
-    if (!emailAccounts || emailAccounts.length === 0) {
+    if (emailAccountResult.rows.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'No connected email account found for this workspace. Please connect an email account in Settings → Integrations.'
       }, { status: 400 });
     }
 
-    const emailAccount = emailAccounts[0];
+    const emailAccount = emailAccountResult.rows[0];
 
     // Get email content from campaign templates
     // Email campaigns use email_body field (NOT connection_request - that's LinkedIn)
@@ -291,21 +257,40 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert into email_send_queue
-    const { data: insertedRecords, error: insertError } = await supabase
-      .from('email_send_queue')
-      .insert(queueRecords)
-      .select();
+    let insertedCount = 0;
+    const insertErrors: string[] = [];
 
-    if (insertError) {
-      console.error('Error inserting queue records:', insertError);
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to create email queue',
-        details: insertError.message
-      }, { status: 500 });
+    for (const record of queueRecords) {
+      try {
+        await pool.query(
+          `INSERT INTO email_send_queue (
+            campaign_id, prospect_id, email_account_id, recipient_email, subject,
+            body, from_name, scheduled_for, status, variant
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [
+            record.campaign_id,
+            record.prospect_id,
+            record.email_account_id,
+            record.recipient_email,
+            record.subject,
+            record.body,
+            record.from_name,
+            record.scheduled_for,
+            record.status,
+            record.variant
+          ]
+        );
+        insertedCount++;
+      } catch (err: any) {
+        insertErrors.push(`${record.recipient_email}: ${err.message}`);
+      }
     }
 
-    console.log(`✅ Queued ${insertedRecords.length} emails for campaign ${campaignId}`);
+    if (insertErrors.length > 0) {
+      console.error(`❌ ${insertErrors.length} email queue inserts failed`);
+    }
+
+    console.log(`✅ Queued ${insertedCount} emails for campaign ${campaignId}`);
     console.log(`⏰ First email: ${queueRecords[0].scheduled_for}`);
     console.log(`⏰ Last email: ${queueRecords[queueRecords.length - 1].scheduled_for}`);
 
@@ -317,18 +302,18 @@ export async function POST(request: NextRequest) {
 
       // Update Variant A prospects
       if (variantAProspects.length > 0) {
-        await supabase
-          .from('campaign_prospects')
-          .update({ ab_variant: 'A' })
-          .in('id', variantAProspects);
+        await pool.query(
+          `UPDATE campaign_prospects SET ab_variant = 'A' WHERE id = ANY($1)`,
+          [variantAProspects]
+        );
       }
 
       // Update Variant B prospects
       if (variantBProspects.length > 0) {
-        await supabase
-          .from('campaign_prospects')
-          .update({ ab_variant: 'B' })
-          .in('id', variantBProspects);
+        await pool.query(
+          `UPDATE campaign_prospects SET ab_variant = 'B' WHERE id = ANY($1)`,
+          [variantBProspects]
+        );
       }
 
       console.log(`🧪 A/B variants assigned: ${variantAProspects.length} Variant A, ${variantBProspects.length} Variant B`);
@@ -336,8 +321,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Queued ${insertedRecords.length} emails`,
-      queued: insertedRecords.length,
+      message: `Queued ${insertedCount} emails`,
+      queued: insertedCount,
       first_scheduled: queueRecords[0].scheduled_for,
       last_scheduled: queueRecords[queueRecords.length - 1].scheduled_for,
       compliance: {
@@ -349,7 +334,11 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Email queue error:', error);
     return NextResponse.json({
       success: false,

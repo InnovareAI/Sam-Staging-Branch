@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { pool } from '@/lib/auth';
 
 /**
  * GET /api/unipile/callback
@@ -70,48 +65,53 @@ export async function GET(request: NextRequest) {
 
       if (email) {
         // Find user by email
-        const { data: userData } = await supabase.auth.admin.listUsers();
-        const user = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+        const { rows: users } = await pool.query(
+          'SELECT id FROM users WHERE email = $1',
+          [email.toLowerCase()]
+        );
+        const user = users[0];
 
         if (user) {
           // Get user's workspace
-          const { data: userProfile } = await supabase
-            .from('users')
-            .select('current_workspace_id')
-            .eq('id', user.id)
-            .single();
-
-          const workspaceId = userProfile?.current_workspace_id;
+          const { rows: userProfiles } = await pool.query(
+            'SELECT current_workspace_id FROM users WHERE id = $1',
+            [user.id]
+          );
+          const workspaceId = userProfiles[0]?.current_workspace_id;
 
           if (workspaceId) {
             // Store in workspace_accounts
-            const { error: dbError } = await supabase
-              .from('workspace_accounts')
-              .upsert({
-                workspace_id: workspaceId,
-                user_id: user.id,
-                account_type: 'email',
-                account_identifier: email,
-                account_name: email,
-                unipile_account_id: accountData.id,
-                connection_status: 'connected',
-                is_active: true,
-                account_metadata: {
+            await pool.query(
+              `INSERT INTO workspace_accounts
+               (workspace_id, user_id, account_type, account_identifier, account_name,
+                unipile_account_id, connection_status, is_active, account_metadata)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               ON CONFLICT (workspace_id, user_id, account_type, account_identifier)
+               DO UPDATE SET
+                 unipile_account_id = EXCLUDED.unipile_account_id,
+                 connection_status = EXCLUDED.connection_status,
+                 is_active = EXCLUDED.is_active,
+                 account_metadata = EXCLUDED.account_metadata,
+                 updated_at = NOW()`,
+              [
+                workspaceId,
+                user.id,
+                'email',
+                email,
+                email,
+                accountData.id,
+                'connected',
+                true,
+                JSON.stringify({
                   platform: accountData.type,
                   provider: accountData.type === 'GMAIL' ? 'google' : 'microsoft',
                   unipile_data: accountData,
                   connected_at: new Date().toISOString()
-                }
-              }, {
-                onConflict: 'workspace_id,user_id,account_type,account_identifier'
-              });
+                })
+              ]
+            );
 
-            if (dbError) {
-              console.error('❌ Database error storing email account:', dbError);
-              throw new Error(`Failed to store email account in workspace: ${dbError.message}`);
-            } else {
-              console.log('✅ Stored email account in workspace_accounts');
-            }
+            console.log('✅ Stored email account in workspace_accounts');
           } else {
             throw new Error('No workspace found for user - cannot store email account');
           }

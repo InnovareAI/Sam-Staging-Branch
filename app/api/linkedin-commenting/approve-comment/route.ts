@@ -6,8 +6,7 @@
  * A separate cron job processes the queue every 30 minutes
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
@@ -86,56 +85,40 @@ export async function POST(request: NextRequest) {
       console.log('📝 Using edited text:', edited_text.substring(0, 50) + '...');
     }
 
-    // Verify user is authenticated
-    const authClient = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-    if (authError || !user) {
-      console.error('❌ Auth error:', authError);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Use service role to bypass RLS for admin operations
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Authenticate user using Firebase auth
+    await verifyAuth(request);
 
     // Get comment with post details
-    const { data: comment, error: fetchError } = await supabase
-      .from('linkedin_post_comments')
-      .select(`
-        *,
-        post:linkedin_posts_discovered!inner (
-          id,
-          social_id,
-          share_url,
-          workspace_id
-        )
-      `)
-      .eq('id', comment_id)
-      .single();
+    const commentResult = await pool.query(
+      `SELECT lpc.*, lpd.id as post_db_id, lpd.social_id as post_social_id, lpd.share_url, lpd.workspace_id as post_workspace_id
+       FROM linkedin_post_comments lpc
+       INNER JOIN linkedin_posts_discovered lpd ON lpc.post_id = lpd.id
+       WHERE lpc.id = $1`,
+      [comment_id]
+    );
 
-    if (fetchError || !comment) {
-      console.error('❌ Error fetching comment:', fetchError);
+    if (commentResult.rows.length === 0) {
+      console.error('❌ Error fetching comment: not found');
       return NextResponse.json(
-        { error: 'Comment not found', details: fetchError?.message },
+        { error: 'Comment not found' },
         { status: 404 }
       );
     }
 
-    // Get LinkedIn account for this workspace (validate it exists)
-    const { data: linkedinAccount, error: accountError } = await supabase
-      .from('workspace_accounts')
-      .select('unipile_account_id')
-      .eq('workspace_id', comment.workspace_id)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES)
-      .limit(1)
-      .single();
+    const comment = commentResult.rows[0];
 
-    if (accountError || !linkedinAccount) {
-      console.error('❌ No LinkedIn account found:', accountError);
+    // Get LinkedIn account for this workspace (validate it exists)
+    const accountResult = await pool.query(
+      `SELECT unipile_account_id FROM workspace_accounts
+       WHERE workspace_id = $1
+       AND account_type = 'linkedin'
+       AND connection_status = ANY($2)
+       LIMIT 1`,
+      [comment.workspace_id, VALID_CONNECTION_STATUSES]
+    );
+
+    if (accountResult.rows.length === 0) {
+      console.error('❌ No LinkedIn account found');
       return NextResponse.json(
         { error: 'No connected LinkedIn account found for this workspace' },
         { status: 400 }
@@ -143,13 +126,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get workspace timezone from brand guidelines
-    const { data: brandSettings } = await supabase
-      .from('linkedin_brand_guidelines')
-      .select('timezone')
-      .eq('workspace_id', comment.workspace_id)
-      .single();
+    const brandResult = await pool.query(
+      `SELECT timezone FROM linkedin_brand_guidelines WHERE workspace_id = $1`,
+      [comment.workspace_id]
+    );
 
-    const workspaceTimezone = brandSettings?.timezone || TIMEZONE;
+    const workspaceTimezone = brandResult.rows[0]?.timezone || TIMEZONE;
 
     // Count existing scheduled comments for today
     const today = new Date();
@@ -157,47 +139,48 @@ export async function POST(request: NextRequest) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const { count: scheduledToday } = await supabase
-      .from('linkedin_post_comments')
-      .select('id', { count: 'exact', head: true })
-      .eq('workspace_id', comment.workspace_id)
-      .eq('status', 'scheduled')
-      .gte('scheduled_post_time', today.toISOString())
-      .lt('scheduled_post_time', tomorrow.toISOString());
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as count FROM linkedin_post_comments
+       WHERE workspace_id = $1
+       AND status = 'scheduled'
+       AND scheduled_post_time >= $2
+       AND scheduled_post_time < $3`,
+      [comment.workspace_id, today.toISOString(), tomorrow.toISOString()]
+    );
+
+    const scheduledToday = parseInt(countResult.rows[0]?.count || '0');
 
     // Check daily limit
-    if ((scheduledToday || 0) >= MAX_COMMENTS_PER_DAY) {
+    if (scheduledToday >= MAX_COMMENTS_PER_DAY) {
       console.log(`⚠️ Daily limit reached (${MAX_COMMENTS_PER_DAY}), scheduling for next day`);
     }
 
     // Calculate scheduled time
-    const scheduledPostTime = calculateScheduledTime(scheduledToday || 0, workspaceTimezone);
+    const scheduledPostTime = calculateScheduledTime(scheduledToday, workspaceTimezone);
 
     console.log(`📅 Scheduling comment for: ${scheduledPostTime.toISOString()}`);
-    console.log(`   Queue position: ${(scheduledToday || 0) + 1} of ${MAX_COMMENTS_PER_DAY} daily max`);
+    console.log(`   Queue position: ${scheduledToday + 1} of ${MAX_COMMENTS_PER_DAY} daily max`);
 
     // Use edited text if provided, otherwise use original from database
     const commentTextToPost = edited_text || comment.comment_text;
 
     // Update comment: set status to 'scheduled' and scheduled_post_time
-    const { error: updateError } = await supabase
-      .from('linkedin_post_comments')
-      .update({
-        status: 'scheduled',
-        comment_text: commentTextToPost,
-        approved_at: new Date().toISOString(),
-        scheduled_post_time: scheduledPostTime.toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', comment_id);
-
-    if (updateError) {
-      console.error('❌ Error scheduling comment:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to schedule comment', details: updateError.message },
-        { status: 500 }
-      );
-    }
+    await pool.query(
+      `UPDATE linkedin_post_comments
+       SET status = 'scheduled',
+           comment_text = $1,
+           approved_at = $2,
+           scheduled_post_time = $3,
+           updated_at = $4
+       WHERE id = $5`,
+      [
+        commentTextToPost,
+        new Date().toISOString(),
+        scheduledPostTime.toISOString(),
+        new Date().toISOString(),
+        comment_id
+      ]
+    );
 
     // Format time for user display
     const displayTime = scheduledPostTime.toLocaleString('en-US', {
@@ -216,10 +199,16 @@ export async function POST(request: NextRequest) {
       success: true,
       message: `Comment scheduled for ${displayTime}`,
       scheduled_for: scheduledPostTime.toISOString(),
-      queue_position: (scheduledToday || 0) + 1
+      queue_position: scheduledToday + 1
     });
 
   } catch (error) {
+    // Handle auth errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
+
     console.error('❌ Unexpected error:', error);
     return NextResponse.json({
       error: 'Internal server error',

@@ -1,49 +1,36 @@
-
-import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/security/route-auth';
+import { pool } from '@/lib/auth';
 
 // Admin tool to fix LinkedIn associations for all affected users
 export async function POST(request: NextRequest) {
-
   // Require admin authentication
-  const { error: authError } = await requireAdmin(request);
+  const { error: authError, user } = await requireAdmin(request);
   if (authError) return authError;
-  try {
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    
-    // Check if user is super admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required',
-        timestamp: new Date().toISOString()
-      }, { status: 401 })
-    }
 
-    const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(user.email?.toLowerCase() || '')
+  try {
+    // Check if user is super admin
+    const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(user?.email?.toLowerCase() || '');
     if (!isSuperAdmin) {
       return NextResponse.json({
         success: false,
         error: 'Super admin access required',
         timestamp: new Date().toISOString()
-      }, { status: 403 })
+      }, { status: 403 });
     }
 
-    console.log(`🔧 LinkedIn association fix initiated by admin: ${user.email}`)
+    console.log(`🔧 LinkedIn association fix initiated by admin: ${user?.email}`);
 
     // Get Unipile configuration
-    const unipileDsn = process.env.UNIPILE_DSN
-    const unipileApiKey = process.env.UNIPILE_API_KEY
+    const unipileDsn = process.env.UNIPILE_DSN;
+    const unipileApiKey = process.env.UNIPILE_API_KEY;
 
     if (!unipileDsn || !unipileApiKey) {
       return NextResponse.json({
         success: false,
         error: 'Unipile configuration missing',
         timestamp: new Date().toISOString()
-      }, { status: 503 })
+      }, { status: 503 });
     }
 
     // Fetch all Unipile LinkedIn accounts
@@ -51,49 +38,46 @@ export async function POST(request: NextRequest) {
       headers: {
         'X-API-KEY': unipileApiKey
       }
-    })
+    });
 
     if (!unipileResponse.ok) {
-      throw new Error(`Unipile API error: ${unipileResponse.status}`)
+      throw new Error(`Unipile API error: ${unipileResponse.status}`);
     }
 
-    const unipileData = await unipileResponse.json()
-    const linkedinAccounts = unipileData.items?.filter((account: any) => account.type === 'LINKEDIN') || []
+    const unipileData = await unipileResponse.json();
+    const linkedinAccounts = unipileData.items?.filter((account: any) => account.type === 'LINKEDIN') || [];
 
-    console.log(`📋 Found ${linkedinAccounts.length} LinkedIn accounts in Unipile`)
+    console.log(`📋 Found ${linkedinAccounts.length} LinkedIn accounts in Unipile`);
 
-    // Get all SAM AI users with InnovareAI workspace
-    const { data: allUsers } = await supabase
-      .from('users')
-      .select(`
-        id, 
-        email, 
-        current_workspace_id,
-        workspaces!current_workspace_id (
-          id,
-          name
-        )
-      `)
+    // Get all SAM AI users with their current workspace
+    const usersResult = await pool.query(`
+      SELECT u.id, u.email, u.current_workspace_id, w.id as workspace_id, w.name as workspace_name
+      FROM users u
+      LEFT JOIN workspaces w ON u.current_workspace_id = w.id
+    `);
+    const allUsers = usersResult.rows;
 
     if (!allUsers || allUsers.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'No users found',
         timestamp: new Date().toISOString()
-      }, { status: 404 })
+      }, { status: 404 });
     }
 
-    console.log(`👥 Found ${allUsers.length} SAM AI users`)
+    console.log(`👥 Found ${allUsers.length} SAM AI users`);
 
     // Get existing associations to avoid duplicates
-    const { data: existingAssociations } = await supabase
-      .from('workspace_accounts')
-      .select('user_id, unipile_account_id, workspace_id')
-      .eq('account_type', 'linkedin')
+    const existingAssocResult = await pool.query(`
+      SELECT user_id, unipile_account_id, workspace_id
+      FROM workspace_accounts
+      WHERE account_type = 'linkedin'
+    `);
+    const existingAssociations = existingAssocResult.rows;
 
     const existingSet = new Set(
       (existingAssociations || []).map(a => `${a.user_id}:${a.unipile_account_id}:${a.workspace_id}`)
-    )
+    );
 
     const results = {
       total_unipile_accounts: linkedinAccounts.length,
@@ -103,140 +87,127 @@ export async function POST(request: NextRequest) {
       associations_created: [] as any[],
       users_processed: 0,
       errors: [] as string[]
-    }
+    };
 
     // Process each user
     for (const samUser of allUsers) {
       if (!samUser.current_workspace_id) {
-        console.log(`⏭️  Skipping ${samUser.email} - no workspace`)
-        continue
+        console.log(`⏭️  Skipping ${samUser.email} - no workspace`);
+        continue;
       }
 
-      results.users_processed++
-      const userEmailDomain = samUser.email?.split('@')[1]?.toLowerCase()
+      results.users_processed++;
+      const userEmailDomain = samUser.email?.split('@')[1]?.toLowerCase();
 
       // Find matching LinkedIn accounts for this user
       for (const linkedinAccount of linkedinAccounts) {
-        const associationKey = `${samUser.id}:${linkedinAccount.id}:${samUser.current_workspace_id}`
-        
+        const associationKey = `${samUser.id}:${linkedinAccount.id}:${samUser.current_workspace_id}`;
+
         // Skip if association already exists
         if (existingSet.has(associationKey)) {
-          continue
+          continue;
         }
 
         // Check if account has InnovareAI organization
-        const hasInnovareOrg = linkedinAccount.connection_params?.im?.organizations?.some((org: any) => 
-          org.name?.toLowerCase().includes('innovareai') || 
+        const hasInnovareOrg = linkedinAccount.connection_params?.im?.organizations?.some((org: any) =>
+          org.name?.toLowerCase().includes('innovareai') ||
           org.name?.toLowerCase().includes('innovare')
-        )
+        );
 
         // Check email domain match
-        const accountEmail = linkedinAccount.connection_params?.im?.username || linkedinAccount.name
-        const accountEmailDomain = accountEmail?.includes('@') ? accountEmail.split('@')[1]?.toLowerCase() : null
-        const emailDomainMatch = accountEmailDomain && userEmailDomain && accountEmailDomain === userEmailDomain
+        const accountEmail = linkedinAccount.connection_params?.im?.username || linkedinAccount.name;
+        const accountEmailDomain = accountEmail?.includes('@') ? accountEmail.split('@')[1]?.toLowerCase() : null;
+        const emailDomainMatch = accountEmailDomain && userEmailDomain && accountEmailDomain === userEmailDomain;
 
         // Match logic: InnovareAI organization OR email domain match
         if (hasInnovareOrg || emailDomainMatch) {
           try {
-            const association = {
-              workspace_id: samUser.current_workspace_id,
-              user_id: samUser.id,
-              unipile_account_id: linkedinAccount.id,
-              account_type: 'linkedin',
-              account_name: linkedinAccount.name,
-              account_identifier: linkedinAccount.connection_params?.im?.publicIdentifier || linkedinAccount.name,
-              connection_status: 'active',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
+            const insertResult = await pool.query(`
+              INSERT INTO workspace_accounts
+              (workspace_id, user_id, unipile_account_id, account_type, account_name, account_identifier, connection_status, created_at, updated_at)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+              RETURNING *
+            `, [
+              samUser.current_workspace_id,
+              samUser.id,
+              linkedinAccount.id,
+              'linkedin',
+              linkedinAccount.name,
+              linkedinAccount.connection_params?.im?.publicIdentifier || linkedinAccount.name,
+              'active',
+              new Date().toISOString(),
+              new Date().toISOString()
+            ]);
 
-            const { error: insertError } = await supabase
-              .from('workspace_accounts')
-              .insert([association])
-
-            if (insertError) {
-              console.error(`❌ Error associating ${linkedinAccount.name} to ${samUser.email}:`, insertError)
-              results.errors.push(`${samUser.email}: ${insertError.message}`)
-            } else {
-              results.new_associations++
+            if (insertResult.rows.length > 0) {
+              results.new_associations++;
               results.associations_created.push({
                 user_email: samUser.email,
                 linkedin_account: linkedinAccount.name,
                 account_id: linkedinAccount.id,
                 workspace_id: samUser.current_workspace_id,
                 match_reason: hasInnovareOrg ? 'InnovareAI organization' : 'Email domain match'
-              })
-              
-              console.log(`✅ Associated ${linkedinAccount.name} to ${samUser.email} (${hasInnovareOrg ? 'org' : 'email'} match)`)
+              });
+
+              console.log(`✅ Associated ${linkedinAccount.name} to ${samUser.email} (${hasInnovareOrg ? 'org' : 'email'} match)`);
             }
-          } catch (error) {
-            console.error(`❌ Exception associating ${linkedinAccount.name} to ${samUser.email}:`, error)
-            results.errors.push(`${samUser.email}: ${error}`)
+          } catch (error: any) {
+            console.error(`❌ Error associating ${linkedinAccount.name} to ${samUser.email}:`, error);
+            results.errors.push(`${samUser.email}: ${error.message}`);
           }
         }
       }
     }
 
-    console.log(`✅ LinkedIn association fix completed`)
-    console.log(`   - Processed ${results.users_processed} users`)
-    console.log(`   - Created ${results.new_associations} new associations`)
-    console.log(`   - Errors: ${results.errors.length}`)
+    console.log(`✅ LinkedIn association fix completed`);
+    console.log(`   - Processed ${results.users_processed} users`);
+    console.log(`   - Created ${results.new_associations} new associations`);
+    console.log(`   - Errors: ${results.errors.length}`);
 
     return NextResponse.json({
       success: true,
       message: 'LinkedIn association fix completed',
       ...results,
       timestamp: new Date().toISOString()
-    })
+    });
 
   } catch (error) {
-    console.error('Error in LinkedIn association fix:', error)
+    console.error('Error in LinkedIn association fix:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',
       timestamp: new Date().toISOString()
-    }, { status: 500 })
+    }, { status: 500 });
   }
 }
 
 // GET method to preview what would be fixed without making changes
 export async function GET(request: NextRequest) {
-
   // Require admin authentication
-  const { error: authError } = await requireAdmin(request);
+  const { error: authError, user } = await requireAdmin(request);
   if (authError) return authError;
-  try {
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    
-    // Check if user is super admin
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required',
-        timestamp: new Date().toISOString()
-      }, { status: 401 })
-    }
 
-    const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(user.email?.toLowerCase() || '')
+  try {
+    // Check if user is super admin
+    const isSuperAdmin = ['tl@innovareai.com', 'cl@innovareai.com'].includes(user?.email?.toLowerCase() || '');
     if (!isSuperAdmin) {
       return NextResponse.json({
         success: false,
         error: 'Super admin access required',
         timestamp: new Date().toISOString()
-      }, { status: 403 })
+      }, { status: 403 });
     }
 
     // Get Unipile configuration
-    const unipileDsn = process.env.UNIPILE_DSN
-    const unipileApiKey = process.env.UNIPILE_API_KEY
+    const unipileDsn = process.env.UNIPILE_DSN;
+    const unipileApiKey = process.env.UNIPILE_API_KEY;
 
     if (!unipileDsn || !unipileApiKey) {
       return NextResponse.json({
         success: false,
         error: 'Unipile configuration missing',
         timestamp: new Date().toISOString()
-      }, { status: 503 })
+      }, { status: 503 });
     }
 
     // Fetch all Unipile LinkedIn accounts
@@ -244,59 +215,56 @@ export async function GET(request: NextRequest) {
       headers: {
         'X-API-KEY': unipileApiKey
       }
-    })
+    });
 
     if (!unipileResponse.ok) {
-      throw new Error(`Unipile API error: ${unipileResponse.status}`)
+      throw new Error(`Unipile API error: ${unipileResponse.status}`);
     }
 
-    const unipileData = await unipileResponse.json()
-    const linkedinAccounts = unipileData.items?.filter((account: any) => account.type === 'LINKEDIN') || []
+    const unipileData = await unipileResponse.json();
+    const linkedinAccounts = unipileData.items?.filter((account: any) => account.type === 'LINKEDIN') || [];
 
     // Get all SAM AI users
-    const { data: allUsers } = await supabase
-      .from('users')
-      .select(`
-        id, 
-        email, 
-        current_workspace_id,
-        workspaces!current_workspace_id (
-          id,
-          name
-        )
-      `)
+    const usersResult = await pool.query(`
+      SELECT u.id, u.email, u.current_workspace_id, w.id as workspace_id, w.name as workspace_name
+      FROM users u
+      LEFT JOIN workspaces w ON u.current_workspace_id = w.id
+    `);
+    const allUsers = usersResult.rows;
 
     // Get existing associations
-    const { data: existingAssociations } = await supabase
-      .from('workspace_accounts')
-      .select('user_id, unipile_account_id, workspace_id, account_name')
-      .eq('account_type', 'linkedin')
+    const existingAssocResult = await pool.query(`
+      SELECT user_id, unipile_account_id, workspace_id, account_name
+      FROM workspace_accounts
+      WHERE account_type = 'linkedin'
+    `);
+    const existingAssociations = existingAssocResult.rows;
 
     const existingSet = new Set(
       (existingAssociations || []).map(a => `${a.user_id}:${a.unipile_account_id}:${a.workspace_id}`)
-    )
+    );
 
-    const potentialMatches = []
+    const potentialMatches = [];
 
     // Analyze potential matches
     for (const samUser of allUsers || []) {
-      if (!samUser.current_workspace_id) continue
+      if (!samUser.current_workspace_id) continue;
 
-      const userEmailDomain = samUser.email?.split('@')[1]?.toLowerCase()
+      const userEmailDomain = samUser.email?.split('@')[1]?.toLowerCase();
 
       for (const linkedinAccount of linkedinAccounts) {
-        const associationKey = `${samUser.id}:${linkedinAccount.id}:${samUser.current_workspace_id}`
-        
-        if (existingSet.has(associationKey)) continue
+        const associationKey = `${samUser.id}:${linkedinAccount.id}:${samUser.current_workspace_id}`;
 
-        const hasInnovareOrg = linkedinAccount.connection_params?.im?.organizations?.some((org: any) => 
-          org.name?.toLowerCase().includes('innovareai') || 
+        if (existingSet.has(associationKey)) continue;
+
+        const hasInnovareOrg = linkedinAccount.connection_params?.im?.organizations?.some((org: any) =>
+          org.name?.toLowerCase().includes('innovareai') ||
           org.name?.toLowerCase().includes('innovare')
-        )
+        );
 
-        const accountEmail = linkedinAccount.connection_params?.im?.username || linkedinAccount.name
-        const accountEmailDomain = accountEmail?.includes('@') ? accountEmail.split('@')[1]?.toLowerCase() : null
-        const emailDomainMatch = accountEmailDomain && userEmailDomain && accountEmailDomain === userEmailDomain
+        const accountEmail = linkedinAccount.connection_params?.im?.username || linkedinAccount.name;
+        const accountEmailDomain = accountEmail?.includes('@') ? accountEmail.split('@')[1]?.toLowerCase() : null;
+        const emailDomainMatch = accountEmailDomain && userEmailDomain && accountEmailDomain === userEmailDomain;
 
         if (hasInnovareOrg || emailDomainMatch) {
           potentialMatches.push({
@@ -308,7 +276,7 @@ export async function GET(request: NextRequest) {
             linkedin_identifier: linkedinAccount.connection_params?.im?.publicIdentifier,
             match_reason: hasInnovareOrg ? 'InnovareAI organization' : 'Email domain match',
             organizations: linkedinAccount.connection_params?.im?.organizations?.map((org: any) => org.name) || []
-          })
+          });
         }
       }
     }
@@ -322,14 +290,14 @@ export async function GET(request: NextRequest) {
       potential_new_associations: potentialMatches.length,
       potential_matches: potentialMatches,
       timestamp: new Date().toISOString()
-    })
+    });
 
   } catch (error) {
-    console.error('Error previewing LinkedIn association fix:', error)
+    console.error('Error previewing LinkedIn association fix:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',
       timestamp: new Date().toISOString()
-    }, { status: 500 })
+    }, { status: 500 });
   }
 }

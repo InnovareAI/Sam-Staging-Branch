@@ -1,13 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool } from '@/lib/auth';
 
 async function callUnipileAPI(endpoint: string) {
-  const unipileDsn = process.env.UNIPILE_DSN
-  const unipileApiKey = process.env.UNIPILE_API_KEY
+  const unipileDsn = process.env.UNIPILE_DSN;
+  const unipileApiKey = process.env.UNIPILE_API_KEY;
 
   if (!unipileDsn || !unipileApiKey) {
-    throw new Error('Unipile API credentials not configured')
+    throw new Error('Unipile API credentials not configured');
   }
 
   const response = await fetch(`https://${unipileDsn}/api/v1/${endpoint}`, {
@@ -15,21 +14,21 @@ async function callUnipileAPI(endpoint: string) {
       'X-API-KEY': unipileApiKey,
       Accept: 'application/json'
     }
-  })
+  });
 
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Unipile API error: ${response.status} ${response.statusText} - ${text}`)
+    const text = await response.text();
+    throw new Error(`Unipile API error: ${response.status} ${response.statusText} - ${text}`);
   }
 
-  return response.json()
+  return response.json();
 }
 
 function evaluateAccountStatus(account: any) {
-  const sources = account?.sources || []
-  const primary = sources[0]
-  const status = primary?.status || 'UNKNOWN'
-  const functional = status === 'OK' || status === 'RUNNING' || status === 'HEALTHY'
+  const sources = account?.sources || [];
+  const primary = sources[0];
+  const status = primary?.status || 'UNKNOWN';
+  const functional = status === 'OK' || status === 'RUNNING' || status === 'HEALTHY';
 
   return {
     account_id: account.id,
@@ -38,51 +37,20 @@ function evaluateAccountStatus(account: any) {
     functional,
     last_test: new Date().toISOString(),
     error: functional ? null : 'Re-authentication required'
-  }
+  };
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
+    const { userId, workspaceId } = await verifyAuth(request);
 
-    if (authError || !session?.user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required',
-        functional: false
-      }, { status: 401 })
-    }
-
-    const user = session.user
-
-    const { data: profile, error: profileError } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError || !profile?.current_workspace_id) {
-      return NextResponse.json({
-        success: true,
-        functional: false,
-        overall_status: 'no_workspace',
-        account_count: 0,
-        functional_count: 0,
-        accounts: [],
-        last_checked: new Date().toISOString()
-      })
-    }
-
-    const workspaceId = profile.current_workspace_id as string
-
-    const { data: workspaceAccounts } = await supabase
-      .from('workspace_accounts')
-      .select('unipile_account_id, connection_status')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .eq('account_type', 'linkedin')
+    // Get workspace accounts
+    const { rows: workspaceAccounts } = await pool.query(
+      `SELECT unipile_account_id, connection_status
+       FROM workspace_accounts
+       WHERE workspace_id = $1 AND user_id = $2 AND account_type = 'linkedin'`,
+      [workspaceId, userId]
+    );
 
     if (!workspaceAccounts || workspaceAccounts.length === 0) {
       return NextResponse.json({
@@ -93,34 +61,34 @@ export async function POST(request: NextRequest) {
         functional_count: 0,
         accounts: [],
         last_checked: new Date().toISOString()
-      })
+      });
     }
 
-    const unipileAccountsData = await callUnipileAPI('accounts')
+    const unipileAccountsData = await callUnipileAPI('accounts');
     const allAccounts = Array.isArray(unipileAccountsData)
       ? unipileAccountsData
-      : (unipileAccountsData.items || unipileAccountsData.accounts || [])
+      : (unipileAccountsData.items || unipileAccountsData.accounts || []);
 
     const targetIds = new Set(
       workspaceAccounts
-        .map(acc => acc.unipile_account_id)
+        .map((acc: any) => acc.unipile_account_id)
         .filter(Boolean)
-    )
+    );
 
-    const matchedAccounts = allAccounts.filter((account: any) => targetIds.has(account.id))
+    const matchedAccounts = allAccounts.filter((account: any) => targetIds.has(account.id));
 
-    const accountStatus = matchedAccounts.map(evaluateAccountStatus)
-    const functionalAccounts = accountStatus.filter(acc => acc.functional)
+    const accountStatus = matchedAccounts.map(evaluateAccountStatus);
+    const functionalAccounts = accountStatus.filter((acc: any) => acc.functional);
 
-    let overallStatus: 'no_accounts' | 'fully_functional' | 'partially_functional' | 'all_non_functional'
+    let overallStatus: 'no_accounts' | 'fully_functional' | 'partially_functional' | 'all_non_functional';
     if (accountStatus.length === 0) {
-      overallStatus = 'no_accounts'
+      overallStatus = 'no_accounts';
     } else if (functionalAccounts.length === 0) {
-      overallStatus = 'all_non_functional'
+      overallStatus = 'all_non_functional';
     } else if (functionalAccounts.length === accountStatus.length) {
-      overallStatus = 'fully_functional'
+      overallStatus = 'fully_functional';
     } else {
-      overallStatus = 'partially_functional'
+      overallStatus = 'partially_functional';
     }
 
     return NextResponse.json({
@@ -137,15 +105,15 @@ export async function POST(request: NextRequest) {
         rate_limited: 0
       },
       last_checked: new Date().toISOString()
-    })
+    });
   } catch (error) {
-    console.error('LinkedIn connection test failed:', error)
+    console.error('LinkedIn connection test failed:', error);
 
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'LinkedIn connection test failed',
       functional: false,
       debug_error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    }, { status: 500 });
   }
 }

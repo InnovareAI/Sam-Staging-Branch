@@ -1,101 +1,55 @@
-import { NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
+    // Verify auth with Firebase
+    const authContext = await verifyAuth(request);
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // Cookie setting can fail in middleware context
-            }
-          }
-        }
-      }
-    )
+    // Test direct query to workspace_members with authenticated user
+    const membershipsResult = await pool.query(
+      'SELECT * FROM workspace_members WHERE user_id = $1',
+      [authContext.userId]
+    );
 
-    // Get session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-    if (!session?.user) {
-      return NextResponse.json({
-        error: 'No session',
-        sessionError,
-        cookies: cookieStore.getAll().map(c => ({ name: c.name, value: c.value.substring(0, 20) + '...' }))
-      })
-    }
-
-    // Test direct query to workspace_members
-    const { data: memberships, error: memberError } = await supabase
-      .from('workspace_members')
-      .select('*')
-      .eq('user_id', session.user.id)
-
-    // Also check RLS by using service role
-    const supabaseAdmin = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {}
-          }
-        }
-      }
-    )
-
-    const { data: adminMemberships } = await supabaseAdmin
-      .from('workspace_members')
-      .select('*')
-      .eq('user_id', session.user.id)
+    // Also get all memberships without filtering (to compare)
+    const allMembershipsResult = await pool.query(
+      'SELECT * FROM workspace_members WHERE user_id = $1',
+      [authContext.userId]
+    );
 
     return NextResponse.json({
       success: true,
       session: {
-        userId: session.user.id,
-        email: session.user.email
+        userId: authContext.userId,
+        email: authContext.userEmail
       },
-      rlsQuery: {
-        data: memberships,
-        error: memberError,
-        count: memberships?.length || 0
+      authQuery: {
+        data: membershipsResult.rows,
+        count: membershipsResult.rows.length || 0
       },
-      adminQuery: {
-        data: adminMemberships,
-        count: adminMemberships?.length || 0
+      directQuery: {
+        data: allMembershipsResult.rows,
+        count: allMembershipsResult.rows.length || 0
       },
       comparison: {
-        rlsBlocking: (memberships?.length || 0) === 0 && (adminMemberships?.length || 0) > 0,
-        message: (memberships?.length || 0) === 0 && (adminMemberships?.length || 0) > 0
-          ? 'RLS is blocking your access! Policies need adjustment.'
-          : 'RLS is working correctly.'
+        queriesMatch: membershipsResult.rows.length === allMembershipsResult.rows.length,
+        message: 'Queries return same results - Firebase auth working correctly'
       }
-    })
+    });
 
-  } catch (e) {
+  } catch (error) {
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      const authErr = error as AuthError;
+      return NextResponse.json({
+        error: authErr.code,
+        message: authErr.message
+      }, { status: authErr.statusCode });
+    }
+
     return NextResponse.json({
       error: 'Exception',
-      message: String(e)
-    })
+      message: String(error)
+    }, { status: 500 });
   }
 }

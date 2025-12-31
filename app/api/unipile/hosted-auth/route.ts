@@ -1,47 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status'
-
-// Utility to clean corrupted cookie values
-function cleanCookieValue(value: string): string {
-  if (!value) return value;
-  
-  // If value starts with "base64-", it's corrupted - remove prefix
-  if (value.startsWith('base64-')) {
-    try {
-      const base64Value = value.substring(7);
-      const decoded = Buffer.from(base64Value, 'base64').toString('utf-8');
-      console.log('🔧 Fixed corrupted server-side cookie (decoded base64)');
-      return decoded;
-    } catch (e) {
-      console.log('🔧 Fixed corrupted server-side cookie (removed prefix)');
-      return value.substring(7);
-    }
-  }
-  
-  return value;
-}
 
 // Helper function to check existing LinkedIn accounts for user
 async function checkExistingLinkedInAccounts(userId: string) {
   try {
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    
-    const { data, error } = await supabase
-      .from('user_unipile_accounts')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('platform', 'LINKEDIN')
-      .eq('connection_status', 'active')
-    
-    if (error) {
-      console.error('Error checking existing LinkedIn accounts:', error)
-      return []
-    }
-    
-    return data || []
+    const { rows } = await pool.query(
+      `SELECT * FROM user_unipile_accounts
+       WHERE user_id = $1 AND platform = 'LINKEDIN' AND connection_status = 'active'`,
+      [userId]
+    )
+    return rows || []
   } catch (error) {
     console.error('Exception checking existing LinkedIn accounts:', error)
     return []
@@ -69,7 +38,7 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
   }
 
   const response = await fetch(url, options)
-  
+
   if (!response.ok) {
     const errorText = await response.text()
     console.error(`Unipile API error: ${response.status} ${response.statusText}`, {
@@ -88,94 +57,16 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 export async function POST(request: NextRequest) {
   try {
     console.log('🔑 POST /api/unipile/hosted-auth called')
-    
-    // Authenticate user first with cleaned cookies
-    const cookieStore = await cookies()
-    
-    // Clean corrupted cookies
-    const cleanedCookies = () => {
-      const originalCookies = cookieStore.getAll()
-      return {
-        getAll: () => originalCookies.map(cookie => ({
-          ...cookie,
-          value: cleanCookieValue(cookie.value)
-        })),
-        get: (name: string) => {
-          const cookie = cookieStore.get(name)
-          if (!cookie) return undefined
-          return {
-            ...cookie,
-            value: cleanCookieValue(cookie.value)
-          }
-        },
-        set: cookieStore.set,
-        delete: cookieStore.delete
-      }
-    }
-    
-    const supabase = createRouteHandlerClient({ cookies: cleanedCookies })
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
-    
-    console.log('🔍 Auth check:', { 
-      hasSession: !!session, 
-      hasUser: !!session?.user,
-      userId: session?.user?.id,
-      authError: authError?.message 
-    })
-    
-    if (authError || !session || !session.user) {
-      console.error('❌ Authentication failed:', authError)
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required to generate hosted auth link',
-        timestamp: new Date().toISOString()
-      }, { status: 401 })
-    }
 
-    const user = session.user
+    // Authenticate user using Firebase/Cloud SQL
+    const { userId, userEmail, workspaceId } = await verifyAuth(request)
 
-    console.log(`🔗 User ${user.email} (${user.id}) requesting hosted auth link`)
+    console.log(`🔗 User ${userEmail} (${userId}) requesting hosted auth link`)
 
-    // Get workspace - try users table first, fall back to workspace_members
-    let workspaceId: string | null = null
-    
-    try {
-      const { data: profile } = await supabase
-        .from('users')
-        .select('current_workspace_id')
-        .eq('id', user.id)
-        .maybeSingle()
-      
-      if (profile?.current_workspace_id) {
-        workspaceId = profile.current_workspace_id
-        console.log('✅ Workspace from users table:', workspaceId)
-      }
-    } catch (userTableError) {
-      console.log('⚠️ Users table not available, using fallback')
-    }
-    
-    if (!workspaceId) {
-      try {
-        // Fallback: get first workspace from memberships
-        const { data: memberships } = await supabase
-          .from('workspace_members')
-          .select('workspace_id')
-          .eq('user_id', user.id)
-          .limit(1)
-          .maybeSingle()
-
-        if (memberships?.workspace_id) {
-          workspaceId = memberships.workspace_id
-          console.log('✅ Workspace from memberships:', workspaceId)
-        }
-      } catch (membershipError) {
-        console.error('❌ Failed to get workspace from memberships:', membershipError)
-      }
-    }
-
+    // Verify workspace exists
     if (!workspaceId) {
       // CRITICAL: User has no workspace - must fail here
-      console.error(`🚨 CRITICAL: User ${user.id} (${user.email}) has no workspace_id. Cannot connect account without workspace.`)
+      console.error(`🚨 CRITICAL: User ${userId} (${userEmail}) has no workspace_id. Cannot connect account without workspace.`)
       return NextResponse.json({
         success: false,
         error: 'No workspace found for user. Please create or join a workspace first.',
@@ -188,22 +79,20 @@ export async function POST(request: NextRequest) {
     const { provider, type = 'API', redirect_url } = body
 
     console.log('📋 Request body:', { provider, type, redirect_url })
-    
+
     // Get user's profile country for proxy assignment
     let userCountry: string | null = null
     try {
-      const { data: userProfile } = await supabase
-        .from('users')
-        .select('profile_country')
-        .eq('id', user.id)
-        .maybeSingle()
-      
-      userCountry = userProfile?.profile_country || null
+      const { rows } = await pool.query(
+        'SELECT profile_country FROM users WHERE id = $1',
+        [userId]
+      )
+      userCountry = rows[0]?.profile_country || null
       console.log('📍 User profile country:', userCountry)
     } catch (error) {
       console.log('⚠️ Could not fetch user profile country:', error)
     }
-    
+
     // Check if user already has accounts to prevent duplicates
     // Per Unipile support: Use "reconnect" flow for existing accounts to prevent duplicates
     let existingAccounts: any[] = []
@@ -211,7 +100,7 @@ export async function POST(request: NextRequest) {
     let reconnectAccountId = null
 
     if (provider === 'LINKEDIN') {
-      existingAccounts = await checkExistingLinkedInAccounts(user.id)
+      existingAccounts = await checkExistingLinkedInAccounts(userId)
       console.log(`📊 User has ${existingAccounts.length} existing LinkedIn accounts`)
 
       // If user has existing accounts, use reconnect flow instead of create
@@ -219,19 +108,17 @@ export async function POST(request: NextRequest) {
       reconnectAccountId = existingAccounts.length > 0 ? existingAccounts[0].unipile_account_id : null
     } else if (provider === 'GOOGLE' || provider === 'OUTLOOK' || !provider) {
       // Check for existing email accounts
-      const { data: emailAccounts, error: emailQueryError } = await supabase
-        .from('workspace_accounts')
-        .select('unipile_account_id')
-        .eq('workspace_id', workspaceId)
-        .eq('account_type', 'email')
-        .in('connection_status', VALID_CONNECTION_STATUSES)
-
-      if (emailQueryError) {
-        console.error('❌ Error querying email accounts:', emailQueryError)
-        // Don't fail the flow, just assume no existing accounts
-        existingAccounts = []
-      } else {
+      try {
+        const statusPlaceholders = VALID_CONNECTION_STATUSES.map((_, i) => `$${i + 3}`).join(', ')
+        const { rows: emailAccounts } = await pool.query(
+          `SELECT unipile_account_id FROM workspace_accounts
+           WHERE workspace_id = $1 AND account_type = 'email' AND connection_status IN (${statusPlaceholders})`,
+          [workspaceId, ...VALID_CONNECTION_STATUSES]
+        )
         existingAccounts = emailAccounts || []
+      } catch (emailQueryError) {
+        console.error('❌ Error querying email accounts:', emailQueryError)
+        existingAccounts = []
       }
 
       console.log(`📧 User has ${existingAccounts.length} existing email accounts`)
@@ -243,17 +130,17 @@ export async function POST(request: NextRequest) {
       console.log(`⚠️ Unknown provider (${provider}) - using create flow`)
       authType = 'create'
     }
-    
+
     // Get the current domain for callback URL
     // Always use correct production URL for LinkedIn authentication
-    const origin = process.env.NODE_ENV === 'production' 
+    const origin = process.env.NODE_ENV === 'production'
       ? 'https://app.meet-sam.com'
       : (request.headers.get('origin') || 'http://localhost:3001')
     const callbackUrl = redirect_url || `${origin}/api/unipile/hosted-auth/callback`
 
     const userContextPayload = {
-      user_id: user.id,
-      user_email: user.email,
+      user_id: userId,
+      user_email: userEmail,
       workspace_id: workspaceId,
       close_popup: 'true' // Signal to close popup after processing
     }
@@ -261,12 +148,12 @@ export async function POST(request: NextRequest) {
     const successRedirectUrl = `${callbackUrl}?status=success&user_context=${encodedContext}`
     const failureRedirectUrl = `${callbackUrl}?status=error&user_context=${encodedContext}`
     const notifyUrl = `${callbackUrl}?user_context=${encodedContext}`
-    
+
     console.log('🔧 Generating hosted auth link:', {
       provider,
       callbackUrl,
-      userId: user.id,
-      userEmail: user.email,
+      userId,
+      userEmail,
       workspaceId
     })
 
@@ -274,7 +161,7 @@ export async function POST(request: NextRequest) {
     // Generate proper expiration date (2 hours from now) in correct ISO format
     const expirationDate = new Date(Date.now() + 2 * 60 * 60 * 1000)
     const expiresOn = expirationDate.toISOString().replace(/\.\d{3}Z$/, '.000Z') // Ensure .000Z format
-    
+
     // Map country names to Unipile's 2-letter country codes
     const countryCodeMap: { [key: string]: string } = {
       'argentina': 'ar', 'australia': 'au', 'austria': 'at', 'belgium': 'be',
@@ -288,13 +175,13 @@ export async function POST(request: NextRequest) {
       'uae': 'ae', 'united kingdom': 'gb', 'uk': 'gb', 'great britain': 'gb',
       'united states': 'us', 'usa': 'us', 'us': 'us', 'america': 'us'
     }
-    
+
     // Determine proxy country code
     let proxyCountry: string | null = null
     if (userCountry) {
       const normalizedCountry = userCountry.toLowerCase().trim()
       proxyCountry = countryCodeMap[normalizedCountry] || null
-      
+
       // If exact match not found, try partial match
       if (!proxyCountry) {
         for (const [key, value] of Object.entries(countryCodeMap)) {
@@ -304,13 +191,13 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-      
+
       console.log('🌍 Mapped country for proxy:', {
         userCountry,
         proxyCountry: proxyCountry || 'auto-detect from IP'
       })
     }
-    
+
     let hostedAuthPayload: any = {
       type: authType,
       expiresOn: expiresOn,
@@ -322,7 +209,7 @@ export async function POST(request: NextRequest) {
       bypass_success_screen: true, // Skip success screen and redirect directly
       ...(proxyCountry && { proxy_country: proxyCountry }) // Add proxy country if available
     }
-    
+
     if (authType === 'create') {
       // If provider is specified, use it. Otherwise, show Unipile's provider selection for email
       if (provider) {
@@ -335,19 +222,19 @@ export async function POST(request: NextRequest) {
     } else {
       hostedAuthPayload.reconnect_account = reconnectAccountId
     }
-    
+
     console.log(`🔧 Using ${authType} flow for LinkedIn auth`, {
       authType,
       reconnectAccountId: authType === 'reconnect' ? reconnectAccountId : 'N/A'
     })
-    
+
     const hostedAuthResponse = await callUnipileAPI('hosted/accounts/link', 'POST', hostedAuthPayload)
 
     console.log('✅ Hosted auth link generated:', {
       url: hostedAuthResponse.url?.substring(0, 100) + '...',
       object: hostedAuthResponse.object
     })
-    
+
     // WHITE-LABEL: Custom domain for branded authentication experience
     // SSL certificate configured by Arnaud @ Unipile on 2025-10-01
     const whitelabeledAuthUrl = hostedAuthResponse.url?.replace(
@@ -376,18 +263,27 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     })
 
-  } catch (error) {
+  } catch (error: any) {
+    // Handle auth errors
+    if (error?.code === 'UNAUTHORIZED' || error?.code === 'FORBIDDEN' || error?.code === 'WORKSPACE_ACCESS_DENIED') {
+      return NextResponse.json({
+        success: false,
+        error: error.message || 'Authentication required to generate hosted auth link',
+        timestamp: new Date().toISOString()
+      }, { status: error.statusCode || 401 })
+    }
+
     console.error('Hosted auth link generation error:', error)
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    const isCredentialsError = errorMessage.includes('credentials not configured') || 
-                               errorMessage.includes('401') || 
+    const isCredentialsError = errorMessage.includes('credentials not configured') ||
+                               errorMessage.includes('401') ||
                                errorMessage.includes('403')
-    
+
     return NextResponse.json({
       success: false,
-      error: isCredentialsError ? 
-        'LinkedIn integration not configured. Please check environment variables.' : 
+      error: isCredentialsError ?
+        'LinkedIn integration not configured. Please check environment variables.' :
         'Failed to generate authentication link',
       debug_info: {
         error_message: errorMessage,

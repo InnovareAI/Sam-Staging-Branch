@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-// NOTE: Cookie cleanup imports removed - aggressive cleanup was causing constant logouts
 
 // Super admin emails - only these users can access /admin routes
-// NOTE: No shared workspaces exist - each user has their own workspace
 const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
+
+// Public paths that don't require authentication
+const PUBLIC_PATHS = [
+  '/login',
+  '/api/auth/session',
+  '/api/auth/firebase-session',
+  '/api/webhooks',
+  '/_next',
+  '/favicon.ico',
+  '/public'
+];
 
 export async function proxy(request: NextRequest) {
   // Create response with pathname header for route detection in layouts
@@ -21,163 +29,63 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // NOTE: Aggressive cookie cleanup was disabled (Nov 2025) because it was
-  // causing constant logouts for users with valid sessions. If client creation
-  // fails (line 65-71), we allow the request through and let pages handle auth.
+  // Check for public paths
+  const isPublicPath = PUBLIC_PATHS.some(path =>
+    request.nextUrl.pathname.startsWith(path)
+  );
 
-  // CRITICAL: Create Supabase client with middleware cookie handling
-  let supabase;
-  try {
-    supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              request.cookies.set(name, value);
-              response.cookies.set(name, value, options);
-            });
-          }
-        },
-        cookieOptions: {
-          // CRITICAL: Must match browser and server client configuration
-          global: {
-            secure: true, // Always true for HTTPS
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
-          }
-        }
-      }
-    );
-  } catch (clientError) {
-    console.error('[Middleware] Failed to create Supabase client - likely cookie parsing error:', clientError);
-
-    // Just let the request through - don't clear cookies
-    // Let individual pages handle auth
-    console.warn('[Middleware] Allowing request through despite client creation error');
+  if (isPublicPath) {
     return response;
   }
 
-  // CLEAN URL REWRITE: Serve chat at / and /chat (Dec 22, 2025)
+  // Check for Firebase session cookie
+  const session = request.cookies.get('session');
+
+  if (!session) {
+    // Redirect to login if no session
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // CLEAN URL REWRITE: Serve chat at / and /chat
   // Rewrite "/" and "/chat" to "/workspace/[id]/chat" for authenticated users
-  // Browser shows clean URL while serving workspace-specific content
   if (request.nextUrl.pathname === '/chat' || request.nextUrl.pathname === '/') {
-    // Only rewrite root if there's no tab param (legacy navigation)
     const hasTabParam = request.nextUrl.searchParams.has('tab') || request.nextUrl.searchParams.has('section');
 
     if (request.nextUrl.pathname === '/chat' || !hasTabParam) {
-      try {
-        // First check for cached workspace ID in cookie (fast path)
-        const cachedWorkspaceId = request.cookies.get('lastWorkspaceId')?.value;
+      // Check for cached workspace ID in cookie (fast path)
+      const cachedWorkspaceId = request.cookies.get('lastWorkspaceId')?.value;
 
-        if (cachedWorkspaceId) {
-          // Use cached workspace ID - instant rewrite
-          const chatUrl = new URL(`/workspace/${cachedWorkspaceId}/chat`, request.url);
-          // Set x-pathname to the REWRITTEN path so layout detects chat route
-          const rewriteHeaders = new Headers(request.headers);
-          rewriteHeaders.set('x-pathname', chatUrl.pathname);
-          console.log(`[Middleware] Fast rewriting to cached workspace: ${chatUrl.pathname}`);
-          const rewriteResponse = NextResponse.rewrite(chatUrl, {
-            request: { headers: rewriteHeaders }
-          });
-          return rewriteResponse;
-        }
-
-        // Slow path: authenticate and query DB
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (!authError && user) {
-          // Get user's first workspace (removed workspace_type filter for speed)
-          const { data: workspace } = await supabase
-            .from('workspaces')
-            .select('id')
-            .eq('owner_id', user.id)
-            .limit(1)
-            .single();
-
-          if (workspace) {
-            // Rewrite to workspace chat (URL stays as "/" or "/chat")
-            const chatUrl = new URL(`/workspace/${workspace.id}/chat`, request.url);
-            console.log(`[Middleware] Rewriting ${request.nextUrl.pathname} to ${chatUrl.pathname} for user ${user.email}`);
-
-            // Set x-pathname to the REWRITTEN path so layout detects chat route
-            const rewriteHeaders = new Headers(request.headers);
-            rewriteHeaders.set('x-pathname', chatUrl.pathname);
-
-            // Cache the workspace ID for next time
-            const rewriteResponse = NextResponse.rewrite(chatUrl, {
-              request: { headers: rewriteHeaders }
-            });
-            rewriteResponse.cookies.set('lastWorkspaceId', workspace.id, {
-              httpOnly: false,
-              secure: true,
-              sameSite: 'lax',
-              maxAge: 60 * 60 * 24 * 30 // 30 days
-            });
-            return rewriteResponse;
-          }
-        }
-        // If not authenticated or no workspace, fall through to show dashboard/login
-      } catch (error) {
-        console.error('[Middleware] Error in URL rewrite:', error);
-        // Fall through to default behavior
+      if (cachedWorkspaceId) {
+        const chatUrl = new URL(`/workspace/${cachedWorkspaceId}/chat`, request.url);
+        const rewriteHeaders = new Headers(request.headers);
+        rewriteHeaders.set('x-pathname', chatUrl.pathname);
+        console.log(`[Proxy] Rewriting to cached workspace: ${chatUrl.pathname}`);
+        return NextResponse.rewrite(chatUrl, {
+          request: { headers: rewriteHeaders }
+        });
       }
+      // If no cached workspace, let the page handle workspace resolution
     }
   }
 
   // Check if this is an admin route
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    // All admin routes require authentication + InnovareAI workspace membership
-    // (bypass removed Nov 25, 2025 - was security vulnerability)
+    // Admin routes require super admin email
+    // Note: Full email verification happens server-side via Firebase Admin SDK
+    // This is just a first-line defense - API calls verify the actual session
 
-    try {
-      // Get user from session
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        // Not authenticated - redirect to login WITHOUT clearing cookies
-        // Let the user try to sign in again with existing cookies
-        console.warn('[Middleware] Auth error on admin route:', authError?.message);
-        const loginUrl = new URL('/', request.url);
-        loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-
-        response = NextResponse.redirect(loginUrl);
-        // DO NOT clear cookies - this was causing constant logouts
-        return response;
-      }
-
-      // Check if user is a super admin (by email)
-      // NOTE: No shared workspaces - admin access is email-based only
-      const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
-
-      if (!isSuperAdmin) {
-        // User is not a super admin - show 403 error
-        return new NextResponse(
-          JSON.stringify({
-            error: 'Forbidden',
-            message: 'Access to admin routes is restricted to super admins only.'
-          }),
-          {
-            status: 403,
-            headers: { 'content-type': 'application/json' }
-          }
-        );
-      }
-
-    } catch (error) {
-      console.error('[Middleware] Auth middleware error:', error);
-      // DO NOT clear cookies - just redirect to home
-      const loginUrl = new URL('/', request.url);
-      response = NextResponse.redirect(loginUrl);
-      return response;
+    // For admin routes without session, redirect to login
+    if (!session) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
+      return NextResponse.redirect(loginUrl);
     }
+
+    // Note: Full admin permission check happens server-side
+    // The proxy can't verify Firebase session without calling Firebase Admin SDK
+    // which is not available in Edge runtime
   }
 
-  // Return response with updated cookies
   return response;
 }
 

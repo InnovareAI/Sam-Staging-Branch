@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 /**
@@ -11,16 +11,7 @@ import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
-
-    const session = { user };
+    const { userId, workspaceId } = await verifyAuth(request);
 
     const body = await request.json();
     const {
@@ -29,29 +20,15 @@ export async function POST(request: NextRequest) {
       target_count = 1000
     } = body;
 
-    // Get user's workspace
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', session.user.id)
-      .single();
-
-    const workspaceId = userProfile?.current_workspace_id;
-    if (!workspaceId) {
-      return NextResponse.json({
-        success: false,
-        error: 'No workspace found'
-      }, { status: 400 });
-    }
-
     // Get LinkedIn account from workspace_accounts table - ONLY user's own accounts
-    const { data: linkedinAccounts } = await supabase
-      .from('workspace_accounts')
-      .select('unipile_account_id, account_name, account_identifier')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', session.user.id) // CRITICAL: Only user's own accounts
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES);
+    const { rows: linkedinAccounts } = await pool.query(`
+      SELECT unipile_account_id, account_name, account_identifier
+      FROM workspace_accounts
+      WHERE workspace_id = $1
+      AND user_id = $2
+      AND account_type = 'linkedin'
+      AND connection_status = ANY($3)
+    `, [workspaceId, userId, VALID_CONNECTION_STATUSES]);
 
     console.log('🔵 LinkedIn accounts found:', linkedinAccounts?.length || 0);
 
@@ -93,34 +70,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Create job in database
-    const { data: job, error: jobError } = await supabase
-      .from('prospect_search_jobs')
-      .insert({
-        user_id: session.user.id,
-        workspace_id: workspaceId,
-        search_criteria: {
-          ...search_criteria,
-          api,
-          limit: target_count
-        },
-        search_type: search_type,
-        search_source: api,
-        status: 'queued',
-        progress_current: 0,
-        progress_total: target_count
-      })
-      .select()
-      .single();
+    const { rows: jobRows } = await pool.query(`
+      INSERT INTO prospect_search_jobs (
+        user_id, workspace_id, search_criteria, search_type,
+        search_source, status, progress_current, progress_total
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `, [
+      userId,
+      workspaceId,
+      JSON.stringify({
+        ...search_criteria,
+        api,
+        limit: target_count
+      }),
+      search_type,
+      api,
+      'queued',
+      0,
+      target_count
+    ]);
 
-    if (jobError || !job) {
-      console.error('Failed to create job:', jobError);
+    if (!jobRows || jobRows.length === 0) {
+      console.error('Failed to create job');
       return NextResponse.json({
         success: false,
         error: 'Failed to create search job'
       }, { status: 500 });
     }
 
-    console.log(`✅ Created job ${job.id} for user ${session.user.id}`);
+    const job = jobRows[0];
+    console.log(`✅ Created job ${job.id} for user ${userId}`);
 
     // Trigger background function (fire and forget)
     const backgroundFunctionUrl = process.env.NODE_ENV === 'production'
@@ -137,7 +117,7 @@ export async function POST(request: NextRequest) {
           api
         },
         account_id: linkedinAccount.unipile_account_id,
-        user_id: session.user.id
+        user_id: userId
       })
     }).catch(err => {
       console.error('Failed to trigger background function:', err);
@@ -160,6 +140,10 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('❌ Create job error:', error);
     return NextResponse.json({
       success: false,
@@ -173,14 +157,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+    const { userId } = await verifyAuth(request);
 
     const { searchParams } = new URL(request.url);
     const job_id = searchParams.get('job_id');
@@ -190,22 +167,24 @@ export async function GET(request: NextRequest) {
     }
 
     // Get job status
-    const { data: job, error } = await supabase
-      .from('prospect_search_jobs')
-      .select('*')
-      .eq('id', job_id)
-      .eq('user_id', user.id)
-      .single();
+    const { rows: jobRows } = await pool.query(`
+      SELECT * FROM prospect_search_jobs
+      WHERE id = $1 AND user_id = $2
+    `, [job_id, userId]);
 
-    if (error || !job) {
+    if (!jobRows || jobRows.length === 0) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
+    const job = jobRows[0];
+
     // Get result count
-    const { count } = await supabase
-      .from('prospect_search_results')
-      .select('*', { count: 'exact', head: true })
-      .eq('job_id', job_id);
+    const { rows: countRows } = await pool.query(`
+      SELECT COUNT(*) as count FROM prospect_search_results
+      WHERE job_id = $1
+    `, [job_id]);
+
+    const count = parseInt(countRows[0]?.count || '0');
 
     return NextResponse.json({
       success: true,
@@ -219,7 +198,7 @@ export async function GET(request: NextRequest) {
             ? Math.round((job.progress_current / job.progress_total) * 100)
             : 0
         },
-        results_count: count || 0,
+        results_count: count,
         started_at: job.started_at,
         completed_at: job.completed_at,
         error_message: job.error_message
@@ -227,6 +206,10 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
+    if ((error as AuthError).code) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('❌ Get job status error:', error);
     return NextResponse.json({
       success: false,

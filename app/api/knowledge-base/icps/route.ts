@@ -1,7 +1,5 @@
-
-
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 const toStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
@@ -16,99 +14,59 @@ const toRecord = (value: unknown): Record<string, unknown> => {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 };
 
-async function resolveWorkspaceId(
-  supabase: any,
-  userId: string,
-  providedWorkspaceId?: string | null
-): Promise<string> {
-  if (providedWorkspaceId && providedWorkspaceId.trim().length > 0) {
-    return providedWorkspaceId;
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('current_workspace_id')
-    .eq('id', userId)
-    .single();
-
-  if (!profileError && profile?.current_workspace_id) {
-    return profile.current_workspace_id;
-  }
-
-  const { data: membership, error: membershipError } = await supabase
-    .from('workspace_members')
-    .select('workspace_id')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
-
-  if (!membershipError && membership?.workspace_id) {
-    return membership.workspace_id;
-  }
-
-  throw new Error('Workspace not found for user');
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { searchParams } = new URL(request.url);
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    // Firebase auth verification
+    let userId: string;
     let workspaceId: string;
+
     try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, searchParams.get('workspace_id'));
+      const auth = await verifyAuth(request);
+      userId = auth.userId;
+      workspaceId = auth.workspaceId;
     } catch (error) {
-      console.error('Workspace resolution failed in ICP GET', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
     }
 
+    const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get('include_inactive') === 'true';
 
-    let query = supabase
-      .from('knowledge_base_icps')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: false });
+    let query = `
+      SELECT * FROM knowledge_base_icps
+      WHERE workspace_id = $1
+    `;
+    const params: any[] = [workspaceId];
 
     if (!includeInactive) {
-      query = query.eq('is_active', true);
+      query += ` AND is_active = true`;
     }
 
-    const { data: icps, error } = await query;
+    query += ` ORDER BY created_at DESC`;
 
-    if (error) {
-      console.error('Error fetching ICPs:', error);
-      return NextResponse.json({ error: 'Failed to fetch ICPs' }, { status: 500 });
-    }
+    const icpsResult = await pool.query(query, params);
+    const icps = icpsResult.rows;
 
     // ALSO count ICP documents from knowledge_base_documents table (section_id='icp')
     // This fixes the completion calculation for workspaces with uploaded ICP docs
     // Also catches ICP docs that may be miscategorized (e.g., "Ideal Client Dossier" in products section)
-    const { data: icpDocs, error: icpDocsError } = await supabase
-      .from('knowledge_base_documents')
-      .select('id, filename, created_at')
-      .eq('workspace_id', workspaceId)
-      .or('section_id.eq.icp,section_id.eq.ideal-customer,filename.ilike.%ideal%client%,filename.ilike.%icp%')
-      .order('created_at', { ascending: false });
-
-    if (icpDocsError) {
-      console.error('Error fetching ICP documents:', icpDocsError);
-      // Don't fail the request, just return structured ICPs
-    }
+    const icpDocsResult = await pool.query(
+      `SELECT id, filename, created_at FROM knowledge_base_documents
+       WHERE workspace_id = $1
+       AND (section_id = 'icp' OR section_id = 'ideal-customer' OR filename ILIKE '%ideal%client%' OR filename ILIKE '%icp%')
+       ORDER BY created_at DESC`,
+      [workspaceId]
+    );
+    const icpDocs = icpDocsResult.rows;
 
     // Transform database schema to match frontend expectations
     const transformedIcps = (icps ?? []).map((icp: any) => {
       const metadata = typeof icp.metadata === 'string' ? JSON.parse(icp.metadata) : (icp.metadata || {});
       const pain_points_parsed = typeof icp.pain_points === 'string' ? JSON.parse(icp.pain_points) : (icp.pain_points || []);
-      
+
       // Parse company_size range if it exists
       const companySizeMatch = icp.company_size?.match(/(\d+)-(\d+)/);
-      
+
       return {
         id: icp.id,
         name: icp.title || icp.name || 'Untitled ICP',
@@ -127,11 +85,11 @@ export async function GET(request: NextRequest) {
         messaging_framework: metadata.messaging_framework || {}
       };
     });
-    
+
     // Combine structured ICPs and ICP documents for accurate count
     const allIcps = [
       ...transformedIcps,
-      ...(icpDocs ?? []).map(doc => ({
+      ...(icpDocs ?? []).map((doc: any) => ({
         id: doc.id,
         name: doc.filename,
         workspace_id: workspaceId,
@@ -150,7 +108,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let userId: string;
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      userId = auth.userId;
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const body = await request.json();
     const {
       name,
@@ -165,57 +135,44 @@ export async function POST(request: NextRequest) {
       messaging_framework
     } = body;
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    let workspaceId: string;
-    try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, body.workspace_id);
-    } catch (error) {
-      console.error('Workspace resolution failed in ICP POST', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
-    }
-
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
     // Map fields to match actual schema
-    const payload = {
-      workspace_id: workspaceId,
-      title: name.trim(),
-      description: body.description || null,
-      industry: industries && industries.length > 0 ? industries[0] : null,
-      company_size: company_size_min && company_size_max ? `${company_size_min}-${company_size_max}` : null,
-      revenue_range: body.revenue_range || null,
-      geography: toStringArray(locations),
-      pain_points: JSON.stringify(toStringArray(pain_points)),
-      buying_process: qualification_criteria ? JSON.stringify(qualification_criteria) : null,
-      metadata: JSON.stringify({
-        industries: toStringArray(industries),
-        job_titles: toStringArray(job_titles),
-        technologies: toStringArray(technologies),
-        messaging_framework: messaging_framework || {}
-      }),
-      tags: [],
-      is_active: true,
-      created_by: user.id
-    };
+    const result = await pool.query(
+      `INSERT INTO knowledge_base_icps (
+        workspace_id, title, description, industry, company_size, revenue_range,
+        geography, pain_points, buying_process, metadata, tags, is_active, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING *`,
+      [
+        workspaceId,
+        name.trim(),
+        body.description || null,
+        industries && industries.length > 0 ? industries[0] : null,
+        company_size_min && company_size_max ? `${company_size_min}-${company_size_max}` : null,
+        body.revenue_range || null,
+        toStringArray(locations),
+        JSON.stringify(toStringArray(pain_points)),
+        qualification_criteria ? JSON.stringify(qualification_criteria) : null,
+        JSON.stringify({
+          industries: toStringArray(industries),
+          job_titles: toStringArray(job_titles),
+          technologies: toStringArray(technologies),
+          messaging_framework: messaging_framework || {}
+        }),
+        [],
+        true,
+        userId
+      ]
+    );
 
-    const { data: icp, error } = await supabase
-      .from('knowledge_base_icps')
-      .insert(payload)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating ICP:', error);
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Failed to create ICP' }, { status: 500 });
     }
 
-    return NextResponse.json({ icp }, { status: 201 });
+    return NextResponse.json({ icp: result.rows[0] }, { status: 201 });
   } catch (error) {
     console.error('Unexpected error in ICPs POST:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -224,7 +181,17 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const body = await request.json();
     const {
       id,
@@ -245,49 +212,72 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'ICP ID is required' }, { status: 400 });
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Build dynamic update query
+    const updates: string[] = ['updated_at = NOW()'];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (typeof name === 'string') {
+      updates.push(`name = $${paramIndex++}`);
+      params.push(name.trim());
+    }
+    if (company_size_min !== undefined) {
+      updates.push(`company_size_min = $${paramIndex++}`);
+      params.push(company_size_min);
+    }
+    if (company_size_max !== undefined) {
+      updates.push(`company_size_max = $${paramIndex++}`);
+      params.push(company_size_max);
+    }
+    if (industries !== undefined) {
+      updates.push(`industries = $${paramIndex++}`);
+      params.push(toStringArray(industries));
+    }
+    if (job_titles !== undefined) {
+      updates.push(`job_titles = $${paramIndex++}`);
+      params.push(toStringArray(job_titles));
+    }
+    if (locations !== undefined) {
+      updates.push(`locations = $${paramIndex++}`);
+      params.push(toStringArray(locations));
+    }
+    if (technologies !== undefined) {
+      updates.push(`technologies = $${paramIndex++}`);
+      params.push(toStringArray(technologies));
+    }
+    if (pain_points !== undefined) {
+      updates.push(`pain_points = $${paramIndex++}`);
+      params.push(toStringArray(pain_points));
+    }
+    if (qualification_criteria !== undefined) {
+      updates.push(`qualification_criteria = $${paramIndex++}`);
+      params.push(JSON.stringify(toRecord(qualification_criteria)));
+    }
+    if (messaging_framework !== undefined) {
+      updates.push(`messaging_framework = $${paramIndex++}`);
+      params.push(JSON.stringify(toRecord(messaging_framework)));
+    }
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex++}`);
+      params.push(Boolean(is_active));
     }
 
-    let workspaceId: string;
-    try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, body.workspace_id);
-    } catch (error) {
-      console.error('Workspace resolution failed in ICP PUT', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
+    params.push(id);
+    params.push(workspaceId);
+
+    const result = await pool.query(
+      `UPDATE knowledge_base_icps
+       SET ${updates.join(', ')}
+       WHERE id = $${paramIndex++} AND workspace_id = $${paramIndex}
+       RETURNING *`,
+      params
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: 'ICP not found' }, { status: 404 });
     }
 
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString()
-    };
-
-    if (typeof name === 'string') updateData.name = name.trim();
-    if (company_size_min !== undefined) updateData.company_size_min = company_size_min;
-    if (company_size_max !== undefined) updateData.company_size_max = company_size_max;
-    if (industries !== undefined) updateData.industries = toStringArray(industries);
-    if (job_titles !== undefined) updateData.job_titles = toStringArray(job_titles);
-    if (locations !== undefined) updateData.locations = toStringArray(locations);
-    if (technologies !== undefined) updateData.technologies = toStringArray(technologies);
-    if (pain_points !== undefined) updateData.pain_points = toStringArray(pain_points);
-    if (qualification_criteria !== undefined) updateData.qualification_criteria = toRecord(qualification_criteria);
-    if (messaging_framework !== undefined) updateData.messaging_framework = toRecord(messaging_framework);
-    if (is_active !== undefined) updateData.is_active = Boolean(is_active);
-
-    const { data: icp, error } = await supabase
-      .from('knowledge_base_icps')
-      .update(updateData)
-      .eq('id', id)
-      .eq('workspace_id', workspaceId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating ICP:', error);
-      return NextResponse.json({ error: 'Failed to update ICP' }, { status: 500 });
-    }
-
-    return NextResponse.json({ icp });
+    return NextResponse.json({ icp: result.rows[0] });
   } catch (error) {
     console.error('Unexpected error in ICPs PUT:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -296,7 +286,17 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
+    // Firebase auth verification
+    let workspaceId: string;
+
+    try {
+      const auth = await verifyAuth(request);
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: 'Unauthorized' }, { status: authError.statusCode || 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -304,31 +304,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ICP ID is required' }, { status: 400 });
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const result = await pool.query(
+      `UPDATE knowledge_base_icps
+       SET is_active = false, updated_at = NOW()
+       WHERE id = $1 AND workspace_id = $2`,
+      [id, workspaceId]
+    );
 
-    let workspaceId: string;
-    try {
-      workspaceId = await resolveWorkspaceId(supabase, user.id, searchParams.get('workspace_id'));
-    } catch (error) {
-      console.error('Workspace resolution failed in ICP DELETE', error);
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
-    }
-
-    const { error } = await supabase
-      .from('knowledge_base_icps')
-      .update({
-        is_active: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .eq('workspace_id', workspaceId);
-
-    if (error) {
-      console.error('Error deleting ICP:', error);
-      return NextResponse.json({ error: 'Failed to delete ICP' }, { status: 500 });
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'ICP not found' }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'ICP deleted successfully' });

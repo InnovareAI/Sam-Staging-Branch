@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user first
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required',
-        timestamp: new Date().toISOString()
-      }, { status: 401 })
-    }
+    // Authenticate with Firebase
+    const { userId, userEmail } = await verifyAuth(request)
 
-    console.log(`🔧 User ${user.email} requesting user association table setup`)
+    console.log(`🔧 User ${userEmail} requesting user association table setup`)
 
     // Create the user_unipile_accounts table
     const createTableSQL = `
@@ -178,19 +168,13 @@ export async function POST(request: NextRequest) {
     ]
 
     const results = []
-    
+
     for (const statement of statements) {
       try {
         console.log(`🔄 Executing: ${statement.name}`)
-        const { data, error } = await supabase.rpc('exec_sql', { sql: statement.sql })
-        
-        if (error) {
-          console.error(`❌ Error in ${statement.name}:`, error)
-          results.push({ name: statement.name, success: false, error: error.message })
-        } else {
-          console.log(`✅ Success: ${statement.name}`)
-          results.push({ name: statement.name, success: true })
-        }
+        await pool.query(statement.sql)
+        console.log(`✅ Success: ${statement.name}`)
+        results.push({ name: statement.name, success: true })
       } catch (err) {
         console.error(`💥 Exception in ${statement.name}:`, err)
         results.push({ name: statement.name, success: false, error: err instanceof Error ? err.message : 'Unknown error' })
@@ -198,11 +182,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if table exists now
-    const { data: tableCheck, error: tableCheckError } = await supabase
-      .from('user_unipile_accounts')
-      .select('count', { count: 'exact', head: true })
-
-    const tableExists = !tableCheckError
+    let tableExists = false
+    try {
+      await pool.query('SELECT 1 FROM user_unipile_accounts LIMIT 1')
+      tableExists = true
+    } catch {
+      tableExists = false
+    }
 
     return NextResponse.json({
       success: tableExists,
@@ -224,34 +210,31 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user first
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required',
-        timestamp: new Date().toISOString()
-      }, { status: 401 })
+    // Authenticate with Firebase
+    await verifyAuth(request)
+
+    // Check if table exists and get count
+    let tableExists = false
+    let recordCount = 0
+    let errorDetails = null
+
+    try {
+      const { rows } = await pool.query('SELECT COUNT(*) as count FROM user_unipile_accounts')
+      tableExists = true
+      recordCount = parseInt(rows[0].count, 10)
+    } catch (err) {
+      tableExists = false
+      errorDetails = {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        code: 'TABLE_NOT_FOUND'
+      }
     }
-
-    // Check if table exists
-    const { data, error } = await supabase
-      .from('user_unipile_accounts')
-      .select('count', { count: 'exact', head: true })
-
-    const tableExists = !error
-    const recordCount = data || 0
 
     return NextResponse.json({
       success: true,
       table_exists: tableExists,
       record_count: recordCount,
-      error_details: error ? {
-        message: error.message,
-        code: error.code
-      } : null,
+      error_details: errorDetails,
       timestamp: new Date().toISOString()
     })
 

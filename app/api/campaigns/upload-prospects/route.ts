@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { enrichProspectName } from '@/lib/enrich-prospect-name';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 import { extractLinkedInSlug } from '@/lib/linkedin-utils';
@@ -22,13 +22,7 @@ function normalizeLinkedInUrl(url: string | null | undefined): string | null {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Get user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { userId, workspaceId } = await verifyAuth(req);
 
     const body = await req.json();
     const { campaign_id, prospects } = body;
@@ -36,8 +30,7 @@ export async function POST(req: NextRequest) {
     console.log('📥 Upload prospects request:', {
       campaign_id,
       prospect_count: prospects?.length,
-      user_id: user.id,
-      user_email: user.email
+      user_id: userId
     });
 
     if (!campaign_id) {
@@ -49,72 +42,49 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify campaign exists and user has access
-    console.log('🔍 Checking campaign access:', { campaign_id, user_id: user.id });
-    const { data: campaign, error: campaignError } = await supabase
-      .from('campaigns')
-      .select('id, name, workspace_id')
-      .eq('id', campaign_id)
-      .single();
+    console.log('🔍 Checking campaign access:', { campaign_id, user_id: userId });
+    const campaignResult = await pool.query(
+      `SELECT id, name, workspace_id, created_by FROM campaigns WHERE id = $1`,
+      [campaign_id]
+    );
 
-    console.log('📊 Campaign query result:', {
-      found: !!campaign,
-      error: campaignError ? {
-        message: campaignError.message,
-        code: campaignError.code,
-        details: campaignError.details,
-        hint: campaignError.hint
-      } : null,
-      campaign: campaign ? { id: campaign.id, name: campaign.name, workspace_id: campaign.workspace_id } : null
-    });
-
-    if (campaignError || !campaign) {
-      console.error('❌ Campaign not found or access denied:', {
-        campaign_id,
-        user_id: user.id,
-        error: campaignError
-      });
+    if (campaignResult.rows.length === 0) {
+      console.error('❌ Campaign not found:', { campaign_id, user_id: userId });
       return NextResponse.json({
         error: 'Campaign not found or access denied',
-        details: campaignError ? campaignError.message : 'Campaign not found'
+        details: 'Campaign not found'
       }, { status: 404 });
     }
 
-    // Verify user has access to this workspace
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', campaign.workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const campaign = campaignResult.rows[0];
+    console.log('📊 Campaign found:', { id: campaign.id, name: campaign.name, workspace_id: campaign.workspace_id });
 
-    if (!member) {
+    // Verify user has access to this workspace
+    const memberResult = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [campaign.workspace_id, userId]
+    );
+
+    if (memberResult.rows.length === 0) {
       return NextResponse.json({ error: 'Access denied to workspace' }, { status: 403 });
     }
 
-    // Get campaign details including creator for automatic name enrichment
-    const { data: campaignDetails } = await supabase
-      .from('campaigns')
-      .select('created_by')
-      .eq('id', campaign_id)
-      .single();
-
     // Get the campaign creator's LinkedIn account for name enrichment
-    const { data: linkedInAccount } = await supabase
-      .from('workspace_accounts')
-      .select('unipile_account_id')
-      .eq('workspace_id', campaign.workspace_id)
-      .eq('user_id', campaignDetails?.created_by)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES)
-      .single();
+    const linkedInAccountResult = await pool.query(
+      `SELECT unipile_account_id FROM workspace_accounts
+       WHERE workspace_id = $1 AND user_id = $2 AND account_type = 'linkedin'
+         AND connection_status = ANY($3)
+       LIMIT 1`,
+      [campaign.workspace_id, campaign.created_by, VALID_CONNECTION_STATUSES]
+    );
 
-    const unipileAccountId = linkedInAccount?.unipile_account_id || null;
+    const unipileAccountId = linkedInAccountResult.rows[0]?.unipile_account_id || null;
 
     let inserted_count = 0;
     let updated_count = 0;
     let error_count = 0;
-    const errors = [];
-    const failedUploads = [];
+    const errors: { index: number; error: string }[] = [];
+    const failedUploads: { row: number; error: string; data: any }[] = [];
 
     // Process each prospect
     for (let i = 0; i < prospects.length; i++) {
@@ -175,6 +145,8 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        const linkedinUrl = prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url || null;
+
         const prospectData = {
           campaign_id: campaign_id,
           workspace_id: campaign.workspace_id,
@@ -183,20 +155,20 @@ export async function POST(req: NextRequest) {
           email: prospect.email || prospect.email_address || prospect.contact?.email || null,
           company_name: prospect.company_name || prospect.company?.name || prospect.company || '',
           title: prospect.title || prospect.job_title || '',
-          linkedin_url: prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url || null,
+          linkedin_url: linkedinUrl,
           // CRITICAL FIX (Dec 18): Extract slug from URL to prevent "User ID does not match format" errors
-          linkedin_user_id: extractLinkedInSlug(prospect.linkedin_user_id || prospect.linkedin_url || prospect.linkedin_profile_url || prospect.contact?.linkedin_url),
+          linkedin_user_id: extractLinkedInSlug(prospect.linkedin_user_id || linkedinUrl),
           phone: prospect.phone || prospect.contact?.phone || null,
           location: prospect.location || '',
           industry: prospect.industry || prospect.company?.industry?.[0] || prospect.company?.industry || null,
           status: 'pending',
           notes: prospect.notes || null,
-          personalization_data: {
+          personalization_data: JSON.stringify({
             ...(prospect.personalization_data || {}),
             campaign_name: campaign.name,  // ALWAYS include campaign name
             source: 'upload_prospects',
             uploaded_at: new Date().toISOString()
-          },
+          }),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -213,115 +185,147 @@ export async function POST(req: NextRequest) {
         let masterProspectId: string | null = null;
 
         if (linkedinHash) {
-          const { data: masterProspect, error: masterError } = await supabase
-            .from('workspace_prospects')
-            .upsert({
-              workspace_id: campaign.workspace_id,
-              linkedin_url: prospectData.linkedin_url,
-              linkedin_url_hash: linkedinHash,
-              first_name: prospectData.first_name,
-              last_name: prospectData.last_name,
-              email: prospectData.email,
-              company: prospectData.company_name,
-              title: prospectData.title,
-              location: prospectData.location,
-              linkedin_provider_id: prospectData.linkedin_user_id,
-              source: 'campaign_upload',
-              // CRITICAL FIX: Set active_campaign_id so prospect doesn't show in "In Progress" tab
-              active_campaign_id: campaign_id,
-              approval_status: 'approved',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'workspace_id,linkedin_url_hash',
-              ignoreDuplicates: false
-            })
-            .select('id')
-            .single();
+          try {
+            const masterResult = await pool.query(
+              `INSERT INTO workspace_prospects (
+                workspace_id, linkedin_url, linkedin_url_hash, first_name, last_name,
+                email, company, title, location, linkedin_provider_id, source,
+                active_campaign_id, approval_status, created_at, updated_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+              ON CONFLICT (workspace_id, linkedin_url_hash)
+              DO UPDATE SET
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                email = COALESCE(EXCLUDED.email, workspace_prospects.email),
+                updated_at = EXCLUDED.updated_at
+              RETURNING id`,
+              [
+                campaign.workspace_id,
+                prospectData.linkedin_url,
+                linkedinHash,
+                prospectData.first_name,
+                prospectData.last_name,
+                prospectData.email,
+                prospectData.company_name,
+                prospectData.title,
+                prospectData.location,
+                prospectData.linkedin_user_id,
+                'campaign_upload',
+                campaign_id,
+                'approved',
+                prospectData.created_at,
+                prospectData.updated_at
+              ]
+            );
 
-          if (masterError) {
+            if (masterResult.rows.length > 0) {
+              masterProspectId = masterResult.rows[0].id;
+              console.log(`✅ Upserted to workspace_prospects: ${masterProspectId}`);
+            }
+          } catch (masterError: any) {
             console.warn(`⚠️ Master prospect upsert warning for ${linkedinHash}:`, masterError.message);
             // Try to get existing record
-            const { data: existingMaster } = await supabase
-              .from('workspace_prospects')
-              .select('id')
-              .eq('workspace_id', campaign.workspace_id)
-              .eq('linkedin_url_hash', linkedinHash)
-              .single();
-            masterProspectId = existingMaster?.id || null;
-          } else {
-            masterProspectId = masterProspect?.id || null;
-            console.log(`✅ Upserted to workspace_prospects: ${masterProspectId}`);
+            const existingResult = await pool.query(
+              `SELECT id FROM workspace_prospects WHERE workspace_id = $1 AND linkedin_url_hash = $2`,
+              [campaign.workspace_id, linkedinHash]
+            );
+            masterProspectId = existingResult.rows[0]?.id || null;
           }
         }
 
         // Check if prospect already exists for this campaign (by email OR linkedin_url)
         // FIX: Previously only checked email, causing duplicates for LinkedIn-only prospects
-        let existing = null;
+        let existingId: string | null = null;
 
         // Check by email first (if not empty)
         if (prospectData.email && prospectData.email.trim() !== '') {
-          const { data: byEmail } = await supabase
-            .from('campaign_prospects')
-            .select('id')
-            .eq('campaign_id', campaign_id)
-            .eq('email', prospectData.email)
-            .maybeSingle();
-          existing = byEmail;
+          const emailResult = await pool.query(
+            `SELECT id FROM campaign_prospects WHERE campaign_id = $1 AND email = $2`,
+            [campaign_id, prospectData.email]
+          );
+          existingId = emailResult.rows[0]?.id || null;
         }
 
         // Check by linkedin_url if not found by email
-        if (!existing && prospectData.linkedin_url && prospectData.linkedin_url.trim() !== '') {
-          const { data: byLinkedin } = await supabase
-            .from('campaign_prospects')
-            .select('id')
-            .eq('campaign_id', campaign_id)
-            .eq('linkedin_url', prospectData.linkedin_url)
-            .maybeSingle();
-          existing = byLinkedin;
+        if (!existingId && prospectData.linkedin_url && prospectData.linkedin_url.trim() !== '') {
+          const linkedinResult = await pool.query(
+            `SELECT id FROM campaign_prospects WHERE campaign_id = $1 AND linkedin_url = $2`,
+            [campaign_id, prospectData.linkedin_url]
+          );
+          existingId = linkedinResult.rows[0]?.id || null;
         }
 
-        if (existing) {
+        if (existingId) {
           // Update existing prospect with master_prospect_id
-          const { error: updateError } = await supabase
-            .from('campaign_prospects')
-            .update({
-              ...prospectData,
-              master_prospect_id: masterProspectId,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existing.id);
-
-          if (updateError) {
+          try {
+            await pool.query(
+              `UPDATE campaign_prospects SET
+                first_name = $1, last_name = $2, email = $3, company_name = $4, title = $5,
+                linkedin_url = $6, linkedin_user_id = $7, phone = $8, location = $9,
+                industry = $10, notes = $11, personalization_data = $12,
+                master_prospect_id = $13, updated_at = $14
+              WHERE id = $15`,
+              [
+                prospectData.first_name,
+                prospectData.last_name,
+                prospectData.email,
+                prospectData.company_name,
+                prospectData.title,
+                prospectData.linkedin_url,
+                prospectData.linkedin_user_id,
+                prospectData.phone,
+                prospectData.location,
+                prospectData.industry,
+                prospectData.notes,
+                prospectData.personalization_data,
+                masterProspectId,
+                new Date().toISOString(),
+                existingId
+              ]
+            );
+            updated_count++;
+          } catch (updateError: any) {
             error_count++;
             errors.push({ index: i, error: updateError.message });
-          } else {
-            updated_count++;
           }
         } else {
           // Insert new prospect with master_prospect_id FK
-          const { data: newProspect, error: insertError } = await supabase
-            .from('campaign_prospects')
-            .insert({
-              ...prospectData,
-              master_prospect_id: masterProspectId
-            })
-            .select('id')
-            .single();
+          try {
+            const insertResult = await pool.query(
+              `INSERT INTO campaign_prospects (
+                campaign_id, workspace_id, master_prospect_id, first_name, last_name,
+                email, company_name, title, linkedin_url, linkedin_user_id, phone,
+                location, industry, status, notes, personalization_data, created_at, updated_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+              RETURNING id`,
+              [
+                prospectData.campaign_id,
+                prospectData.workspace_id,
+                masterProspectId,
+                prospectData.first_name,
+                prospectData.last_name,
+                prospectData.email,
+                prospectData.company_name,
+                prospectData.title,
+                prospectData.linkedin_url,
+                prospectData.linkedin_user_id,
+                prospectData.phone,
+                prospectData.location,
+                prospectData.industry,
+                prospectData.status,
+                prospectData.notes,
+                prospectData.personalization_data,
+                prospectData.created_at,
+                prospectData.updated_at
+              ]
+            );
 
-          if (insertError) {
+            if (insertResult.rows.length > 0) {
+              inserted_count++;
+            }
+          } catch (insertError: any) {
             error_count++;
             errors.push({ index: i, error: insertError.message });
-          } else {
-            inserted_count++;
-
-            // Initialize execution state for this prospect
-            if (newProspect?.id) {
-              await supabase.rpc('initialize_execution_state', {
-                p_campaign_id: campaign_id,
-                p_prospect_id: newProspect.id
-              });
-            }
           }
         }
       } catch (error: any) {
@@ -331,11 +335,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Count prospects with LinkedIn IDs
-    const { count: prospects_with_linkedin_ids } = await supabase
-      .from('campaign_prospects')
-      .select('*', { count: 'exact', head: true })
-      .eq('campaign_id', campaign_id)
-      .not('linkedin_user_id', 'is', null);
+    const countResult = await pool.query(
+      `SELECT COUNT(*) as count FROM campaign_prospects
+       WHERE campaign_id = $1 AND linkedin_user_id IS NOT NULL`,
+      [campaign_id]
+    );
+    const prospects_with_linkedin_ids = parseInt(countResult.rows[0]?.count || '0');
 
     return NextResponse.json({
       success: true,
@@ -350,11 +355,15 @@ export async function POST(req: NextRequest) {
         updated: updated_count,
         errors: error_count
       },
-      prospects_with_linkedin_ids: prospects_with_linkedin_ids || 0,
+      prospects_with_linkedin_ids,
       error_details: errors.length > 0 ? errors : undefined
     });
 
   } catch (error: any) {
+    if ((error as AuthError).statusCode) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Prospect upload error:', error);
     return NextResponse.json(
       { error: 'Failed to upload prospects', details: error.message },

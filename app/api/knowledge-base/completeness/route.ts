@@ -1,71 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { supabaseKnowledge } from '@/lib/supabase-knowledge';
 
 /**
  * GET /api/knowledge-base/completeness
  * Check KB completeness for a workspace
- * 
+ *
  * Query params:
  * - workspace_id: UUID of workspace (optional, uses user's active workspace if not provided)
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Firebase auth verification
+    let userId: string;
+    let workspaceId: string;
 
-    if (authError || !user) {
+    try {
+      const auth = await verifyAuth(request);
+      userId = auth.userId;
+      workspaceId = auth.workspaceId;
+    } catch (error) {
+      const authError = error as AuthError;
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { status: authError.statusCode || 401 }
       );
     }
 
     const { searchParams } = new URL(request.url);
-    let workspaceId = searchParams.get('workspace_id');
+    const providedWorkspaceId = searchParams.get('workspace_id');
 
-    // If no workspace_id provided, get user's active workspace
-    if (!workspaceId) {
-      const { data: membership } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .limit(1)
-        .single();
+    // Use provided workspace_id if available, otherwise use auth workspace
+    const targetWorkspaceId = providedWorkspaceId || workspaceId;
 
-      if (!membership?.workspace_id) {
+    // If a different workspace_id was provided, verify user has access
+    if (providedWorkspaceId && providedWorkspaceId !== workspaceId) {
+      const accessResult = await pool.query(
+        `SELECT role FROM workspace_members
+         WHERE workspace_id = $1 AND user_id = $2 AND is_active = true`,
+        [providedWorkspaceId, userId]
+      );
+
+      if (accessResult.rows.length === 0) {
         return NextResponse.json(
-          { success: false, error: 'No active workspace found' },
-          { status: 404 }
+          { success: false, error: 'Access denied to this workspace' },
+          { status: 403 }
         );
       }
-
-      workspaceId = membership.workspace_id;
-    }
-
-    // Verify user has access to this workspace
-    const { data: access } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single();
-
-    if (!access) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied to this workspace' },
-        { status: 403 }
-      );
     }
 
     // Check KB completeness
-    const completeness = await supabaseKnowledge.checkKBCompleteness(workspaceId);
+    const completeness = await supabaseKnowledge.checkKBCompleteness(targetWorkspaceId);
 
     // Build recommendations based on completeness
     const recommendations: string[] = [];
-    
+
     if (completeness.missingCritical.length > 0) {
       recommendations.push(
         `Critical sections need attention: ${completeness.missingCritical.join(', ')}`
@@ -94,10 +83,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      workspace_id: workspaceId,
+      workspace_id: targetWorkspaceId,
       completeness: {
         overall: completeness.overallCompleteness,
-        status: completeness.overallCompleteness >= 70 ? 'complete' : 
+        status: completeness.overallCompleteness >= 70 ? 'complete' :
                 completeness.overallCompleteness >= 40 ? 'partial' : 'minimal',
         sections: completeness.sections,
         missing_critical: completeness.missingCritical,
@@ -107,11 +96,11 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ KB completeness check error:', error);
+    console.error('KB completeness check error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to check KB completeness' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to check KB completeness'
       },
       { status: 500 }
     );

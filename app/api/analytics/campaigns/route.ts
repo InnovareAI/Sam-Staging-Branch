@@ -1,41 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 import { addDays, differenceInCalendarDays } from 'date-fns';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    // Get user and workspace
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Firebase auth - workspace comes from header
+    let authContext;
+    try {
+      authContext = await verifyAuth(req);
+    } catch (error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
     }
 
-    // Get workspace_id from URL params
+    const { userId, workspaceId } = authContext;
+
+    // Get additional params from URL
     const { searchParams } = new URL(req.url);
-    const workspaceId = searchParams.get('workspace_id');
     const timeRange = searchParams.get('time_range') || '7d';
     const campaignType = searchParams.get('campaign_type') || 'all';
-    const userId = searchParams.get('user_id') || 'all';
+    const filterUserId = searchParams.get('user_id') || 'all';
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Workspace ID required' }, { status: 400 });
-    }
-
-    // Verify workspace membership
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (!member) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
 
     // Calculate date range
     let dateFilter: Date;
@@ -46,47 +32,43 @@ export async function GET(req: NextRequest) {
       dateFilter = addDays(new Date(), -days);
     }
 
-    // Get campaign performance summary
-    // Only include active, paused, or completed campaigns (exclude drafts)
-    let query = supabase
-      .from('campaign_performance_summary')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .in('status', ['active', 'paused', 'completed']);
+    // Get campaign performance summary - only active, paused, or completed campaigns
+    let campaignsQuery = `
+      SELECT * FROM campaign_performance_summary
+      WHERE workspace_id = $1
+      AND status IN ('active', 'paused', 'completed')
+    `;
+    const campaignsParams: any[] = [workspaceId];
 
     if (campaignType !== 'all') {
-      query = query.eq('campaign_type', campaignType);
+      campaignsParams.push(campaignType);
+      campaignsQuery += ` AND campaign_type = $${campaignsParams.length}`;
     }
 
-    const { data: campaigns, error: campaignsError } = await query;
+    const { rows: campaigns } = await pool.query(campaignsQuery, campaignsParams);
 
-    if (campaignsError) {
-      console.error('Failed to fetch campaign analytics:', campaignsError);
-      return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 });
-    }
-
-    // Get time series data
-    const timeSeriesQuery = supabase
-      .rpc('get_campaign_time_series', {
-        p_workspace_id: workspaceId,
-        p_start_date: dateFilter.toISOString(),
-        p_end_date: (endDate || new Date().toISOString()),
-        p_campaign_type: campaignType === 'all' ? null : campaignType
-      });
-
-    const { data: timeSeries, error: timeSeriesError } = await timeSeriesQuery;
+    // Get time series data via RPC function
+    const endDateValue = endDate || new Date().toISOString();
+    const { rows: timeSeries } = await pool.query(
+      `SELECT * FROM get_campaign_time_series($1, $2, $3, $4)`,
+      [
+        workspaceId,
+        dateFilter.toISOString(),
+        endDateValue,
+        campaignType === 'all' ? null : campaignType
+      ]
+    ).catch(() => ({ rows: [] })); // Fallback if RPC doesn't exist
 
     // Get prospect counts per campaign
-    const campaignIds = campaigns?.map(c => c.campaign_id) || [];
+    const campaignIds = campaigns?.map((c: any) => c.campaign_id) || [];
     let prospectCounts: Record<string, number> = {};
 
     if (campaignIds.length > 0) {
-      const { data: prospectData } = await supabase
-        .from('campaign_prospects')
-        .select('campaign_id')
-        .in('campaign_id', campaignIds);
+      const { rows: prospectData } = await pool.query(
+        `SELECT campaign_id FROM campaign_prospects WHERE campaign_id = ANY($1)`,
+        [campaignIds]
+      );
 
-      // Count prospects per campaign and track CR statuses
       prospectData?.forEach((p: any) => {
         prospectCounts[p.campaign_id] = (prospectCounts[p.campaign_id] || 0) + 1;
       });
@@ -96,11 +78,12 @@ export async function GET(req: NextRequest) {
     let crMetrics: Record<string, { cr_sent: number; cr_accepted: number }> = {};
 
     if (campaignIds.length > 0) {
-      const { data: crData } = await supabase
-        .from('campaign_prospects')
-        .select('campaign_id, status')
-        .in('campaign_id', campaignIds)
-        .in('status', ['invitation_sent', 'connected', 'message_sent', 'replied', 'interested', 'completed']);
+      const { rows: crData } = await pool.query(
+        `SELECT campaign_id, status FROM campaign_prospects
+         WHERE campaign_id = ANY($1)
+         AND status IN ('invitation_sent', 'connected', 'message_sent', 'replied', 'interested', 'completed')`,
+        [campaignIds]
+      );
 
       crData?.forEach((p: any) => {
         if (!crMetrics[p.campaign_id]) {
@@ -116,14 +99,14 @@ export async function GET(req: NextRequest) {
     }
 
     // Get user info for campaign owners
-    const creatorIds = [...new Set(campaigns?.map(c => c.created_by).filter(Boolean) || [])];
+    const creatorIds = [...new Set(campaigns?.map((c: any) => c.created_by).filter(Boolean) || [])];
     let userInfoMap: Record<string, { full_name?: string; email?: string }> = {};
 
     if (creatorIds.length > 0) {
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('id, full_name, email')
-        .in('id', creatorIds);
+      const { rows: usersData } = await pool.query(
+        `SELECT id, full_name, email FROM users WHERE id = ANY($1)`,
+        [creatorIds]
+      );
 
       usersData?.forEach((u: any) => {
         userInfoMap[u.id] = { full_name: u.full_name, email: u.email };
@@ -147,7 +130,7 @@ export async function GET(req: NextRequest) {
     };
 
     // Enrich campaigns with prospect counts, owner info, and CR metrics
-    const enrichedCampaigns = campaigns?.map(c => {
+    const enrichedCampaigns = campaigns?.map((c: any) => {
       const campaignCR = crMetrics[c.campaign_id] || { cr_sent: 0, cr_accepted: 0 };
       const crRate = campaignCR.cr_sent > 0
         ? Math.round((campaignCR.cr_accepted / campaignCR.cr_sent) * 100)
@@ -168,10 +151,10 @@ export async function GET(req: NextRequest) {
     // Calculate aggregated metrics
     const aggregatedMetrics = {
       totalProspects: Object.values(prospectCounts).reduce((sum, count) => sum + count, 0),
-      totalMessages: campaigns?.reduce((sum, c) => sum + (c.messages_sent || 0), 0) || 0,
-      totalReplies: campaigns?.reduce((sum, c) => sum + (c.replies_received || 0), 0) || 0,
-      totalInfoRequests: campaigns?.reduce((sum, c) => sum + (c.interested_replies || 0), 0) || 0,
-      totalMeetings: campaigns?.reduce((sum, c) => sum + (c.meetings_booked || 0), 0) || 0,
+      totalMessages: campaigns?.reduce((sum: number, c: any) => sum + (c.messages_sent || 0), 0) || 0,
+      totalReplies: campaigns?.reduce((sum: number, c: any) => sum + (c.replies_received || 0), 0) || 0,
+      totalInfoRequests: campaigns?.reduce((sum: number, c: any) => sum + (c.interested_replies || 0), 0) || 0,
+      totalMeetings: campaigns?.reduce((sum: number, c: any) => sum + (c.meetings_booked || 0), 0) || 0,
     };
 
     // Generate time series - OPTIMIZED: single query instead of N queries per day
@@ -197,19 +180,17 @@ export async function GET(req: NextRequest) {
       }
 
       // Get all campaign_prospects with status changes in date range (batch query)
-      // Use campaign_prospects.updated_at for when status changed
-      const campaignIds = campaigns?.map(c => c.campaign_id) || [];
       if (campaignIds.length > 0) {
-        const { data: prospectsData } = await supabase
-          .from('campaign_prospects')
-          .select('status, updated_at')
-          .in('campaign_id', campaignIds)
-          .gte('updated_at', startDateStr);
+        const { rows: prospectsData } = await pool.query(
+          `SELECT status, updated_at FROM campaign_prospects
+           WHERE campaign_id = ANY($1) AND updated_at >= $2`,
+          [campaignIds, startDateStr]
+        );
 
         // Group by date
-        prospectsData?.forEach(p => {
+        prospectsData?.forEach((p: any) => {
           if (p.updated_at) {
-            const dateKey = p.updated_at.split('T')[0];
+            const dateKey = new Date(p.updated_at).toISOString().split('T')[0];
             if (seriesData[dateKey]) {
               // Count messages sent (CR sent statuses)
               if (['connection_request_sent', 'connected', 'replied', 'follow_up_sent'].includes(p.status)) {

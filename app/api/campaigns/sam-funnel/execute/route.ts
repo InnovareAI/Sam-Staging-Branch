@@ -1,57 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
-import { 
-  SAM_FUNNEL_TEMPLATES, 
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
+import {
+  SAM_FUNNEL_TEMPLATES,
   getSamFunnelTemplateById,
   calculateWeekdaySchedule,
   populateSamFunnelTemplate,
-  SECOND_CTA_TEST_VARIATIONS 
+  SECOND_CTA_TEST_VARIATIONS
 } from '@/lib/sam-funnel-templates';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    
-    // Get current user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Firebase authentication
+    const { userId, workspaceId } = await verifyAuth(request);
 
     const body = await request.json();
-    const { 
-      campaign_id, 
-      template_id, 
-      prospects, 
+    const {
+      campaign_id,
+      template_id,
+      prospects,
       start_date,
       personalization_data = {},
-      client_messaging = null 
+      client_messaging = null
     } = body;
 
     if (!campaign_id || !template_id || !prospects || prospects.length === 0) {
-      return NextResponse.json({ 
-        error: 'Missing required fields: campaign_id, template_id, prospects' 
+      return NextResponse.json({
+        error: 'Missing required fields: campaign_id, template_id, prospects'
       }, { status: 400 });
     }
 
     // Get Sam Funnel template
     const template = getSamFunnelTemplateById(template_id);
     if (!template) {
-      return NextResponse.json({ 
-        error: `Sam Funnel template not found: ${template_id}` 
+      return NextResponse.json({
+        error: `Sam Funnel template not found: ${template_id}`
       }, { status: 404 });
     }
 
-    // Validate workspace access
-    const { data: workspace, error: workspaceError } = await supabase
-      .from('campaigns')
-      .select('workspace_id')
-      .eq('id', campaign_id)
-      .single();
+    // Validate workspace access to the campaign
+    const campaignResult = await pool.query(
+      'SELECT workspace_id FROM campaigns WHERE id = $1',
+      [campaign_id]
+    );
 
-    if (workspaceError || !workspace) {
-      return NextResponse.json({ 
-        error: 'Campaign not found or access denied' 
+    if (campaignResult.rows.length === 0) {
+      return NextResponse.json({
+        error: 'Campaign not found or access denied'
+      }, { status: 404 });
+    }
+
+    const campaignWorkspaceId = campaignResult.rows[0].workspace_id;
+
+    // Verify user has access to this campaign's workspace
+    if (campaignWorkspaceId !== workspaceId) {
+      return NextResponse.json({
+        error: 'Campaign not found or access denied'
       }, { status: 404 });
     }
 
@@ -60,31 +63,36 @@ export async function POST(request: NextRequest) {
     const messageSchedule = calculateWeekdaySchedule(campaignStartDate);
 
     // Create Sam Funnel execution record
-    const { data: execution, error: executionError } = await supabase
-      .from('sam_funnel_executions')
-      .insert({
+    const executionResult = await pool.query(
+      `INSERT INTO sam_funnel_executions
+        (campaign_id, template_id, workspace_id, execution_type, status, prospects_total,
+         start_date, estimated_completion_date, schedule, personalization_data, client_messaging, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING *`,
+      [
         campaign_id,
         template_id,
-        workspace_id: workspace.workspace_id,
-        execution_type: 'sam_funnel',
-        status: 'pending',
-        prospects_total: prospects.length,
-        start_date: campaignStartDate.toISOString(),
-        estimated_completion_date: addWeekdays(campaignStartDate, 25).toISOString(), // 4 weeks
-        schedule: messageSchedule,
-        personalization_data,
-        client_messaging,
-        created_by: session.user.id
-      })
-      .select()
-      .single();
+        workspaceId,
+        'sam_funnel',
+        'pending',
+        prospects.length,
+        campaignStartDate.toISOString(),
+        addWeekdays(campaignStartDate, 25).toISOString(), // 4 weeks
+        JSON.stringify(messageSchedule),
+        JSON.stringify(personalization_data),
+        client_messaging ? JSON.stringify(client_messaging) : null,
+        userId
+      ]
+    );
 
-    if (executionError) {
-      console.error('Failed to create Sam Funnel execution:', executionError);
-      return NextResponse.json({ 
-        error: 'Failed to create execution record' 
+    if (executionResult.rows.length === 0) {
+      console.error('Failed to create Sam Funnel execution');
+      return NextResponse.json({
+        error: 'Failed to create execution record'
       }, { status: 500 });
     }
+
+    const execution = executionResult.rows[0];
 
     // Process prospects and create scheduled messages
     const scheduledMessages = [];
@@ -93,14 +101,14 @@ export async function POST(request: NextRequest) {
     for (const prospect of prospects) {
       // A/B test assignment for 2nd CTA
       const ctaVariation = assignCTAVariation();
-      
+
       // Create messages for each step
       for (const step of template.steps) {
         const scheduledDate = calculateStepScheduleDate(campaignStartDate, step.day_offset);
-        
+
         // Populate message template with prospect data
         const personalizedMessage = populateSamFunnelTemplate(
-          step.message_template, 
+          step.message_template,
           {
             ...prospect,
             ...personalization_data,
@@ -138,27 +146,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert scheduled messages
-    const { error: messagesError } = await supabase
-      .from('sam_funnel_messages')
-      .insert(scheduledMessages);
-
-    if (messagesError) {
-      console.error('Failed to create scheduled messages:', messagesError);
-      return NextResponse.json({ 
-        error: 'Failed to schedule messages' 
-      }, { status: 500 });
+    for (const msg of scheduledMessages) {
+      await pool.query(
+        `INSERT INTO sam_funnel_messages
+          (execution_id, campaign_id, prospect_id, step_number, step_type, scheduled_date,
+           message_template, subject, mandatory_element, cta_variation, conditions, status, week_number, weekday)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+        [
+          msg.execution_id, msg.campaign_id, msg.prospect_id, msg.step_number, msg.step_type,
+          msg.scheduled_date, msg.message_template, msg.subject, msg.mandatory_element,
+          msg.cta_variation, JSON.stringify(msg.conditions), msg.status, msg.week_number, msg.weekday
+        ]
+      );
     }
 
     // Update prospects
     for (const prospectUpdate of prospectUpdates) {
-      await supabase
-        .from('campaign_prospects')
-        .update({
-          status: prospectUpdate.status,
-          sam_funnel_execution_id: prospectUpdate.sam_funnel_execution_id,
-          assigned_cta_variation: prospectUpdate.assigned_cta_variation
-        })
-        .eq('id', prospectUpdate.id);
+      await pool.query(
+        `UPDATE campaign_prospects
+         SET status = $1, sam_funnel_execution_id = $2, assigned_cta_variation = $3
+         WHERE id = $4`,
+        [prospectUpdate.status, prospectUpdate.sam_funnel_execution_id, prospectUpdate.assigned_cta_variation, prospectUpdate.id]
+      );
     }
 
     // Start execution (trigger N8N workflow)
@@ -182,9 +191,14 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    // Handle AuthError
+    if (error && typeof error === 'object' && 'code' in error && 'statusCode' in error) {
+      const authError = error as AuthError;
+      return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+    }
     console.error('Sam Funnel execution error:', error);
-    return NextResponse.json({ 
-      error: 'Internal server error' 
+    return NextResponse.json({
+      error: 'Internal server error'
     }, { status: 500 });
   }
 }
@@ -193,7 +207,7 @@ export async function POST(request: NextRequest) {
 function addWeekdays(startDate: Date, weekdaysToAdd: number): Date {
   let currentDate = new Date(startDate);
   let addedWeekdays = 0;
-  
+
   while (addedWeekdays < weekdaysToAdd) {
     currentDate.setDate(currentDate.getDate() + 1);
     // Check if it's a weekday (Monday = 1, Friday = 5)
@@ -201,7 +215,7 @@ function addWeekdays(startDate: Date, weekdaysToAdd: number): Date {
       addedWeekdays++;
     }
   }
-  
+
   return currentDate;
 }
 
@@ -214,14 +228,14 @@ function calculateStepScheduleDate(startDate: Date, dayOffset: number): Date {
 function assignCTAVariation() {
   const random = Math.random();
   let cumulativeAllocation = 0;
-  
+
   for (const variation of SECOND_CTA_TEST_VARIATIONS) {
     cumulativeAllocation += variation.traffic_allocation;
     if (random <= cumulativeAllocation) {
       return variation;
     }
   }
-  
+
   // Fallback to first variation
   return SECOND_CTA_TEST_VARIATIONS[0];
 }
@@ -240,7 +254,7 @@ function getCTATestDistribution(totalProspects: number) {
 async function triggerN8NSamFunnel(execution: any, template: any, messages: any[]) {
   try {
     const n8nEndpoint = process.env.N8N_SAM_FUNNEL_ENDPOINT || 'https://workflows.innovareai.com/webhook/sam-funnel-execution';
-    
+
     const payload = {
       execution_id: execution.id,
       campaign_id: execution.campaign_id,

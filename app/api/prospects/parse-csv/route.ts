@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth } from '@/lib/auth';
 
 /**
  * POST /api/prospects/parse-csv
@@ -7,17 +7,8 @@ import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
+    // Authenticate with Firebase
+    await verifyAuth(request);
 
     const formData = await request.formData();
     const file = formData.get('file') as File;

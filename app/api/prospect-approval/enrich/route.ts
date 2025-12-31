@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { verifyAuth, pool, AuthError } from '@/lib/auth';
 
 // BrightData configuration - supports multiple env var formats
 // Option 1: REST API token (BRIGHTDATA_API_TOKEN)
@@ -18,7 +16,7 @@ const BRIGHT_DATA_AUTH = process.env.BRIGHT_DATA_AUTH ||
  * POST /api/prospect-approval/enrich
  * Triggers manual enrichment for a prospect (Find Email or Refresh Profile)
  * Uses BrightData for actual data enrichment
- * 
+ *
  * Body:
  * - prospect_id: string
  * - action: 'find_email' | 'refresh_profile'
@@ -26,6 +24,8 @@ const BRIGHT_DATA_AUTH = process.env.BRIGHT_DATA_AUTH ||
  */
 export async function POST(request: NextRequest) {
     try {
+        const { userId, workspaceId: authWorkspaceId } = await verifyAuth(request);
+
         const body = await request.json();
         const { prospect_id, action, workspace_id } = body;
 
@@ -43,39 +43,13 @@ export async function POST(request: NextRequest) {
             }, { status: 400 });
         }
 
-        // Auth
-        const cookieStore = await cookies();
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    getAll() { return cookieStore.getAll(); },
-                    setAll(cookiesToSet) {
-                        cookiesToSet.forEach(({ name, value, options }) => {
-                            cookieStore.set(name, value, options);
-                        });
-                    }
-                }
-            }
+        // Verify user has access to this workspace
+        const memberResult = await pool.query(
+            'SELECT workspace_id FROM workspace_members WHERE user_id = $1 AND workspace_id = $2',
+            [userId, workspace_id]
         );
 
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
-        }
-
-        const adminClient = supabaseAdmin();
-
-        // Verify user has access to this workspace
-        const { data: membership } = await adminClient
-            .from('workspace_members')
-            .select('workspace_id')
-            .eq('user_id', user.id)
-            .eq('workspace_id', workspace_id)
-            .maybeSingle();
-
-        if (!membership) {
+        if (memberResult.rows.length === 0) {
             return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
         }
 
@@ -83,14 +57,13 @@ export async function POST(request: NextRequest) {
         let prospect: any = null;
         let prospectRecord: any = null;
 
-        const { data: newProspect } = await adminClient
-            .from('workspace_prospects')
-            .select('*')
-            .eq('id', prospect_id)
-            .eq('workspace_id', workspace_id)
-            .maybeSingle();
+        const newProspectResult = await pool.query(
+            'SELECT * FROM workspace_prospects WHERE id = $1 AND workspace_id = $2',
+            [prospect_id, workspace_id]
+        );
 
-        if (newProspect) {
+        if (newProspectResult.rows.length > 0) {
+            const newProspect = newProspectResult.rows[0];
             prospectRecord = newProspect;
             prospect = {
                 id: newProspect.id,
@@ -107,13 +80,13 @@ export async function POST(request: NextRequest) {
             };
         } else {
             // Try legacy architecture
-            const { data: legacyProspect } = await adminClient
-                .from('prospect_approval_data')
-                .select('*')
-                .eq('prospect_id', prospect_id)
-                .maybeSingle();
+            const legacyResult = await pool.query(
+                'SELECT * FROM prospect_approval_data WHERE prospect_id = $1',
+                [prospect_id]
+            );
 
-            if (legacyProspect) {
+            if (legacyResult.rows.length > 0) {
+                const legacyProspect = legacyResult.rows[0];
                 prospectRecord = legacyProspect;
                 prospect = {
                     id: legacyProspect.prospect_id,
@@ -170,23 +143,34 @@ export async function POST(request: NextRequest) {
             if (enrichmentResult.success && (enrichmentResult.email || enrichmentResult.industry)) {
                 // Update prospect with enriched data
                 if (prospect.source === 'workspace_prospects') {
-                    const updateData: any = {
-                        enrichment_data: {
-                            ...prospect.enrichmentData,
-                            enriched_at: new Date().toISOString(),
-                            enrichment_source: 'brightdata',
-                            enrichment_confidence: enrichmentResult.confidence || 0.7,
-                            enrichment_cost: 0.01
-                        }
+                    const enrichmentData = {
+                        ...prospect.enrichmentData,
+                        enriched_at: new Date().toISOString(),
+                        enrichment_source: 'brightdata',
+                        enrichment_confidence: enrichmentResult.confidence || 0.7,
+                        enrichment_cost: 0.01
                     };
 
-                    if (enrichmentResult.email) updateData.email = enrichmentResult.email;
-                    if (enrichmentResult.industry) updateData.industry = enrichmentResult.industry;
+                    let updateQuery = 'UPDATE workspace_prospects SET enrichment_data = $1';
+                    const params: any[] = [JSON.stringify(enrichmentData)];
+                    let paramCount = 1;
 
-                    await adminClient
-                        .from('workspace_prospects')
-                        .update(updateData)
-                        .eq('id', prospect_id);
+                    if (enrichmentResult.email) {
+                        paramCount++;
+                        updateQuery += `, email = $${paramCount}`;
+                        params.push(enrichmentResult.email);
+                    }
+                    if (enrichmentResult.industry) {
+                        paramCount++;
+                        updateQuery += `, industry = $${paramCount}`;
+                        params.push(enrichmentResult.industry);
+                    }
+
+                    paramCount++;
+                    updateQuery += ` WHERE id = $${paramCount}`;
+                    params.push(prospect_id);
+
+                    await pool.query(updateQuery, params);
                 }
 
                 const foundItems = [];
@@ -205,16 +189,16 @@ export async function POST(request: NextRequest) {
             } else {
                 // Update with failed status
                 if (prospect.source === 'workspace_prospects') {
-                    await adminClient
-                        .from('workspace_prospects')
-                        .update({
-                            enrichment_data: {
-                                ...prospect.enrichmentData,
-                                email_lookup_failed_at: new Date().toISOString(),
-                                email_lookup_error: enrichmentResult.error || 'Email not found'
-                            }
-                        })
-                        .eq('id', prospect_id);
+                    const enrichmentData = {
+                        ...prospect.enrichmentData,
+                        email_lookup_failed_at: new Date().toISOString(),
+                        email_lookup_error: enrichmentResult.error || 'Email not found'
+                    };
+
+                    await pool.query(
+                        'UPDATE workspace_prospects SET enrichment_data = $1 WHERE id = $2',
+                        [JSON.stringify(enrichmentData), prospect_id]
+                    );
                 }
 
                 return NextResponse.json({
@@ -239,21 +223,21 @@ export async function POST(request: NextRequest) {
             }
 
             // Get a Unipile account for this workspace
-            const { data: unipileAccount } = await adminClient
-                .from('workspace_accounts')
-                .select('unipile_account_id')
-                .eq('workspace_id', workspace_id)
-                .eq('account_type', 'linkedin')
-                .not('unipile_account_id', 'is', null)
-                .limit(1)
-                .maybeSingle();
+            const unipileResult = await pool.query(
+                `SELECT unipile_account_id FROM workspace_accounts
+                 WHERE workspace_id = $1 AND account_type = 'linkedin' AND unipile_account_id IS NOT NULL
+                 LIMIT 1`,
+                [workspace_id]
+            );
 
-            if (!unipileAccount?.unipile_account_id) {
+            if (unipileResult.rows.length === 0) {
                 return NextResponse.json({
                     success: false,
                     error: 'No LinkedIn account connected. Connect a LinkedIn account to refresh profiles.'
                 }, { status: 400 });
             }
+
+            const unipileAccountId = unipileResult.rows[0].unipile_account_id;
 
             const linkedinIdentifier = prospect.linkedinUserId ||
                 prospect.linkedinUrl?.split('/in/')[1]?.replace(/\/$/, '');
@@ -270,7 +254,7 @@ export async function POST(request: NextRequest) {
             try {
                 // Call Unipile to get fresh profile data
                 const unipileResponse = await fetch(
-                    `https://${process.env.UNIPILE_DSN}/api/v1/users/${encodeURIComponent(linkedinIdentifier)}?account_id=${unipileAccount.unipile_account_id}`,
+                    `https://${process.env.UNIPILE_DSN}/api/v1/users/${encodeURIComponent(linkedinIdentifier)}?account_id=${unipileAccountId}`,
                     {
                         headers: {
                             'X-API-KEY': process.env.UNIPILE_API_KEY!,
@@ -295,26 +279,55 @@ export async function POST(request: NextRequest) {
 
                 // Update prospect with Unipile data
                 if (prospect.source === 'workspace_prospects') {
-                    const updateData: any = {
-                        enrichment_data: {
-                            ...prospect.enrichmentData,
-                            profile_refreshed_at: new Date().toISOString(),
-                            refresh_source: 'unipile'
-                        }
+                    const enrichmentData = {
+                        ...prospect.enrichmentData,
+                        profile_refreshed_at: new Date().toISOString(),
+                        refresh_source: 'unipile'
                     };
 
-                    // Update fields from Unipile (NOT email or industry - those come from BrightData)
-                    if (profileData.first_name) updateData.first_name = profileData.first_name;
-                    if (profileData.last_name) updateData.last_name = profileData.last_name;
-                    if (profileData.headline || profileData.title) updateData.title = profileData.headline || profileData.title;
-                    if (profileData.company) updateData.company = profileData.company;
-                    if (profileData.location) updateData.location = profileData.location;
-                    if (profileData.provider_id) updateData.linkedin_user_id = profileData.provider_id;
+                    let updateFields: string[] = ['enrichment_data = $1'];
+                    const params: any[] = [JSON.stringify(enrichmentData)];
+                    let paramCount = 1;
 
-                    await adminClient
-                        .from('workspace_prospects')
-                        .update(updateData)
-                        .eq('id', prospect_id);
+                    // Update fields from Unipile (NOT email or industry - those come from BrightData)
+                    if (profileData.first_name) {
+                        paramCount++;
+                        updateFields.push(`first_name = $${paramCount}`);
+                        params.push(profileData.first_name);
+                    }
+                    if (profileData.last_name) {
+                        paramCount++;
+                        updateFields.push(`last_name = $${paramCount}`);
+                        params.push(profileData.last_name);
+                    }
+                    if (profileData.headline || profileData.title) {
+                        paramCount++;
+                        updateFields.push(`title = $${paramCount}`);
+                        params.push(profileData.headline || profileData.title);
+                    }
+                    if (profileData.company) {
+                        paramCount++;
+                        updateFields.push(`company = $${paramCount}`);
+                        params.push(profileData.company);
+                    }
+                    if (profileData.location) {
+                        paramCount++;
+                        updateFields.push(`location = $${paramCount}`);
+                        params.push(profileData.location);
+                    }
+                    if (profileData.provider_id) {
+                        paramCount++;
+                        updateFields.push(`linkedin_user_id = $${paramCount}`);
+                        params.push(profileData.provider_id);
+                    }
+
+                    paramCount++;
+                    params.push(prospect_id);
+
+                    await pool.query(
+                        `UPDATE workspace_prospects SET ${updateFields.join(', ')} WHERE id = $${paramCount}`,
+                        params
+                    );
                 }
 
                 const updatedFields = ['first_name', 'last_name', 'title', 'company', 'location']
@@ -343,6 +356,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });
 
     } catch (error) {
+        if ((error as AuthError).code) {
+            const authError = error as AuthError;
+            return NextResponse.json({ error: authError.message }, { status: authError.statusCode });
+        }
         console.error('Enrichment error:', error);
         return NextResponse.json({
             success: false,
@@ -354,7 +371,7 @@ export async function POST(request: NextRequest) {
 /**
  * Enrich prospect with BrightData (email + industry)
  * These fields are NOT provided by LinkedIn/Unipile
- * 
+ *
  * Uses BrightData Web Unlocker API to scrape LinkedIn profile
  */
 async function enrichWithBrightData(linkedinUrl: string): Promise<{
