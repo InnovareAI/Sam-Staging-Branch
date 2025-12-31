@@ -9,7 +9,7 @@ import { getAdminAuth, getAdminFirestore } from '@/lib/firebase-admin';
 import { Pool } from 'pg';
 
 // Initialize PostgreSQL connection pool
-const pool = new Pool({
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });

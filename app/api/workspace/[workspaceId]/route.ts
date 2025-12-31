@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/app/lib/supabase'
+import { verifyAuth, pool } from '@/lib/auth'
 
 /**
  * GET /api/workspace/[workspaceId]
- *
  * Fetch workspace details including name, members, and subscription info
  */
 export async function GET(
@@ -11,51 +10,45 @@ export async function GET(
   { params }: { params: { workspaceId: string } }
 ) {
   try {
-    const supabase = createServerClient()
+    // 1. Authenticate
+    const { userId } = await verifyAuth(request);
+    const { workspaceId } = params;
 
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { workspaceId } = params
-
-    // Verify user is a member of this workspace
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user.id)
-      .single()
+    // 2. Verify Member Access
+    const memberResult = await pool.query(
+      'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+      [workspaceId, userId]
+    );
+    const member = memberResult.rows[0];
 
     if (!member) {
-      return NextResponse.json({ error: 'Forbidden: Not a member of this workspace' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden: Not a member of this workspace' }, { status: 403 });
     }
 
-    // Fetch workspace details
-    const { data: workspace, error: workspaceError } = await supabase
-      .from('workspaces')
-      .select('id, name, slug, created_at, owner_id')
-      .eq('id', workspaceId)
-      .single()
+    // 3. Fetch Workspace Details
+    const workspaceResult = await pool.query(
+      'SELECT id, name, slug, created_at, owner_id FROM workspaces WHERE id = $1',
+      [workspaceId]
+    );
+    const workspace = workspaceResult.rows[0];
 
-    if (workspaceError || !workspace) {
-      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+    if (!workspace) {
+      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
 
-    // Fetch workspace members count
-    const { count: memberCount } = await supabase
-      .from('workspace_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('workspace_id', workspaceId)
+    // 4. Fetch Members Count
+    const countResult = await pool.query(
+      'SELECT count(*) FROM workspace_members WHERE workspace_id = $1',
+      [workspaceId]
+    );
+    const memberCount = parseInt(countResult.rows[0].count);
 
-    // Fetch subscription info (if exists)
-    const { data: subscription } = await supabase
-      .from('workspace_subscriptions')
-      .select('status, plan, trial_end')
-      .eq('workspace_id', workspaceId)
-      .single()
+    // 5. Fetch Subscription
+    const subResult = await pool.query(
+      'SELECT status, plan, trial_end FROM workspace_subscriptions WHERE workspace_id = $1',
+      [workspaceId]
+    );
+    const subscription = subResult.rows[0];
 
     return NextResponse.json({
       workspace: {
@@ -64,13 +57,14 @@ export async function GET(
         subscription: subscription || null,
         userRole: member.role
       }
-    })
+    });
 
-  } catch (error) {
-    console.error('Workspace fetch error:', error)
+  } catch (error: any) {
+    console.error('Workspace fetch error:', error);
+    const status = error.message?.includes('Authentication') ? 401 : 500;
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch workspace' },
-      { status: 500 }
-    )
+      { error: error.message || 'Failed to fetch workspace' },
+      { status }
+    );
   }
 }

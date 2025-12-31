@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 import { supabaseKnowledge } from '@/lib/supabase-knowledge';
 
 export async function GET(request: Request) {
@@ -8,50 +8,46 @@ export async function GET(request: Request) {
         const threadId = searchParams.get('threadId');
         const workspaceIdParam = searchParams.get('workspaceId');
 
-        const supabase = await createSupabaseRouteClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const auth = await verifyAuth(request as any);
 
-        if (!user) {
+        if (!auth.isAuthenticated || !auth.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        const user = auth.user;
 
         // 1. Get Thread and Workspace - prioritize explicit workspaceId param
         let workspaceId = workspaceIdParam;
         let thread = null;
 
         if (threadId) {
-            const { data: threadData } = await supabase
-                .from('sam_conversation_threads')
-                .select('*')
-                .eq('id', threadId)
-                .eq('user_id', user.id)
-                .single();
+            const threadRes = await pool.query(
+                'SELECT * FROM sam_conversation_threads WHERE id = $1 AND user_id = $2',
+                [threadId, user.uid]
+            );
 
-            thread = threadData;
+            thread = threadRes.rows[0];
             if (!workspaceId) {
-                workspaceId = threadData?.workspace_id;
+                workspaceId = thread?.workspace_id;
             }
         }
 
         if (!workspaceId) {
             // Fallback to user's current workspace
-            const { data: profile } = await supabase
-                .from('users')
-                .select('current_workspace_id')
-                .eq('id', user.id)
-                .single();
-            workspaceId = profile?.current_workspace_id;
+            const userRes = await pool.query(
+                'SELECT current_workspace_id FROM users WHERE id = $1',
+                [user.uid]
+            );
+            workspaceId = userRes.rows[0]?.current_workspace_id;
         }
 
         if (!workspaceId) {
             // Last fallback: get first workspace user is a member of
-            const { data: membership } = await supabase
-                .from('workspace_members')
-                .select('workspace_id')
-                .eq('user_id', user.id)
-                .limit(1)
-                .single();
-            workspaceId = membership?.workspace_id;
+            const membershipRes = await pool.query(
+                'SELECT workspace_id FROM workspace_members WHERE user_id = $1 LIMIT 1',
+                [user.uid]
+            );
+            workspaceId = membershipRes.rows[0]?.workspace_id;
         }
 
         if (!workspaceId) {
@@ -78,12 +74,14 @@ export async function GET(request: Request) {
         ]);
 
         // Fetch documents from knowledge_base table (same source as KB page)
-        const { data: kbDocuments } = await supabase
-            .from('knowledge_base')
-            .select('id, category, section, title, tags, updated_at')
-            .eq('workspace_id', workspaceId)
-            .eq('is_active', true)
-            .order('updated_at', { ascending: false });
+        const kbDocsRes = await pool.query(
+            `SELECT id, category, section, title, tags, updated_at 
+             FROM knowledge_base 
+             WHERE workspace_id = $1 AND is_active = true 
+             ORDER BY updated_at DESC`,
+            [workspaceId]
+        );
+        const kbDocuments = kbDocsRes.rows;
 
         // Calculate category scores based on document counts
         const categorySections = {
@@ -113,10 +111,11 @@ export async function GET(request: Request) {
         const recentDocs = (kbDocuments || []).slice(0, 5);
 
         // 4. Fetch Real Campaign Stats
-        const { data: campaigns } = await supabase
-            .from('campaigns')
-            .select('id, name, status')
-            .eq('workspace_id', workspaceId);
+        const campaignRes = await pool.query(
+            'SELECT id, name, status FROM campaigns WHERE workspace_id = $1',
+            [workspaceId]
+        );
+        const campaigns = campaignRes.rows;
 
         const activeCampaigns = campaigns?.filter(c => c.status === 'active' || c.status === 'running') || [];
         const campaignIds = campaigns?.map(c => c.id) || [];
@@ -127,10 +126,13 @@ export async function GET(request: Request) {
         let meetings = 0;
 
         if (campaignIds.length > 0) {
-            const { data: prospects } = await supabase
-                .from('campaign_prospects')
-                .select('status, conversation_stage')
-                .in('campaign_id', campaignIds);
+            const prospectsRes = await pool.query(
+                `SELECT status, conversation_stage 
+                 FROM campaign_prospects 
+                 WHERE campaign_id = ANY($1)`,
+                [campaignIds]
+            );
+            const prospects = prospectsRes.rows;
 
             if (prospects) {
                 totalSent = prospects.filter(p => p.status === 'sent' || p.status === 'replied' || p.status === 'meeting_booked').length;
@@ -163,12 +165,12 @@ export async function GET(request: Request) {
                 missingCritical: kbCompleteness?.missingCritical || [],
                 categoryScores,
                 // Real Data
-                products: products.map(p => ({
+                products: products.map((p: any) => ({
                     id: p.id,
                     name: p.name,
                     description: p.description
                 })),
-                competitors: competitors.map(c => ({
+                competitors: competitors.map((c: any) => ({
                     id: c.id,
                     name: c.name,
                     strengths: c.strengths
@@ -184,7 +186,7 @@ export async function GET(request: Request) {
                 activeICPs: icps.length,
                 primaryICP: icps[0] || null,
                 icpCount: icps.length,
-                allICPs: icps.map(i => ({ id: i.id, name: i.name }))
+                allICPs: icps.map((i: any) => ({ id: i.id, name: i.name }))
             },
             stats
         });

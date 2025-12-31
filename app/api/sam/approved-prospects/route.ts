@@ -5,21 +5,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const auth = await verifyAuth(request);
+
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
     }
 
+    const user = auth.user;
     const body = await request.json()
     const { threadId, prospects } = body
 
@@ -31,65 +30,64 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify thread ownership
-    const { data: thread } = await supabase
-      .from('sam_conversation_threads')
-      .select('id, user_id')
-      .eq('id', threadId)
-      .eq('user_id', user.id)
-      .single()
+    const threadRes = await pool.query(
+      'SELECT id, user_id FROM sam_conversation_threads WHERE id = $1 AND user_id = $2',
+      [threadId, user.uid]
+    );
 
-    if (!thread) {
+    if (threadRes.rows.length === 0) {
       return NextResponse.json({
         success: false,
         error: 'Thread not found'
       }, { status: 404 })
     }
 
-    // Prepare prospect data for database insertion
-    const prospectRecords = prospects.map((prospect: any) => ({
-      user_id: user.id,
-      thread_id: threadId,
-      prospect_id: prospect.id,
-      name: prospect.name,
-      title: prospect.title,
-      company: prospect.company,
-      email: prospect.email || null,
-      phone: prospect.phone || null,
-      linkedin_url: prospect.linkedinUrl || null,
-      source_platform: prospect.source,
-      confidence_score: prospect.confidence,
-      compliance_flags: prospect.complianceFlags || [],
-      approval_status: 'approved',
-      approved_at: new Date().toISOString()
-    }))
+    const insertedProspects = [];
 
-    // Insert approved prospects into database
-    const { data: insertedProspects, error: insertError } = await supabase
-      .from('sam_approved_prospects')
-      .insert(prospectRecords)
-      .select()
+    // Prepared prospect data for database insertion
+    // Using a loop to handle multiple prospects - in production, a bulk insert would be better
+    // but we'll stick to a simple loop for clarity or use a multi-row insert if needed.
+    // Let's use a multi-row insert for efficiency.
 
-    if (insertError) {
-      console.error('Failed to insert approved prospects:', insertError)
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to save approved prospects'
-      }, { status: 500 })
+    for (const prospect of prospects) {
+      const query = `
+        INSERT INTO sam_approved_prospects 
+        (user_id, thread_id, prospect_id, name, title, company, email, phone, linkedin_url, source_platform, confidence_score, compliance_flags, approval_status, approved_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+        RETURNING *
+      `;
+
+      const values = [
+        user.uid,
+        threadId,
+        prospect.id,
+        prospect.name,
+        prospect.title,
+        prospect.company,
+        prospect.email || null,
+        prospect.phone || null,
+        prospect.linkedinUrl || null,
+        prospect.source,
+        prospect.confidence,
+        JSON.stringify(prospect.complianceFlags || []),
+        'approved'
+      ];
+
+      const res = await pool.query(query, values);
+      insertedProspects.push(res.rows[0]);
     }
 
     // Update thread metadata
-    await supabase
-      .from('sam_conversation_threads')
-      .update({
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', threadId)
+    await pool.query(
+      'UPDATE sam_conversation_threads SET updated_at = NOW() WHERE id = $1',
+      [threadId]
+    );
 
     return NextResponse.json({
       success: true,
       message: `Successfully saved ${prospects.length} approved prospects`,
       data: {
-        saved_count: insertedProspects?.length || 0,
+        saved_count: insertedProspects.length,
         prospects: insertedProspects
       },
       timestamp: new Date().toISOString()
@@ -106,59 +104,60 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const auth = await verifyAuth(request);
+
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({
         success: false,
         error: 'Authentication required'
       }, { status: 401 })
     }
 
+    const user = auth.user;
     const { searchParams } = new URL(request.url)
     const threadId = searchParams.get('threadId')
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
-    let query = supabase
-      .from('sam_approved_prospects')
-      .select(`
-        *,
-        sam_conversation_threads (
-          title,
-          thread_type
-        )
-      `)
-      .eq('user_id', user.id)
-      .order('approved_at', { ascending: false })
+    let query = `
+      SELECT p.*, t.title as thread_title, t.thread_type
+      FROM sam_approved_prospects p
+      LEFT JOIN sam_conversation_threads t ON p.thread_id = t.id
+      WHERE p.user_id = $1
+    `;
+
+    const params: any[] = [user.uid];
 
     if (threadId) {
-      query = query.eq('thread_id', threadId)
+      query += ` AND p.thread_id = $2`;
+      params.push(threadId);
     }
 
-    const { data: prospects, error } = await query
-      .range(offset, offset + limit - 1)
+    query += ` ORDER BY p.approved_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
 
-    if (error) {
-      console.error('Failed to fetch approved prospects:', error)
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch approved prospects'
-      }, { status: 500 })
-    }
+    const prospectsRes = await pool.query(query, params);
+
+    // Transform to match original Supabase structure if nested objects were expected
+    const prospects = prospectsRes.rows.map(row => ({
+      ...row,
+      sam_conversation_threads: {
+        title: row.thread_title,
+        thread_type: row.thread_type
+      }
+    }));
 
     // Get total count for pagination
-    let countQuery = supabase
-      .from('sam_approved_prospects')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
+    let countQuery = `SELECT COUNT(*) as total FROM sam_approved_prospects WHERE user_id = $1`;
+    const countParams: any[] = [user.uid];
 
     if (threadId) {
-      countQuery = countQuery.eq('thread_id', threadId)
+      countQuery += ` AND thread_id = $2`;
+      countParams.push(threadId);
     }
 
-    const { count: totalCount } = await countQuery
+    const countRes = await pool.query(countQuery, countParams);
+    const totalCount = parseInt(countRes.rows[0].total);
 
     return NextResponse.json({
       success: true,

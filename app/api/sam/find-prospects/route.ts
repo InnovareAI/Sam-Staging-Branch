@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { verifyAuth, pool } from '@/lib/auth';
 
 // Extend function timeout to 60 seconds for pagination across many pages
 export const maxDuration = 60;
@@ -12,6 +11,14 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({
+        error: 'Authentication required'
+      }, { status: 401 });
+    }
+
+    const user = auth.user;
     const body = await request.json();
     const {
       search_type = 'unipile_linkedin_search', // Default to Unipile (no quota limits!)
@@ -20,24 +27,13 @@ export async function POST(request: NextRequest) {
       auto_send = false
     } = body;
 
-    const supabase = createClient();
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({
-        error: 'Authentication required'
-      }, { status: 401 });
-    }
-
     // Get user's workspace
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
+    const userRes = await pool.query(
+      'SELECT current_workspace_id FROM users WHERE id = $1',
+      [user.uid]
+    );
+    const workspaceId = userRes.rows[0]?.current_workspace_id;
 
-    const workspaceId = userProfile?.current_workspace_id;
     if (!workspaceId) {
       return NextResponse.json({
         error: 'No workspace found'
@@ -47,7 +43,7 @@ export async function POST(request: NextRequest) {
     // Check LinkedIn account capabilities before search
     let accountCapabilities = null;
     if (search_type === 'unipile_linkedin_search') {
-      accountCapabilities = await checkLinkedInAccountCapabilities(supabase, user.id, workspaceId);
+      accountCapabilities = await checkLinkedInAccountCapabilities(user.uid, workspaceId);
 
       // Validate search criteria against account capabilities
       const validation = validateSearchCriteria(search_criteria, accountCapabilities);
@@ -78,7 +74,8 @@ export async function POST(request: NextRequest) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+            'X-Internal-Auth': 'true',
+            'X-User-Id': user.uid
           },
           body: JSON.stringify({
             action: 'scrape_prospects',
@@ -114,7 +111,7 @@ export async function POST(request: NextRequest) {
           headers: {
             'Content-Type': 'application/json',
             'X-Internal-Auth': 'true',
-            'X-User-Id': user.id,
+            'X-User-Id': user.uid,
             'X-Workspace-Id': workspaceId
           },
           body: JSON.stringify({
@@ -144,7 +141,8 @@ export async function POST(request: NextRequest) {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                'X-Internal-Auth': 'true',
+                'X-User-Id': user.uid
               },
               body: JSON.stringify({
                 action: 'scrape_prospects',
@@ -185,7 +183,12 @@ export async function POST(request: NextRequest) {
         // Search existing LinkedIn network via Unipile
         const unipileResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/linkedin/discover-contacts`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Auth': 'true',
+            'X-User-Id': user.uid,
+            'X-Workspace-Id': workspaceId
+          },
           body: JSON.stringify({
             action: 'scan_message_history',
             search_criteria: search_criteria
@@ -221,7 +224,7 @@ export async function POST(request: NextRequest) {
         standardizedProspects,
         campaign_config,
         workspaceId,
-        user.id
+        user.uid
       );
     }
 
@@ -259,7 +262,7 @@ export async function POST(request: NextRequest) {
  */
 async function standardizeProspectData(prospectResults: any, searchType: string) {
   const prospects = [];
-  
+
   switch (searchType) {
     case 'brightdata':
       if (prospectResults.prospects) {
@@ -350,7 +353,12 @@ async function sendTemplatesToProspects(prospects: any[], campaignConfig: any, w
   try {
     const templateResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/sam/send-template-messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Auth': 'true',
+        'X-User-Id': userId,
+        'X-Workspace-Id': workspaceId
+      },
       body: JSON.stringify({
         prospects: prospects,
         send_immediately: true,
@@ -450,15 +458,14 @@ export async function GET(request: NextRequest) {
 /**
  * Check user's LinkedIn account capabilities
  */
-async function checkLinkedInAccountCapabilities(supabase: any, userId: string, workspaceId: string) {
+async function checkLinkedInAccountCapabilities(userId: string, workspaceId: string) {
   // Get user's LinkedIn accounts
-  // CRITICAL: Use admin client to bypass RLS for workspace_accounts
-  const { data: accounts } = await supabaseAdmin()
-    .from('workspace_accounts')
-    .select('*')
-    .eq('workspace_id', workspaceId)
-    .eq('user_id', userId)
-    .eq('account_type', 'linkedin');
+  const accRes = await pool.query(
+    `SELECT * FROM workspace_accounts 
+     WHERE workspace_id = $1 AND user_id = $2 AND account_type = 'linkedin'`,
+    [workspaceId, userId]
+  );
+  const accounts = accRes.rows;
 
   if (!accounts || accounts.length === 0) {
     return {

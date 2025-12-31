@@ -7,12 +7,7 @@
  * 3. Building comprehensive knowledge base per user/workspace
  */
 
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { pool } from '@/lib/auth';
 
 // ================================================================
 // TYPES
@@ -81,39 +76,33 @@ export async function storeQuestionAnswer(
     const embedding = await generateEmbedding(
       `Q: ${qa.questionText}\nA: ${qa.answerText}`
     );
+    const embeddingVector = `[${embedding.join(',')}]`;
 
-    const { data, error } = await supabase
-      .from('sam_icp_knowledge_entries')
-      .insert({
-        workspace_id: workspaceId,
-        user_id: userId,
-        discovery_session_id: discoverySessionId,
-        question_id: qa.questionId,
-        question_text: qa.questionText,
-        answer_text: qa.answerText,
-        answer_structured: qa.answerStructured || {},
-        stage: qa.stage,
-        category: qa.category,
-        confidence_score: qa.confidenceScore ?? 1.0,
-        is_shallow: qa.isShallow ?? false,
-        needs_clarification: qa.needsClarification ?? false,
-        clarification_notes: qa.clarificationNotes,
-        source_attachment_id: qa.sourceAttachmentId || null,
-        embedding: JSON.stringify(embedding),
-        indexed_for_rag: true
-      })
-      .select()
-      .single();
-
-    if (error) {
-      // Check if it's a duplicate - update instead
-      if (error.code === '23505') {
+    // Try insert first
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO sam_icp_knowledge_entries (
+          workspace_id, user_id, discovery_session_id, question_id,
+          question_text, answer_text, answer_structured, stage, category,
+          confidence_score, is_shallow, needs_clarification, clarification_notes,
+          source_attachment_id, embedding, indexed_for_rag
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true)
+        RETURNING *`,
+        [
+          workspaceId, userId, discoverySessionId, qa.questionId,
+          qa.questionText, qa.answerText, JSON.stringify(qa.answerStructured || {}),
+          qa.stage, qa.category, qa.confidenceScore ?? 1.0,
+          qa.isShallow ?? false, qa.needsClarification ?? false, qa.clarificationNotes,
+          qa.sourceAttachmentId || null, embeddingVector
+        ]
+      );
+      return { success: true, data: rows[0] as StoredQA };
+    } catch (error: any) {
+      if (error.code === '23505') { // Unique violation
         return updateQuestionAnswer(workspaceId, userId, discoverySessionId, qa);
       }
-      return { success: false, error: error.message };
+      throw error;
     }
-
-    return { success: true, data };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, error: message };
@@ -134,30 +123,29 @@ export async function updateQuestionAnswer(
     const embedding = await generateEmbedding(
       `Q: ${qa.questionText}\nA: ${qa.answerText}`
     );
+    const embeddingVector = `[${embedding.join(',')}]`;
 
-    const { data, error } = await supabase
-      .from('sam_icp_knowledge_entries')
-      .update({
-        answer_text: qa.answerText,
-        answer_structured: qa.answerStructured || {},
-        confidence_score: qa.confidenceScore ?? 1.0,
-        is_shallow: qa.isShallow ?? false,
-        needs_clarification: qa.needsClarification ?? false,
-        clarification_notes: qa.clarificationNotes,
-        embedding: JSON.stringify(embedding),
-        updated_at: new Date().toISOString()
-      })
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', userId)
-      .eq('question_id', qa.questionId)
-      .select()
-      .single();
+    const { rows } = await pool.query(
+      `UPDATE sam_icp_knowledge_entries
+       SET answer_text = $1,
+           answer_structured = $2,
+           confidence_score = $3,
+           is_shallow = $4,
+           needs_clarification = $5,
+           clarification_notes = $6,
+           embedding = $7,
+           updated_at = NOW()
+       WHERE workspace_id = $8 AND user_id = $9 AND question_id = $10
+       RETURNING *`,
+      [
+        qa.answerText, JSON.stringify(qa.answerStructured || {}),
+        qa.confidenceScore ?? 1.0, qa.isShallow ?? false,
+        qa.needsClarification ?? false, qa.clarificationNotes,
+        embeddingVector, workspaceId, userId, qa.questionId
+      ]
+    );
 
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, data };
+    return { success: true, data: rows[0] as StoredQA };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, error: message };
@@ -193,7 +181,7 @@ export async function batchStoreQuestionAnswers(
 
 /**
  * Search Q&A knowledge base for relevant context
- * Used when SAM needs to ask clarifying questions or reference past answers
+ * Replaces search_icp_knowledge RPC
  */
 export async function searchQAKnowledge(
   workspaceId: string,
@@ -205,23 +193,40 @@ export async function searchQAKnowledge(
   }
 ): Promise<{ success: boolean; results?: RAGSearchResult[]; error?: string }> {
   try {
-    // Generate query embedding
     const queryEmbedding = await generateEmbedding(query);
+    const embeddingVector = `[${queryEmbedding.join(',')}]`;
+    const limit = options?.limit || 5;
 
-    // Call the stored procedure
-    const { data, error } = await supabase.rpc('search_icp_knowledge', {
-      p_workspace_id: workspaceId,
-      p_query_embedding: JSON.stringify(queryEmbedding),
-      p_stage: options?.stage || null,
-      p_category: options?.category || null,
-      p_limit: options?.limit || 5
-    });
+    let sql = `
+      SELECT 
+        question_id, question_text, answer_text, answer_structured,
+        stage, category, confidence_score,
+        1 - (embedding <=> $2) as similarity
+      FROM sam_icp_knowledge_entries
+      WHERE workspace_id = $1
+    `;
 
-    if (error) {
-      return { success: false, error: error.message };
+    const params: any[] = [workspaceId, embeddingVector];
+    let paramIndex = 3;
+
+    if (options?.stage) {
+      sql += ` AND stage = $${paramIndex}`;
+      params.push(options.stage);
+      paramIndex++;
     }
 
-    return { success: true, results: data || [] };
+    if (options?.category) {
+      sql += ` AND category = $${paramIndex}`;
+      params.push(options.category);
+      paramIndex++;
+    }
+
+    sql += ` ORDER BY embedding <=> $2 LIMIT $${paramIndex}`;
+    params.push(limit);
+
+    const { rows } = await pool.query(sql, params);
+
+    return { success: true, results: rows as RAGSearchResult[] };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, error: message };
@@ -233,24 +238,25 @@ export async function searchQAKnowledge(
  */
 export async function getQAHistory(
   discoverySessionId: string
-): Promise<{ success: boolean; history?: Array<{
-  question_id: string;
-  question_text: string;
-  answer_text: string;
-  stage: string;
-  category: string;
-  created_at: string;
-}>; error?: string }> {
+): Promise<{
+  success: boolean; history?: Array<{
+    question_id: string;
+    question_text: string;
+    answer_text: string;
+    stage: string;
+    category: string;
+    created_at: string;
+  }>; error?: string
+}> {
   try {
-    const { data, error } = await supabase.rpc('get_discovery_qa_history', {
-      p_discovery_session_id: discoverySessionId
-    });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, history: data || [] };
+    const { rows } = await pool.query(
+      `SELECT question_id, question_text, answer_text, stage, category, created_at
+       FROM sam_icp_knowledge_entries
+       WHERE discovery_session_id = $1
+       ORDER BY created_at ASC`,
+      [discoverySessionId]
+    );
+    return { success: true, history: rows };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, error: message };
@@ -263,22 +269,24 @@ export async function getQAHistory(
 export async function getProspectingCriteria(
   workspaceId: string,
   userId: string
-): Promise<{ success: boolean; criteria?: Array<{
-  question_id: string;
-  answer_text: string;
-  answer_structured: Record<string, any>;
-}>; error?: string }> {
+): Promise<{
+  success: boolean; criteria?: Array<{
+    question_id: string;
+    answer_text: string;
+    answer_structured: Record<string, any>;
+  }>; error?: string
+}> {
   try {
-    const { data, error } = await supabase.rpc('get_prospecting_criteria', {
-      p_workspace_id: workspaceId,
-      p_user_id: userId
-    });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, criteria: data || [] };
+    // Replaces get_prospecting_criteria RPC
+    // Assuming it fetches items with category 'prospecting_criteria' or similar
+    const { rows } = await pool.query(
+      `SELECT question_id, answer_text, answer_structured
+       FROM sam_icp_knowledge_entries
+       WHERE workspace_id = $1 AND user_id = $2
+         AND category IN ('prospecting', 'prospecting_criteria')`,
+      [workspaceId, userId]
+    );
+    return { success: true, criteria: rows };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, error: message };
@@ -293,18 +301,13 @@ export async function getQAByCategory(
   category: string
 ): Promise<{ success: boolean; results?: StoredQA[]; error?: string }> {
   try {
-    const { data, error } = await supabase
-      .from('sam_icp_knowledge_entries')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('category', category)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, results: data || [] };
+    const { rows } = await pool.query(
+      `SELECT * FROM sam_icp_knowledge_entries
+       WHERE workspace_id = $1 AND category = $2
+       ORDER BY created_at ASC`,
+      [workspaceId, category]
+    );
+    return { success: true, results: rows as StoredQA[] };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, error: message };
@@ -319,19 +322,13 @@ export async function getQANeedingClarification(
   userId: string
 ): Promise<{ success: boolean; results?: StoredQA[]; error?: string }> {
   try {
-    const { data, error } = await supabase
-      .from('sam_icp_knowledge_entries')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', userId)
-      .eq('needs_clarification', true)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, results: data || [] };
+    const { rows } = await pool.query(
+      `SELECT * FROM sam_icp_knowledge_entries
+       WHERE workspace_id = $1 AND user_id = $2 AND needs_clarification = true
+       ORDER BY created_at ASC`,
+      [workspaceId, userId]
+    );
+    return { success: true, results: rows as StoredQA[] };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return { success: false, error: message };
@@ -342,13 +339,9 @@ export async function getQANeedingClarification(
 // EMBEDDING GENERATION
 // ================================================================
 
-/**
- * Generate vector embedding for RAG using Google Gemini text-embedding-004
- */
 async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    const truncatedText = text.slice(0, 10000); // Limit input size
-
+    const truncatedText = text.slice(0, 10000);
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`,
       {
@@ -367,6 +360,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
     );
 
     if (!response.ok) {
+      // Fallback or rethrow
       const errorText = await response.text();
       throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
     }
@@ -374,21 +368,17 @@ async function generateEmbedding(text: string): Promise<number[]> {
     const data = await response.json();
     const embedding = data.embedding?.values || [];
 
-    if (embedding.length === 0) {
-      throw new Error('Gemini returned empty embedding');
-    }
+    if (embedding.length === 0) throw new Error('Gemini returned empty embedding');
 
-    // Pad to 1536 dimensions to match vector column size (Gemini returns 768)
+    // Pad/Truncate to 1536
     if (embedding.length < 1536) {
       return [...embedding, ...Array(1536 - embedding.length).fill(0)];
     } else if (embedding.length > 1536) {
       return embedding.slice(0, 1536);
     }
-
     return embedding;
   } catch (error) {
     console.error('❌ Embedding generation failed:', error);
-    // Return zero vector as fallback
     return new Array(1536).fill(0);
   }
 }
@@ -397,9 +387,6 @@ async function generateEmbedding(text: string): Promise<number[]> {
 // CONTEXT BUILDING FOR SAM
 // ================================================================
 
-/**
- * Build context string from stored Q&A for SAM to reference
- */
 export async function buildContextFromQA(
   workspaceId: string,
   query: string,
@@ -426,9 +413,6 @@ export async function buildContextFromQA(
   return `\nREFERENCE FROM PAST CONVERSATION:\n${contextLines.join('\n\n')}`;
 }
 
-/**
- * Get summary of all stored knowledge for a workspace
- */
 export async function getKnowledgeSummary(
   workspaceId: string
 ): Promise<{
@@ -439,27 +423,19 @@ export async function getKnowledgeSummary(
   shallow: number;
 }> {
   try {
-    const { data } = await supabase
-      .from('sam_icp_knowledge_entries')
-      .select('stage, category, is_shallow, needs_clarification')
-      .eq('workspace_id', workspaceId);
-
-    if (!data) {
-      return {
-        totalQuestions: 0,
-        byStage: {},
-        byCategory: {},
-        needingClarification: 0,
-        shallow: 0
-      };
-    }
+    const { rows } = await pool.query(
+      `SELECT stage, category, is_shallow, needs_clarification
+       FROM sam_icp_knowledge_entries
+       WHERE workspace_id = $1`,
+      [workspaceId]
+    );
 
     const byStage: Record<string, number> = {};
     const byCategory: Record<string, number> = {};
     let needingClarification = 0;
     let shallow = 0;
 
-    data.forEach(item => {
+    rows.forEach((item: any) => {
       byStage[item.stage] = (byStage[item.stage] || 0) + 1;
       byCategory[item.category] = (byCategory[item.category] || 0) + 1;
       if (item.needs_clarification) needingClarification++;
@@ -467,7 +443,7 @@ export async function getKnowledgeSummary(
     });
 
     return {
-      totalQuestions: data.length,
+      totalQuestions: rows.length,
       byStage,
       byCategory,
       needingClarification,

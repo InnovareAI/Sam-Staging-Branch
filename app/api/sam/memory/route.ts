@@ -1,33 +1,33 @@
 /**
  * SAM Memory Management API
  * Handles memory snapshots, archival, and restoration
+ * Updated Dec 31, 2025: Migrated to verifyAuth and pool.query
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action');
-
-    // Check authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session) {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const user = auth.user;
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+
     switch (action) {
       case 'snapshots':
-        return getMemorySnapshots(supabase, session.user.id);
-      
+        return getMemorySnapshots(user.uid);
+
       case 'preferences':
-        return getMemoryPreferences(supabase, session.user.id);
-      
+        return getMemoryPreferences(user.uid);
+
       case 'stats':
-        return getMemoryStats(supabase, session.user.id);
-      
+        return getMemoryStats(user.uid);
+
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
@@ -42,31 +42,30 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    const { action, ...data } = await request.json();
-
-    // Check authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session) {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const user = auth.user;
+    const { action, ...data } = await request.json();
+
     switch (action) {
       case 'create_snapshot':
-        return createMemorySnapshot(supabase, session.user.id, data);
-      
+        return createMemorySnapshot(user, data);
+
       case 'restore_snapshot':
-        return restoreMemorySnapshot(supabase, session.user.id, data);
-      
+        return restoreMemorySnapshot(user.uid, data);
+
       case 'update_preferences':
-        return updateMemoryPreferences(supabase, session.user.id, data);
-      
+        return updateMemoryPreferences(user, data);
+
       case 'bookmark_conversation':
-        return bookmarkConversation(supabase, session.user.id, data);
-      
+        return bookmarkConversation(user.uid, data);
+
       case 'manual_archive':
-        return manualArchiveConversations(supabase, session.user.id, data);
-      
+        return manualArchiveConversations(user.uid, data);
+
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
@@ -80,43 +79,29 @@ export async function POST(request: NextRequest) {
 }
 
 // Get user's memory snapshots
-async function getMemorySnapshots(supabase: any, userId: string) {
-  const { data: snapshots, error } = await supabase
-    .from('memory_snapshots')
-    .select(`
-      id,
-      snapshot_date,
-      conversation_count,
-      total_messages,
-      memory_summary,
-      importance_score,
-      user_notes,
-      restore_count,
-      last_restored_at,
-      created_at
-    `)
-    .eq('user_id', userId)
-    .order('snapshot_date', { ascending: false })
-    .limit(50);
+async function getMemorySnapshots(userId: string) {
+  const res = await pool.query(
+    `SELECT 
+      id, snapshot_date, conversation_count, total_messages, 
+      memory_summary, importance_score, user_notes, restore_count, 
+      last_restored_at, created_at
+     FROM memory_snapshots
+     WHERE user_id = $1
+     ORDER BY snapshot_date DESC
+     LIMIT 50`,
+    [userId]
+  );
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ snapshots });
+  return NextResponse.json({ snapshots: res.rows });
 }
 
 // Get user's memory preferences
-async function getMemoryPreferences(supabase: any, userId: string) {
-  const { data: preferences, error } = await supabase
-    .from('user_memory_preferences')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
-
-  if (error && error.code !== 'PGRST116') { // Not found is ok
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+async function getMemoryPreferences(userId: string) {
+  const res = await pool.query(
+    'SELECT * FROM user_memory_preferences WHERE user_id = $1',
+    [userId]
+  );
+  const preferences = res.rows[0];
 
   // Return default preferences if none exist
   const defaultPreferences = {
@@ -129,25 +114,27 @@ async function getMemoryPreferences(supabase: any, userId: string) {
     memory_notifications: true
   };
 
-  return NextResponse.json({ 
-    preferences: preferences || defaultPreferences 
+  return NextResponse.json({
+    preferences: preferences || defaultPreferences
   });
 }
 
 // Get memory statistics
-async function getMemoryStats(supabase: any, userId: string) {
+async function getMemoryStats(userId: string) {
   try {
     // Get conversation stats
-    const { data: conversationStats } = await supabase
-      .from('sam_conversations')
-      .select('memory_archived, memory_importance_score, created_at')
-      .eq('user_id', userId);
+    const convRes = await pool.query(
+      'SELECT memory_archived, memory_importance_score, created_at FROM sam_conversations WHERE user_id = $1',
+      [userId]
+    );
+    const conversationStats = convRes.rows;
 
     // Get snapshot stats
-    const { data: snapshotStats } = await supabase
-      .from('memory_snapshots')
-      .select('conversation_count, total_messages, importance_score, created_at')
-      .eq('user_id', userId);
+    const snapRes = await pool.query(
+      'SELECT conversation_count, total_messages, importance_score, created_at FROM memory_snapshots WHERE user_id = $1',
+      [userId]
+    );
+    const snapshotStats = snapRes.rows;
 
     const activeConversations = conversationStats?.filter(c => !c.memory_archived).length || 0;
     const archivedConversations = conversationStats?.filter(c => c.memory_archived).length || 0;
@@ -156,7 +143,7 @@ async function getMemoryStats(supabase: any, userId: string) {
 
     // Recent activity (last 7 days)
     const recentDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentConversations = conversationStats?.filter(c => 
+    const recentConversations = conversationStats?.filter(c =>
       new Date(c.created_at) > recentDate
     ).length || 0;
 
@@ -176,47 +163,49 @@ async function getMemoryStats(supabase: any, userId: string) {
 }
 
 // Create a new memory snapshot
-async function createMemorySnapshot(supabase: any, userId: string, data: any) {
+async function createMemorySnapshot(user: any, data: any) {
   const { days_back = 7, user_notes = '' } = data;
+  const userId = user.uid;
 
-  // Get user's organization
-  const { data: user } = await supabase.auth.getUser();
-  const organizationId = user?.user?.user_metadata?.organization_id || 'default';
+  // Get user's current workspace as organization ID equivalent
+  const userRes = await pool.query(
+    'SELECT current_workspace_id FROM users WHERE id = $1',
+    [userId]
+  );
+  const organizationId = userRes.rows[0]?.current_workspace_id || 'default';
 
   try {
-    const { data: result, error } = await supabase.rpc('create_memory_snapshot', {
-      p_user_id: userId,
-      p_organization_id: organizationId,
-      p_days_back: days_back
-    });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    // Call the PostgreSQL function directly
+    const res = await pool.query(
+      'SELECT create_memory_snapshot($1, $2, $3) as snapshot_id',
+      [userId, organizationId, days_back]
+    );
+    const result = res.rows[0]?.snapshot_id;
 
     // Add user notes if provided
     if (user_notes && result) {
-      await supabase
-        .from('memory_snapshots')
-        .update({ user_notes })
-        .eq('id', result);
+      await pool.query(
+        'UPDATE memory_snapshots SET user_notes = $1 WHERE id = $2',
+        [user_notes, result]
+      );
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       snapshot_id: result,
       message: `Memory snapshot created for the last ${days_back} days`
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Create snapshot error:', error);
     return NextResponse.json(
-      { error: 'Failed to create memory snapshot' },
+      { error: 'Failed to create memory snapshot', details: error.message },
       { status: 500 }
     );
   }
 }
 
 // Restore a memory snapshot
-async function restoreMemorySnapshot(supabase: any, userId: string, data: any) {
+async function restoreMemorySnapshot(userId: string, data: any) {
   const { snapshot_id } = data;
 
   if (!snapshot_id) {
@@ -224,14 +213,11 @@ async function restoreMemorySnapshot(supabase: any, userId: string, data: any) {
   }
 
   try {
-    const { data: result, error } = await supabase.rpc('restore_memory_snapshot', {
-      p_snapshot_id: snapshot_id,
-      p_user_id: userId
-    });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const res = await pool.query(
+      'SELECT restore_memory_snapshot($1, $2) as result',
+      [snapshot_id, userId]
+    );
+    const result = res.rows[0]?.result;
 
     // Extract conversation data
     const conversationData = result?.[0]?.conversation_data;
@@ -241,16 +227,17 @@ async function restoreMemorySnapshot(supabase: any, userId: string, data: any) {
       conversations: conversationData,
       message: 'Memory snapshot restored successfully'
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Restore snapshot error:', error);
     return NextResponse.json(
-      { error: 'Failed to restore memory snapshot' },
+      { error: 'Failed to restore memory snapshot', details: error.message },
       { status: 500 }
     );
   }
 }
 
 // Update memory preferences
-async function updateMemoryPreferences(supabase: any, userId: string, data: any) {
+async function updateMemoryPreferences(user: any, data: any) {
   const {
     auto_archive_enabled,
     archive_frequency_days,
@@ -260,48 +247,55 @@ async function updateMemoryPreferences(supabase: any, userId: string, data: any)
     auto_restore_on_login,
     memory_notifications
   } = data;
+  const userId = user.uid;
 
-  // Get user's organization
-  const { data: user } = await supabase.auth.getUser();
-  const organizationId = user?.user?.user_metadata?.organization_id || 'default';
+  const userRes = await pool.query(
+    'SELECT current_workspace_id FROM users WHERE id = $1',
+    [userId]
+  );
+  const organizationId = userRes.rows[0]?.current_workspace_id || 'default';
 
   try {
-    const { data: result, error } = await supabase
-      .from('user_memory_preferences')
-      .upsert({
-        user_id: userId,
-        organization_id: organizationId,
-        auto_archive_enabled,
-        archive_frequency_days,
-        max_active_conversations,
-        memory_retention_days,
-        importance_threshold,
-        auto_restore_on_login,
-        memory_notifications,
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const res = await pool.query(
+      `INSERT INTO user_memory_preferences (
+        user_id, organization_id, auto_archive_enabled, archive_frequency_days,
+        max_active_conversations, memory_retention_days, importance_threshold,
+        auto_restore_on_login, memory_notifications, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      ON CONFLICT (user_id) DO UPDATE SET
+        organization_id = EXCLUDED.organization_id,
+        auto_archive_enabled = EXCLUDED.auto_archive_enabled,
+        archive_frequency_days = EXCLUDED.archive_frequency_days,
+        max_active_conversations = EXCLUDED.max_active_conversations,
+        memory_retention_days = EXCLUDED.memory_retention_days,
+        importance_threshold = EXCLUDED.importance_threshold,
+        auto_restore_on_login = EXCLUDED.auto_restore_on_login,
+        memory_notifications = EXCLUDED.memory_notifications,
+        updated_at = NOW()
+      RETURNING *`,
+      [
+        userId, organizationId, auto_archive_enabled, archive_frequency_days,
+        max_active_conversations, memory_retention_days, importance_threshold,
+        auto_restore_on_login, memory_notifications
+      ]
+    );
 
     return NextResponse.json({
       success: true,
-      preferences: result,
+      preferences: res.rows[0],
       message: 'Memory preferences updated successfully'
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Update preferences error:', error);
     return NextResponse.json(
-      { error: 'Failed to update preferences' },
+      { error: 'Failed to update preferences', details: error.message },
       { status: 500 }
     );
   }
 }
 
 // Bookmark a conversation for memory retention
-async function bookmarkConversation(supabase: any, userId: string, data: any) {
+async function bookmarkConversation(userId: string, data: any) {
   const { conversation_id, bookmarked = true } = data;
 
   if (!conversation_id) {
@@ -309,33 +303,33 @@ async function bookmarkConversation(supabase: any, userId: string, data: any) {
   }
 
   try {
-    const { error } = await supabase
-      .from('sam_conversations')
-      .update({ 
-        user_bookmarked: bookmarked,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', conversation_id)
-      .eq('user_id', userId);
+    const res = await pool.query(
+      `UPDATE sam_conversations 
+       SET user_bookmarked = $1, updated_at = NOW()
+       WHERE id = $2 AND user_id = $3
+       RETURNING id`,
+      [bookmarked, conversation_id, userId]
+    );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (res.rowCount === 0) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
     return NextResponse.json({
       success: true,
       message: bookmarked ? 'Conversation bookmarked' : 'Bookmark removed'
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Bookmark error:', error);
     return NextResponse.json(
-      { error: 'Failed to bookmark conversation' },
+      { error: 'Failed to bookmark conversation', details: error.message },
       { status: 500 }
     );
   }
 }
 
 // Manually archive specific conversations
-async function manualArchiveConversations(supabase: any, userId: string, data: any) {
+async function manualArchiveConversations(userId: string, data: any) {
   const { conversation_ids } = data;
 
   if (!conversation_ids || !Array.isArray(conversation_ids)) {
@@ -343,28 +337,25 @@ async function manualArchiveConversations(supabase: any, userId: string, data: a
   }
 
   try {
-    const { error } = await supabase
-      .from('sam_conversations')
-      .update({
-        memory_archived: true,
-        memory_archive_date: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .in('id', conversation_ids)
-      .eq('user_id', userId);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const res = await pool.query(
+      `UPDATE sam_conversations 
+       SET 
+        memory_archived = true, 
+        memory_archive_date = NOW(), 
+        updated_at = NOW()
+       WHERE id = ANY($1) AND user_id = $2`,
+      [conversation_ids, userId]
+    );
 
     return NextResponse.json({
       success: true,
-      archived_count: conversation_ids.length,
-      message: `${conversation_ids.length} conversations archived`
+      archived_count: res.rowCount,
+      message: `${res.rowCount} conversations archived`
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('Manual archive error:', error);
     return NextResponse.json(
-      { error: 'Failed to archive conversations' },
+      { error: 'Failed to archive conversations', details: error.message },
       { status: 500 }
     );
   }

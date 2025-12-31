@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 
 /**
  * POST /api/workspace/set-current
@@ -8,94 +7,45 @@ import { cookies } from 'next/headers'
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
+    // 1. Authenticate
+    const { userId, userEmail } = await verifyAuth(request);
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {}
-          }
-        }
-      }
-    )
-
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { workspaceId } = await request.json()
+    const { workspaceId } = await request.json();
 
     if (!workspaceId) {
-      return NextResponse.json({ error: 'workspace_id required' }, { status: 400 })
+      return NextResponse.json({ error: 'workspace_id required' }, { status: 400 });
     }
 
     console.log('[workspace/set-current] Setting current workspace:', {
-      userId: session.user.id,
-      userEmail: session.user.email,
+      userId,
+      userEmail,
       workspaceId
-    })
+    });
 
-    // Verify user has access to this workspace
-    const supabaseAdmin = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {}
-          }
-        }
-      }
-    )
+    // 2. Verify Access (Security Check)
+    const memberResult = await pool.query(
+      "SELECT id FROM workspace_members WHERE workspace_id = $1 AND user_id = $2 AND status = 'active'",
+      [workspaceId, userId]
+    );
 
-    const { data: membership } = await supabaseAdmin
-      .from('workspace_members')
-      .select('id')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', session.user.id)
-      .eq('status', 'active')
-      .single()
-
-    if (!membership) {
-      console.error('[workspace/set-current] User not a member of workspace:', workspaceId)
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (memberResult.rows.length === 0) {
+      console.error('[workspace/set-current] User not a member of workspace:', workspaceId);
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Update current_workspace_id in users table
-    const { error: updateError } = await supabaseAdmin
-      .from('users')
-      .update({ current_workspace_id: workspaceId, updated_at: new Date().toISOString() })
-      .eq('id', session.user.id)
+    // 3. Update User Record
+    await pool.query(
+      'UPDATE users SET current_workspace_id = $1, updated_at = NOW() WHERE id = $2',
+      [workspaceId, userId]
+    );
 
-    if (updateError) {
-      console.error('[workspace/set-current] Update error:', updateError)
-      return NextResponse.json({ error: 'Failed to update workspace' }, { status: 500 })
-    }
+    console.log('[workspace/set-current] Successfully updated current_workspace_id');
 
-    console.log('[workspace/set-current] Successfully updated current_workspace_id')
+    return NextResponse.json({ success: true });
 
-    return NextResponse.json({ success: true })
-  } catch (e) {
-    console.error('[workspace/set-current] Exception:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+  } catch (error: any) {
+    console.error('[workspace/set-current] Exception:', error);
+    const status = error.message?.includes('Authentication') ? 401 : 500;
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status });
   }
 }

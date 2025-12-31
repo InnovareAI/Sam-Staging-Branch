@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { verifyAuth, pool } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
-
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * Import prospects from a LinkedIn Sales Navigator saved search
@@ -29,11 +22,11 @@ export async function POST(request: NextRequest) {
     if (internalAuth === 'true' && internalUserId) {
       // Internal call from SAM - use service role to verify user exists
       console.log('🔐 Internal auth detected from SAM');
-      const { data: userData } = await supabaseAdmin
-        .from('users')
-        .select('id, email, current_workspace_id')
-        .eq('id', internalUserId)
-        .single();
+      const userResult = await pool.query(
+        'SELECT id, email, current_workspace_id FROM users WHERE id = $1',
+        [internalUserId]
+      );
+      const userData = userResult.rows[0];
 
       if (userData) {
         user = userData;
@@ -44,29 +37,15 @@ export async function POST(request: NextRequest) {
 
     // Fall back to cookie-based auth if internal auth not used
     if (!user) {
-      const cookieStore = await cookies();
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookieStore.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options);
-              });
-            }
-          }
-        }
-      );
-
-      const { data: { user: cookieUser } } = await supabase.auth.getUser();
-      if (!cookieUser) {
+      try {
+        const authContext = await verifyAuth(request);
+        user = {
+          id: authContext.userId,
+          email: authContext.userEmail
+        };
+      } catch (authError) {
         return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
       }
-      user = cookieUser;
     }
 
     const { saved_search_url, campaign_name, target_count } = await request.json();
@@ -97,13 +76,11 @@ export async function POST(request: NextRequest) {
 
     // Get workspace if not already set
     if (!workspaceId) {
-      const { data: userProfile } = await supabaseAdmin
-        .from('users')
-        .select('current_workspace_id')
-        .eq('id', user.id)
-        .single();
-
-      workspaceId = userProfile?.current_workspace_id || null;
+      const userProfileResult = await pool.query(
+        'SELECT current_workspace_id FROM users WHERE id = $1',
+        [user.id]
+      );
+      workspaceId = userProfileResult.rows[0]?.current_workspace_id || null;
     }
 
     if (!workspaceId) {
@@ -114,13 +91,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Get ONLY the user's own LinkedIn accounts (never use other people's accounts)
-    const { data: linkedInAccounts } = await supabaseAdmin
-      .from('workspace_accounts')
-      .select('unipile_account_id, account_name, user_id')
-      .eq('workspace_id', workspaceId)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES)
-      .eq('user_id', user.id);
+    const accountsResult = await pool.query(
+      `SELECT unipile_account_id, account_name, user_id 
+       FROM workspace_accounts 
+       WHERE workspace_id = $1 
+         AND account_type = 'linkedin' 
+         AND connection_status = ANY($2::text[]) 
+         AND user_id = $3`,
+      [workspaceId, VALID_CONNECTION_STATUSES, user.id]
+    );
+    const linkedInAccounts = accountsResult.rows;
 
     if (!linkedInAccounts || linkedInAccounts.length === 0) {
       return NextResponse.json({
@@ -167,7 +147,7 @@ export async function POST(request: NextRequest) {
     let salesNavAccount = null;
 
     for (const dbAccount of linkedInAccounts) {
-      const unipileAccount = unipileAccounts.find(a => a.id === dbAccount.unipile_account_id && a.type === 'LINKEDIN');
+      const unipileAccount = unipileAccounts.find((a: any) => a.id === dbAccount.unipile_account_id && a.type === 'LINKEDIN');
 
       if (!unipileAccount) {
         console.log(`⚠️ Account ${dbAccount.account_name} not found in Unipile`);
@@ -334,55 +314,47 @@ export async function POST(request: NextRequest) {
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
 
     // Get workspace for company code
-    const { data: workspace } = await supabaseAdmin
-      .from('workspaces')
-      .select('name')
-      .eq('id', workspaceId)
-      .single();
+    const workspaceResult = await pool.query(
+      'SELECT name FROM workspaces WHERE id = $1',
+      [workspaceId]
+    );
+    const workspace = workspaceResult.rows[0];
 
     const companyCode = workspace?.name?.substring(0, 3).toUpperCase() || 'IAI';
 
     const finalCampaignName = campaign_name || `${today}-${companyCode}-SavedSearch-${savedSearchId}`;
 
     // Get next batch number
-    const { data: existingSessions } = await supabaseAdmin
-      .from('prospect_approval_sessions')
-      .select('batch_number')
-      .eq('user_id', user.id)
-      .eq('workspace_id', workspaceId)
-      .order('batch_number', { ascending: false })
-      .limit(1);
-
-    const nextBatchNumber = (existingSessions?.[0]?.batch_number || 0) + 1;
+    const sessionsResult = await pool.query(
+      'SELECT batch_number FROM prospect_approval_sessions WHERE user_id = $1 AND workspace_id = $2 ORDER BY batch_number DESC LIMIT 1',
+      [user.id, workspaceId]
+    );
+    const nextBatchNumber = (sessionsResult.rows[0]?.batch_number || 0) + 1;
 
     // Create session
-    const { error: sessionError } = await supabaseAdmin
-      .from('prospect_approval_sessions')
-      .insert({
-        id: sessionId,
-        batch_number: nextBatchNumber,
-        user_id: user.id,
-        workspace_id: workspaceId,
-        campaign_name: finalCampaignName,
-        campaign_tag: `saved_search_${savedSearchId}`,
-        total_prospects: prospects.length,
-        approved_count: 0,
-        rejected_count: 0,
-        pending_count: prospects.length,
-        status: 'active',
-        created_at: new Date().toISOString()
-      });
-
-    if (sessionError) {
-      console.error('❌ Session creation failed:', sessionError);
-      return NextResponse.json({
-        success: false,
-        error: `Failed to create approval session: ${sessionError.message || JSON.stringify(sessionError)}`
-      }, { status: 500 });
-    }
+    await pool.query(
+      `INSERT INTO prospect_approval_sessions 
+       (id, batch_number, user_id, workspace_id, campaign_name, campaign_tag, 
+        total_prospects, approved_count, rejected_count, pending_count, status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [
+        sessionId,
+        nextBatchNumber,
+        user.id,
+        workspaceId,
+        finalCampaignName,
+        `saved_search_${savedSearchId}`,
+        prospects.length,
+        0,
+        0,
+        prospects.length,
+        'active',
+        new Date().toISOString()
+      ]
+    );
 
     // Insert prospects into prospect_approval_data
-    const approvalProspects = prospects.map((item: any, index: number) => {
+    const approvalProspects = prospects.map((item: any) => {
       const linkedinUrl = item.profile_url || item.public_profile_url || '';
       const prospectId = linkedinUrl.split('/').filter(Boolean).pop() || uuidv4();
 
@@ -412,16 +384,28 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    const { error: prospectsError } = await supabaseAdmin
-      .from('prospect_approval_data')
-      .insert(approvalProspects);
+    // Bulk insert approval prospects
+    if (approvalProspects.length > 0) {
+      const pKeys = Object.keys(approvalProspects[0]);
+      const pColumns = pKeys.join(', ');
+      const pValues: any[] = [];
+      const pPlaceholders: string[] = [];
 
-    if (prospectsError) {
-      console.error('❌ Prospects insert failed:', prospectsError);
-      return NextResponse.json({
-        success: false,
-        error: `Failed to save prospects: ${prospectsError.message || JSON.stringify(prospectsError)}`
-      }, { status: 500 });
+      approvalProspects.forEach((item: any) => {
+        const rowP: string[] = [];
+        pKeys.forEach((key) => {
+          if (key === 'company' || key === 'contact') {
+            pValues.push(JSON.stringify(item[key]));
+          } else {
+            pValues.push(item[key]);
+          }
+          rowP.push(`$${pValues.length}`);
+        });
+        pPlaceholders.push(`(${rowP.join(', ')})`);
+      });
+
+      const pQuery = `INSERT INTO prospect_approval_data (${pColumns}) VALUES ${pPlaceholders.join(', ')}`;
+      await pool.query(pQuery, pValues);
     }
 
     console.log(`✅ Imported ${prospects.length} prospects successfully`);

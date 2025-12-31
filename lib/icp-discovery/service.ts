@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { pool } from '@/lib/auth';
 import { ICPDiscoveryPayload, ICPDiscoverySession, SaveDiscoveryInput, ICPDiscoverySummary, ICPSessionStatus } from './types';
 
 const DEFAULT_SUMMARY: ICPDiscoverySummary = {
@@ -7,120 +7,120 @@ const DEFAULT_SUMMARY: ICPDiscoverySummary = {
   recommended_positioning: 'Awaiting completion'
 };
 
-async function getSupabaseClient(providedClient?: any) {
-  if (providedClient) return providedClient;
-  return createClient();
-}
-
 export async function getActiveDiscoverySession(userId: string, client?: any) {
-  const supabase = await getSupabaseClient(client);
+  // Client arg ignored as we use pool
+  try {
+    const { rows } = await pool.query(`
+      SELECT * FROM sam_icp_discovery_sessions
+      WHERE user_id = $1
+      AND session_status IN ('in_progress', 'completed')
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `, [userId]);
 
-  const { data, error } = await supabase
-    .from('sam_icp_discovery_sessions')
-    .select('*')
-    .eq('user_id', userId)
-    .in('session_status', ['in_progress', 'completed'])
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
+    return rows[0] as ICPDiscoverySession | null;
+  } catch (error: any) {
     throw new Error(`Failed to fetch discovery session: ${error.message}`);
   }
-
-  return data as ICPDiscoverySession | null;
 }
 
 export async function startDiscoverySession(userId: string, client?: any, threadId?: string, campaignId?: string) {
-  const supabase = await getSupabaseClient(client);
+  try {
+    const { rows: profileRows } = await pool.query(
+      'SELECT current_workspace_id as workspace_id FROM users WHERE id = $1',
+      [userId]
+    );
+    const profile = profileRows[0];
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('workspace_id')
-    .eq('id', userId)
-    .single();
+    // Fallback if no current_workspace_id in users
+    let workspaceId = profile?.workspace_id;
+    if (!workspaceId) {
+      // Try to get ANY workspace
+      const { rows: memberRows } = await pool.query(
+        'SELECT workspace_id FROM workspace_members WHERE user_id = $1 LIMIT 1',
+        [userId]
+      );
+      workspaceId = memberRows[0]?.workspace_id;
+    }
 
-  if (profileError || !profile?.workspace_id) {
-    throw new Error('Workspace not found for user');
-  }
+    if (!workspaceId) {
+      throw new Error('Workspace not found for user');
+    }
 
-  const { data, error } = await supabase
-    .from('sam_icp_discovery_sessions')
-    .insert({
-      workspace_id: profile.workspace_id,
-      user_id: userId,
-      thread_id: threadId,
-      campaign_id: campaignId,
-      discovery_payload: {},
-      discovery_summary: DEFAULT_SUMMARY,
-      session_status: 'in_progress'
-    })
-    .select()
-    .single();
+    const { rows } = await pool.query(`
+      INSERT INTO sam_icp_discovery_sessions (
+        workspace_id, user_id, thread_id, campaign_id, discovery_payload, discovery_summary, session_status, created_at, updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      RETURNING *
+    `, [workspaceId, userId, threadId, campaignId, '{}', JSON.stringify(DEFAULT_SUMMARY), 'in_progress']);
 
-  if (error) {
+    return rows[0] as ICPDiscoverySession;
+  } catch (error: any) {
     throw new Error(`Failed to create discovery session: ${error.message}`);
   }
-
-  return data as ICPDiscoverySession;
 }
 
 export async function saveDiscoveryProgress(userId: string, input: SaveDiscoveryInput, client?: any) {
-  const supabase = await getSupabaseClient(client);
   const { sessionId, payload, phasesCompleted, shallowDelta, questionsSkippedDelta, sessionStatus, completedAt } = input;
 
-  const rpcPayload = {
-    p_session_id: sessionId,
-    p_payload: payload ?? {},
-    p_phases_completed: phasesCompleted ?? null,
-    p_shallow_delta: shallowDelta ?? 0,
-    p_questions_skipped_delta: questionsSkippedDelta ?? 0,
-    p_session_status: sessionStatus ?? null,
-    p_completed_at: completedAt ?? null
-  };
+  try {
 
-  const { error: rpcError } = await supabase.rpc('upsert_icp_discovery_payload', rpcPayload);
+    const { rows } = await pool.query(`
+        UPDATE sam_icp_discovery_sessions
+        SET 
+            discovery_payload = discovery_payload || $1::jsonb,
+            phases_completed = COALESCE($2, phases_completed),
+            shallow_answers_count = shallow_answers_count + $3,
+            questions_skipped_count = questions_skipped_count + $4,
+            session_status = COALESCE($5, session_status),
+            completed_at = COALESCE($6::timestamptz, completed_at),
+            updated_at = NOW()
+        WHERE id = $7 AND user_id = $8
+        RETURNING *
+    `, [
+      JSON.stringify(payload || {}),
+      phasesCompleted,
+      shallowDelta || 0,
+      questionsSkippedDelta || 0,
+      sessionStatus,
+      completedAt,
+      sessionId,
+      userId
+    ]);
 
-  if (rpcError) {
-    throw new Error(`Failed to update discovery session: ${rpcError.message}`);
+    if (rows.length === 0) {
+      throw new Error('Session not found or update failed');
+    }
+
+    return rows[0] as ICPDiscoverySession;
+  } catch (error: any) {
+    throw new Error(`Failed to update discovery session: ${error.message}`);
   }
-
-  const { data, error } = await supabase
-    .from('sam_icp_discovery_sessions')
-    .select('*')
-    .eq('id', sessionId)
-    .eq('user_id', userId)
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to load updated session: ${error.message}`);
-  }
-
-  return data as ICPDiscoverySession;
 }
 
 export async function completeDiscoverySession(userId: string, sessionId: string, summary: ICPDiscoverySummary, redFlags: string[] = [], client?: any) {
-  const supabase = await getSupabaseClient(client);
+  try {
+    const { rows } = await pool.query(`
+      UPDATE sam_icp_discovery_sessions
+      SET
+        discovery_summary = $1,
+        red_flags = $2,
+        session_status = 'completed',
+        completed_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $3 AND user_id = $4
+      RETURNING *
+    `, [JSON.stringify(summary), redFlags, sessionId, userId]);
 
-  const { data, error } = await supabase
-    .from('sam_icp_discovery_sessions')
-    .update({
-      discovery_summary: summary,
-      red_flags: redFlags,
-      session_status: 'completed' as ICPSessionStatus,
-      completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', sessionId)
-    .eq('user_id', userId)
-    .select()
-    .single();
+    if (rows.length === 0) {
+      throw new Error('Session not found');
+    }
 
-  if (error) {
+    return rows[0] as ICPDiscoverySession;
+  } catch (error: any) {
     throw new Error(`Failed to complete discovery session: ${error.message}`);
   }
-
-  return data as ICPDiscoverySession;
 }
 
 export function buildDiscoverySummary(payload: ICPDiscoveryPayload): ICPDiscoverySummary {
@@ -157,22 +157,20 @@ export function buildDiscoverySummary(payload: ICPDiscoveryPayload): ICPDiscover
 }
 
 export async function abandonDiscoverySession(userId: string, sessionId: string, client?: any) {
-  const supabase = await getSupabaseClient(client);
+  try {
+    const { rows } = await pool.query(`
+      UPDATE sam_icp_discovery_sessions
+      SET
+        session_status = 'abandoned',
+        updated_at = NOW()
+      WHERE id = $1 AND user_id = $2
+      RETURNING *
+    `, [sessionId, userId]);
 
-  const { data, error } = await supabase
-    .from('sam_icp_discovery_sessions')
-    .update({
-      session_status: 'abandoned',
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', sessionId)
-    .eq('user_id', userId)
-    .select()
-    .single();
+    if (rows.length === 0) throw new Error('Session not found');
 
-  if (error) {
+    return rows[0] as ICPDiscoverySession;
+  } catch (error: any) {
     throw new Error(`Failed to abandon discovery session: ${error.message}`);
   }
-
-  return data as ICPDiscoverySession;
 }

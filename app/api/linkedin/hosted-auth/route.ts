@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 import { UnipileClient } from 'unipile-node-sdk'
 
 // Helper function to make Unipile API calls (kept for ancillary checks)
@@ -24,7 +23,7 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
   }
 
   const response = await fetch(url, options)
-  
+
   if (!response.ok) {
     const errorText = await response.text()
     throw new Error(`Unipile API error: ${response.status} ${response.statusText} - ${errorText}`)
@@ -36,44 +35,21 @@ async function callUnipileAPI(endpoint: string, method: string = 'GET', body?: a
 export async function POST(request: NextRequest) {
   try {
     // Authenticate user first
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          }
-        }
-      }
-    )
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required to generate LinkedIn auth link',
-        timestamp: new Date().toISOString()
-      }, { status: 401 })
-    }
-    console.log(`🔗 Generating hosted auth link for user ${user.email} (${user.id})`)
+    const authContext = await verifyAuth(request);
+    const { userId, userEmail } = authContext;
+
+    console.log(`🔗 Generating hosted auth link for user ${userEmail} (${userId})`)
 
     // Get workspace - try users table first, fall back to workspace_members
     let workspaceId: string | null = null
-    
+
     try {
-      const { data: userProfile } = await supabase
-        .from('users')
-        .select('current_workspace_id')
-        .eq('id', user.id)
-        .maybeSingle()
-      
+      const userResult = await pool.query(
+        'SELECT current_workspace_id FROM users WHERE id = $1',
+        [userId]
+      );
+      const userProfile = userResult.rows[0];
+
       if (userProfile?.current_workspace_id) {
         workspaceId = userProfile.current_workspace_id
         console.log('✅ Workspace from users table:', workspaceId)
@@ -81,17 +57,16 @@ export async function POST(request: NextRequest) {
     } catch (userTableError) {
       console.log('⚠️ Users table not available, using fallback')
     }
-    
+
     if (!workspaceId) {
       try {
         // Fallback: get first workspace from memberships
-        const { data: memberships } = await supabase
-          .from('workspace_members')
-          .select('workspace_id')
-          .eq('user_id', user.id)
-          .limit(1)
-          .maybeSingle()
-        
+        const membersResult = await pool.query(
+          'SELECT workspace_id FROM workspace_members WHERE user_id = $1 LIMIT 1',
+          [userId]
+        );
+        const memberships = membersResult.rows[0];
+
         if (memberships?.workspace_id) {
           workspaceId = memberships.workspace_id
           console.log('✅ Workspace from memberships:', workspaceId)
@@ -100,32 +75,34 @@ export async function POST(request: NextRequest) {
         console.log('⚠️ Workspace_members table error, using user ID')
       }
     }
-    
+
     if (!workspaceId) {
-      // Last resort: use user ID as workspace ID
-      workspaceId = user.id
+      // Last resort: use user ID as workspace ID (legacy behavior)
+      workspaceId = userId
       console.log('⚠️ Using user ID as workspace ID:', workspaceId)
     }
 
     // Check for existing LinkedIn connections in this workspace
-    const { data: existingConnections } = await supabase
-      .from('integrations')
-      .select('id, credentials, status')
-      .eq('user_id', user.id)
-      .eq('provider', 'linkedin')
+    // Note: Code references 'integrations' table but also 'workspace_accounts'. 
+    // Assuming 'integrations' exists based on legacy code.
+    const connectionsResult = await pool.query(
+      "SELECT id, credentials, status FROM integrations WHERE user_id = $1 AND provider = 'linkedin'",
+      [userId]
+    );
+    const existingConnections = connectionsResult.rows;
 
     // ENHANCED: Also check Unipile for existing LinkedIn accounts to prevent duplicates
     let unipileLinkedInAccounts: any[] = []
     let hasUnipileAccounts = false
     try {
       const unipileAccountsResponse = await callUnipileAPI('accounts')
-      const allUnipileAccounts = Array.isArray(unipileAccountsResponse) ? 
-        unipileAccountsResponse : 
+      const allUnipileAccounts = Array.isArray(unipileAccountsResponse) ?
+        unipileAccountsResponse :
         (unipileAccountsResponse.items || unipileAccountsResponse.accounts || [])
-      
+
       unipileLinkedInAccounts = allUnipileAccounts.filter((account: any) => account.type === 'LINKEDIN')
       hasUnipileAccounts = unipileLinkedInAccounts.length > 0
-      
+
       console.log(`🔍 Found ${unipileLinkedInAccounts.length} LinkedIn accounts in Unipile for duplicate prevention`)
     } catch (error) {
       console.warn('⚠️ Could not check Unipile for existing accounts:', error instanceof Error ? error.message : 'Unknown error')
@@ -135,7 +112,7 @@ export async function POST(request: NextRequest) {
     // Force 'create' for now to avoid reconnection issues - let users create fresh accounts
     // TODO: Fix reconnection logic later for production
     let authAction = 'create'
-    
+
     // For reconnect, we need to specify which account to reconnect
     let reconnectAccountId = null
     if (authAction === 'reconnect') {
@@ -145,7 +122,7 @@ export async function POST(request: NextRequest) {
       } else if (unipileLinkedInAccounts.length > 0) {
         reconnectAccountId = unipileLinkedInAccounts[0].id
       }
-      
+
       // If no account ID found for reconnect, fall back to create
       if (!reconnectAccountId) {
         console.warn('⚠️ No account ID found for reconnect, falling back to create')
@@ -154,21 +131,21 @@ export async function POST(request: NextRequest) {
         console.log(`🔗 Using reconnect_account: ${reconnectAccountId}`)
       }
     }
-    
+
     console.log(`🔗 LinkedIn ${authAction} initiated - existing connections: ${existingConnections?.length || 0}`)
 
     // Generate workspace-specific user ID to prevent cross-workspace account leakage
-    const workspaceUserId = `${workspaceId}:${user.id}`
-    
+    const workspaceUserId = `${workspaceId}:${userId}`
+
     // Get the base URL for callbacks
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'
     // Use the proper callback endpoint that handles the webhook
     const callbackUrl = `${siteUrl}/api/linkedin/callback`
-    
+
     // Create hosted auth link via Unipile API following official documentation
     const expirationTime = new Date()
     expirationTime.setHours(expirationTime.getHours() + 1) // 1 hour from now
-    
+
     // Base request properties
     const baseRequest = {
       type: authAction, // "create" or "reconnect"
@@ -179,7 +156,7 @@ export async function POST(request: NextRequest) {
       notify_url: callbackUrl, // Webhook endpoint
       name: workspaceUserId // Internal user ID for account matching
     }
-    
+
     // Add type-specific properties
     const hostedAuthRequest = authAction === 'reconnect' ? {
       ...baseRequest,
@@ -218,7 +195,7 @@ export async function POST(request: NextRequest) {
 
     let authUrl: string | null = null
     let hostedAuthResponse: any = null
-    
+
     try {
       console.log('🔧 Attempting SDK call to createHostedAuthLink...')
       hostedAuthResponse = await client.account.createHostedAuthLink(sdkPayload)
@@ -242,14 +219,14 @@ export async function POST(request: NextRequest) {
       console.error('❌ No auth URL in response:', hostedAuthResponse)
       throw new Error('Hosted auth link not received from Unipile - check API response format')
     }
-    
+
     // WHITE-LABEL: Custom domain for branded authentication experience
     // SSL certificate configured by Arnaud @ Unipile on 2025-10-01
     const whitelabeledAuthUrl = authUrl.replace(
       'https://account.unipile.com',
       'https://auth.meet-sam.com'
     )
-    
+
     console.log('✅ Successfully generated hosted auth URL:', whitelabeledAuthUrl)
 
     return NextResponse.json({
@@ -258,7 +235,7 @@ export async function POST(request: NextRequest) {
       auth_url: whitelabeledAuthUrl, // Using custom branded domain auth.meet-sam.com
       expires_in: 3600,
       existing_connections: existingConnections?.length || 0,
-      existing_accounts: existingConnections?.map(conn => ({
+      existing_accounts: existingConnections?.map((conn: any) => ({
         id: conn.id,
         unipile_account_id: conn.credentials?.unipile_account_id,
         account_identifier: conn.credentials?.account_email || conn.credentials?.linkedin_public_identifier,
@@ -272,16 +249,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error generating hosted auth link:', error)
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate auth link'
-    const isCredentialsError = errorMessage.includes('credentials not configured') || 
-                               errorMessage.includes('401') || 
-                               errorMessage.includes('403')
-    
+    const isCredentialsError = errorMessage.includes('credentials not configured') ||
+      errorMessage.includes('401') ||
+      errorMessage.includes('403')
+
     return NextResponse.json({
       success: false,
-      error: isCredentialsError ? 
-        'Unipile integration not configured. Please check environment variables.' : 
+      error: isCredentialsError ?
+        'Unipile integration not configured. Please check environment variables.' :
         errorMessage,
       debug_info: {
         error_message: errorMessage,

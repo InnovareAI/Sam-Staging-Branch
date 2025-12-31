@@ -1,31 +1,55 @@
+/**
+ * SAM Strategic Analysis API
+ * Provides AI-driven competitor analysis, market trends, and industry news
+ * Updated Dec 31, 2025: Migrated to verifyAuth and pool.query
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { createClient } from '@supabase/supabase-js';
+import { verifyAuth, pool } from '@/lib/auth';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function POST(request: NextRequest) {
     try {
+        const auth = await verifyAuth(request);
+        if (!auth.isAuthenticated || !auth.user) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { workspaceId, analysisType, context } = await request.json();
 
         if (!workspaceId || !analysisType) {
             return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
         }
 
+        // Verify user has access to this workspace
+        const workspaceRes = await pool.query(
+            'SELECT 1 FROM users WHERE id = $1 AND current_workspace_id = $2',
+            [auth.user.uid, workspaceId]
+        );
+
+        // If not their current workspace, check workspace_members
+        if (workspaceRes.rowCount === 0) {
+            const memberRes = await pool.query(
+                'SELECT 1 FROM workspace_members WHERE user_id = $1 AND workspace_id = $2',
+                [auth.user.uid, workspaceId]
+            );
+            if (memberRes.rowCount === 0) {
+                return NextResponse.json({ success: false, error: 'Unauthorized access to workspace' }, { status: 403 });
+            }
+        }
+
         // Fetch existing knowledge context (product, ICP, company)
-        const { data: kbDocs } = await supabase
-            .from('knowledge_base')
-            .select('title, summary, section')
-            .eq('workspace_id', workspaceId)
-            .in('section', ['company', 'product', 'value_prop', 'icp'])
-            .limit(10);
+        const kbRes = await pool.query(
+            `SELECT title, summary, section FROM knowledge_base 
+             WHERE workspace_id = $1 AND section ANY($2)
+             LIMIT 10`,
+            [workspaceId, ['company', 'product', 'value_prop', 'icp']]
+        );
+        const kbDocs = kbRes.rows;
 
         const knowledgeContext = kbDocs?.map(d => `[${d.section}] ${d.title}: ${d.summary || ''}`).join('\n') || 'No existing knowledge found.';
 

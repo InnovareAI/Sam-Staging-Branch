@@ -1,9 +1,15 @@
+/**
+ * SAM AI Template Parsing API
+ * Analyzes and parses user-provided outreach templates
+ * Updated Dec 31, 2025: Migrated to verifyAuth
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { 
-  detectLanguageFromContent, 
-  getPersonalizationGuidelines, 
-  getLanguageSpecificRecommendations 
+import { verifyAuth, pool } from '@/lib/auth';
+import {
+  detectLanguageFromContent,
+  getPersonalizationGuidelines,
+  getLanguageSpecificRecommendations
 } from '@/utils/linkedin-personalization-languages';
 
 interface TemplateParseRequest {
@@ -37,13 +43,12 @@ interface ParsedTemplate {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    
-    // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    const auth = await verifyAuth(req);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const user = auth.user;
 
     // Parse and validate request body
     let requestBody;
@@ -71,9 +76,9 @@ export async function POST(req: NextRequest) {
 
     if (validationErrors.length > 0) {
       return NextResponse.json(
-        { 
-          error: 'Invalid input data', 
-          validation_errors: validationErrors 
+        {
+          error: 'Invalid input data',
+          validation_errors: validationErrors
         },
         { status: 400 }
       );
@@ -86,7 +91,7 @@ export async function POST(req: NextRequest) {
     const parseResult = await parseTemplatesFromInput(sanitizedInput, {
       conversation_context,
       parse_options,
-      user_id: user.id
+      user_id: user.uid
     });
 
     // Generate Sam's intelligent response
@@ -122,7 +127,7 @@ async function parseTemplatesFromInput(input: string, context: any) {
 
   // Detect if user is pasting multiple messages or a sequence
   const sections = splitIntoTemplates(input);
-  
+
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
     const templateType = detectTemplateType(section, i);
@@ -200,14 +205,14 @@ function detectTemplateType(content: string, index: number): ParsedTemplate['typ
   const lowerContent = content.toLowerCase();
 
   // Check for explicit indicators
-  if (lowerContent.includes('connect') && lowerContent.includes('request') || 
-      lowerContent.includes('connection') || 
-      (index === 0 && content.length <= 300)) {
+  if (lowerContent.includes('connect') && lowerContent.includes('request') ||
+    lowerContent.includes('connection') ||
+    (index === 0 && content.length <= 300)) {
     return 'connection_request';
   }
 
   if (lowerContent.includes('follow') && lowerContent.includes('up') ||
-      lowerContent.includes('follow-up')) {
+    lowerContent.includes('follow-up')) {
     if (index === 1) return 'follow_up_1';
     if (index === 2) return 'follow_up_2';
     if (index === 3) return 'follow_up_3';
@@ -229,7 +234,7 @@ function detectTemplateType(content: string, index: number): ParsedTemplate['typ
 
 function extractVariables(content: string): string[] {
   const variables: string[] = [];
-  
+
   // Common variable patterns
   const patterns = [
     /\{([^}]+)\}/g,                    // {first_name}
@@ -344,9 +349,9 @@ async function getPerformanceInsights(templates: ParsedTemplate[], userId: strin
   // For now, return mock insights based on template characteristics
   return {
     estimated_response_rates: {
-      connection_request: templates.find(t => t.type === 'connection_request') ? 
+      connection_request: templates.find(t => t.type === 'connection_request') ?
         calculateResponseRate(templates.find(t => t.type === 'connection_request')!) : null,
-      follow_ups: templates.filter(t => t.type.startsWith('follow_up')).map(t => 
+      follow_ups: templates.filter(t => t.type.startsWith('follow_up')).map(t =>
         calculateResponseRate(t)
       )
     },
@@ -430,16 +435,16 @@ function sanitizeUserInput(input: string): string {
 
   // Limit length and normalize whitespace
   sanitized = sanitized.slice(0, 50000).trim();
-  
+
   // Normalize line endings
   sanitized = sanitized.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  
+
   return sanitized;
 }
 
 async function generateSamTemplateResponse(parseResult: any, originalInput: string): Promise<string> {
   const { templates, suggestions, sequence } = parseResult;
-  
+
   // Language detection and cultural guidance
   const detectedLanguage = detectLanguageFromContent(originalInput);
   const guidelines = getPersonalizationGuidelines(detectedLanguage);
@@ -460,11 +465,11 @@ async function generateSamTemplateResponse(parseResult: any, originalInput: stri
   templates.forEach((template: ParsedTemplate, index: number) => {
     const typeLabel = template.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
     response += `${index + 1}. **${typeLabel}** (${template.content.length} chars, ${Math.round(template.confidence_score * 100)}% confidence)\n`;
-    
+
     if (template.variables.length > 0) {
       response += `   • Variables detected: ${template.variables.join(', ')}\n`;
     }
-    
+
     if (template.optimization_suggestions.length > 0) {
       response += `   • Suggestions: ${template.optimization_suggestions[0]}\n`;
     }
@@ -475,7 +480,7 @@ async function generateSamTemplateResponse(parseResult: any, originalInput: stri
     response += `\n🎯 **${guidelines.language} Personalization Variables:**\n`;
     response += `• Essential: ${guidelines.commonVariables.slice(0, 4).join(', ')}\n`;
     response += `• Addressing: ${guidelines.addressingStyle}\n`;
-    
+
     if (guidelines.culturalNotes.length > 0) {
       response += `\n💼 **${guidelines.language} Business Culture:**\n`;
       guidelines.culturalNotes.slice(0, 3).forEach(note => {

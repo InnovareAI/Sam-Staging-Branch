@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { verifyAuth, pool } from '@/lib/auth';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 import { unipileRequest } from '@/lib/unipile';
-import { checkSearchQuota, saveSearchResults } from '@/lib/linkedin';
-import { logger } from '@/lib/logging';
+import { saveSearchResults } from '@/lib/linkedin';
 
 // Extend function timeout to 60 seconds for pagination across many pages
 export const maxDuration = 60;
@@ -32,68 +29,43 @@ export async function POST(request: NextRequest) {
 
     let user: any = null;
     let workspaceId: string | null = null;
-    let supabase: any = null;  // Declare at function level so it's accessible everywhere
 
     if (internalAuth === 'true' && internalUserId) {
       // Internal call from SAM - use service role to verify user exists
       console.log('🔐 Internal auth detected from SAM');
-      const { data: userData, error: userError } = await supabaseAdmin()
-        .from('users')
-        .select('id, email, current_workspace_id')
-        .eq('id', internalUserId)
-        .single();
+      const userResult = await pool.query(
+        'SELECT id, email, current_workspace_id FROM users WHERE id = $1',
+        [internalUserId]
+      );
+      const userData = userResult.rows[0];
 
       console.log('🔵 [SEARCH-2/6] User lookup result:', {
         found: !!userData,
         email: userData?.email,
-        error: userError?.message
       });
 
       if (userData) {
         user = userData;
         workspaceId = internalWorkspaceId || userData.current_workspace_id;
         console.log(`✅ Internal auth successful: ${user.email}, workspace: ${workspaceId}`);
-
-        // Create supabase client for later use in the function
-        supabase = supabaseAdmin();
       } else {
-        console.error('❌ User not found in database:', { internalUserId, error: userError?.message });
+        console.error('❌ User not found in database:', { internalUserId });
       }
     }
 
     // Fall back to cookie-based auth if internal auth not used
     if (!user) {
-      const cookieStore = await cookies();
-
-      // Use @supabase/ssr createServerClient (matches browser client)
-      supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookieStore.getAll()
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) => {
-                cookieStore.set(name, value, options)
-              })
-            }
-          }
-        }
-      );
-
-      // Auth
-      const { data: { user: cookieUser }, error: authError } = await supabase.auth.getUser();
-      console.log('🔵 Cookie auth check:', { hasUser: !!cookieUser, userId: cookieUser?.id, authError: authError?.message });
-
-      if (!cookieUser) {
-        console.log('❌ No user - returning 401');
+      try {
+        const authContext = await verifyAuth(request);
+        user = {
+          id: authContext.userId,
+          email: authContext.userEmail
+        };
+        console.log(`✅ User authenticated: ${user.email}`);
+      } catch (authError: any) {
+        console.log('❌ No user - returning 401', authError.message);
         return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
       }
-
-      user = cookieUser;
-      console.log(`✅ User authenticated: ${user.email}`);
     }
 
     console.log('🔵 [SEARCH-3/6] About to parse request JSON...');
@@ -118,16 +90,15 @@ export async function POST(request: NextRequest) {
     // Get workspace (with fallback, or use internal auth workspace)
     if (!workspaceId) {
       console.log('🔵 Querying users table for workspace...');
-      const { data: userProfile, error: profileError } = await supabaseAdmin()
-        .from('users')
-        .select('current_workspace_id')
-        .eq('id', user.id)
-        .single();
+      const profileResult = await pool.query(
+        'SELECT current_workspace_id FROM users WHERE id = $1',
+        [user.id]
+      );
+      const userProfile = profileResult.rows[0];
 
       console.log('🔵 Users table result:', {
         hasProfile: !!userProfile,
-        workspaceId: userProfile?.current_workspace_id,
-        error: profileError?.message
+        workspaceId: userProfile?.current_workspace_id
       });
 
       if (userProfile?.current_workspace_id) {
@@ -136,27 +107,25 @@ export async function POST(request: NextRequest) {
       } else {
         console.log('⚠️ No workspace in users table, trying fallback...');
         // Fallback: get first workspace
-        const { data: membership, error: membershipError } = await supabaseAdmin()
-          .from('workspace_members')
-          .select('workspace_id')
-          .eq('user_id', user.id)
-          .limit(1)
-          .maybeSingle();
+        const membershipResult = await pool.query(
+          'SELECT workspace_id FROM workspace_members WHERE user_id = $1 LIMIT 1',
+          [user.id]
+        );
+        const membership = membershipResult.rows[0];
 
         console.log('🔵 Workspace_members result:', {
           hasMembership: !!membership,
-          workspaceId: membership?.workspace_id,
-          error: membershipError?.message
+          workspaceId: membership?.workspace_id
         });
 
         if (membership?.workspace_id) {
           workspaceId = membership.workspace_id;
           console.log('✅ Got workspace from memberships:', workspaceId);
           // Update for next time
-          await supabaseAdmin()
-            .from('users')
-            .update({ current_workspace_id: membership.workspace_id })
-            .eq('id', user.id);
+          await pool.query(
+            'UPDATE users SET current_workspace_id = $1 WHERE id = $2',
+            [workspaceId, user.id]
+          );
           console.log('💾 Updated users table');
         }
       }
@@ -228,14 +197,17 @@ export async function POST(request: NextRequest) {
     console.log(`🔍 Finding LinkedIn accounts for workspace ${workspaceId} (user: ${user.email})`);
 
     // CRITICAL: Use admin client to bypass RLS for workspace_accounts
-    const { data: userLinkedInAccounts, error: userAccountsError } = await supabaseAdmin()
-      .from('workspace_accounts')
-      .select('unipile_account_id, account_name, user_id')
-      .eq('workspace_id', workspaceId)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES);
+    const accountsResult = await pool.query(
+      `SELECT unipile_account_id, account_name, user_id 
+       FROM workspace_accounts 
+       WHERE workspace_id = $1 
+         AND account_type = 'linkedin' 
+         AND connection_status = ANY($2::text[])`,
+      [workspaceId, VALID_CONNECTION_STATUSES]
+    );
+    const userLinkedInAccounts = accountsResult.rows;
 
-    if (userAccountsError || !userLinkedInAccounts || userLinkedInAccounts.length === 0) {
+    if (!userLinkedInAccounts || userLinkedInAccounts.length === 0) {
       console.error('❌ No LinkedIn accounts found for this workspace');
       return NextResponse.json({
         success: false,
@@ -822,7 +794,7 @@ export async function POST(request: NextRequest) {
     // Save to database for quota tracking and history
     if (allItems.length > 0) {
       try {
-        await saveSearchResults(supabaseAdmin(), {
+        await saveSearchResults({
           user_id: user.id,
           workspace_id: workspaceId!, // Use verified workspaceId
           unipile_account_id: linkedinAccount.unipile_account_id,
@@ -1040,16 +1012,16 @@ export async function POST(request: NextRequest) {
     console.log(`🔵 Prospects with LinkedIn URLs: ${prospectsWithUrls.length}/${prospects.length}`);
 
     // DEDUP: Exclude prospects already in campaign_prospects (pending CRs, previous contacts)
-    const { data: existingProspects } = await supabaseAdmin()
-      .from('campaign_prospects')
-      .select('linkedin_url')
-      .not('linkedin_url', 'is', null);
+    const existingResult = await pool.query(
+      'SELECT linkedin_url FROM campaign_prospects WHERE linkedin_url IS NOT NULL'
+    );
+    const existingProspects = existingResult.rows;
 
     // DEDUP: Also exclude prospects already in prospect_approval_data (pending approval from previous searches)
-    const { data: pendingApprovalProspects } = await supabaseAdmin()
-      .from('prospect_approval_data')
-      .select('contact')
-      .not('contact', 'is', null);
+    const pendingResult = await pool.query(
+      'SELECT contact FROM prospect_approval_data WHERE contact IS NOT NULL'
+    );
+    const pendingApprovalProspects = pendingResult.rows;
 
     // Build set of all existing LinkedIn URLs (from campaigns + pending approval)
     const existingUrls = new Set(
@@ -1109,11 +1081,25 @@ export async function POST(request: NextRequest) {
       console.log('🔵 Inserting to database (workspace_prospects, best-effort):', JSON.stringify(toInsert[0]));
       // Use admin client to bypass RLS for workspace_prospects insert; this is best-effort and non-fatal
       try {
-        const admin = supabaseAdmin();
-        const { data: inserted, error: insertError } = await admin
-          .from('workspace_prospects')
-          .insert(toInsert)
-          .select();
+        // Construct bulk insert query
+        const keys = Object.keys(toInsert[0]);
+        const columns = keys.join(', ');
+        const values: any[] = [];
+        const placeholders: string[] = [];
+
+        toInsert.forEach((item: any, idx) => {
+          const rowPlaceholders: string[] = [];
+          keys.forEach((key, kIdx) => {
+            values.push(item[key]);
+            rowPlaceholders.push(`$${values.length}`);
+          });
+          placeholders.push(`(${rowPlaceholders.join(', ')})`);
+        });
+
+        const query = `INSERT INTO workspace_prospects (${columns}) VALUES ${placeholders.join(', ')} RETURNING *`;
+
+        const { rows: inserted } = await pool.query(query, values);
+        const insertError = null;
 
         if (insertError) {
           console.warn('⚠️ workspace_prospects insert warning (non-fatal):', insertError);
@@ -1133,11 +1119,12 @@ export async function POST(request: NextRequest) {
       const today = new Date().toISOString().split('T')[0].replace(/-/g, ''); // 20251011
 
       // Get workspace name for company code and calculate next batch number
-      const { data: workspace, error: workspaceError } = await supabase
-        .from('workspaces')
-        .select('name, id, owner_id')
-        .eq('id', workspaceId)
-        .single();
+      const workspaceResult = await pool.query(
+        'SELECT name, id, owner_id FROM workspaces WHERE id = $1',
+        [workspaceId]
+      );
+      const workspace = workspaceResult.rows[0];
+      const workspaceError = !workspace ? { message: 'Workspace not found' } : null;
 
       if (workspaceError || !workspace) {
         console.error('❌ CRITICAL: Cannot fetch workspace for company code:', {
@@ -1172,13 +1159,11 @@ export async function POST(request: NextRequest) {
       }
 
       // Get next batch_number for this user/workspace combination
-      const { data: existingSessions } = await supabase
-        .from('prospect_approval_sessions')
-        .select('batch_number')
-        .eq('user_id', user.id)
-        .eq('workspace_id', workspaceId)
-        .order('batch_number', { ascending: false })
-        .limit(1);
+      const sessionsResult = await pool.query(
+        'SELECT batch_number FROM prospect_approval_sessions WHERE user_id = $1 AND workspace_id = $2 ORDER BY batch_number DESC LIMIT 1',
+        [user.id, workspaceId]
+      );
+      const existingSessions = sessionsResult.rows;
 
       const nextBatchNumber = existingSessions && existingSessions.length > 0
         ? (existingSessions[0].batch_number + 1)
@@ -1229,10 +1214,11 @@ export async function POST(request: NextRequest) {
         campaignName = `${today}-${companyCode}-${search_criteria.campaignName}`;
       } else {
         // Auto-generate: Count existing sessions and increment
-        const { count } = await supabase
-          .from('prospect_approval_sessions')
-          .select('*', { count: 'exact', head: true })
-          .eq('workspace_id', workspaceId);
+        const countResult = await pool.query(
+          'SELECT count(*) FROM prospect_approval_sessions WHERE workspace_id = $1',
+          [workspaceId]
+        );
+        const count = parseInt(countResult.rows[0].count);
 
         const searchNumber = String((count || 0) + 1).padStart(2, '0'); // 01, 02, 03...
         campaignName = `${today}-${companyCode}-Search ${searchNumber}`;
@@ -1242,25 +1228,34 @@ export async function POST(request: NextRequest) {
 
       console.log(`📋 Campaign: ${campaignName}, Tag: ${campaignTag}`);
 
-      const { error: sessionError } = await supabase
-        .from('prospect_approval_sessions')
-        .insert({
-          id: sessionId,
-          batch_number: nextBatchNumber, // Auto-incremented to avoid duplicates
-          user_id: user.id,
-          workspace_id: workspaceId, // CORRECTED: workspace_id not organization_id
-          prospect_source: 'linkedin_search',
-          campaign_name: campaignName,  // NEW: Proper campaign name
-          campaign_tag: campaignTag,     // NEW: Campaign tag
-          total_prospects: validProspects.length,
-          pending_count: validProspects.length,
-          approved_count: 0,
-          rejected_count: 0,
-          status: 'active', // CORRECTED: Valid values are 'active' or 'completed'
-          icp_criteria: {}, // REQUIRED: Default empty object
-          learning_insights: {}, // REQUIRED: Default empty object
-          created_at: new Date().toISOString()
-        });
+      let sessionError = null;
+      try {
+        await pool.query(
+          `INSERT INTO prospect_approval_sessions 
+           (id, batch_number, user_id, workspace_id, prospect_source, campaign_name, campaign_tag, 
+            total_prospects, pending_count, approved_count, rejected_count, status, icp_criteria, learning_insights, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+          [
+            sessionId,
+            nextBatchNumber,
+            user.id,
+            workspaceId,
+            'linkedin_search',
+            campaignName,
+            campaignTag,
+            validProspects.length,
+            validProspects.length,
+            0,
+            0,
+            'active',
+            JSON.stringify({}),
+            JSON.stringify({}),
+            new Date().toISOString()
+          ]
+        );
+      } catch (err: any) {
+        sessionError = err;
+      }
 
       if (sessionError) {
         console.error('❌ Session creation error:', sessionError);
@@ -1295,9 +1290,32 @@ export async function POST(request: NextRequest) {
           created_at: new Date().toISOString()
         }));
 
-        const { error: prospectsError } = await supabase
-          .from('prospect_approval_data')
-          .insert(approvalProspects);
+        // Construct bulk insert for approval prospects
+        let prospectsError = null;
+        try {
+          const pKeys = Object.keys(approvalProspects[0]);
+          const pColumns = pKeys.join(', ');
+          const pValues: any[] = [];
+          const pPlaceholders: string[] = [];
+
+          approvalProspects.forEach((item: any) => {
+            const rowP: string[] = [];
+            pKeys.forEach((key) => {
+              if (key === 'company' || key === 'contact') {
+                pValues.push(JSON.stringify(item[key]));
+              } else {
+                pValues.push(item[key]);
+              }
+              rowP.push(`$${pValues.length}`);
+            });
+            pPlaceholders.push(`(${rowP.join(', ')})`);
+          });
+
+          const pQuery = `INSERT INTO prospect_approval_data (${pColumns}) VALUES ${pPlaceholders.join(', ')}`;
+          await pool.query(pQuery, pValues);
+        } catch (err: any) {
+          prospectsError = err;
+        }
 
         if (prospectsError) {
           console.error('❌ Approval prospects error:', prospectsError);

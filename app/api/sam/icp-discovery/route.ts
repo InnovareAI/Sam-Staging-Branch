@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { verifyAuth } from '@/lib/auth';
 import {
   abandonDiscoverySession,
   buildDiscoverySummary,
@@ -22,12 +22,11 @@ interface DiscoveryRequestBody {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
+    const auth = await verifyAuth(req);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const user = { id: auth.user.uid };
 
     const body: DiscoveryRequestBody = await req.json();
 

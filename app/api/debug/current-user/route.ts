@@ -1,86 +1,61 @@
-import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool } from '@/lib/auth';
 
 /**
  * GET /api/debug/current-user
  * Returns current user info and workspace info for debugging
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          }
-        }
-      }
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Not authenticated',
-        authError: authError?.message
-      });
-    }
+    const authContext = await verifyAuth(request);
+    const { userId, userEmail } = authContext;
 
     // Get user profile
-    const adminClient = supabaseAdmin();
-    const { data: userProfile } = await adminClient
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
+    const userResult = await pool.query(
+      'SELECT current_workspace_id FROM users WHERE id = $1',
+      [userId]
+    );
+    const userProfile = userResult.rows[0];
 
     // Get workspace memberships
-    const { data: memberships } = await supabase
-      .from('workspace_members')
-      .select('workspace_id, role')
-      .eq('user_id', user.id);
+    const membershipsResult = await pool.query(
+      'SELECT workspace_id, role FROM workspace_members WHERE user_id = $1',
+      [userId]
+    );
 
-    // Get workspace details
+    // Get workspace details if current_workspace_id exists
     let workspaceDetails = null;
     if (userProfile?.current_workspace_id) {
-      const { data: workspace } = await supabase
-        .from('workspaces')
-        .select('id, name, slug')
-        .eq('id', userProfile.current_workspace_id)
-        .single();
-      workspaceDetails = workspace;
+      const workspaceResult = await pool.query(
+        'SELECT id, name, slug FROM workspaces WHERE id = $1',
+        [userProfile.current_workspace_id]
+      );
+      if (workspaceResult.rows.length > 0) {
+        workspaceDetails = workspaceResult.rows[0];
+      }
     }
 
     // Get sessions for this user
-    const { data: sessions } = await supabase
-      .from('prospect_approval_sessions')
-      .select('id, campaign_name, total_prospects, pending_count, approved_count, workspace_id, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10);
+    const sessionsResult = await pool.query(
+      `SELECT id, campaign_name, total_prospects, pending_count, approved_count, workspace_id, created_at 
+       FROM prospect_approval_sessions 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC 
+       LIMIT 10`,
+      [userId]
+    );
 
     return NextResponse.json({
       success: true,
       user: {
-        id: user.id,
-        email: user.email,
+        id: userId,
+        email: userEmail,
         current_workspace_id: userProfile?.current_workspace_id
       },
       workspace: workspaceDetails,
-      memberships: memberships || [],
-      sessions: sessions || [],
-      sessionCount: sessions?.length || 0
+      memberships: membershipsResult.rows || [],
+      sessions: sessionsResult.rows || [],
+      sessionCount: sessionsResult.rows.length || 0
     });
 
   } catch (error) {

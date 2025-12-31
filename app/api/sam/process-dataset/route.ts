@@ -1,5 +1,11 @@
+/**
+ * SAM Dataset Processing API
+ * Handles validation, auto-approval, and campaign assignment for datasets
+ * Updated Dec 31, 2025: Migrated to verifyAuth and pool.query
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 
 interface ProcessDatasetRequest {
   session_id: string;
@@ -24,15 +30,12 @@ interface LinkedInProspectValidation {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    
-    // Get authenticated user
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session) {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
+    const user = auth.user;
     const body: ProcessDatasetRequest = await request.json();
     const { session_id, action, campaign_id, campaign_name, approval_threshold = 0.8 } = body;
 
@@ -41,17 +44,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the data approval session
-    const { data: approvalSession, error: sessionError } = await supabase
-      .from('data_approval_sessions')
-      .select('*')
-      .eq('session_id', session_id)
-      .eq('user_id', session.user.id)
-      .single();
+    const sessionRes = await pool.query(
+      'SELECT * FROM data_approval_sessions WHERE session_id = $1 AND user_id = $2',
+      [session_id, user.uid]
+    );
+    const approvalSession = sessionRes.rows[0];
 
-    if (sessionError || !approvalSession) {
-      return NextResponse.json({ 
-        error: 'Data approval session not found',
-        details: sessionError?.message 
+    if (!approvalSession) {
+      return NextResponse.json({
+        error: 'Data approval session not found'
       }, { status: 404 });
     }
 
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     // Action: Validate LinkedIn prospects
     if (action === 'validate') {
-      const validatedProspects = prospects.map((prospect: any) => 
+      const validatedProspects = prospects.map((prospect: any) =>
         validateLinkedInProspect(prospect)
       );
 
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     // Action: Auto-approve prospects above threshold
     if (action === 'auto_approve') {
-      const validatedProspects = prospects.map((prospect: any) => 
+      const validatedProspects = prospects.map((prospect: any) =>
         validateLinkedInProspect(prospect)
       );
 
@@ -96,15 +97,12 @@ export async function POST(request: NextRequest) {
       );
 
       // Update approval session with approved prospects
-      await supabase
-        .from('data_approval_sessions')
-        .update({
-          status: 'auto_approved',
-          approved_count: autoApproved.length,
-          approval_threshold: approval_threshold,
-          approved_at: new Date().toISOString()
-        })
-        .eq('id', approvalSession.id);
+      await pool.query(
+        `UPDATE data_approval_sessions 
+         SET status = 'auto_approved', approved_count = $1, approval_threshold = $2, approved_at = NOW()
+         WHERE id = $3`,
+        [autoApproved.length, approval_threshold, approvalSession.id]
+      );
 
       return NextResponse.json({
         success: true,
@@ -120,72 +118,52 @@ export async function POST(request: NextRequest) {
     // Action: Assign to campaign
     if (action === 'assign_to_campaign') {
       if (!campaign_id && !campaign_name) {
-        return NextResponse.json({ 
-          error: 'Either campaign_id or campaign_name is required for assignment' 
+        return NextResponse.json({
+          error: 'Either campaign_id or campaign_name is required for assignment'
         }, { status: 400 });
       }
 
-      // Get user's workspace via workspace_members
-      const { data: memberships, error: membershipError } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', session.user.id)
-        .limit(1);
+      // Get user's workspace
+      const userRes = await pool.query(
+        'SELECT current_workspace_id FROM users WHERE id = $1',
+        [user.uid]
+      );
+      const workspaceId = userRes.rows[0]?.current_workspace_id;
 
-      if (membershipError || !memberships || memberships.length === 0) {
-        console.error('Workspace membership lookup failed:', membershipError);
-        return NextResponse.json({ 
+      if (!workspaceId) {
+        return NextResponse.json({
           error: 'Workspace not found',
-          details: 'User is not a member of any workspace'
+          details: 'User has no active workspace'
         }, { status: 404 });
       }
 
-      const workspaceId = memberships[0].workspace_id;
       let targetCampaignId = campaign_id;
 
       // If campaign_name provided, create or find campaign
       if (!targetCampaignId && campaign_name) {
-        const { data: existingCampaign } = await supabase
-          .from('campaigns')
-          .select('id')
-          .eq('workspace_id', workspaceId)
-          .eq('name', campaign_name)
-          .single();
+        const campaignRes = await pool.query(
+          'SELECT id FROM campaigns WHERE workspace_id = $1 AND name = $2 LIMIT 1',
+          [workspaceId, campaign_name]
+        );
+        const existingCampaign = campaignRes.rows[0];
 
         if (existingCampaign) {
           targetCampaignId = existingCampaign.id;
         } else {
           // Create new campaign
-          const { data: newCampaign, error: campaignError } = await supabase
-            .from('campaigns')
-            .insert({
-              workspace_id: workspaceId,
-              name: campaign_name,
-              type: 'sam_signature',
-              status: 'draft',
-              campaign_type: 'linkedin_only',
-              channel_preferences: {
-                email: false,
-                linkedin: true
-              },
-              created_at: new Date().toISOString()
-            })
-            .select('id')
-            .single();
-
-          if (campaignError) {
-            return NextResponse.json({ 
-              error: 'Failed to create campaign',
-              details: campaignError.message 
-            }, { status: 500 });
-          }
-
-          targetCampaignId = newCampaign.id;
+          const newCampaignRes = await pool.query(
+            `INSERT INTO campaigns (
+              workspace_id, name, type, status, campaign_type, channel_preferences, created_at
+            ) VALUES ($1, $2, 'sam_signature', 'draft', 'linkedin_only', $3, NOW())
+            RETURNING id`,
+            [workspaceId, campaign_name, JSON.stringify({ email: false, linkedin: true })]
+          );
+          targetCampaignId = newCampaignRes.rows[0].id;
         }
       }
 
       // Validate prospects before assignment
-      const validatedProspects = prospects.map((prospect: any) => 
+      const validatedProspects = prospects.map((prospect: any) =>
         validateLinkedInProspect(prospect)
       );
 
@@ -205,81 +183,65 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // Insert prospects into workspace_prospects first
-      const prospectInserts = readyProspects.map((p: any) => ({
-        workspace_id: workspaceId,
-        first_name: p.name.split(' ')[0] || '',
-        last_name: p.name.split(' ').slice(1).join(' ') || '',
-        full_name: p.name,
-        company_name: p.company || '',
-        job_title: p.title || '',
-        linkedin_profile_url: p.linkedin_url || p.linkedinUrl || '',
-        email_address: p.email || '',
-        data_source: 'csv_upload',
-        source_platform: 'linkedin',
-        confidence_score: p.quality_score
-      }));
-
-      const { data: insertedProspects, error: insertError } = await supabase
-        .from('workspace_prospects')
-        .insert(prospectInserts)
-        .select('id');
-
-      if (insertError) {
-        console.error('Prospect insert error:', insertError);
-        return NextResponse.json({ 
-          error: 'Failed to insert prospects',
-          details: insertError.message 
-        }, { status: 500 });
+      // Insert prospects into workspace_prospects
+      const insertedProspectIds: string[] = [];
+      for (const p of readyProspects) {
+        const prospectRes = await pool.query(
+          `INSERT INTO workspace_prospects (
+            workspace_id, first_name, last_name, full_name, company_name, 
+            job_title, linkedin_profile_url, email_address, data_source, 
+            source_platform, confidence_score
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'csv_upload', 'linkedin', $9)
+          RETURNING id`,
+          [
+            workspaceId,
+            p.name.split(' ')[0] || '',
+            p.name.split(' ').slice(1).join(' ') || '',
+            p.name,
+            p.company || '',
+            p.title || '',
+            p.linkedin_url || '',
+            p.email || '',
+            p.quality_score
+          ]
+        );
+        insertedProspectIds.push(prospectRes.rows[0].id);
       }
 
       // Associate prospects with campaign
-      const campaignAssociations = insertedProspects.map((prospect: any) => ({
-        campaign_id: targetCampaignId,
-        prospect_id: prospect.id,
-        status: 'pending'
-      }));
-
-      const { error: associationError } = await supabase
-        .from('campaign_prospects')
-        .insert(campaignAssociations);
-
-      if (associationError) {
-        console.error('Campaign association error:', associationError);
-        return NextResponse.json({ 
-          error: 'Failed to assign prospects to campaign',
-          details: associationError.message 
-        }, { status: 500 });
+      for (const prospectId of insertedProspectIds) {
+        await pool.query(
+          'INSERT INTO campaign_prospects (campaign_id, prospect_id, status) VALUES ($1, $2, $3)',
+          [targetCampaignId, prospectId, 'pending']
+        );
       }
 
       // Update approval session
-      await supabase
-        .from('data_approval_sessions')
-        .update({
-          status: 'assigned_to_campaign',
-          assigned_campaign_id: targetCampaignId,
-          assigned_at: new Date().toISOString()
-        })
-        .eq('id', approvalSession.id);
+      await pool.query(
+        `UPDATE data_approval_sessions 
+         SET status = 'assigned_to_campaign', assigned_campaign_id = $1, assigned_at = NOW()
+         WHERE id = $2`,
+        [targetCampaignId, approvalSession.id]
+      );
 
       return NextResponse.json({
         success: true,
         action: 'assign_to_campaign',
         campaign_id: targetCampaignId,
         campaign_name: campaign_name,
-        assigned_count: insertedProspects.length,
+        assigned_count: insertedProspectIds.length,
         skipped_count: prospects.length - readyProspects.length,
-        message: `Successfully assigned ${insertedProspects.length} LinkedIn prospects to campaign`
+        message: `Successfully assigned ${insertedProspectIds.length} LinkedIn prospects to campaign`
       });
     }
 
-    return NextResponse.json({ 
-      error: 'Invalid action. Must be: validate, auto_approve, or assign_to_campaign' 
+    return NextResponse.json({
+      error: 'Invalid action. Must be: validate, auto_approve, or assign_to_campaign'
     }, { status: 400 });
 
   } catch (error) {
     console.error('Process dataset error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to process dataset',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
@@ -356,7 +318,7 @@ function validateLinkedInProspect(prospect: any): LinkedInProspectValidation {
 // Generate recommendations based on validation results
 function generateRecommendations(validatedProspects: LinkedInProspectValidation[]): string[] {
   const recommendations: string[] = [];
-  
+
   const invalidCount = validatedProspects.filter(p => p.validation_status === 'invalid').length;
   const missingLinkedinCount = validatedProspects.filter(p => !p.linkedin_url).length;
   const missingCompanyCount = validatedProspects.filter(p => !p.company).length;

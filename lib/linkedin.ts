@@ -1,43 +1,46 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import { pool } from './auth'; // Import pool directly
 import { logger } from './logging';
 
 /**
  * Saves LinkedIn search results to the database for quota tracking and history
  */
-export async function saveSearchResults(supabase: SupabaseClient, data: {
-    user_id: string;
-    workspace_id: string;
-    unipile_account_id: string;
-    search_query: string;
-    search_params: any;
-    api_type: string;
-    category: string;
-    results_count: number;
-    prospects: any[];
-    cursor?: string;
-}) {
+export async function saveSearchResults(
+    // Remove supabase client arg
+    data: {
+        user_id: string;
+        workspace_id: string;
+        unipile_account_id: string;
+        search_query: string;
+        search_params: any;
+        api_type: string;
+        category: string;
+        results_count: number;
+        prospects: any[];
+        cursor?: string;
+    }
+) {
     try {
-        const { error } = await supabase
-            .from('linkedin_searches')
-            .insert({
-                user_id: data.user_id,
-                workspace_id: data.workspace_id,
-                unipile_account_id: data.unipile_account_id,
-                search_query: data.search_query,
-                search_params: data.search_params,
-                api_type: data.api_type,
-                category: data.category,
-                results_count: data.results_count,
-                prospects: data.prospects,
-                next_cursor: data.cursor,
-                searched_at: new Date().toISOString()
-            });
+        await pool.query(
+            `INSERT INTO linkedin_searches 
+            (user_id, workspace_id, unipile_account_id, search_query, search_params, 
+             api_type, category, results_count, prospects, next_cursor, searched_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [
+                data.user_id,
+                data.workspace_id,
+                data.unipile_account_id,
+                data.search_query,
+                data.search_params,
+                data.api_type,
+                data.category,
+                data.results_count,
+                JSON.stringify(data.prospects),
+                data.cursor,
+                new Date().toISOString()
+            ]
+        );
 
-        if (error) {
-            logger.error('❌ Failed to save LinkedIn search results', new Error(error.message));
-        } else {
-            logger.info(`✅ Saved search results for account ${data.unipile_account_id} (${data.results_count} results)`);
-        }
+        logger.info(`✅ Saved search results for account ${data.unipile_account_id} (${data.results_count} results)`);
     } catch (error: any) {
         logger.error('❌ Error in saveSearchResults', error);
     }
@@ -46,15 +49,16 @@ export async function saveSearchResults(supabase: SupabaseClient, data: {
 /**
  * Checks the daily search quota for a LinkedIn account
  */
-export async function checkSearchQuota(supabase: SupabaseClient, unipileAccountId: string) {
-    const { data, error } = await supabase.rpc('check_linkedin_search_quota', {
-        p_account_id: unipileAccountId
-    });
-
-    if (error) {
-        logger.error('❌ Error checking search quota', new Error(error.message));
+export async function checkSearchQuota(unipileAccountId: string) {
+    try {
+        // Call the RPC function via SQL
+        const result = await pool.query(
+            'SELECT * FROM check_linkedin_search_quota($1)',
+            [unipileAccountId]
+        );
+        return result.rows[0] || null;
+    } catch (error: any) {
+        logger.error('❌ Error checking search quota', error);
         return null;
     }
-
-    return data[0] || null;
 }

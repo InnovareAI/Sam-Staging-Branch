@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { verifyAuth, pool } from '@/lib/auth'
 
 // API to extract knowledge from threaded conversations and feed into KB
 export async function POST(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin()
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
+    const user = auth.user;
     const body = await request.json()
-    
-    const { 
-      thread_id, 
-      auto_extract = true, 
-      include_user_preferences = true 
+
+    const {
+      thread_id,
+      auto_extract = true,
+      include_user_preferences = true
     } = body
 
     if (!thread_id) {
@@ -23,11 +31,11 @@ export async function POST(request: NextRequest) {
     console.log(`🧠 Extracting knowledge from thread: ${thread_id}`)
 
     // Get thread and messages
-    const { data: thread } = await supabase
-      .from('sam_conversation_threads')
-      .select('*')
-      .eq('id', thread_id)
-      .single()
+    const threadRes = await pool.query(
+      'SELECT * FROM sam_conversation_threads WHERE id = $1 AND user_id = $2',
+      [thread_id, user.uid]
+    );
+    const thread = threadRes.rows[0];
 
     if (!thread) {
       return NextResponse.json({
@@ -37,11 +45,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get all messages in the thread
-    const { data: messages } = await supabase
-      .from('sam_conversation_messages')
-      .select('*')
-      .eq('thread_id', thread_id)
-      .order('message_order', { ascending: true })
+    const messagesRes = await pool.query(
+      'SELECT * FROM sam_conversation_messages WHERE thread_id = $1 ORDER BY message_order ASC',
+      [thread_id]
+    );
+    const messages = messagesRes.rows;
 
     if (!messages || messages.length === 0) {
       return NextResponse.json({
@@ -58,20 +66,20 @@ export async function POST(request: NextRequest) {
     // Get user privacy preferences
     let privacyPrefs = null
     if (include_user_preferences) {
-      const { data: prefs } = await supabase
-        .from('sam_user_privacy_preferences')
-        .select('*')
-        .eq('user_id', thread.user_id)
-        .single()
-      privacyPrefs = prefs
+      const prefsRes = await pool.query(
+        'SELECT * FROM sam_user_privacy_preferences WHERE user_id = $1',
+        [user.uid]
+      );
+      privacyPrefs = prefsRes.rows[0];
     }
 
-    // Extract knowledge using the existing function
-    const { data: extractionResult, error: extractionError } = await supabase
-      .rpc('extract_knowledge_from_thread', {
-        p_thread_id: thread_id,
-        p_conversation_text: conversationText,
-        p_user_context: {
+    // Extract knowledge using the existing function (calling the Postgres RPC directly)
+    const extractionRes = await pool.query(
+      'SELECT * FROM extract_knowledge_from_thread($1, $2, $3)',
+      [
+        thread_id,
+        conversationText,
+        JSON.stringify({
           thread_type: thread.thread_type,
           prospect_name: thread.prospect_name,
           prospect_company: thread.prospect_company,
@@ -79,31 +87,24 @@ export async function POST(request: NextRequest) {
           sales_methodology: thread.sales_methodology,
           deal_stage: thread.deal_stage,
           priority: thread.priority
-        }
-      })
+        })
+      ]
+    );
+    const extractionResult = extractionRes.rows[0];
 
-    if (extractionError) {
-      console.error('❌ Knowledge extraction failed:', extractionError)
-      return NextResponse.json({
-        success: false,
-        error: 'Knowledge extraction failed',
-        details: extractionError.message
-      }, { status: 500 })
-    }
-
-    // Also update the main knowledge_base with key insights
-    if (extractionResult?.team_extractions > 0) {
-      const teamInsights = await extractTeamInsights(supabase, thread, messages)
+    // Also update the knowledge_base with key insights
+    if (extractionResult) {
+      const teamInsights = await extractTeamInsights(pool, thread, messages) // Pass pool instead of supabase
       if (teamInsights.length > 0) {
-        await updateGlobalKnowledgeBase(supabase, teamInsights, thread)
+        await updateGlobalKnowledgeBase(pool, teamInsights, thread)
       }
     }
 
     // NEW: Auto-populate ICP categories from conversation data
-    await autoPopulateICPCategories(supabase, thread, messages)
+    await autoPopulateICPCategories(pool, thread, messages)
 
     console.log(`✅ Knowledge extraction completed for thread ${thread_id}`)
-    
+
     return NextResponse.json({
       success: true,
       thread_id,
@@ -128,45 +129,45 @@ export async function POST(request: NextRequest) {
 // GET method to retrieve extracted knowledge for a user/thread
 export async function GET(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin()
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
-    
-    const user_id = searchParams.get('user_id')
+
     const thread_id = searchParams.get('thread_id')
     const knowledge_type = searchParams.get('knowledge_type') || 'both'
     const limit = parseInt(searchParams.get('limit') || '50')
 
-    if (!user_id) {
-      return NextResponse.json({
-        success: false,
-        error: 'User ID required'
-      }, { status: 400 })
-    }
-
-    let query = supabase
-      .from('sam_extracted_knowledge')
-      .select('*')
-      .eq('user_id', user_id)
-      .eq('is_active', true)
-      .order('updated_at', { ascending: false })
-      .limit(limit)
+    let query = 'SELECT * FROM sam_extracted_knowledge WHERE user_id = $1 AND is_active = true';
+    const params: any[] = [auth.user.uid];
 
     if (thread_id) {
-      query = query.eq('conversation_id', thread_id)
+      query += ` AND conversation_id = $${params.length + 1}`;
+      params.push(thread_id);
     }
 
     if (knowledge_type !== 'both') {
-      query = query.eq('knowledge_type', knowledge_type)
+      query += ` AND knowledge_type = $${params.length + 1}`;
+      params.push(knowledge_type);
     }
 
-    const { data: knowledge } = await query
+    query += ` ORDER BY updated_at DESC LIMIT $${params.length + 1}`;
+    params.push(limit);
+
+    const knowledgeRes = await pool.query(query, params);
+    const knowledge = knowledgeRes.rows;
 
     return NextResponse.json({
       success: true,
       knowledge: knowledge || [],
       count: knowledge?.length || 0,
       filters: {
-        user_id,
+        user_id: auth.user.uid,
         thread_id,
         knowledge_type,
         limit
@@ -183,9 +184,9 @@ export async function GET(request: NextRequest) {
 }
 
 // Helper function to extract team-level insights
-async function extractTeamInsights(supabase: any, thread: any, messages: any[]) {
+async function extractTeamInsights(pool: any, thread: any, messages: any[]) {
   const insights = []
-  
+
   // Extract ICP building insights
   const icpInsights = extractICPInsights(messages)
   if (icpInsights.jobTitles.length > 0 || icpInsights.industries.length > 0) {
@@ -222,7 +223,7 @@ async function extractTeamInsights(supabase: any, thread: any, messages: any[]) 
       confidence: 0.8
     })
   }
-  
+
   // Extract prospect intelligence
   if (thread.prospect_name && thread.prospect_company) {
     const prospectData = {
@@ -233,7 +234,7 @@ async function extractTeamInsights(supabase: any, thread: any, messages: any[]) 
       pain_points: extractPainPoints(messages),
       interests: extractInterests(messages)
     }
-    
+
     insights.push({
       category: 'prospect_intelligence',
       subcategory: 'contact_profile',
@@ -250,7 +251,7 @@ async function extractTeamInsights(supabase: any, thread: any, messages: any[]) 
       progression_signals: extractProgressionSignals(messages),
       objections_handled: extractObjections(messages)
     }
-    
+
     insights.push({
       category: 'sales_intelligence',
       subcategory: 'methodology_insights',
@@ -263,28 +264,38 @@ async function extractTeamInsights(supabase: any, thread: any, messages: any[]) 
 }
 
 // Helper function to update global knowledge base
-async function updateGlobalKnowledgeBase(supabase: any, insights: any[], thread: any) {
+async function updateGlobalKnowledgeBase(pool: any, insights: any[], thread: any) {
   for (const insight of insights) {
     const title = `${insight.category}: ${thread.prospect_company || 'Prospect'} - ${insight.subcategory}`
     const content = JSON.stringify(insight.content, null, 2)
     const workspaceId = thread.workspace_id ?? null
 
-    await supabase
-      .from('knowledge_base')
-      .upsert({
-        workspace_id: workspaceId,
-        category: 'conversational-design',
-        subcategory: insight.category,
+    await pool.query(
+      `INSERT INTO knowledge_base 
+       (workspace_id, category, subcategory, title, content, tags, version, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       ON CONFLICT (workspace_id, title) DO UPDATE SET
+       category = EXCLUDED.category,
+       subcategory = EXCLUDED.subcategory,
+       content = EXCLUDED.content,
+       tags = EXCLUDED.tags,
+       version = EXCLUDED.version,
+       updated_at = NOW()`,
+      [
+        workspaceId,
+        'conversational-design',
+        insight.category,
         title,
-        content: `Thread ID: ${thread.id}\n\nInsights:\n${content}`,
-        tags: [
+        `Thread ID: ${thread.id}\n\nInsights:\n${content}`,
+        [
           insight.category,
           insight.subcategory,
           thread.thread_type,
           ...(thread.tags || [])
         ],
-        version: '4.4'
-      })
+        '4.4'
+      ]
+    );
   }
 }
 
@@ -292,10 +303,10 @@ async function updateGlobalKnowledgeBase(supabase: any, insights: any[], thread:
 function extractConversationThemes(messages: any[]): string[] {
   const themes = new Set<string>()
   const userMessages = messages.filter(m => m.role === 'user')
-  
+
   userMessages.forEach(msg => {
     const content = msg.content.toLowerCase()
-    
+
     // Common business themes
     if (content.includes('budget') || content.includes('cost')) themes.add('budget_concerns')
     if (content.includes('timeline') || content.includes('deadline')) themes.add('timeline_pressure')
@@ -303,41 +314,41 @@ function extractConversationThemes(messages: any[]): string[] {
     if (content.includes('integration') || content.includes('technical')) themes.add('technical_requirements')
     if (content.includes('roi') || content.includes('value')) themes.add('value_proposition')
   })
-  
+
   return Array.from(themes)
 }
 
 function extractPainPoints(messages: any[]): string[] {
   const painPoints = []
   const userMessages = messages.filter(m => m.role === 'user')
-  
+
   userMessages.forEach(msg => {
     const content = msg.content.toLowerCase()
-    
+
     // Common pain point indicators
     if (content.includes('problem') || content.includes('issue') || content.includes('challenge')) {
       // Extract the sentence containing the pain point
       const sentences = msg.content.split('.')
       sentences.forEach(sentence => {
-        if (sentence.toLowerCase().includes('problem') || 
-            sentence.toLowerCase().includes('issue') || 
-            sentence.toLowerCase().includes('challenge')) {
+        if (sentence.toLowerCase().includes('problem') ||
+          sentence.toLowerCase().includes('issue') ||
+          sentence.toLowerCase().includes('challenge')) {
           painPoints.push(sentence.trim())
         }
       })
     }
   })
-  
+
   return painPoints.slice(0, 5) // Limit to top 5
 }
 
 function extractInterests(messages: any[]): string[] {
   const interests = new Set<string>()
   const userMessages = messages.filter(m => m.role === 'user')
-  
+
   userMessages.forEach(msg => {
     const content = msg.content.toLowerCase()
-    
+
     // Interest indicators
     if (content.includes('interested') || content.includes('like') || content.includes('want')) {
       if (content.includes('automation')) interests.add('automation')
@@ -347,17 +358,17 @@ function extractInterests(messages: any[]): string[] {
       if (content.includes('efficiency')) interests.add('efficiency')
     }
   })
-  
+
   return Array.from(interests)
 }
 
 function extractProgressionSignals(messages: any[]): string[] {
   const signals = []
   const userMessages = messages.filter(m => m.role === 'user')
-  
+
   userMessages.forEach(msg => {
     const content = msg.content.toLowerCase()
-    
+
     // Positive progression signals
     if (content.includes('next step') || content.includes('move forward')) {
       signals.push('ready_to_proceed')
@@ -372,31 +383,31 @@ function extractProgressionSignals(messages: any[]): string[] {
       signals.push('involving_stakeholders')
     }
   })
-  
+
   return signals
 }
 
 function extractObjections(messages: any[]): string[] {
   const objections = []
   const userMessages = messages.filter(m => m.role === 'user')
-  
+
   userMessages.forEach(msg => {
     const content = msg.content.toLowerCase()
-    
+
     // Common objection patterns
     if (content.includes('but ') || content.includes('however ') || content.includes('concern')) {
       // Extract objection context
       const sentences = msg.content.split('.')
       sentences.forEach(sentence => {
-        if (sentence.toLowerCase().includes('but ') || 
-            sentence.toLowerCase().includes('however ') || 
-            sentence.toLowerCase().includes('concern')) {
+        if (sentence.toLowerCase().includes('but ') ||
+          sentence.toLowerCase().includes('however ') ||
+          sentence.toLowerCase().includes('concern')) {
           objections.push(sentence.trim())
         }
       })
     }
   })
-  
+
   return objections.slice(0, 3) // Limit to top 3
 }
 
@@ -404,26 +415,26 @@ function extractObjections(messages: any[]): string[] {
 function extractICPInsights(messages: any[]): any {
   const userMessages = messages.filter(m => m.role === 'user')
   const allContent = messages.map(m => m.content).join(' ')
-  
+
   const jobTitles = new Set<string>()
   const industries = new Set<string>()
   const companySizes = new Set<string>()
   const geography = new Set<string>()
-  
+
   // Extract job titles
   const jobTitlePatterns = [
     /\b(?:VP|Vice President|Director|Manager|Head)\s+(?:of\s+)?(?:Sales|Marketing|Engineering|Operations|Product|Technology|Finance|HR)\b/gi,
     /\b(?:CEO|CTO|CFO|COO|CMO|CISO|CPO|CRO)\b/gi,
     /\b(?:Account Executive|Sales Development|Product Manager)\b/gi
   ]
-  
+
   jobTitlePatterns.forEach(pattern => {
     const matches = allContent.match(pattern)
     if (matches) {
       matches.forEach(match => jobTitles.add(match.trim()))
     }
   })
-  
+
   // Extract industries
   const industryKeywords = ['Technology', 'SaaS', 'Software', 'Healthcare', 'Finance', 'Manufacturing', 'E-commerce', 'Consulting']
   industryKeywords.forEach(industry => {
@@ -431,7 +442,7 @@ function extractICPInsights(messages: any[]): any {
       industries.add(industry)
     }
   })
-  
+
   // Extract company sizes
   const sizePatterns = ['startup', 'small', '1-50', 'mid-size', '51-200', 'large', 'enterprise', '500+']
   sizePatterns.forEach(size => {
@@ -439,7 +450,7 @@ function extractICPInsights(messages: any[]): any {
       companySizes.add(size)
     }
   })
-  
+
   // Extract geography
   const geoKeywords = ['United States', 'North America', 'Europe', 'Asia', 'Global', 'Remote']
   geoKeywords.forEach(geo => {
@@ -447,7 +458,7 @@ function extractICPInsights(messages: any[]): any {
       geography.add(geo)
     }
   })
-  
+
   return {
     jobTitles: Array.from(jobTitles),
     industries: Array.from(industries),
@@ -460,7 +471,7 @@ function extractICPInsights(messages: any[]): any {
 function extractBusinessInsights(messages: any[]): any {
   const userMessages = messages.filter(m => m.role === 'user')
   const allContent = messages.map(m => m.content).join(' ')
-  
+
   const insights = {
     product: null,
     valueProposition: null,
@@ -470,11 +481,11 @@ function extractBusinessInsights(messages: any[]): any {
     competitive: [],
     challenges: []
   }
-  
+
   // Extract product/service mentions
   if (allContent.includes('we sell') || allContent.includes('our product') || allContent.includes('our service')) {
-    const productMentions = userMessages.filter(msg => 
-      msg.content.toLowerCase().includes('sell') || 
+    const productMentions = userMessages.filter(msg =>
+      msg.content.toLowerCase().includes('sell') ||
       msg.content.toLowerCase().includes('product') ||
       msg.content.toLowerCase().includes('service')
     )
@@ -482,7 +493,7 @@ function extractBusinessInsights(messages: any[]): any {
       insights.product = productMentions[0].content.slice(0, 500)
     }
   }
-  
+
   // Extract pricing information
   const pricingPatterns = [/\$[\d,]+ per/, /\$[\d,]+ monthly/, /\$[\d,]+ annually/, /costs? \$[\d,]+/]
   pricingPatterns.forEach(pattern => {
@@ -491,7 +502,7 @@ function extractBusinessInsights(messages: any[]): any {
       insights.pricing = match[0]
     }
   })
-  
+
   // Extract deal size
   const dealSizePatterns = [/deal size.*\$[\d,]+/i, /average.*\$[\d,]+/i, /typically.*\$[\d,]+/i]
   dealSizePatterns.forEach(pattern => {
@@ -500,7 +511,7 @@ function extractBusinessInsights(messages: any[]): any {
       insights.dealSize = match[0]
     }
   })
-  
+
   // Extract sales cycle
   const salesCyclePatterns = [/\d+ days?/, /\d+ weeks?/, /\d+ months?/]
   if (allContent.includes('sales cycle') || allContent.includes('time to close')) {
@@ -511,104 +522,114 @@ function extractBusinessInsights(messages: any[]): any {
       }
     })
   }
-  
+
   // Extract competitive mentions
   const competitorKeywords = ['competitor', 'compete', 'vs ', 'alternative', 'compared to']
   competitorKeywords.forEach(keyword => {
     if (allContent.toLowerCase().includes(keyword)) {
-      const competitiveMentions = userMessages.filter(msg => 
+      const competitiveMentions = userMessages.filter(msg =>
         msg.content.toLowerCase().includes(keyword)
       )
       insights.competitive.push(...competitiveMentions.map(m => m.content.slice(0, 200)))
     }
   })
-  
+
   // Extract challenges
   const challengeKeywords = ['challenge', 'problem', 'difficult', 'struggle', 'issue']
   challengeKeywords.forEach(keyword => {
     if (allContent.toLowerCase().includes(keyword)) {
-      const challengeMentions = userMessages.filter(msg => 
+      const challengeMentions = userMessages.filter(msg =>
         msg.content.toLowerCase().includes(keyword)
       )
       insights.challenges.push(...challengeMentions.map(m => m.content.slice(0, 200)))
     }
   })
-  
+
   return insights
 }
 
 // NEW: Auto-populate ICP categories from SAM conversation data
-async function autoPopulateICPCategories(supabase: any, thread: any, messages: any[]) {
+async function autoPopulateICPCategories(pool: any, thread: any, messages: any[]) {
   try {
     console.log(`🎯 Auto-populating ICP categories from thread: ${thread.id}`)
-    
-    // Get workspace ID from thread
-    const { data: workspace } = await supabase
-      .from('sam_conversation_threads')
-      .select('workspace_id')
-      .eq('id', thread.id)
-      .single()
 
-    if (!workspace?.workspace_id) {
+    // Get workspace ID from thread - already have thread object from POST call, but let's be safe
+    const workspaceId = thread.workspace_id
+
+    if (!workspaceId) {
       console.log('❌ No workspace found for thread')
       return
     }
 
-    const workspaceId = workspace.workspace_id
-
     // Extract comprehensive ICP data from conversation
     const icpData = extractComprehensiveICPData(messages, thread)
-    
+
     // Always create the structure even if some categories are empty
     const completeICPData = ensureCompleteICPStructure(icpData, thread)
 
     // Find existing ICP configuration or create new one
-    let { data: existingICP } = await supabase
-      .from('icp_configurations')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('icp_name', 'Conversation Intelligence')
-      .single()
+    const existingRes = await pool.query(
+      'SELECT * FROM icp_configurations WHERE workspace_id = $1 AND icp_name = $2 LIMIT 1',
+      [workspaceId, 'Conversation Intelligence']
+    );
+    const existingICP = existingRes.rows[0];
 
     if (existingICP) {
       // Update existing ICP with new data
       console.log(`📝 Updating existing ICP configuration: ${existingICP.id}`)
-      
+
       const updatedData = mergeICPData(existingICP, completeICPData)
-      
-      await supabase
-        .from('icp_configurations')
-        .update(updatedData)
-        .eq('id', existingICP.id)
-        
+
+      await pool.query(
+        `UPDATE icp_configurations SET
+          overview = $1,
+          target_profile = $2,
+          decision_makers = $3,
+          pain_points = $4,
+          buying_process = $5,
+          messaging = $6,
+          success_metrics = $7,
+          advanced = $8,
+          updated_at = NOW()
+        WHERE id = $9`,
+        [
+          updatedData.overview,
+          updatedData.target_profile,
+          updatedData.decision_makers,
+          updatedData.pain_points,
+          updatedData.buying_process,
+          updatedData.messaging,
+          updatedData.success_metrics,
+          updatedData.advanced,
+          existingICP.id
+        ]
+      );
+
       console.log(`✅ Updated ICP configuration with conversation intelligence`)
     } else {
       // Create new ICP configuration
       console.log(`🆕 Creating new ICP configuration from conversation`)
-      
-      const { data: newICP, error: createError } = await supabase
-        .from('icp_configurations')
-        .insert({
-          workspace_id: workspaceId,
-          icp_name: 'Conversation Intelligence',
-          overview: completeICPData.overview,
-          target_profile: completeICPData.target_profile,
-          decision_makers: completeICPData.decision_makers,
-          pain_points: completeICPData.pain_points,
-          buying_process: completeICPData.buying_process,
-          messaging: completeICPData.messaging,
-          success_metrics: completeICPData.success_metrics,
-          advanced: completeICPData.advanced
-        })
-        .select()
-        .single()
 
-      if (createError) {
-        console.error('❌ Failed to create ICP configuration:', createError)
-        return
-      }
+      const insertRes = await pool.query(
+        `INSERT INTO icp_configurations 
+        (workspace_id, icp_name, overview, target_profile, decision_makers, pain_points, buying_process, messaging, success_metrics, advanced, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        RETURNING id`,
+        [
+          workspaceId,
+          'Conversation Intelligence',
+          completeICPData.overview,
+          completeICPData.target_profile,
+          completeICPData.decision_makers,
+          completeICPData.pain_points,
+          completeICPData.buying_process,
+          completeICPData.messaging,
+          completeICPData.success_metrics,
+          completeICPData.advanced
+        ]
+      );
 
-      console.log(`✅ Created new ICP configuration: ${newICP.id}`)
+      console.log(`✅ Created new ICP configuration: ${insertRes.rows[0].id}`)
     }
 
   } catch (error) {
@@ -620,7 +641,7 @@ async function autoPopulateICPCategories(supabase: any, thread: any, messages: a
 function extractComprehensiveICPData(messages: any[], thread: any): any {
   const userMessages = messages.filter(m => m.role === 'user')
   const allContent = messages.map(m => m.content).join('\n')
-  
+
   const icpData: any = {}
 
   // 1. OVERVIEW - Extract ICP summary and key metrics
@@ -684,7 +705,7 @@ function extractComprehensiveICPData(messages: any[], thread: any): any {
 function ensureCompleteICPStructure(icpData: any, thread: any): any {
   const timestamp = new Date().toISOString()
   const conversationId = thread.id
-  
+
   return {
     // 1. OVERVIEW - Always create with basic conversation metadata
     overview: {
@@ -814,15 +835,15 @@ function ensureCompleteICPStructure(icpData: any, thread: any): any {
 function calculateDataCompleteness(icpData: any): number {
   const totalCategories = 8
   let populatedCategories = 0
-  
+
   const categories = ['overview', 'target_profile', 'decision_makers', 'pain_points', 'buying_process', 'messaging', 'success_metrics', 'advanced']
-  
+
   categories.forEach(category => {
     if (icpData[category] && Object.keys(icpData[category]).length > 0) {
       populatedCategories++
     }
   })
-  
+
   return Math.round((populatedCategories / totalCategories) * 100)
 }
 
@@ -830,18 +851,18 @@ function calculateDataCompleteness(icpData: any): number {
 function extractKeyCharacteristics(content: string): string[] {
   const characteristics = []
   const lower = content.toLowerCase()
-  
+
   // Company type indicators
   if (lower.includes('startup') || lower.includes('early stage')) characteristics.push('Early-stage company')
   if (lower.includes('enterprise') || lower.includes('large company')) characteristics.push('Enterprise organization')
   if (lower.includes('agency') || lower.includes('consultant')) characteristics.push('Service provider')
   if (lower.includes('saas') || lower.includes('software')) characteristics.push('Technology company')
   if (lower.includes('remote') || lower.includes('distributed')) characteristics.push('Remote-first organization')
-  
+
   // Growth indicators
   if (lower.includes('scaling') || lower.includes('growing')) characteristics.push('High-growth company')
   if (lower.includes('funding') || lower.includes('series')) characteristics.push('Venture-backed')
-  
+
   return characteristics.slice(0, 10) // Limit to top 10
 }
 
@@ -850,7 +871,7 @@ function calculateEngagementQuality(messages: any[]): string {
   const userMessages = messages.filter(m => m.role === 'user')
   const totalLength = userMessages.reduce((sum, msg) => sum + msg.content.length, 0)
   const avgLength = totalLength / Math.max(userMessages.length, 1)
-  
+
   // Score based on message length and frequency
   if (avgLength > 200 && userMessages.length > 5) return 'High'
   if (avgLength > 100 && userMessages.length > 3) return 'Medium'
@@ -861,7 +882,7 @@ function calculateEngagementQuality(messages: any[]): string {
 function extractTargetProfile(content: string, thread: any): any {
   const profile: any = {}
   const lower = content.toLowerCase()
-  
+
   // Company size
   const sizeIndicators = []
   if (lower.includes('startup') || lower.includes('1-10') || lower.includes('small team')) sizeIndicators.push('1-10 employees')
@@ -869,11 +890,11 @@ function extractTargetProfile(content: string, thread: any): any {
   if (lower.includes('mid-size') || lower.includes('50-200')) sizeIndicators.push('50-200 employees')
   if (lower.includes('large') || lower.includes('200-1000')) sizeIndicators.push('200-1000 employees')
   if (lower.includes('enterprise') || lower.includes('1000+')) sizeIndicators.push('1000+ employees')
-  
+
   if (sizeIndicators.length > 0) {
     profile.company_size = sizeIndicators
   }
-  
+
   // Industry
   const industries = []
   const industryKeywords = {
@@ -886,17 +907,17 @@ function extractTargetProfile(content: string, thread: any): any {
     'Education': ['education', 'university', 'school', 'training'],
     'Real Estate': ['real estate', 'property', 'construction']
   }
-  
+
   for (const [industry, keywords] of Object.entries(industryKeywords)) {
     if (keywords.some(keyword => lower.includes(keyword))) {
       industries.push(industry)
     }
   }
-  
+
   if (industries.length > 0) {
     profile.industries = industries
   }
-  
+
   // Geographic focus
   const geography = []
   const geoKeywords = ['united states', 'north america', 'europe', 'asia', 'global', 'international', 'remote']
@@ -905,11 +926,11 @@ function extractTargetProfile(content: string, thread: any): any {
       geography.push(geo.charAt(0).toUpperCase() + geo.slice(1))
     }
   })
-  
+
   if (geography.length > 0) {
     profile.geographic_focus = geography
   }
-  
+
   // Technology stack
   const techStack = []
   const techKeywords = ['salesforce', 'hubspot', 'aws', 'azure', 'google cloud', 'slack', 'microsoft', 'zoom']
@@ -918,11 +939,11 @@ function extractTargetProfile(content: string, thread: any): any {
       techStack.push(tech)
     }
   })
-  
+
   if (techStack.length > 0) {
     profile.technology_stack = techStack
   }
-  
+
   return profile
 }
 
@@ -930,7 +951,7 @@ function extractTargetProfile(content: string, thread: any): any {
 function extractDecisionMakers(content: string, thread: any): any {
   const decisionMakers: any = {}
   const lower = content.toLowerCase()
-  
+
   // Job titles and roles
   const roles = []
   const rolePatterns = [
@@ -942,29 +963,29 @@ function extractDecisionMakers(content: string, thread: any): any {
     { pattern: /\b(?:director|head)\s+of\s+(?:sales|marketing|engineering|operations|product)\b/gi, role: 'Director/Head' },
     { pattern: /\b(?:founder|co-founder)\b/gi, role: 'Founder' }
   ]
-  
+
   rolePatterns.forEach(({ pattern, role }) => {
     const matches = content.match(pattern)
     if (matches) {
       roles.push(...matches.map(match => match.trim()))
     }
   })
-  
+
   if (roles.length > 0) {
     decisionMakers.identified_roles = roles
   }
-  
+
   // Authority indicators
   const authorityIndicators = []
   if (lower.includes('decision maker') || lower.includes('makes decisions')) authorityIndicators.push('Primary decision maker')
   if (lower.includes('budget') || lower.includes('approve')) authorityIndicators.push('Budget authority')
   if (lower.includes('team') || lower.includes('manages')) authorityIndicators.push('Team leadership')
   if (lower.includes('stakeholder') || lower.includes('influence')) authorityIndicators.push('Key stakeholder')
-  
+
   if (authorityIndicators.length > 0) {
     decisionMakers.authority_level = authorityIndicators
   }
-  
+
   // Influence patterns
   if (thread.prospect_name) {
     decisionMakers.primary_contact = {
@@ -974,7 +995,7 @@ function extractDecisionMakers(content: string, thread: any): any {
       engagement_level: calculateEngagementQuality([{ role: 'user', content }])
     }
   }
-  
+
   return decisionMakers
 }
 
@@ -982,7 +1003,7 @@ function extractDecisionMakers(content: string, thread: any): any {
 function extractPainPointsAndSignals(content: string, messages: any[]): any {
   const painPoints: any = {}
   const lower = content.toLowerCase()
-  
+
   // Operational challenges
   const challenges = []
   const challengeKeywords = ['challenge', 'problem', 'issue', 'difficult', 'struggle', 'pain point']
@@ -996,11 +1017,11 @@ function extractPainPointsAndSignals(content: string, messages: any[]): any {
       })
     }
   })
-  
+
   if (challenges.length > 0) {
     painPoints.operational_challenges = challenges.slice(0, 5)
   }
-  
+
   // Buying signals
   const buyingSignals = []
   const signalKeywords = ['budget', 'timeline', 'implementation', 'next steps', 'move forward', 'proposal', 'quote']
@@ -1009,22 +1030,22 @@ function extractPainPointsAndSignals(content: string, messages: any[]): any {
       buyingSignals.push(signal)
     }
   })
-  
+
   if (buyingSignals.length > 0) {
     painPoints.buying_signals = buyingSignals
   }
-  
+
   // Growth pressures
   const growthPressures = []
   if (lower.includes('scale') || lower.includes('scaling')) growthPressures.push('Scaling challenges')
   if (lower.includes('efficiency') || lower.includes('optimize')) growthPressures.push('Efficiency needs')
   if (lower.includes('competition') || lower.includes('competitive')) growthPressures.push('Competitive pressure')
   if (lower.includes('growth') || lower.includes('expand')) growthPressures.push('Growth initiatives')
-  
+
   if (growthPressures.length > 0) {
     painPoints.growth_pressures = growthPressures
   }
-  
+
   return painPoints
 }
 
@@ -1032,18 +1053,18 @@ function extractPainPointsAndSignals(content: string, messages: any[]): any {
 function extractBuyingProcess(content: string, messages: any[], thread: any): any {
   const buyingProcess: any = {}
   const lower = content.toLowerCase()
-  
+
   // Evaluation stages
   const evaluationStages = []
   if (lower.includes('research') || lower.includes('evaluate')) evaluationStages.push('Research/Evaluation')
   if (lower.includes('demo') || lower.includes('presentation')) evaluationStages.push('Demo/Presentation')
   if (lower.includes('proposal') || lower.includes('quote')) evaluationStages.push('Proposal/Quote')
   if (lower.includes('approval') || lower.includes('sign off')) evaluationStages.push('Approval Process')
-  
+
   if (evaluationStages.length > 0) {
     buyingProcess.evaluation_stages = evaluationStages
   }
-  
+
   // Timeline indicators
   const timelineIndicators = []
   const timePatterns = [/\d+\s*(?:days?|weeks?|months?)/gi]
@@ -1053,22 +1074,22 @@ function extractBuyingProcess(content: string, messages: any[], thread: any): an
       timelineIndicators.push(...matches)
     }
   })
-  
+
   if (timelineIndicators.length > 0) {
     buyingProcess.timeline = timelineIndicators
   }
-  
+
   // Stakeholder involvement
   const stakeholders = []
   if (lower.includes('team') || lower.includes('colleagues')) stakeholders.push('Team involvement')
   if (lower.includes('management') || lower.includes('executive')) stakeholders.push('Executive approval')
   if (lower.includes('technical') || lower.includes('it team')) stakeholders.push('Technical team')
   if (lower.includes('legal') || lower.includes('compliance')) stakeholders.push('Legal/Compliance')
-  
+
   if (stakeholders.length > 0) {
     buyingProcess.stakeholder_involvement = stakeholders
   }
-  
+
   return buyingProcess
 }
 
@@ -1076,7 +1097,7 @@ function extractBuyingProcess(content: string, messages: any[], thread: any): an
 function extractMessagingStrategy(content: string, messages: any[]): any {
   const messaging: any = {}
   const lower = content.toLowerCase()
-  
+
   // Value propositions mentioned
   const valueProps = []
   if (lower.includes('save time') || lower.includes('efficiency')) valueProps.push('Time savings/Efficiency')
@@ -1084,25 +1105,25 @@ function extractMessagingStrategy(content: string, messages: any[]): any {
   if (lower.includes('revenue') || lower.includes('growth')) valueProps.push('Revenue growth')
   if (lower.includes('automation') || lower.includes('automate')) valueProps.push('Automation benefits')
   if (lower.includes('scale') || lower.includes('scalability')) valueProps.push('Scalability')
-  
+
   if (valueProps.length > 0) {
     messaging.value_propositions = valueProps
   }
-  
+
   // Communication preferences
   const commPrefs = []
   const userMessages = messages.filter(m => m.role === 'user')
   const avgLength = userMessages.reduce((sum, msg) => sum + msg.content.length, 0) / Math.max(userMessages.length, 1)
-  
+
   if (avgLength > 300) commPrefs.push('Detailed discussions')
   if (avgLength < 100) commPrefs.push('Concise communication')
   if (lower.includes('technical') || lower.includes('specs')) commPrefs.push('Technical focus')
   if (lower.includes('business') || lower.includes('roi')) commPrefs.push('Business focus')
-  
+
   if (commPrefs.length > 0) {
     messaging.communication_preferences = commPrefs
   }
-  
+
   // Competitive positioning
   const competitive = []
   if (lower.includes('competitor') || lower.includes('alternative')) {
@@ -1113,11 +1134,11 @@ function extractMessagingStrategy(content: string, messages: any[]): any {
       }
     })
   }
-  
+
   if (competitive.length > 0) {
     messaging.competitive_mentions = competitive.slice(0, 3)
   }
-  
+
   return messaging
 }
 
@@ -1125,7 +1146,7 @@ function extractMessagingStrategy(content: string, messages: any[]): any {
 function extractSuccessMetrics(content: string, messages: any[]): any {
   const metrics: any = {}
   const lower = content.toLowerCase()
-  
+
   // KPI mentions
   const kpis = []
   if (lower.includes('roi') || lower.includes('return on investment')) kpis.push('ROI')
@@ -1133,11 +1154,11 @@ function extractSuccessMetrics(content: string, messages: any[]): any {
   if (lower.includes('response rate') || lower.includes('engagement')) kpis.push('Response/Engagement rate')
   if (lower.includes('revenue') || lower.includes('sales')) kpis.push('Revenue/Sales')
   if (lower.includes('efficiency') || lower.includes('productivity')) kpis.push('Efficiency/Productivity')
-  
+
   if (kpis.length > 0) {
     metrics.relevant_kpis = kpis
   }
-  
+
   // Performance benchmarks
   const benchmarks = []
   const numberPatterns = [/\d+%/g, /\d+x/g, /\$[\d,]+/g]
@@ -1147,22 +1168,22 @@ function extractSuccessMetrics(content: string, messages: any[]): any {
       benchmarks.push(...matches.slice(0, 5))
     }
   })
-  
+
   if (benchmarks.length > 0) {
     metrics.performance_benchmarks = benchmarks
   }
-  
+
   // Success timeline
   const timeline = []
   if (lower.includes('immediate') || lower.includes('right away')) timeline.push('Immediate results')
   if (lower.includes('30 days') || lower.includes('month')) timeline.push('30-day results')
   if (lower.includes('90 days') || lower.includes('quarter')) timeline.push('90-day results')
   if (lower.includes('annual') || lower.includes('yearly')) timeline.push('Annual results')
-  
+
   if (timeline.length > 0) {
     metrics.success_timeline = timeline
   }
-  
+
   return metrics
 }
 
@@ -1170,64 +1191,64 @@ function extractSuccessMetrics(content: string, messages: any[]): any {
 function extractAdvancedClassification(content: string, thread: any): any {
   const advanced: any = {}
   const lower = content.toLowerCase()
-  
+
   // Technology adoption
   const techAdoption = []
   if (lower.includes('early adopter') || lower.includes('bleeding edge')) techAdoption.push('Early adopter')
   if (lower.includes('conservative') || lower.includes('proven')) techAdoption.push('Conservative adopter')
   if (lower.includes('beta') || lower.includes('test')) techAdoption.push('Beta tester')
-  
+
   if (techAdoption.length > 0) {
     advanced.technology_adoption = techAdoption
   }
-  
+
   // Compliance requirements
   const compliance = []
   if (lower.includes('gdpr') || lower.includes('privacy')) compliance.push('GDPR/Privacy')
   if (lower.includes('hipaa') || lower.includes('healthcare')) compliance.push('HIPAA/Healthcare')
   if (lower.includes('sox') || lower.includes('financial')) compliance.push('SOX/Financial')
   if (lower.includes('security') || lower.includes('iso')) compliance.push('Security/ISO')
-  
+
   if (compliance.length > 0) {
     advanced.compliance_requirements = compliance
   }
-  
+
   // Market trends
   const trends = []
   if (lower.includes('remote work') || lower.includes('distributed')) trends.push('Remote work trend')
   if (lower.includes('ai') || lower.includes('artificial intelligence')) trends.push('AI adoption')
   if (lower.includes('automation') || lower.includes('digital transformation')) trends.push('Digital transformation')
-  
+
   if (trends.length > 0) {
     advanced.market_trends = trends
   }
-  
+
   // Company culture
   const culture = []
   if (lower.includes('fast-paced') || lower.includes('agile')) culture.push('Fast-paced/Agile')
   if (lower.includes('data-driven') || lower.includes('analytics')) culture.push('Data-driven')
   if (lower.includes('innovation') || lower.includes('innovative')) culture.push('Innovation-focused')
   if (lower.includes('collaborative') || lower.includes('team-oriented')) culture.push('Collaborative')
-  
+
   if (culture.length > 0) {
     advanced.company_culture = culture
   }
-  
+
   return advanced
 }
 
 // Merge new ICP data with existing data
 function mergeICPData(existing: any, newData: any): any {
   const merged = { ...existing }
-  
+
   for (const [category, data] of Object.entries(newData)) {
     if (typeof data === 'object' && data !== null) {
       merged[category] = { ...merged[category], ...data }
     }
   }
-  
+
   // Update metadata
   merged.updated_at = new Date().toISOString()
-  
+
   return merged
 }

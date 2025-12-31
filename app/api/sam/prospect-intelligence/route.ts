@@ -5,9 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import { verifyAuth, pool } from '@/lib/auth'
 import { mcpRegistry, createMCPConfig } from '@/lib/mcp/mcp-registry'
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
@@ -42,12 +40,10 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Authentication check - support both cookie-based and user_id-based auth
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const auth = await verifyAuth(request);
 
     // Use user from auth OR user_id from request (for server-to-server calls)
-    const effectiveUserId = user?.id || user_id
+    const effectiveUserId = auth.user?.uid || user_id
 
     if (!effectiveUserId) {
       return NextResponse.json({
@@ -80,15 +76,15 @@ export async function POST(request: NextRequest) {
       case 'linkedin_url_research':
         intelligenceResult = await researchLinkedInUrl(data, methodology, urgency, budget)
         break
-      
+
       case 'company_analysis':
         intelligenceResult = await analyzeCompany(data, methodology)
         break
-      
+
       case 'prospect_search':
         intelligenceResult = await searchProspects(data, methodology, urgency, budget)
         break
-      
+
       case 'strategic_insights':
         intelligenceResult = await generateStrategicInsights(data, methodology)
         break
@@ -102,9 +98,10 @@ export async function POST(request: NextRequest) {
         break
 
       case 'icp_research_search':
-        intelligenceResult = await executeICPResearchSearch(data, methodology, urgency, budget, effectiveUserId, supabase)
+        // Modified to remove supabase client dependency
+        intelligenceResult = await executeICPResearchSearch(data, methodology, urgency, budget, effectiveUserId)
         break
-      
+
       default:
         return NextResponse.json({
           success: false,
@@ -114,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     // Store intelligence result for conversation context
     if (conversationId && intelligenceResult.success) {
-      await storeIntelligenceForConversation(user.id, conversationId, type, intelligenceResult.data)
+      await storeIntelligenceForConversation(effectiveUserId, conversationId, type, intelligenceResult.data)
     }
 
     return NextResponse.json({
@@ -145,13 +142,13 @@ export async function POST(request: NextRequest) {
 
 // Research LinkedIn URL using best available MCP tool
 async function researchLinkedInUrl(
-  data: { url: string, extractEmails?: boolean }, 
+  data: { url: string, extractEmails?: boolean },
   methodology: string,
   urgency: string,
   budget: number
 ) {
   const startTime = Date.now()
-  
+
   try {
     // Validate LinkedIn URL first
     const validation = await mcpRegistry.callTool({
@@ -190,7 +187,7 @@ async function researchLinkedInUrl(
 
     // Parse result and generate strategic insights
     const researchData = JSON.parse(researchResult.content[0]?.text || '{}')
-    
+
     // Generate strategic insights if we have prospect data
     let insights = null
     if (researchData.prospects?.length > 0) {
@@ -198,7 +195,7 @@ async function researchLinkedInUrl(
         researchData.prospects,
         methodology as any
       )
-      
+
       if (!insightsResult.isError) {
         insights = JSON.parse(insightsResult.content[0]?.text || '{}')
       }
@@ -233,7 +230,7 @@ async function analyzeCompany(
   methodology: string
 ) {
   const startTime = Date.now()
-  
+
   try {
     const analysisResult = await mcpRegistry.callTool({
       method: 'tools/call',
@@ -285,7 +282,7 @@ async function searchProspects(
   budget: number
 ) {
   const startTime = Date.now()
-  
+
   try {
     const searchResult = await mcpRegistry.researchProspectWithBestSource({
       searchCriteria: data.searchCriteria,
@@ -330,7 +327,7 @@ async function generateStrategicInsights(
   methodology: string
 ) {
   const startTime = Date.now()
-  
+
   try {
     const insightsResult = await mcpRegistry.generateIntelligenceReport(
       data.prospects,
@@ -375,17 +372,12 @@ async function storeIntelligenceForConversation(
   data: any
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies: cookies })
-    
-    await supabase
-      .from('sam_conversation_intelligence')
-      .insert({
-        user_id: userId,
-        conversation_id: conversationId,
-        intelligence_type: type,
-        intelligence_data: data,
-        created_at: new Date().toISOString()
-      })
+    await pool.query(
+      `INSERT INTO sam_conversation_intelligence 
+         (user_id, conversation_id, intelligence_type, intelligence_data, created_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
+      [userId, conversationId, type, JSON.stringify(data)]
+    );
   } catch (error) {
     // Don't fail the main request if storage fails
     console.error('Failed to store intelligence for conversation:', error)
@@ -400,7 +392,7 @@ async function executeBooleanLinkedInSearch(
   budget: number
 ) {
   const startTime = Date.now()
-  
+
   try {
     const searchResult = await mcpRegistry.callTool({
       method: 'tools/call',
@@ -450,7 +442,7 @@ async function executeCompanyIntelligenceSearch(
   methodology: string
 ) {
   const startTime = Date.now()
-  
+
   try {
     const searchResult = await mcpRegistry.callTool({
       method: 'tools/call',
@@ -507,8 +499,7 @@ async function executeICPResearchSearch(
   methodology: string,
   urgency: string,
   budget: number,
-  userId: string,
-  supabaseClient: any
+  userId: string
 ) {
   const startTime = Date.now()
 
@@ -516,13 +507,12 @@ async function executeICPResearchSearch(
     console.log('🔍 LinkedIn search - User lookup:', userId)
 
     // Get user's workspace
-    const { data: userProfile } = await supabaseClient
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', userId)
-      .single()
+    const userRes = await pool.query(
+      `SELECT current_workspace_id FROM users WHERE id = $1`,
+      [userId]
+    );
 
-    const workspaceId = userProfile?.current_workspace_id
+    const workspaceId = userRes.rows[0]?.current_workspace_id
     if (!workspaceId) {
       return {
         success: false,
@@ -534,20 +524,20 @@ async function executeICPResearchSearch(
     }
 
     // Get LinkedIn account from workspace_accounts table
-    const { data: linkedinAccounts, error: accountError } = await supabaseClient
-      .from('workspace_accounts')
-      .select('unipile_account_id, account_name, account_identifier')
-      .eq('workspace_id', workspaceId)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', VALID_CONNECTION_STATUSES)
+    const accountRes = await pool.query(
+      `SELECT unipile_account_id, account_name, account_identifier 
+         FROM workspace_accounts 
+         WHERE workspace_id = $1 AND account_type = 'linkedin' AND connection_status IN ('CONNECTED', 'valid')`,
+      [workspaceId]
+    );
+    const linkedinAccounts = accountRes.rows;
 
     console.log('🔍 LinkedIn account lookup:', {
       found: linkedinAccounts?.length || 0,
-      account_id: linkedinAccounts?.[0]?.unipile_account_id,
-      error: accountError?.message
+      account_id: linkedinAccounts?.[0]?.unipile_account_id
     })
 
-    if (!linkedinAccounts || linkedinAccounts.length === 0 || accountError) {
+    if (!linkedinAccounts || linkedinAccounts.length === 0) {
       return {
         success: false,
         error: 'No active LinkedIn account connected',

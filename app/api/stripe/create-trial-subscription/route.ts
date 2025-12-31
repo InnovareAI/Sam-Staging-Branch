@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/app/lib/supabase'
+import { verifyAuth, pool } from '@/lib/auth'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -14,42 +14,46 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient()
+    // Authenticate user
+    const authContext = await verifyAuth(request);
+    const { userId } = authContext;
 
     const body = await request.json()
-    const { workspaceId, userId, plan } = body // plan: 'perseat' | 'sme'
+    const { workspaceId, plan } = body // plan: 'perseat' | 'sme'
 
     // Validate input
-    if (!workspaceId || !userId || !plan) {
+    if (!workspaceId || !plan) {
       return NextResponse.json({
-        error: 'Missing required fields: workspaceId, userId, plan'
+        error: 'Missing required fields: workspaceId, plan'
       }, { status: 400 })
     }
 
-    // Verify workspace membership
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', userId)
-      .single()
+    // Check workspace access directly via DB since we have the context
+    // Ideally verifyAuth already checks if they have access if workspaceId header is passed, 
+    // but here workspaceId is in body. So we verify membership manually.
 
-    if (!member) {
+    const memberResult = await pool.query(
+      'SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+      [workspaceId, userId]
+    );
+
+    if (memberResult.rows.length === 0) {
       return NextResponse.json({ error: 'User is not a member of this workspace' }, { status: 403 })
     }
 
-    // Get workspace and user details
-    const { data: workspace } = await supabase
-      .from('workspaces')
-      .select('name')
-      .eq('id', workspaceId)
-      .single()
+    // Get workspace details
+    const workspaceResult = await pool.query(
+      'SELECT name FROM workspaces WHERE id = $1',
+      [workspaceId]
+    );
+    const workspace = workspaceResult.rows[0];
 
-    const { data: profile } = await supabase
-      .from('users')
-      .select('email, first_name, last_name')
-      .eq('id', userId)
-      .single()
+    // Get user details
+    const userResult = await pool.query(
+      'SELECT email, first_name, last_name FROM users WHERE id = $1',
+      [userId]
+    );
+    const profile = userResult.rows[0];
 
     // Determine price ID based on plan
     const priceId = plan === 'perseat'
@@ -65,14 +69,13 @@ export async function POST(request: NextRequest) {
     // Create or retrieve Stripe customer
     let customerId: string
 
-    const { data: existingCustomer } = await supabase
-      .from('workspace_stripe_customers')
-      .select('stripe_customer_id')
-      .eq('workspace_id', workspaceId)
-      .single()
+    const existingCustomerResult = await pool.query(
+      'SELECT stripe_customer_id FROM workspace_stripe_customers WHERE workspace_id = $1',
+      [workspaceId]
+    );
 
-    if (existingCustomer?.stripe_customer_id) {
-      customerId = existingCustomer.stripe_customer_id
+    if (existingCustomerResult.rows.length > 0) {
+      customerId = existingCustomerResult.rows[0].stripe_customer_id
     } else {
       // Create new Stripe customer
       const customerName = profile?.first_name && profile?.last_name
@@ -91,12 +94,10 @@ export async function POST(request: NextRequest) {
       customerId = customer.id
 
       // Save customer ID to database
-      await supabase
-        .from('workspace_stripe_customers')
-        .insert({
-          workspace_id: workspaceId,
-          stripe_customer_id: customerId
-        })
+      await pool.query(
+        'INSERT INTO workspace_stripe_customers (workspace_id, stripe_customer_id) VALUES ($1, $2)',
+        [workspaceId, customerId]
+      );
     }
 
     // Create SetupIntent for saving payment method (credit card only)
@@ -126,15 +127,18 @@ export async function POST(request: NextRequest) {
     })
 
     // Save subscription to database
-    await supabase
-      .from('workspace_subscriptions')
-      .insert({
-        workspace_id: workspaceId,
-        stripe_subscription_id: subscription.id,
-        status: 'trialing',
-        plan: plan,
-        trial_end: new Date(subscription.trial_end! * 1000).toISOString()
-      })
+    await pool.query(
+      `INSERT INTO workspace_subscriptions 
+       (workspace_id, stripe_subscription_id, status, plan, trial_end) 
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        workspaceId,
+        subscription.id,
+        'trialing',
+        plan,
+        new Date(subscription.trial_end! * 1000).toISOString()
+      ]
+    );
 
     return NextResponse.json({
       setupIntent: {

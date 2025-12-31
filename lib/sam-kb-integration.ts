@@ -8,12 +8,7 @@
 
 import { supabaseKnowledge } from './supabase-knowledge';
 import { storeQuestionAnswer, type QuestionAnswer } from './sam-qa-storage';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { pool } from '@/lib/auth';
 
 // ================================================================
 // DUAL STORAGE: Q&A Table + Knowledge Base Tables
@@ -140,98 +135,138 @@ async function updateICPKnowledgeBase(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // Get or create ICP record for this workspace
-    const { data: existingICP } = await supabase
-      .from('knowledge_base_icps')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    const { rows } = await pool.query(
+      `SELECT * FROM knowledge_base_icps 
+       WHERE workspace_id = $1 AND is_active = true 
+       ORDER BY created_at DESC LIMIT 1`,
+      [workspaceId]
+    );
 
-    const updates: any = {
-      workspace_id: workspaceId,
-      created_by: userId,
-      is_active: true
-    };
+    let existingICP = rows.length > 0 ? rows[0] : null;
 
-    // Map Q&A to ICP fields
-    if (qa.questionId === 'pain_points' && qa.answerStructured?.pain_points) {
-      updates.pain_points = qa.answerStructured.pain_points.map((p: any) => p.description);
-    } else if (qa.questionId === 'basic_icp') {
-      // Parse basic ICP (role, industry, company size)
-      updates.description = qa.answerText;
-    } else if (qa.questionId === 'objectives') {
-      updates.qualification_criteria = {
-        ...existingICP?.qualification_criteria,
-        objectives: qa.answerStructured?.objectives || qa.answerText
+    let updates: any = {};
+    if (!existingICP) {
+      updates = {
+        workspace_id: workspaceId,
+        created_by: userId,
+        is_active: true,
+        name: `ICP - ${new Date().toISOString().split('T')[0]}`
       };
-    } else if (qa.questionId === 'objective_urgency') {
-      updates.qualification_criteria = {
-        ...existingICP?.qualification_criteria,
-        urgency: qa.answerText
-      };
-    } else if (qa.questionId === 'focus_areas') {
-      updates.qualification_criteria = {
-        ...existingICP?.qualification_criteria,
-        focus_areas: qa.answerStructured?.focus_areas || qa.answerText
-      };
-    } else if (qa.questionId === 'focus_positioning') {
-      updates.messaging_framework = {
-        ...existingICP?.messaging_framework,
-        positioning: qa.answerText
-      };
-    } else if (qa.questionId === 'long_term_desire') {
-      updates.qualification_criteria = {
-        ...existingICP?.qualification_criteria,
-        long_term_desire: qa.answerText
-      };
-    } else if (qa.questionId === 'pain_cost') {
-      updates.pain_points = existingICP?.pain_points?.map((p: any, index: number) =>
-        index === 0 ? { ...p, cost: qa.answerText } : p
-      ) || [];
-    } else if (qa.questionId === 'current_solution') {
-      updates.qualification_criteria = {
-        ...existingICP?.qualification_criteria,
-        current_solution: qa.answerText
-      };
-    } else if (qa.questionId === 'current_solution_gap') {
-      updates.qualification_criteria = {
-        ...existingICP?.qualification_criteria,
-        solution_gap: qa.answerText
-      };
-    } else if (qa.questionId === 'solution_expectation') {
-      updates.qualification_criteria = {
-        ...existingICP?.qualification_criteria,
-        expectation: qa.answerText
-      };
-    } else if (qa.questionId === 'objections') {
-      updates.messaging_framework = {
-        ...existingICP?.messaging_framework,
-        objections: qa.answerStructured?.objections || qa.answerText
-      };
-    } else if (qa.questionId === 'target_industry') {
-      updates.industries = Array.isArray(qa.answerStructured?.industries)
-        ? qa.answerStructured.industries
-        : [qa.answerText];
-    } else if (qa.questionId === 'target_role') {
-      updates.job_titles = Array.isArray(qa.answerStructured?.job_titles)
-        ? qa.answerStructured.job_titles
-        : [qa.answerText];
     }
 
-    if (existingICP) {
-      // Update existing ICP
-      await supabase
-        .from('knowledge_base_icps')
-        .update(updates)
-        .eq('id', existingICP.id);
-    } else {
-      // Create new ICP
-      updates.name = `ICP - ${new Date().toISOString().split('T')[0]}`;
-      await supabase
-        .from('knowledge_base_icps')
-        .insert(updates);
+    // Map Q&A to ICP fields
+    // NOTE: This logic assumes columns are JSONB where appropriate, and merges manually.
+    // For arrays like pain_points, we append or replace.
+
+    if (qa.questionId === 'pain_points' && qa.answerStructured?.pain_points) {
+      if (!existingICP) {
+        updates.pain_points = JSON.stringify(qa.answerStructured.pain_points.map((p: any) => p.description));
+      } else {
+        // Append or replace? Original logic replaced for single Q&A usually.
+        // However, if we want to merge, we need to read existing.
+        // Since we fetched existingICP, we can merge.
+        // Simplest is direct replacement or append if array.
+        updates.pain_points = JSON.stringify(qa.answerStructured.pain_points.map((p: any) => p.description));
+      }
+    } else if (qa.questionId === 'basic_icp') {
+      updates.description = qa.answerText;
+    } else if (qa.questionId === 'objectives') {
+      const criteria = existingICP?.qualification_criteria || {};
+      updates.qualification_criteria = JSON.stringify({
+        ...criteria,
+        objectives: qa.answerStructured?.objectives || qa.answerText
+      });
+    } else if (qa.questionId === 'objective_urgency') {
+      const criteria = existingICP?.qualification_criteria || {};
+      updates.qualification_criteria = JSON.stringify({
+        ...criteria,
+        urgency: qa.answerText
+      });
+    } else if (qa.questionId === 'focus_areas') {
+      const criteria = existingICP?.qualification_criteria || {};
+      updates.qualification_criteria = JSON.stringify({
+        ...criteria,
+        focus_areas: qa.answerStructured?.focus_areas || qa.answerText
+      });
+    } else if (qa.questionId === 'focus_positioning') {
+      const framework = existingICP?.messaging_framework || {};
+      updates.messaging_framework = JSON.stringify({
+        ...framework,
+        positioning: qa.answerText
+      });
+    } else if (qa.questionId === 'long_term_desire') {
+      const criteria = existingICP?.qualification_criteria || {};
+      updates.qualification_criteria = JSON.stringify({
+        ...criteria,
+        long_term_desire: qa.answerText
+      });
+    } else if (qa.questionId === 'pain_cost') {
+      // Complex array update logic - skipped for simplicity or needs robust JSON handling
+      // For now, if we have pain_points, try to update first one.
+      // This is hard in raw SQL without fetching. We fetched existingICP.
+      if (existingICP && existingICP.pain_points && Array.isArray(existingICP.pain_points) && existingICP.pain_points.length > 0) {
+        const pp = [...existingICP.pain_points];
+        pp[0] = { ...pp[0], cost: qa.answerText }; // assuming pain points are objects?
+        // Wait, previous logic: "map((p: any, index: number) => index === 0 ? { ...p, cost: qa.answerText } : p)"
+        // If pain_points was ["pain1", "pain2"], this would turn it into [{...}, "pain2"]. Mixed types.
+        // Let's assume standard behavior is maintained.
+        updates.pain_points = JSON.stringify(pp);
+      }
+    } else if (qa.questionId === 'current_solution') {
+      const criteria = existingICP?.qualification_criteria || {};
+      updates.qualification_criteria = JSON.stringify({
+        ...criteria,
+        current_solution: qa.answerText
+      });
+    } else if (qa.questionId === 'current_solution_gap') {
+      const criteria = existingICP?.qualification_criteria || {};
+      updates.qualification_criteria = JSON.stringify({
+        ...criteria,
+        solution_gap: qa.answerText
+      });
+    } else if (qa.questionId === 'solution_expectation') {
+      const criteria = existingICP?.qualification_criteria || {};
+      updates.qualification_criteria = JSON.stringify({
+        ...criteria,
+        expectation: qa.answerText
+      });
+    } else if (qa.questionId === 'objections') {
+      const framework = existingICP?.messaging_framework || {};
+      updates.messaging_framework = JSON.stringify({
+        ...framework,
+        objections: qa.answerStructured?.objections || qa.answerText
+      });
+    } else if (qa.questionId === 'target_industry') {
+      updates.industries = JSON.stringify(Array.isArray(qa.answerStructured?.industries)
+        ? qa.answerStructured.industries
+        : [qa.answerText]);
+    } else if (qa.questionId === 'target_role') {
+      updates.job_titles = JSON.stringify(Array.isArray(qa.answerStructured?.job_titles)
+        ? qa.answerStructured.job_titles
+        : [qa.answerText]);
+    }
+
+    if (Object.keys(updates).length > 0) {
+      if (existingICP) {
+        // Build SET clause
+        const setClause = Object.keys(updates).map((key, i) => `${key} = $${i + 2}`).join(', ');
+        const values = Object.values(updates);
+
+        await pool.query(
+          `UPDATE knowledge_base_icps SET ${setClause}, updated_at = NOW() WHERE id = $1`,
+          [existingICP.id, ...values]
+        );
+      } else {
+        // INSERT
+        const keys = Object.keys(updates).join(', ');
+        const placeholders = Object.keys(updates).map((_, i) => `$${i + 1}`).join(', ');
+        const values = Object.values(updates);
+
+        await pool.query(
+          `INSERT INTO knowledge_base_icps (${keys}) VALUES (${placeholders})`,
+          values
+        );
+      }
     }
 
     return { success: true };
@@ -250,43 +285,36 @@ async function updateProspectingKnowledgeBase(
   qa: QuestionAnswer
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Store prospecting criteria in ICP qualification_criteria
-    const { data: existingICP } = await supabase
-      .from('knowledge_base_icps')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    const { rows } = await pool.query(
+      `SELECT * FROM knowledge_base_icps 
+       WHERE workspace_id = $1 AND is_active = true 
+       ORDER BY created_at DESC LIMIT 1`,
+      [workspaceId]
+    );
 
+    let existingICP = rows.length > 0 ? rows[0] : null;
     const prospectingKey = qa.questionId.replace('prospecting_', '');
 
-    const updates = {
-      qualification_criteria: {
-        ...existingICP?.qualification_criteria,
-        prospecting: {
-          ...(existingICP?.qualification_criteria as any)?.prospecting,
-          [prospectingKey]: qa.answerStructured || qa.answerText
-        }
-      }
-    };
+    // Deep merge logic
+    const criteria = existingICP?.qualification_criteria || {};
+    const prospecting = criteria.prospecting || {};
+
+    prospecting[prospectingKey] = qa.answerStructured || qa.answerText;
+    criteria.prospecting = prospecting;
+
+    const qualification_criteria = JSON.stringify(criteria);
 
     if (existingICP) {
-      await supabase
-        .from('knowledge_base_icps')
-        .update(updates)
-        .eq('id', existingICP.id);
+      await pool.query(
+        `UPDATE knowledge_base_icps SET qualification_criteria = $1, updated_at = NOW() WHERE id = $2`,
+        [qualification_criteria, existingICP.id]
+      );
     } else {
-      await supabase
-        .from('knowledge_base_icps')
-        .insert({
-          workspace_id: workspaceId,
-          created_by: userId,
-          name: `ICP - ${new Date().toISOString().split('T')[0]}`,
-          is_active: true,
-          ...updates
-        });
+      await pool.query(
+        `INSERT INTO knowledge_base_icps (workspace_id, created_by, name, is_active, qualification_criteria) 
+           VALUES ($1, $2, $3, true, $4)`,
+        [workspaceId, userId, `ICP - ${new Date().toISOString().split('T')[0]}`, qualification_criteria]
+      );
     }
 
     return { success: true };
@@ -305,7 +333,6 @@ async function updateBusinessModelKnowledgeBase(
   qa: QuestionAnswer
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Store in knowledge_base with category 'business-model'
     await supabaseKnowledge.addKnowledgeItem({
       workspace_id: workspaceId,
       category: 'business-model',
@@ -333,7 +360,6 @@ async function updateLinkedInKnowledgeBase(
   qa: QuestionAnswer
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Store LinkedIn profile data
     await supabaseKnowledge.addKnowledgeItem({
       workspace_id: workspaceId,
       category: 'linkedin-profile',
@@ -702,15 +728,17 @@ export async function getICPFromKnowledgeBase(
     const icp = icps.length > 0 ? icps[0] : null;
 
     // Get all Q&As from sam_icp_knowledge_entries
-    const { data: qas } = await supabase
-      .from('sam_icp_knowledge_entries')
-      .select('question_text, answer_text, category, stage')
-      .eq('workspace_id', workspaceId)
-      .order('created_at', { ascending: true });
+    const { rows: qas } = await pool.query(
+      `SELECT question_text, answer_text, category, stage 
+       FROM sam_icp_knowledge_entries 
+       WHERE workspace_id = $1 
+       ORDER BY created_at ASC`,
+      [workspaceId]
+    );
 
     return {
       icp,
-      qas: (qas || []).map(qa => ({
+      qas: (qas || []).map((qa: any) => ({
         question: qa.question_text,
         answer: qa.answer_text,
         category: qa.category
@@ -799,13 +827,15 @@ export async function buildKBContextForSAM(
   const contextParts: string[] = [];
 
   // Check for auto-detected items that need validation
-  const { data: needsValidation } = await supabase
-    .from('knowledge_base')
-    .select('id, category, title, content, source_metadata')
-    .eq('workspace_id', workspaceId)
-    .contains('tags', ['needs-validation'])
-    .eq('is_active', true)
-    .order('created_at', { ascending: true });
+  const { rows: needsValidation } = await pool.query(
+    `SELECT id, category, title, content, source_metadata
+     FROM knowledge_base
+     WHERE workspace_id = $1 
+       AND tags @> $2
+       AND is_active = true
+     ORDER BY created_at ASC`,
+    [workspaceId, ['needs-validation']]
+  );
 
   // If we have auto-detected items, prioritize validation
   if (needsValidation && needsValidation.length > 0) {

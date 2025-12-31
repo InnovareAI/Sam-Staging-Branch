@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { verifyAuth, pool } from '@/lib/auth'
 
 // Available data sources for SAM chat
 interface DataSource {
@@ -45,6 +45,14 @@ interface AggregatedData {
 // GET - Get available data sources
 export async function GET(request: NextRequest) {
   try {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const workspaceId = searchParams.get('workspace_id')
 
@@ -54,8 +62,6 @@ export async function GET(request: NextRequest) {
         error: 'workspace_id is required'
       }, { status: 400 })
     }
-
-    const supabase = supabaseAdmin()
 
     // Get LinkedIn accounts via MCP
     let linkedinSources: DataSource[] = []
@@ -123,13 +129,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get campaign data sources
-    const { data: campaigns, error: campaignError } = await supabase
-      .from('campaigns')
-      .select('id, name, status, created_at')
-      .eq('workspace_id', workspaceId)
-      .limit(10)
+    const campaignRes = await pool.query(
+      'SELECT id, name, status, created_at FROM campaigns WHERE workspace_id = $1 LIMIT 10',
+      [workspaceId]
+    );
 
-    const campaignSources: DataSource[] = campaigns?.map(campaign => ({
+    const campaignSources: DataSource[] = campaignRes.rows.map(campaign => ({
       id: `campaign_${campaign.id}`,
       name: `Campaign: ${campaign.name}`,
       type: 'campaigns',
@@ -137,16 +142,15 @@ export async function GET(request: NextRequest) {
       last_sync: campaign.created_at,
       description: 'Campaign performance and prospect data',
       available_data: ['prospects', 'responses', 'metrics', 'content']
-    })) || []
+    }))
 
     // Get knowledge base sources
-    const { data: kbSections, error: kbError } = await supabase
-      .from('knowledge_base_sections')
-      .select('id, section_id, title, created_at')
-      .or(`workspace_id.eq.${workspaceId},workspace_id.is.null`)
-      .limit(10)
+    const kbRes = await pool.query(
+      'SELECT id, section_id, title, created_at FROM knowledge_base_sections WHERE workspace_id = $1 OR workspace_id IS NULL LIMIT 10',
+      [workspaceId]
+    );
 
-    const knowledgeBaseSources: DataSource[] = kbSections?.map(section => ({
+    const knowledgeBaseSources: DataSource[] = kbRes.rows.map(section => ({
       id: `kb_${section.id}`,
       name: `Knowledge: ${section.title}`,
       type: 'knowledge_base',
@@ -154,7 +158,7 @@ export async function GET(request: NextRequest) {
       last_sync: section.created_at,
       description: 'Company knowledge and documentation',
       available_data: ['documents', 'icps', 'company_data', 'insights']
-    })) || []
+    }))
 
     // External API sources (placeholders for future integrations)
     const externalSources: DataSource[] = [
@@ -207,10 +211,17 @@ export async function GET(request: NextRequest) {
 // POST - Aggregate data from multiple sources
 export async function POST(request: NextRequest) {
   try {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required'
+      }, { status: 401 })
+    }
+
     const body: DataAggregationRequest = await request.json()
     const { context_type, data_sources, filters, max_results = 50 } = body
 
-    const supabase = supabaseAdmin()
     const workspaceId = request.headers.get('x-workspace-id') ?? body.workspace_id
 
     if (!workspaceId) {
@@ -219,7 +230,7 @@ export async function POST(request: NextRequest) {
         error: 'workspace_id header (x-workspace-id) or body value is required'
       }, { status: 400 })
     }
-    
+
     let aggregatedData: AggregatedData[] = []
 
     // Process LinkedIn data sources
@@ -237,14 +248,14 @@ export async function POST(request: NextRequest) {
     // Process campaign data sources
     const campaignSources = data_sources.filter(s => s.startsWith('campaign_'))
     if (campaignSources.length > 0) {
-      const campaignData = await aggregateCampaignData(campaignSources, filters, supabase, workspaceId)
+      const campaignData = await aggregateCampaignData(campaignSources, filters, workspaceId)
       aggregatedData.push(...campaignData)
     }
 
     // Process knowledge base sources
     const kbSources = data_sources.filter(s => s.startsWith('kb_'))
     if (kbSources.length > 0) {
-      const kbData = await aggregateKnowledgeBaseData(kbSources, filters, supabase, workspaceId)
+      const kbData = await aggregateKnowledgeBaseData(kbSources, filters, workspaceId)
       aggregatedData.push(...kbData)
     }
 
@@ -277,7 +288,7 @@ export async function POST(request: NextRequest) {
 // Helper function to aggregate LinkedIn data via MCP
 async function aggregateLinkedInData(sources: string[], filters?: any): Promise<AggregatedData[]> {
   const data: AggregatedData[] = []
-  
+
   // This would use the MCP tools to get recent messages
   // For now, return placeholder data structure
   sources.forEach(source => {
@@ -299,29 +310,24 @@ async function aggregateLinkedInData(sources: string[], filters?: any): Promise<
 }
 
 // Helper function to aggregate campaign data
-async function aggregateCampaignData(sources: string[], filters: any, supabase: any, workspaceId: string): Promise<AggregatedData[]> {
+async function aggregateCampaignData(sources: string[], filters: any, workspaceId: string): Promise<AggregatedData[]> {
   const data: AggregatedData[] = []
-  
+
   for (const source of sources) {
     const campaignId = source.replace('campaign_', '')
-    
-    // Get campaign prospects and responses
-    const { data: prospects, error } = await supabase
-      .from('campaign_prospects')
-      .select(`
-        id,
-        email,
-        first_name,
-        last_name,
-        company_name,
-        status,
-        response_data,
-        created_at
-      `)
-      .eq('campaign_id', campaignId)
-      .limit(20)
 
-    if (!error && prospects?.length) {
+    // Get campaign prospects and responses
+    const res = await pool.query(
+      `SELECT id, email, first_name, last_name, company_name, status, response_data, created_at
+       FROM campaign_prospects
+       WHERE campaign_id = $1
+       LIMIT 20`,
+      [campaignId]
+    );
+
+    const prospects = res.rows;
+
+    if (prospects?.length) {
       data.push({
         source: source,
         data_type: 'campaign_prospects',
@@ -341,37 +347,33 @@ async function aggregateCampaignData(sources: string[], filters: any, supabase: 
 }
 
 // Helper function to aggregate knowledge base data
-async function aggregateKnowledgeBaseData(sources: string[], filters: any, supabase: any, workspaceId: string): Promise<AggregatedData[]> {
+async function aggregateKnowledgeBaseData(sources: string[], filters: any, workspaceId: string): Promise<AggregatedData[]> {
   const data: AggregatedData[] = []
-  
+
   for (const source of sources) {
     const sectionId = source.replace('kb_', '')
-    
+
     // Get knowledge base content
-    let query = supabase
-      .from('knowledge_base_content')
-      .select(`
-        id,
-        title,
-        content,
-        content_type,
-        tags,
-        created_at
-      `)
-      .eq('section_id', sectionId)
-      .eq('is_active', true)
+    let query = `
+      SELECT id, title, content, content_type, tags, created_at
+      FROM knowledge_base_content
+      WHERE section_id = $1 AND is_active = true
+    `;
+    const params: any[] = [sectionId];
 
     if (workspaceId) {
-      query = query.or(`workspace_id.eq.${workspaceId},workspace_id.is.null`)
+      query += ` AND (workspace_id = $2 OR workspace_id IS NULL)`;
+      params.push(workspaceId);
     } else {
-      query = query.is('workspace_id', null)
+      query += ` AND workspace_id IS NULL`;
     }
 
-    const { data: kbContent, error } = await query
-      .order('created_at', { ascending: false })
-      .limit(10)
+    query += ` ORDER BY created_at DESC LIMIT 10`;
 
-    if (!error && kbContent?.length) {
+    const res = await pool.query(query, params);
+    const kbContent = res.rows;
+
+    if (kbContent?.length) {
       data.push({
         source: source,
         data_type: 'knowledge_base_content',

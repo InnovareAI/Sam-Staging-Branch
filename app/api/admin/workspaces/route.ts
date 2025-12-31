@@ -1,375 +1,214 @@
-
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/auth'
 import { requireAdmin } from '@/lib/security/route-auth';
 
 // Super admin emails
 const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
 
 export async function GET(request: NextRequest) {
-
   // Require admin authentication
-  const { error: authError } = await requireAdmin(request);
+  const { error: authError, user } = await requireAdmin(request);
   if (authError) return authError;
+  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 401 });
+
   try {
-    // Create Supabase admin client (uses service role key)
-    const adminSupabase = supabaseAdmin()
-
     console.log('🔍 Admin Workspaces: Starting query...');
-    
-    // Allow access to this API for all users - it's for admin dashboard display
-    // The data is already filtered to public workspace information
 
-    // Try different possible table names for workspaces
-    let workspaces = null;
-    let error = null;
+    // 1. Fetch Workspaces (Direct PG Query)
+    // We try to fetch workspaces with member counts directly
+    const workspacesResult = await pool.query(`
+      SELECT 
+        w.id, w.name, w.slug, w.created_at, w.updated_at, w.owner_id,
+        (SELECT count(*) FROM workspace_members wm WHERE wm.workspace_id = w.id) as member_count
+      FROM workspaces w
+      ORDER BY w.created_at DESC
+    `);
 
-    // First try 'workspaces' table without JOINs (relationships may not be configured)
-    console.log('🔍 Trying workspaces table...');
-    const workspacesResult = await adminSupabase
-      .from('workspaces')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const workspaces = workspacesResult.rows;
+    console.log(`✅ Found ${workspaces.length} workspaces`);
 
-    if (workspacesResult.error) {
-      console.log('❌ workspaces table error:', workspacesResult.error.message);
-      
-      // Try 'organizations' table
-      console.log('🔍 Trying organizations table...');
-      const orgsResult = await adminSupabase
-        .from('organizations')
-        .select(`
-          id,
-          name,
-          slug,
-          created_by,
-          created_at,
-          updated_at,
-          settings
-        `)
-        .order('created_at', { ascending: false });
+    // 2. Fetch Owner/Member details manually to avoid complex joins and mirror previous logic
+    // Collect all user IDs
+    const ownerIds = workspaces.map(w => w.owner_id).filter(Boolean);
 
-      if (orgsResult.error) {
-        console.log('❌ organizations table error:', orgsResult.error.message);
-        
-        // Try user_organizations table to see existing data
-        console.log('🔍 Checking user_organizations...');
-        const userOrgsResult = await adminSupabase
-          .from('user_organizations')
-          .select('*')
-          .limit(10);
+    // We also want to fetch members for these workspaces to show in UI
+    // Fetch all members for all returned workspaces
+    // Note: limit to avoid massive data transfer if too many workspaces
+    const workspaceIds = workspaces.map(w => w.id);
+    let allMembers: any[] = [];
 
-        console.log('📊 user_organizations sample:', userOrgsResult.data);
-        
-        error = workspacesResult.error;
-      } else {
-        workspaces = orgsResult.data?.map(org => ({
-          id: org.id,
-          name: org.name,
-          slug: org.slug,
-          owner_id: org.created_by,
-          created_at: org.created_at,
-          updated_at: org.updated_at,
-          settings: org.settings,
-          workspace_members: [],
-          member_count: 0
-        }));
-        console.log(`✅ Found ${workspaces?.length || 0} organizations`);
-      }
-    } else {
-      workspaces = workspacesResult.data;
-      console.log(`✅ Found ${workspaces?.length || 0} workspaces`);
-      
-      // Manually fetch workspace members since JOINs may not work
-      if (workspaces && workspaces.length > 0) {
-        console.log('🔍 Fetching workspace members manually...');
-        const { data: allMembers } = await adminSupabase
-          .from('workspace_members')
-          .select('*');
-          
-        // Add workspace_members array to each workspace
-        workspaces = workspaces.map(workspace => ({
-          ...workspace,
-          workspace_members: allMembers?.filter(member => member.workspace_id === workspace.id) || [],
-          member_count: allMembers?.filter(member => member.workspace_id === workspace.id).length || 0
-        }));
-        
-        console.log(`✅ Enhanced workspaces with member data`);
-      }
+    if (workspaceIds.length > 0) {
+      const membersResult = await pool.query(`
+        SELECT id, workspace_id, user_id, role 
+        FROM workspace_members 
+        WHERE workspace_id = ANY($1::uuid[])
+      `, [workspaceIds]);
+      allMembers = membersResult.rows;
     }
 
-    if (error && !workspaces) {
-      console.error('❌ Failed to fetch any workspace data:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch workspaces', details: error.message },
-        { status: 500 }
-      );
-    }
+    const memberUserIds = allMembers.map(m => m.user_id);
+    const allUserIds = [...new Set([...ownerIds, ...memberUserIds])];
 
-    // Get all unique user IDs (owners + members)
-    const ownerIds = [...new Set(workspaces?.map(w => w.owner_id).filter(Boolean))];
-    const memberIds = [...new Set(workspaces?.flatMap(w => 
-      w.workspace_members?.map(m => m.user_id) || []
-    ))];
-    const allUserIds = [...new Set([...ownerIds, ...memberIds])];
-
-    // Fetch user information from auth.users
+    // 3. Fetch User Details (from users table directly now!)
     const userMap = new Map();
     if (allUserIds.length > 0) {
-      try {
-        // Fetch users in batches to avoid hitting limits
-        const batchSize = 50;
-        for (let i = 0; i < allUserIds.length; i += batchSize) {
-          const batch = allUserIds.slice(i, i + batchSize);
-          const { data: batchUsers } = await adminSupabase.auth.admin.listUsers();
-          
-          if (batchUsers?.users) {
-            batchUsers.users
-              .filter((user: any) => batch.includes(user.id))
-              .forEach((user: any) => {
-                userMap.set(user.id, {
-                  id: user.id,
-                  email: user.email,
-                  first_name: user.user_metadata?.first_name,
-                  last_name: user.user_metadata?.last_name
-                });
-              });
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching user details:', error);
-      }
+      const usersResult = await pool.query(`
+        SELECT id, email, first_name, last_name, full_name, avatar_url
+        FROM users 
+        WHERE id = ANY($1::text[])
+      `, [allUserIds]); // Assuming ID is text/uuid text
+
+      usersResult.rows.forEach(u => {
+        userMap.set(u.id, {
+          id: u.id,
+          email: u.email,
+          first_name: u.first_name || u.full_name?.split(' ')[0],
+          last_name: u.last_name || u.full_name?.split(' ').slice(1).join(' ')
+        });
+      });
     }
 
-    // Enrich workspaces with owner and member information
-    const enrichedWorkspaces = workspaces?.map(workspace => ({
+    // 4. Enrich workspaces
+    const enrichedWorkspaces = workspaces.map(workspace => ({
       ...workspace,
       owner: userMap.get(workspace.owner_id),
-      workspace_members: workspace.workspace_members?.map(member => ({
-        ...member,
-        user: userMap.get(member.user_id)
-      })) || [],
-      member_count: workspace.workspace_members?.length || 0
-    })) || [];
+      workspace_members: allMembers
+        .filter(m => m.workspace_id === workspace.id)
+        .map(member => ({
+          ...member,
+          user: userMap.get(member.user_id)
+        })),
+      member_count: parseInt(workspace.member_count) || 0
+    }));
 
-    // CRITICAL FIX: Get user's current_workspace_id to enable auto-selection
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Cookie setting can fail in API route context
-            }
-          }
-        }
-      }
+    // 5. Get current user's current_workspace_id
+    // requireAdmin already verified user exists
+    const adminUserResult = await pool.query(
+      'SELECT current_workspace_id FROM users WHERE id = $1',
+      [user.id]
     );
-    const { data: { user } } = await supabase.auth.getUser();
-
-    let currentWorkspaceId = null;
-    if (user) {
-      // Use admin client to fetch current_workspace_id (bypasses RLS)
-      const { data: userData } = await adminSupabase
-        .from('users')
-        .select('current_workspace_id')
-        .eq('id', user.id)
-        .single();
-
-      currentWorkspaceId = userData?.current_workspace_id;
-      console.log(`✅ User's current_workspace_id: ${currentWorkspaceId}`);
-    }
+    const currentWorkspaceId = adminUserResult.rows[0]?.current_workspace_id;
 
     return NextResponse.json({
       workspaces: enrichedWorkspaces,
       total: enrichedWorkspaces.length,
-      currentWorkspaceId: currentWorkspaceId  // CRITICAL: Include for auto-selection
+      currentWorkspaceId
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Server error fetching workspaces:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }
 }
 
 export async function POST(request: NextRequest) {
-
   // Require admin authentication
-  const { error: authError } = await requireAdmin(request);
+  const { error: authError, user } = await requireAdmin(request);
   if (authError) return authError;
+  if (!user) return NextResponse.json({ error: 'Auth required' }, { status: 401 });
+
+  // Check super admin strictly for actions
+  if (!SUPER_ADMIN_EMAILS.includes(user.email || '')) {
+    return NextResponse.json({ error: 'Super Admin access required' }, { status: 403 });
+  }
+
   try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Cookie setting can fail in API route context
-            }
-          }
-        }
-      }
-    )
-
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
-    if (authError || !session) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
-
-    // Check if user is admin
-    if (!SUPER_ADMIN_EMAILS.includes(session.user.email || '')) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    const body = await request.json()
-    const { action, targetWorkspaceId, originalWorkspaceId, userId, role, workspaceId, permissionType } = body
+    const body = await request.json();
+    const { action, targetWorkspaceId, originalWorkspaceId, userId, role, workspaceId, permissionType } = body;
 
     switch (action) {
       case 'switch_workspace':
-        return await switchToWorkspace(supabase, session.user.id, targetWorkspaceId, originalWorkspaceId)
-      
+        return await switchToWorkspace(targetWorkspaceId);
+
       case 'grant_permission':
-        return await grantWorkspacePermission(supabase, session.user.id, userId, workspaceId, permissionType)
-      
+        // Mock impl as in original
+        return NextResponse.json({
+          success: true,
+          message: `Would grant ${permissionType} permission to workspace ${workspaceId} for user ${userId}`
+        });
+
       case 'get_accessible_workspaces':
-        return await getAccessibleWorkspaces(supabase, session.user.id)
-      
+        return await getAccessibleWorkspaces();
+
       default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
 
   } catch (error) {
-    console.error('Admin workspaces POST error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Admin workspaces POST error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-async function switchToWorkspace(supabase: any, adminUserId: string, targetWorkspaceId: string, originalWorkspaceId: string) {
+async function switchToWorkspace(targetWorkspaceId: string) {
   try {
     // Get workspace details
-    const { data: workspace, error: workspaceError } = await supabase
-      .from('workspaces')
-      .select('id, name, slug, user_id')
-      .eq('id', targetWorkspaceId)
-      .single()
+    const wsResult = await pool.query(
+      'SELECT id, name, slug, owner_id as user_id FROM workspaces WHERE id = $1',
+      [targetWorkspaceId]
+    );
+    const workspace = wsResult.rows[0];
 
-    if (workspaceError || !workspace) {
-      // Try organizations table
-      const { data: orgWorkspace, error: orgError } = await supabase
-        .from('organizations')
-        .select('id, name, slug, created_by')
-        .eq('id', targetWorkspaceId)
-        .single()
-      
-      if (orgError || !orgWorkspace) {
-        return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
-      }
-      
-      // Map organization to workspace format
-      workspace.id = orgWorkspace.id
-      workspace.name = orgWorkspace.name
-      workspace.slug = orgWorkspace.slug
-      workspace.user_id = orgWorkspace.created_by
+    if (!workspace) {
+      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
 
-    // Get campaigns in this workspace
-    const { data: campaigns } = await supabase
-      .from('campaigns')
-      .select('id, name, status, created_at')
-      .eq('workspace_id', targetWorkspaceId)
-      .order('created_at', { ascending: false })
-      .limit(10)
+    // Get campaigns
+    const campaignsResult = await pool.query(
+      'SELECT id, name, status, created_at FROM campaigns WHERE workspace_id = $1 ORDER BY created_at DESC LIMIT 10',
+      [targetWorkspaceId]
+    );
 
     return NextResponse.json({
       success: true,
       workspace,
-      campaigns: campaigns || [],
-      message: `Switched to workspace: ${workspace?.name}`,
-      adminNote: `You are now managing ${workspace?.name} on behalf of the workspace owner`
-    })
+      campaigns: campaignsResult.rows || [],
+      message: `Switched to workspace: ${workspace.name}`,
+      adminNote: `You are now managing ${workspace.name} on behalf of the workspace owner`
+    });
   } catch (error) {
-    console.error('Error switching workspace:', error)
-    return NextResponse.json({ error: 'Failed to switch workspace' }, { status: 500 })
+    console.error('Error switching workspace:', error);
+    return NextResponse.json({ error: 'Failed to switch workspace' }, { status: 500 });
   }
 }
 
-async function grantWorkspacePermission(supabase: any, adminUserId: string, userId: string, workspaceId: string, permissionType: string) {
-  // For now, just return success - this would normally update a permissions table
-  return NextResponse.json({
-    success: true,
-    message: `Would grant ${permissionType} permission to workspace ${workspaceId} for user ${userId}`
-  })
-}
-
-async function getAccessibleWorkspaces(supabase: any, userId: string) {
+async function getAccessibleWorkspaces() {
   try {
-    // Admin users can access all workspaces
-    let workspaces = []
-    
-    // Try workspaces table first
-    const { data: workspacesData, error: workspacesError } = await supabase
-      .from('workspaces')
-      .select('id, name, slug, user_id, created_at')
-      .order('created_at', { ascending: false })
-    
-    if (workspacesError) {
-      // Try organizations table
-      const { data: orgsData, error: orgsError } = await supabase
-        .from('organizations')
-        .select('id, name, slug, created_by as user_id, created_at')
-        .order('created_at', { ascending: false })
-      
-      if (!orgsError && orgsData) {
-        workspaces = orgsData
-      }
-    } else {
-      workspaces = workspacesData || []
-    }
+    // Super admins see all workspaces
+    const wsResult = await pool.query(
+      'SELECT id, name, slug, owner_id as user_id, created_at FROM workspaces ORDER BY created_at DESC'
+    );
+    const workspaces = wsResult.rows;
 
-    // Get user info for workspace owners
-    const { data: users } = await supabase.auth.admin.listUsers()
-    const userMap = new Map()
-    users?.users?.forEach((user: any) => {
-      userMap.set(user.id, { email: user.email, id: user.id })
-    })
+    // Get owners
+    const ownerIds = [...new Set(workspaces.map(w => w.user_id).filter(Boolean))];
+    const userMap = new Map();
+
+    if (ownerIds.length > 0) {
+      const usersResult = await pool.query(
+        'SELECT id, email FROM users WHERE id = ANY($1::text[])',
+        [ownerIds]
+      );
+      usersResult.rows.forEach(u => userMap.set(u.id, u));
+    }
 
     const enrichedWorkspaces = workspaces.map((workspace: any) => ({
       ...workspace,
       owner: userMap.get(workspace.user_id),
       access_type: 'admin',
       permission_level: 'admin'
-    }))
+    }));
 
     return NextResponse.json({
       success: true,
       workspaces: enrichedWorkspaces,
       userRole: 'admin'
-    })
+    });
   } catch (error) {
-    console.error('Error getting accessible workspaces:', error)
-    return NextResponse.json({ error: 'Failed to get workspaces' }, { status: 500 })
+    console.error('Error getting accessible workspaces:', error);
+    return NextResponse.json({ error: 'Failed to get workspaces' }, { status: 500 });
   }
 }

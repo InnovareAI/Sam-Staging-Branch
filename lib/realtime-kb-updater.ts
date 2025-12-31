@@ -3,14 +3,10 @@
  * Updates KB immediately as SAM asks questions and user answers
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/auth';
 import { storeQAInKnowledgeBase, type QuestionAnswer } from './sam-kb-integration';
+// kb-confidence-calculator is pure logic
 import { calculateConfidenceScore, getInitialValidationStatus } from './kb-confidence-calculator';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * Extract Q&A from conversation message
@@ -40,11 +36,11 @@ export function extractQAFromConversation(
     questionId: generateQuestionId(assistantQuestion),
     questionText: assistantQuestion,
     answerText: userAnswer,
-    answerStructured: structured,
+    answerStructured: structured || undefined, // undefined if null
     category,
     stage: conversationContext?.stage || 'discovery',
     confidenceScore: 0.95, // High confidence for direct user input
-    sourceAttachmentId: null
+    sourceAttachmentId: undefined // changed from null to undefined for type consistency
   };
 }
 
@@ -218,17 +214,16 @@ function isICPRelatedCategory(category: string): boolean {
  */
 async function updateICPCompletionPercentage(workspaceId: string): Promise<void> {
   try {
-    // Get current ICP
-    const { data: icp } = await supabase
-      .from('knowledge_base_icps')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    // Get current ICP using PG pool
+    const { rows } = await pool.query(
+      `SELECT * FROM knowledge_base_icps 
+       WHERE workspace_id = $1 AND is_active = true 
+       ORDER BY created_at DESC LIMIT 1`,
+      [workspaceId]
+    );
 
-    if (!icp) return;
+    if (rows.length === 0) return;
+    const icp = rows[0] as any;
 
     // Calculate completion based on filled fields
     const requiredFields = [
@@ -251,13 +246,10 @@ async function updateICPCompletionPercentage(workspaceId: string): Promise<void>
     const completionPercentage = Math.round((filledFields.length / requiredFields.length) * 100);
 
     // Update ICP
-    await supabase
-      .from('knowledge_base_icps')
-      .update({
-        completion_percentage: completionPercentage,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', icp.id);
+    await pool.query(
+      `UPDATE knowledge_base_icps SET completion_percentage = $1, updated_at = NOW() WHERE id = $2`,
+      [completionPercentage, icp.id]
+    );
 
     console.log(`📊 ICP completion updated: ${completionPercentage}%`);
   } catch (error) {
@@ -270,16 +262,15 @@ async function updateICPCompletionPercentage(workspaceId: string): Promise<void>
  */
 export async function getKBProgressMessage(workspaceId: string): Promise<string | null> {
   try {
-    const { data: icp } = await supabase
-      .from('knowledge_base_icps')
-      .select('completion_percentage')
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    const { rows } = await pool.query(
+      `SELECT completion_percentage FROM knowledge_base_icps 
+         WHERE workspace_id = $1 AND is_active = true 
+         ORDER BY created_at DESC LIMIT 1`,
+      [workspaceId]
+    );
 
-    if (!icp) return null;
+    if (rows.length === 0) return null;
+    const icp = rows[0];
 
     const percentage = icp.completion_percentage || 0;
 

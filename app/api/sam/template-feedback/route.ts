@@ -1,5 +1,11 @@
+/**
+ * SAM Template Feedback and Learning API
+ * Records performance data and user feedback for continuous SAM AI learning
+ * Updated Dec 31, 2025: Migrated to verifyAuth and pool.query
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { verifyAuth, pool } from '@/lib/auth';
 
 interface FeedbackRequest {
   action: 'record_performance' | 'get_insights' | 'update_learning';
@@ -32,13 +38,12 @@ interface FeedbackRequest {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    const auth = await verifyAuth(req);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const user = auth.user;
     const {
       action,
       template_id,
@@ -50,24 +55,24 @@ export async function POST(req: NextRequest) {
 
     switch (action) {
       case 'record_performance':
-        return await recordTemplatePerformance(supabase, user.id, {
+        return await recordTemplatePerformance(user.uid, {
           template_id,
           campaign_id,
           performance_data,
           context
         });
-      
+
       case 'get_insights':
-        return await getPerformanceInsights(supabase, user.id, template_id);
-      
+        return await getPerformanceInsights(user.uid, template_id);
+
       case 'update_learning':
-        return await updateSamLearning(supabase, user.id, {
+        return await updateSamLearning(user.uid, {
           template_id,
           user_feedback,
           performance_data,
           context
         });
-      
+
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
@@ -81,57 +86,47 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function recordTemplatePerformance(supabase: any, userId: string, data: any) {
-  const { data: userWorkspace } = await supabase
-    .from('profiles')
-    .select('workspace_id')
-    .eq('id', userId)
-    .single();
+async function recordTemplatePerformance(userId: string, data: any) {
+  const userRes = await pool.query(
+    'SELECT current_workspace_id FROM users WHERE id = $1',
+    [userId]
+  );
+  const workspaceId = userRes.rows[0]?.current_workspace_id;
 
-  if (!userWorkspace?.workspace_id) {
+  if (!workspaceId) {
     return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
   }
 
   // Record performance data
-  const performanceRecord = {
-    workspace_id: userWorkspace.workspace_id,
-    template_id: data.template_id,
-    campaign_id: data.campaign_id,
-    user_id: userId,
-    performance_data: data.performance_data,
-    context: data.context,
-    recorded_at: new Date().toISOString()
-  };
-
-  const { data: result, error } = await supabase
-    .from('template_performance_tracking')
-    .insert(performanceRecord)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Performance recording error:', error);
-    return NextResponse.json({ error: 'Failed to record performance' }, { status: 500 });
-  }
+  const res = await pool.query(
+    `INSERT INTO template_performance_tracking (
+      workspace_id, template_id, campaign_id, user_id, 
+      performance_data, context, recorded_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    RETURNING *`,
+    [
+      workspaceId,
+      data.template_id,
+      data.campaign_id,
+      userId,
+      JSON.stringify(data.performance_data || {}),
+      JSON.stringify(data.context || {})
+    ]
+  );
+  const result = res.rows[0];
 
   // Update template usage statistics using safe function
   if (data.template_id) {
     try {
-      const { error: usageError } = await supabase
-        .rpc('increment_template_usage', { template_uuid: data.template_id });
-      
-      if (usageError) {
-        console.error('Failed to increment template usage:', usageError);
-        // Non-critical error - don't fail the main operation
-      }
+      await pool.query('SELECT increment_template_usage($1)', [data.template_id]);
     } catch (error) {
       console.error('Template usage update failed:', error);
-      // Non-critical error - continue with main operation
+      // Non-critical error - continue
     }
   }
 
   // Generate immediate insights
-  const insights = await generateRealTimeInsights(supabase, data);
+  const insights = await generateRealTimeInsights(data);
 
   return NextResponse.json({
     success: true,
@@ -145,35 +140,27 @@ async function recordTemplatePerformance(supabase: any, userId: string, data: an
   });
 }
 
-async function getPerformanceInsights(supabase: any, userId: string, templateId?: string) {
-  const { data: userWorkspace } = await supabase
-    .from('profiles')
-    .select('workspace_id')
-    .eq('id', userId)
-    .single();
+async function getPerformanceInsights(userId: string, templateId?: string) {
+  const userRes = await pool.query(
+    'SELECT current_workspace_id FROM users WHERE id = $1',
+    [userId]
+  );
+  const workspaceId = userRes.rows[0]?.current_workspace_id;
 
-  if (!userWorkspace?.workspace_id) {
+  if (!workspaceId) {
     return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
   }
 
-  // Build optimized query with proper error handling
-  let baseQuery = supabase
-    .from('template_performance_tracking')
-    .select(`
-      id,
-      template_id,
-      performance_data,
-      context,
-      recorded_at,
-      sam_template_library!inner (
-        name,
-        type,
-        industry,
-        campaign_type
-      )
-    `)
-    .eq('workspace_id', userWorkspace.workspace_id)
-    .order('recorded_at', { ascending: false });
+  // Build optimized query
+  let queryText = `
+    SELECT 
+      tpt.id, tpt.template_id, tpt.performance_data, tpt.context, tpt.recorded_at,
+      stl.name, stl.type, stl.industry, stl.campaign_type
+    FROM template_performance_tracking tpt
+    INNER JOIN sam_template_library stl ON tpt.template_id = stl.id
+    WHERE tpt.workspace_id = $1
+  `;
+  const queryParams: any[] = [workspaceId];
 
   if (templateId) {
     // Validate templateId format (should be UUID)
@@ -181,15 +168,14 @@ async function getPerformanceInsights(supabase: any, userId: string, templateId?
     if (!uuidRegex.test(templateId)) {
       return NextResponse.json({ error: 'Invalid template ID format' }, { status: 400 });
     }
-    baseQuery = baseQuery.eq('template_id', templateId);
+    queryParams.push(templateId);
+    queryText += ` AND tpt.template_id = $${queryParams.length}`;
   }
 
-  const { data: performanceData, error } = await baseQuery.limit(50); // Reduced limit for better performance
+  queryText += ` ORDER BY tpt.recorded_at DESC LIMIT 50`;
 
-  if (error) {
-    console.error('Insights query error:', error);
-    return NextResponse.json({ error: 'Failed to get insights' }, { status: 500 });
-  }
+  const res = await pool.query(queryText, queryParams);
+  const performanceData = res.rows;
 
   // Analyze performance patterns
   const insights = analyzePerformancePatterns(performanceData);
@@ -202,42 +188,39 @@ async function getPerformanceInsights(supabase: any, userId: string, templateId?
   });
 }
 
-async function updateSamLearning(supabase: any, userId: string, data: any) {
-  // Get user's workspace for proper data isolation
-  const { data: userWorkspace } = await supabase
-    .from('profiles')
-    .select('workspace_id')
-    .eq('id', userId)
-    .single();
+async function updateSamLearning(userId: string, data: any) {
+  const userRes = await pool.query(
+    'SELECT current_workspace_id FROM users WHERE id = $1',
+    [userId]
+  );
+  const workspaceId = userRes.rows[0]?.current_workspace_id;
 
-  if (!userWorkspace?.workspace_id) {
+  if (!workspaceId) {
     return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
   }
 
-  const learningData = {
-    workspace_id: userWorkspace.workspace_id,
-    user_id: userId,
-    template_id: data.template_id,
-    user_feedback: data.user_feedback || {},
-    performance_context: data.performance_data || {},
-    context: data.context || {},
-    learning_timestamp: new Date().toISOString(),
-    confidence_score: calculateLearningConfidence(data)
-  };
+  const confidenceScore = calculateLearningConfidence(data);
 
-  const { data: result, error } = await supabase
-    .from('sam_learning_feedback')
-    .insert(learningData)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Learning update error:', error);
-    return NextResponse.json({ error: 'Failed to update learning' }, { status: 500 });
-  }
+  const res = await pool.query(
+    `INSERT INTO sam_learning_feedback (
+      workspace_id, user_id, template_id, user_feedback, 
+      performance_context, context, learning_timestamp, confidence_score
+    ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+    RETURNING *`,
+    [
+      workspaceId,
+      userId,
+      data.template_id,
+      JSON.stringify(data.user_feedback || {}),
+      JSON.stringify(data.performance_data || {}),
+      JSON.stringify(data.context || {}),
+      confidenceScore
+    ]
+  );
+  const result = res.rows[0];
 
   // Generate updated recommendations based on learning
-  const updatedRecommendations = await generateUpdatedRecommendations(supabase, data);
+  const updatedRecommendations = await generateUpdatedRecommendations(data);
 
   return NextResponse.json({
     success: true,
@@ -251,8 +234,8 @@ async function updateSamLearning(supabase: any, userId: string, data: any) {
   });
 }
 
-async function generateRealTimeInsights(supabase: any, data: any) {
-  const insights = {
+async function generateRealTimeInsights(data: any) {
+  const insights: any = {
     patterns: [],
     suggestions: [],
     confidence: 0.7
@@ -261,7 +244,7 @@ async function generateRealTimeInsights(supabase: any, data: any) {
   // Analyze response rate patterns
   if (data.performance_data?.response_rate) {
     const responseRate = data.performance_data.response_rate;
-    
+
     if (responseRate > 0.25) {
       insights.patterns.push('High response rate template');
       insights.suggestions.push('This template format is performing well - consider using similar structure');
@@ -293,7 +276,7 @@ async function generateRealTimeInsights(supabase: any, data: any) {
 }
 
 function analyzePerformancePatterns(performanceData: any[]) {
-  const insights = {
+  const insights: any = {
     overall_performance: {
       avg_response_rate: 0,
       avg_open_rate: 0,
@@ -315,29 +298,29 @@ function analyzePerformancePatterns(performanceData: any[]) {
   }
 
   // Calculate averages
-  const totalResponseRate = performanceData.reduce((sum, record) => 
+  const totalResponseRate = performanceData.reduce((sum, record) =>
     sum + (record.performance_data?.response_rate || 0), 0);
   insights.overall_performance.avg_response_rate = totalResponseRate / performanceData.length;
 
-  const totalOpenRate = performanceData.reduce((sum, record) => 
+  const totalOpenRate = performanceData.reduce((sum, record) =>
     sum + (record.performance_data?.open_rate || 0), 0);
   insights.overall_performance.avg_open_rate = totalOpenRate / performanceData.length;
 
   // Find patterns
-  const highPerformers = performanceData.filter(record => 
+  const highPerformers = performanceData.filter(record =>
     (record.performance_data?.response_rate || 0) > insights.overall_performance.avg_response_rate * 1.2);
-  
-  const lowPerformers = performanceData.filter(record => 
+
+  const lowPerformers = performanceData.filter(record =>
     (record.performance_data?.response_rate || 0) < insights.overall_performance.avg_response_rate * 0.8);
 
   insights.patterns.high_performers = highPerformers.map(hp => ({
-    type: hp.sam_template_library?.type,
+    type: hp.type,
     industry: hp.context?.industry,
     response_rate: hp.performance_data?.response_rate
   }));
 
   insights.patterns.low_performers = lowPerformers.map(lp => ({
-    type: lp.sam_template_library?.type,
+    type: lp.type,
     industry: lp.context?.industry,
     response_rate: lp.performance_data?.response_rate
   }));
@@ -355,7 +338,7 @@ function analyzePerformancePatterns(performanceData: any[]) {
 }
 
 function generateSamRecommendations(insights: any) {
-  const recommendations = {
+  const recommendations: any = {
     immediate_actions: [],
     strategic_changes: [],
     template_optimizations: [],
@@ -387,9 +370,9 @@ function generateSamRecommendations(insights: any) {
   return recommendations;
 }
 
-async function generateUpdatedRecommendations(supabase: any, data: any) {
+async function generateUpdatedRecommendations(data: any) {
   // This would analyze historical learning data and generate new recommendations
-  const recommendations = {
+  const recommendations: any = {
     patterns: [],
     optimizations: [],
     suggestions: []

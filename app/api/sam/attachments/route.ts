@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
+import { supabaseAdmin } from '@/app/lib/supabase';
 
 export async function POST(request: Request) {
     try {
-        const supabase = await createSupabaseRouteClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const auth = await verifyAuth(request);
 
-        if (!user) {
+        if (!auth.isAuthenticated || !auth.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        const user = auth.user;
+        const supabase = supabaseAdmin();
 
         const formData = await request.formData();
         const file = formData.get('file') as File;
@@ -22,7 +25,7 @@ export async function POST(request: Request) {
         // 1. Sanitize file name for storage path
         const timestamp = Date.now();
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const storagePath = `${user.id}/${threadId}/${timestamp}_${sanitizedName}`;
+        const storagePath = `${user.uid}/${threadId}/${timestamp}_${sanitizedName}`;
 
         // 2. Upload to Supabase Storage
         const { data: storageData, error: storageError } = await supabase.storage
@@ -42,38 +45,44 @@ export async function POST(request: Request) {
         }
 
         // 3. Create record in database
-        const { data: attachment, error: dbError } = await supabase
-            .from('sam_conversation_attachments')
-            .insert({
-                thread_id: threadId,
-                user_id: user.id,
-                workspace_id: workspaceId || null,
-                file_name: file.name,
-                file_type: file.type,
-                file_size: file.size,
-                mime_type: file.type,
-                storage_path: storagePath,
-                storage_bucket: 'sam-attachments',
-                processing_status: 'pending'
-            })
-            .select()
-            .single();
+        try {
+            const query = `
+                INSERT INTO sam_conversation_attachments
+                (thread_id, user_id, workspace_id, file_name, file_type, file_size, mime_type, storage_path, storage_bucket, processing_status)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                RETURNING *
+            `;
+            const values = [
+                threadId,
+                user.uid,
+                workspaceId || null,
+                file.name,
+                file.type,
+                file.size,
+                file.type,
+                storagePath,
+                'sam-attachments',
+                'pending'
+            ];
 
-        if (dbError) {
+            const dbRes = await pool.query(query, values);
+            const attachment = dbRes.rows[0];
+
+            return NextResponse.json({
+                success: true,
+                attachment
+            });
+
+        } catch (dbError) {
             console.error('❌ Database insert error:', dbError);
             // Cleanup storage if DB record fails
             await supabase.storage.from('sam-attachments').remove([storagePath]);
             return NextResponse.json({
                 success: false,
                 error: 'Failed to record attachment',
-                details: dbError.message
+                details: dbError instanceof Error ? dbError.message : String(dbError)
             }, { status: 500 });
         }
-
-        return NextResponse.json({
-            success: true,
-            attachment
-        });
 
     } catch (error) {
         console.error('❌ Attachment route error:', error);

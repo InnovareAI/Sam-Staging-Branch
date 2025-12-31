@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { 
-  detectLanguageFromContent, 
-  getPersonalizationGuidelines, 
-  getLanguageSpecificRecommendations 
+import { verifyAuth, pool } from '@/lib/auth';
+import {
+  detectLanguageFromContent,
+  getPersonalizationGuidelines,
+  getLanguageSpecificRecommendations
 } from '@/utils/linkedin-personalization-languages';
 
 interface FinalCheckRequest {
@@ -46,13 +46,12 @@ interface FinalCheckResponse {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    
-    // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    const auth = await verifyAuth(req);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const user = auth.user;
 
     // Parse and validate request body
     let requestBody: FinalCheckRequest;
@@ -86,7 +85,7 @@ export async function POST(req: NextRequest) {
     const finalCheckResult = await performAIFinalCheck(message, recipient, context);
 
     // Log the final check for analytics
-    await logFinalCheck(supabase, user.id, message, recipient, finalCheckResult);
+    await logFinalCheck(user.uid, message, recipient, finalCheckResult);
 
     return NextResponse.json({
       success: true,
@@ -103,8 +102,8 @@ export async function POST(req: NextRequest) {
 }
 
 async function performAIFinalCheck(
-  message: string, 
-  recipient: any, 
+  message: string,
+  recipient: any,
   context: any
 ): Promise<FinalCheckResponse> {
   const issues: FinalCheckResponse['issues'] = [];
@@ -149,7 +148,7 @@ async function performAIFinalCheck(
   };
 
   // Critical Issues (will block sending)
-  
+
   // 1. Character limit violations
   if (message.length > maxLimit) {
     issues.push({
@@ -161,10 +160,10 @@ async function performAIFinalCheck(
   }
 
   // 2. Missing personalization
-  const hasPersonalization = message.includes(recipient.first_name) || 
-                            message.includes(recipient.last_name) ||
-                            message.includes(recipient.company_name);
-  
+  const hasPersonalization = message.includes(recipient.first_name) ||
+    message.includes(recipient.last_name) ||
+    message.includes(recipient.company_name);
+
   if (!hasPersonalization) {
     issues.push({
       type: 'error',
@@ -198,7 +197,7 @@ async function performAIFinalCheck(
   }
 
   // Warnings (should be addressed but won't block)
-  
+
   // 1. Length warnings
   if (message.length > recommendedMax) {
     issues.push({
@@ -230,7 +229,7 @@ async function performAIFinalCheck(
   }
 
   // Suggestions for improvement
-  
+
   // 1. Add language-specific recommendations
   if (languageRecommendations.length > 0) {
     recommendations.push(...languageRecommendations.slice(0, 2));
@@ -262,15 +261,15 @@ async function performAIFinalCheck(
 
   // Calculate confidence score
   let confidence_score = 1.0;
-  
+
   // Deduct for critical issues
   const criticalIssues = issues.filter(i => i.severity === 'critical').length;
   confidence_score -= criticalIssues * 0.3;
-  
+
   // Deduct for high severity issues
   const highIssues = issues.filter(i => i.severity === 'high').length;
   confidence_score -= highIssues * 0.2;
-  
+
   // Deduct for medium/low issues
   const otherIssues = issues.filter(i => i.severity === 'medium' || i.severity === 'low').length;
   confidence_score -= otherIssues * 0.05;
@@ -301,25 +300,25 @@ async function performAIFinalCheck(
 }
 
 function generateOptimizedMessage(
-  originalMessage: string, 
-  recipient: any, 
-  guidelines: any, 
+  originalMessage: string,
+  recipient: any,
+  guidelines: any,
   issues: any[]
 ): string {
   let optimized = originalMessage;
 
   // Fix personalization if missing
-  const hasPersonalization = optimized.includes(recipient.first_name) || 
-                            optimized.includes(recipient.last_name) ||
-                            optimized.includes(recipient.company_name);
+  const hasPersonalization = optimized.includes(recipient.first_name) ||
+    optimized.includes(recipient.last_name) ||
+    optimized.includes(recipient.company_name);
 
   if (!hasPersonalization) {
     // Add basic personalization at the beginning
     const greeting = guidelines.language === 'German' ? `Sehr geehrte/r ${recipient.first_name} ${recipient.last_name}` :
-                    guidelines.language === 'French' ? `Bonjour ${recipient.first_name}` :
-                    guidelines.language === 'Dutch' ? `Hallo ${recipient.first_name}` :
-                    `Hi ${recipient.first_name}`;
-    
+      guidelines.language === 'French' ? `Bonjour ${recipient.first_name}` :
+        guidelines.language === 'Dutch' ? `Hallo ${recipient.first_name}` :
+          `Hi ${recipient.first_name}`;
+
     optimized = `${greeting},\n\n${optimized}`;
   }
 
@@ -349,29 +348,31 @@ function generateOptimizedMessage(
 }
 
 async function logFinalCheck(
-  supabase: any,
   userId: string,
   message: string,
   recipient: any,
   result: FinalCheckResponse
 ) {
   try {
-    await supabase
-      .from('sam_final_checks')
-      .insert({
-        user_id: userId,
-        message_content: message,
-        recipient_name: `${recipient.first_name} ${recipient.last_name}`,
-        recipient_company: recipient.company_name,
-        approved: result.approved,
-        confidence_score: result.confidence_score,
-        issues_count: result.issues.length,
-        critical_issues_count: result.issues.filter(i => i.severity === 'critical').length,
-        issues_summary: result.issues.map(i => `${i.category}: ${i.message}`).join('; '),
-        recommendations_count: result.recommendations.length,
-        character_count: result.character_count.current,
-        created_at: new Date().toISOString()
-      });
+    await pool.query(
+      `INSERT INTO sam_final_checks 
+       (user_id, message_content, recipient_name, recipient_company, approved, confidence_score, 
+        issues_count, critical_issues_count, issues_summary, recommendations_count, character_count, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())`,
+      [
+        userId,
+        message,
+        `${recipient.first_name} ${recipient.last_name}`,
+        recipient.company_name,
+        result.approved,
+        result.confidence_score,
+        result.issues.length,
+        result.issues.filter(i => i.severity === 'critical').length,
+        result.issues.map(i => `${i.category}: ${i.message}`).join('; '),
+        result.recommendations.length,
+        result.character_count.current
+      ]
+    );
   } catch (error) {
     console.error('Failed to log final check:', error);
     // Don't throw - logging failure shouldn't block the API

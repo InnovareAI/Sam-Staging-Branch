@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, extname } from 'path';
 
@@ -60,21 +61,21 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 // Find all markdown files recursively
 function findMarkdownFiles(dir: string, source: any): KnowledgeItem[] {
   const items: KnowledgeItem[] = [];
-  
+
   try {
     const files = readdirSync(dir);
-    
+
     for (const file of files) {
       const fullPath = join(dir, file);
       const stat = statSync(fullPath);
-      
+
       if (stat.isDirectory()) {
         items.push(...findMarkdownFiles(fullPath, source));
       } else if (extname(file) === '.md' && !file.startsWith('.')) {
         try {
           const content = readFileSync(fullPath, 'utf8');
           const metadata = extractMetadata(content, fullPath);
-          
+
           items.push({
             id: generateId(fullPath),
             title: metadata.title,
@@ -95,22 +96,22 @@ function findMarkdownFiles(dir: string, source: any): KnowledgeItem[] {
   } catch (dirError) {
     console.error(`Error reading directory ${dir}:`, dirError);
   }
-  
+
   return items;
 }
 
 // Extract metadata from markdown content
 function extractMetadata(content: string, filePath: string) {
   const lines = content.split('\n');
-  const title = lines.find(line => line.startsWith('# '))?.replace('# ', '') || 
-                filePath.split('/').pop()?.replace('.md', '') || 'Untitled';
-  
+  const title = lines.find(line => line.startsWith('# '))?.replace('# ', '') ||
+    filePath.split('/').pop()?.replace('.md', '') || 'Untitled';
+
   // Enhanced category detection
   let category = 'general';
   let subcategory = '';
-  
+
   const contentLower = content.toLowerCase();
-  
+
   // Primary category detection
   if (contentLower.includes('sam ai') || contentLower.includes('identity') || contentLower.includes('capabilities')) {
     category = 'core';
@@ -141,7 +142,7 @@ function extractMetadata(content: string, filePath: string) {
   } else if (contentLower.includes('vertical') || contentLower.includes('industry')) {
     category = 'verticals';
   }
-  
+
   // Extract tags
   const tags: string[] = [];
   if (contentLower.includes('sam')) tags.push('sam');
@@ -156,7 +157,7 @@ function extractMetadata(content: string, filePath: string) {
   if (contentLower.includes('strategy')) tags.push('strategy');
   if (contentLower.includes('technical')) tags.push('technical');
   if (contentLower.includes('workflow')) tags.push('workflow');
-  
+
   return { title, category, subcategory, tags };
 }
 
@@ -169,7 +170,7 @@ function generateId(filePath: string): string {
 function loadKnowledgeCache(): KnowledgeItem[] {
   console.log('Loading SAM knowledge cache...');
   const allKnowledge: KnowledgeItem[] = [];
-  
+
   for (const source of KNOWLEDGE_SOURCES) {
     try {
       const items = findMarkdownFiles(source.path, source);
@@ -179,13 +180,13 @@ function loadKnowledgeCache(): KnowledgeItem[] {
       console.error(`Failed to load from ${source.name}:`, error);
     }
   }
-  
+
   // Sort by priority and title
   allKnowledge.sort((a, b) => {
     if (a.priority !== b.priority) return a.priority - b.priority;
     return a.title.localeCompare(b.title);
   });
-  
+
   console.log(`Total knowledge items loaded: ${allKnowledge.length}`);
   return allKnowledge;
 }
@@ -193,12 +194,12 @@ function loadKnowledgeCache(): KnowledgeItem[] {
 // Get knowledge cache with refresh check
 function getKnowledgeCache(): KnowledgeItem[] {
   const now = Date.now();
-  
+
   if (!knowledgeCache || (now - cacheTimestamp) > CACHE_DURATION) {
     knowledgeCache = loadKnowledgeCache();
     cacheTimestamp = now;
   }
-  
+
   return knowledgeCache;
 }
 
@@ -206,29 +207,29 @@ function getKnowledgeCache(): KnowledgeItem[] {
 function searchKnowledge(query: string, category?: string, limit: number = 10): KnowledgeItem[] {
   const knowledge = getKnowledgeCache();
   const queryLower = query.toLowerCase();
-  
+
   // Score items based on relevance
   const scored = knowledge.map(item => {
     let score = 0;
-    
+
     // Title match (highest priority)
     if (item.title.toLowerCase().includes(queryLower)) score += 10;
-    
+
     // Category match
     if (category && item.category === category) score += 5;
-    
+
     // Tag match
     if (item.tags.some(tag => tag.toLowerCase().includes(queryLower))) score += 3;
-    
+
     // Content match (basic)
     if (item.content.toLowerCase().includes(queryLower)) score += 1;
-    
+
     // Priority bonus (lower priority number = higher score)
     score += (6 - item.priority);
-    
+
     return { item, score };
   });
-  
+
   // Filter items with score > 0 and sort by score
   return scored
     .filter(s => s.score > 0)
@@ -240,7 +241,7 @@ function searchKnowledge(query: string, category?: string, limit: number = 10): 
 // Get knowledge by category
 function getKnowledgeByCategory(category: string, limit: number = 20): KnowledgeItem[] {
   const knowledge = getKnowledgeCache();
-  
+
   return knowledge
     .filter(item => item.category === category)
     .slice(0, limit);
@@ -250,25 +251,29 @@ function getKnowledgeByCategory(category: string, limit: number = 20): Knowledge
 function getKnowledgeCategories(): { [category: string]: number } {
   const knowledge = getKnowledgeCache();
   const categories: { [category: string]: number } = {};
-  
+
   knowledge.forEach(item => {
     categories[item.category] = (categories[item.category] || 0) + 1;
   });
-  
+
   return categories;
 }
 
 // API Routes
 export async function GET(request: NextRequest) {
   try {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'search';
     const query = searchParams.get('q') || '';
     const category = searchParams.get('category') || undefined;
     const limit = parseInt(searchParams.get('limit') || '10');
-    
+
     console.log(`SAM Knowledge API: ${action}`, { query, category, limit });
-    
+
     switch (action) {
       case 'search':
         if (!query) {
@@ -277,7 +282,7 @@ export async function GET(request: NextRequest) {
             error: 'Query parameter required for search'
           }, { status: 400 });
         }
-        
+
         const searchResults = searchKnowledge(query, category, limit);
         return NextResponse.json({
           success: true,
@@ -297,7 +302,7 @@ export async function GET(request: NextRequest) {
           total: searchResults.length,
           timestamp: new Date().toISOString()
         });
-      
+
       case 'category':
         if (!category) {
           const categories = getKnowledgeCategories();
@@ -308,7 +313,7 @@ export async function GET(request: NextRequest) {
             timestamp: new Date().toISOString()
           });
         }
-        
+
         const categoryResults = getKnowledgeByCategory(category, limit);
         return NextResponse.json({
           success: true,
@@ -326,7 +331,7 @@ export async function GET(request: NextRequest) {
           total: categoryResults.length,
           timestamp: new Date().toISOString()
         });
-      
+
       case 'get':
         const id = searchParams.get('id');
         if (!id) {
@@ -335,17 +340,17 @@ export async function GET(request: NextRequest) {
             error: 'ID parameter required for get action'
           }, { status: 400 });
         }
-        
+
         const knowledge = getKnowledgeCache();
         const item = knowledge.find(k => k.id === id);
-        
+
         if (!item) {
           return NextResponse.json({
             success: false,
             error: 'Knowledge item not found'
           }, { status: 404 });
         }
-        
+
         return NextResponse.json({
           success: true,
           action: 'get',
@@ -363,7 +368,7 @@ export async function GET(request: NextRequest) {
           },
           timestamp: new Date().toISOString()
         });
-      
+
       case 'stats':
         const stats = {
           totalItems: getKnowledgeCache().length,
@@ -372,24 +377,24 @@ export async function GET(request: NextRequest) {
           lastCacheUpdate: new Date(cacheTimestamp).toISOString(),
           cacheValid: (Date.now() - cacheTimestamp) < CACHE_DURATION
         };
-        
+
         return NextResponse.json({
           success: true,
           action: 'stats',
           stats,
           timestamp: new Date().toISOString()
         });
-      
+
       default:
         return NextResponse.json({
           success: false,
           error: 'Invalid action. Available: search, category, get, stats'
         }, { status: 400 });
     }
-    
+
   } catch (error) {
     console.error('SAM Knowledge API error:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: 'Internal server error',
@@ -401,9 +406,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const body = await request.json();
     const { action, queries } = body;
-    
+
     if (action === 'batch_search' && Array.isArray(queries)) {
       const results = queries.map(queryObj => {
         const { query, category, limit = 5 } = queryObj;
@@ -412,7 +421,7 @@ export async function POST(request: NextRequest) {
           results: searchKnowledge(query, category, limit)
         };
       });
-      
+
       return NextResponse.json({
         success: true,
         action: 'batch_search',
@@ -420,15 +429,15 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       });
     }
-    
+
     return NextResponse.json({
       success: false,
       error: 'Invalid POST action'
     }, { status: 400 });
-    
+
   } catch (error) {
     console.error('SAM Knowledge API POST error:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: 'Internal server error',

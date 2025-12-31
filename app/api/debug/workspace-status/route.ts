@@ -1,95 +1,70 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
+import { NextRequest } from 'next/server';
+import { verifyAuth, pool } from '@/lib/auth';
 
-export async function GET() {
+/**
+ * GET /api/debug/workspace-status
+ * Checks authentication and returns workspace memberships
+ */
+export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    // Get authenticated user
-    const cookieStore = await cookies();
-    const authClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          }
-        }
-      }
-    );
-
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({
-        authenticated: false,
-        error: 'Not authenticated',
-        authError: authError?.message
-      });
-    }
+    // Authenticate user
+    const authContext = await verifyAuth(request);
+    const { userId, userEmail } = authContext;
 
     // Get user's workspaces
-    const { data: members, error: membersError } = await supabase
-      .from('workspace_members')
-      .select('workspace_id, role, status')
-      .eq('user_id', user.id)
-      .eq('status', 'active');
+    const membersResult = await pool.query(
+      `SELECT workspace_id, role, status 
+       FROM workspace_members 
+       WHERE user_id = $1 AND status = 'active'`,
+      [userId]
+    );
 
-    if (membersError) {
-      return NextResponse.json({
-        authenticated: true,
-        userId: user.id,
-        email: user.email,
-        workspaces: [],
-        error: 'Failed to fetch workspace memberships',
-        details: membersError.message
-      });
-    }
+    const members = membersResult.rows;
 
     // Get workspace details
-    const workspaceIds = members?.map(m => m.workspace_id) || [];
-    const { data: workspaces, error: workspacesError } = await supabase
-      .from('workspaces')
-      .select('id, name, client_code')
-      .in('id', workspaceIds);
+    let workspaces: any[] = [];
+    if (members.length > 0) {
+      const workspaceIds = members.map(m => m.workspace_id);
+
+      // pg doesn't support array parameters directly in IN clause like Supabase
+      // We need to construct the query dynamically or use ANY($1)
+      const workspacesResult = await pool.query(
+        `SELECT id, name, client_code 
+         FROM workspaces 
+         WHERE id = ANY($1::uuid[])`,
+        [workspaceIds]
+      );
+      workspaces = workspacesResult.rows;
+    }
 
     // Get user's current workspace
-    const { data: userData } = await supabase
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
+    const userResult = await pool.query(
+      'SELECT current_workspace_id FROM users WHERE id = $1',
+      [userId]
+    );
+    const apiUser = userResult.rows[0];
 
     return NextResponse.json({
       authenticated: true,
-      userId: user.id,
-      email: user.email,
-      workspaceMemberships: members?.length || 0,
-      workspaces: workspaces || [],
-      currentWorkspaceId: userData?.current_workspace_id || null,
-      memberships: members?.map(m => ({
+      userId: userId,
+      email: userEmail,
+      workspaceMemberships: members.length,
+      workspaces: workspaces,
+      currentWorkspaceId: apiUser?.current_workspace_id || null,
+      memberships: members.map(m => ({
         workspaceId: m.workspace_id,
         role: m.role,
         status: m.status,
-        workspaceName: workspaces?.find(w => w.id === m.workspace_id)?.name || 'Unknown'
+        workspaceName: workspaces.find(w => w.id === m.workspace_id)?.name || 'Unknown'
       }))
     });
 
   } catch (error: any) {
     return NextResponse.json({
-      error: 'Server error',
-      details: error.message
-    }, { status: 500 });
+      authenticated: false,
+      error: error.message || 'Not authenticated',
+      details: error.code || 'Unknown error'
+    }, { status: 401 }); // Default to 401 if it fails
   }
 }

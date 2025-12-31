@@ -1,7 +1,5 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { detectCorruptedCookiesInRequest, clearAllAuthCookies } from '@/lib/auth/cookie-cleanup';
+import { verifyAuth, pool } from '@/lib/auth';
 
 /**
  * Authentication Helper for API Routes
@@ -9,74 +7,24 @@ import { detectCorruptedCookiesInRequest, clearAllAuthCookies } from '@/lib/auth
  */
 export async function requireAuth(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-
-    // DISABLED: Cookie cleanup was breaking fresh signin cookies
-    // Let Supabase SSR handle all cookie operations natively
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Cookie setting can fail in middleware/API route context
-            }
-          }
-        },
-        cookieOptions: {
-          // CRITICAL: Must match browser client configuration
-          global: {
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
-          }
-        }
-      }
-    );
-
-    const { data: { session }, error } = await supabase.auth.getSession();
-
-    if (error || !session) {
-      return {
-        error: NextResponse.json(
-          { error: 'Authentication required' },
-          { status: 401 }
-        ),
-        user: null,
-        session: null
-      };
-    }
+    const { userId, userEmail } = await verifyAuth(request);
 
     return {
       error: null,
-      user: session.user,
-      session
+      user: { id: userId, email: userEmail },
+      session: { user: { id: userId, email: userEmail } } // Mock session for compatibility
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Route Auth] Auth check failed:', error);
 
-    // If cookie parsing fails, clear all cookies and return 401
-    const response = NextResponse.json(
-      {
-        error: 'Authentication failed',
-        message: 'Your session is invalid. Please sign in again.'
-      },
-      { status: 401 }
-    );
-
-    clearAllAuthCookies(response);
-
     return {
-      error: response,
+      error: NextResponse.json(
+        {
+          error: 'Authentication failed',
+          message: error.message || 'Your session is invalid. Please sign in again.'
+        },
+        { status: 401 }
+      ),
       user: null,
       session: null
     };
@@ -91,12 +39,12 @@ export async function requireAdmin(request: NextRequest) {
   const { error, user, session } = await requireAuth(request);
 
   if (error) return { error, user: null, session: null, isAdmin: false };
+  if (!user) return { error: NextResponse.json({ error: 'Auth failed' }, { status: 401 }), user: null, session: null, isAdmin: false };
 
   try {
-    // CRITICAL: Check for super admin emails FIRST (before workspace membership check)
-    // Super admins don't need workspace membership to access admin routes
+    // CRITICAL: Check for super admin emails FIRST
     const SUPER_ADMIN_EMAILS = ['tl@innovareai.com', 'cl@innovareai.com'];
-    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user!.email || '');
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user.email || '');
 
     if (isSuperAdmin) {
       return {
@@ -107,44 +55,14 @@ export async function requireAdmin(request: NextRequest) {
       };
     }
 
-    // For non-super admins, check workspace membership
-    const cookieStore2 = await cookies();
-    const supabase2 = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore2.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore2.set(name, value, options)
-              );
-            } catch {
-              // Cookie setting can fail in middleware/API route context
-            }
-          }
-        },
-        cookieOptions: {
-          global: {
-            secure: true,
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7
-          }
-        }
-      }
+    // For non-super admins, check if they are admin in ANY workspace
+    // Using direct PG pool instead of Supabase client
+    const memberResult = await pool.query(
+      "SELECT 1 FROM workspace_members WHERE user_id = $1 AND role IN ('admin', 'owner') LIMIT 1",
+      [user.id]
     );
 
-    // Check if user has admin role in any workspace
-    const { data: memberships } = await supabase2
-      .from('workspace_members')
-      .select('role')
-      .eq('user_id', user!.id)
-      .in('role', ['admin', 'owner']);
-
-    const isAdmin = memberships && memberships.length > 0;
+    const isAdmin = memberResult.rowCount ? memberResult.rowCount > 0 : false;
 
     if (!isAdmin) {
       return {
@@ -189,43 +107,15 @@ export async function requireWorkspaceAccess(
   const { error, user, session } = await requireAuth(request);
 
   if (error) return { error, user: null, session: null, hasAccess: false };
+  if (!user) return { error: NextResponse.json({ error: 'Auth failed' }, { status: 401 }), user: null, session: null, hasAccess: false };
 
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Cookie setting can fail in middleware/API route context
-            }
-          }
-        },
-        cookieOptions: {
-          global: {
-            secure: true,
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7
-          }
-        }
-      }
+    const memberResult = await pool.query(
+      "SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2 AND status = 'active'",
+      [workspaceId, user.id]
     );
 
-    const { data: membership } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', user!.id)
-      .single();
+    const membership = memberResult.rows[0];
 
     if (!membership) {
       return {

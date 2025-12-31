@@ -5,21 +5,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { verifyAuth, pool } from '@/lib/auth';
 import { SAMAgentFactory, SAMSubAgent } from '@/lib/agents/sam-agent-sdk';
 
 /**
  * POST /api/sam/agent-chat
  *
  * Stream a conversation with SAM Agent SDK
- *
- * Body:
- * {
- *   message: string;
- *   workspace_id: string;
- *   session_id?: string;
- *   use_sub_agent?: 'prospectResearcher' | 'campaignCreator' | 'emailWriter' | 'linkedinStrategist' | 'dataEnricher';
- * }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -33,24 +25,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate user
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({
-        error: 'Authentication required'
-      }, { status: 401 });
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify workspace access
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const memberCheck = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [workspace_id, auth.user.uid]
+    );
 
-    if (!member) {
+    if (memberCheck.rows.length === 0) {
       return NextResponse.json({
         error: 'Workspace access denied'
       }, { status: 403 });
@@ -148,31 +134,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Authenticate user
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({
-        error: 'Authentication required'
-      }, { status: 401 });
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify workspace access
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspace_id)
-      .eq('user_id', user.id)
-      .single();
+    const memberCheck = await pool.query(
+      `SELECT role FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
+      [workspace_id, auth.user.uid]
+    );
 
-    if (!member) {
+    if (memberCheck.rows.length === 0) {
       return NextResponse.json({
         error: 'Workspace access denied'
       }, { status: 403 });
     }
 
     // Get session if exists
-    const session = SAMAgentFactory.getSession(workspace_id, session_id);
+    const session = SAMAgentFactory.getSession(workspace_id, session_id || undefined);
     const metadata = session.getMetadata();
     const history = session.getHistory();
 
@@ -205,13 +185,9 @@ export async function DELETE(request: NextRequest) {
     const max_age_hours = parseInt(searchParams.get('max_age_hours') || '24');
 
     // Authenticate user (admin only for cleanup)
-    const supabase = createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({
-        error: 'Authentication required'
-      }, { status: 401 });
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Clean up old sessions

@@ -3,85 +3,39 @@
  * Deletes all conversation threads for the authenticated user
  */
 
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createClient } from '@supabase/supabase-js'
-import { createServerClient } from '@supabase/ssr'
+import { NextResponse, NextRequest } from 'next/server';
+import { verifyAuth, pool } from '@/lib/auth';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey)
-
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
+    const { userId } = await verifyAuth(request);
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          }
-        }
-      }
-    )
+    // Delete all messages first (PG might handle cascade, but explicit delete is safer if FK not set to cascade)
+    // Actually, let's delete threads and assume CASCADE is set or delete messages manually first to be safe.
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
-    }
-
-    // Delete all messages first (foreign key constraint)
-    const { error: messagesError } = await supabaseAdmin
-      .from('sam_thread_messages')
-      .delete()
-      .in('thread_id',
-        supabaseAdmin
-          .from('sam_conversation_threads')
-          .select('id')
-          .eq('user_id', user.id)
+    await pool.query(`
+      DELETE FROM sam_thread_messages
+      WHERE thread_id IN (
+        SELECT id FROM sam_conversation_threads WHERE user_id = $1
       )
-
-    if (messagesError) {
-      console.error('Failed to delete messages:', messagesError)
-    }
+    `, [userId]);
 
     // Delete all threads for this user
-    const { error: threadsError } = await supabaseAdmin
-      .from('sam_conversation_threads')
-      .delete()
-      .eq('user_id', user.id)
-
-    if (threadsError) {
-      console.error('Failed to delete threads:', threadsError)
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to clear threads'
-      }, { status: 500 })
-    }
+    await pool.query(`
+      DELETE FROM sam_conversation_threads
+      WHERE user_id = $1
+    `, [userId]);
 
     return NextResponse.json({
       success: true,
       message: 'All threads cleared'
-    })
+    });
 
   } catch (error) {
-    console.error('Clear threads API error:', error)
+    console.error('Clear threads API error:', error);
     return NextResponse.json({
       success: false,
       error: 'Internal server error'
-    }, { status: 500 })
+    }, { status: 500 });
   }
 }

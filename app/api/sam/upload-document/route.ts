@@ -1,5 +1,12 @@
+/**
+ * SAM Document Upload API
+ * Handles file uploads, text extraction, and AI-powered document intelligence
+ * Updated Dec 31, 2025: Migrated to verifyAuth and pool.query
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { verifyAuth, pool } from '@/lib/auth'
+import { createClient } from '@supabase/supabase-js'
 import { processDocumentWithContext } from '@/lib/document-intelligence'
 import type { DocumentAnalysis } from '@/lib/document-intelligence'
 
@@ -15,15 +22,20 @@ const ALLOWED_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ]
 
+// Initialize Supabase admin client for storage operations
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const user = auth.user;
 
     // Parse multipart form data
     const formData = await request.formData()
@@ -56,31 +68,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify user owns the thread
-    const { data: thread, error: threadError } = await supabase
-      .from('sam_conversation_threads')
-      .select('user_id, workspace_id')
-      .eq('id', threadId)
-      .single()
+    const threadRes = await pool.query(
+      'SELECT user_id, workspace_id FROM sam_conversation_threads WHERE id = $1',
+      [threadId]
+    );
+    const thread = threadRes.rows[0];
 
-    if (threadError || !thread) {
+    if (!thread) {
       return NextResponse.json({ error: 'Thread not found' }, { status: 404 })
     }
 
-    if (thread.user_id !== user.id) {
+    if (thread.user_id !== user.uid) {
       return NextResponse.json({ error: 'Unauthorized access to thread' }, { status: 403 })
     }
 
     // Generate storage path: user_id/thread_id/filename
     const timestamp = Date.now()
     const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-    const storagePath = `${user.id}/${threadId}/${timestamp}-${sanitizedFilename}`
+    const storagePath = `${user.uid}/${threadId}/${timestamp}-${sanitizedFilename}`
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase
+    // Upload to Supabase Storage using admin client
+    const { error: uploadError } = await supabaseAdmin
       .storage
       .from('sam-attachments')
       .upload(storagePath, buffer, {
@@ -106,7 +118,6 @@ export async function POST(request: NextRequest) {
 
     if (file.type === 'application/pdf') {
       try {
-        // Dynamic import to avoid build issues with pdf-parse in Next.js
         const pdfParse = (await import('pdf-parse')).default
         const pdfData = await pdfParse(buffer)
         extractedText = pdfData.text
@@ -122,7 +133,6 @@ export async function POST(request: NextRequest) {
         errorMessage = pdfError instanceof Error ? pdfError.message : 'PDF extraction failed'
       }
     } else if (file.type === 'text/plain') {
-      // Extract text from plain text files
       try {
         extractedText = new TextDecoder().decode(buffer)
       } catch (textError) {
@@ -131,7 +141,6 @@ export async function POST(request: NextRequest) {
         errorMessage = textError instanceof Error ? textError.message : 'Text extraction failed'
       }
     } else if (file.type.startsWith('image/')) {
-      // For images, just store metadata
       extractedMetadata = {
         type: 'image',
         size: file.size,
@@ -139,42 +148,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Save attachment record to database FIRST (so we have an ID for source tracking)
-    const { data: attachment, error: dbError } = await supabase
-      .from('sam_conversation_attachments')
-      .insert({
-        thread_id: threadId,
-        message_id: messageId,
-        user_id: user.id,
-        workspace_id: thread.workspace_id,
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-        mime_type: file.type,
-        storage_path: storagePath,
-        storage_bucket: 'sam-attachments',
-        processing_status: processingStatus,
-        extracted_text: extractedText,
-        extracted_metadata: extractedMetadata,
-        attachment_type: attachmentType,
-        user_notes: userNotes,
-        error_message: errorMessage,
-        processed_at: new Date().toISOString()
-      })
-      .select()
-      .single()
+    // Save attachment record to database
+    const attachmentRes = await pool.query(
+      `INSERT INTO sam_conversation_attachments (
+        thread_id, message_id, user_id, workspace_id, file_name, 
+        file_type, file_size, mime_type, storage_path, storage_bucket, 
+        processing_status, extracted_text, extracted_metadata, 
+        attachment_type, user_notes, error_message, processed_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW())
+      RETURNING *`,
+      [
+        threadId, messageId, user.uid, thread.workspace_id, file.name,
+        file.type, file.size, file.type, storagePath, 'sam-attachments',
+        processingStatus, extractedText, JSON.stringify(extractedMetadata),
+        attachmentType, userNotes, errorMessage
+      ]
+    );
+    const attachment = attachmentRes.rows[0];
 
-    if (dbError) {
-      console.error('Database insert error:', dbError)
-      // Try to clean up uploaded file
-      await supabase.storage.from('sam-attachments').remove([storagePath])
-      return NextResponse.json({
-        error: 'Failed to save attachment',
-        details: dbError.message
-      }, { status: 500 })
-    }
-
-    // AI-powered document intelligence analysis (AFTER attachment created for source tracking)
+    // AI-powered document intelligence analysis
     if (extractedText && extractedText.length > 50 && thread.workspace_id) {
       try {
         console.log(`🤖 Analyzing document with AI: ${file.name}`)
@@ -183,10 +175,10 @@ export async function POST(request: NextRequest) {
           fileName: file.name,
           fileType: file.type,
           workspaceId: thread.workspace_id,
-          userId: user.id,
+          userId: user.uid,
           sessionId: threadId,
           userProvidedType: attachmentType !== 'other' ? attachmentType : undefined,
-          attachmentId: attachment.id // Link Q&A pairs to source document
+          attachmentId: attachment.id
         })
 
         // Update attachment metadata with analysis results
@@ -202,20 +194,16 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Update the attachment record with analysis metadata
-        await supabase
-          .from('sam_conversation_attachments')
-          .update({ extracted_metadata: updatedMetadata })
-          .eq('id', attachment.id)
+        // Update the attachment record
+        await pool.query(
+          'UPDATE sam_conversation_attachments SET extracted_metadata = $1 WHERE id = $2',
+          [JSON.stringify(updatedMetadata), attachment.id]
+        );
 
-        // Update local metadata for response
         extractedMetadata = updatedMetadata
-
-        console.log(`✅ Document analysis complete: ${documentAnalysis.documentType} (${Math.round(documentAnalysis.confidence * 100)}% confidence)`)
-        console.log(`📊 Extracted ${documentAnalysis.qaPairs.length} Q&A pairs, auto-stored in dual storage system with source link`)
+        console.log(`✅ Document analysis complete: ${documentAnalysis.documentType}`)
       } catch (analysisError) {
         console.error('Document intelligence analysis failed:', analysisError)
-        // Don't fail the upload if analysis fails
         extractedMetadata = {
           ...extractedMetadata,
           analysisError: analysisError instanceof Error ? analysisError.message : 'Analysis failed'
@@ -224,10 +212,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get signed URL for temporary access
-    const { data: signedUrlData } = await supabase
+    const { data: signedUrlData } = await supabaseAdmin
       .storage
       .from('sam-attachments')
-      .createSignedUrl(storagePath, 3600) // 1 hour expiry
+      .createSignedUrl(storagePath, 3600)
 
     return NextResponse.json({
       success: true,
@@ -239,12 +227,11 @@ export async function POST(request: NextRequest) {
         attachment_type: attachment.attachment_type,
         processing_status: attachment.processing_status,
         extracted_text: attachment.extracted_text,
-        extracted_metadata: attachment.extracted_metadata,
+        extracted_metadata: extractedMetadata,
         error_message: attachment.error_message,
         created_at: attachment.created_at,
         url: signedUrlData?.signedUrl
       },
-      // Include document intelligence analysis if available
       documentAnalysis: documentAnalysis ? {
         documentType: documentAnalysis.documentType,
         confidence: documentAnalysis.confidence,
@@ -267,15 +254,12 @@ export async function POST(request: NextRequest) {
 // GET endpoint to retrieve attachment by ID
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const searchParams = request.nextUrl.searchParams
+    const { searchParams } = new URL(request.url);
     const attachmentId = searchParams.get('id')
 
     if (!attachmentId) {
@@ -283,32 +267,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch attachment
-    const { data: attachment, error } = await supabase
-      .from('sam_conversation_attachments')
-      .select('*')
-      .eq('id', attachmentId)
-      .single()
+    const attachmentRes = await pool.query(
+      'SELECT * FROM sam_conversation_attachments WHERE id = $1',
+      [attachmentId]
+    );
+    const attachment = attachmentRes.rows[0];
 
-    if (error || !attachment) {
+    if (!attachment) {
       return NextResponse.json({ error: 'Attachment not found' }, { status: 404 })
     }
 
     // Verify user has access (owner or workspace member)
-    if (attachment.user_id !== user.id) {
-      const { data: member } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('workspace_id', attachment.workspace_id)
-        .eq('user_id', user.id)
-        .single()
-
-      if (!member) {
+    if (attachment.user_id !== auth.user.uid) {
+      const memberRes = await pool.query(
+        'SELECT 1 FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
+        [attachment.workspace_id, auth.user.uid]
+      );
+      if (memberRes.rowCount === 0) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
       }
     }
 
     // Get signed URL
-    const { data: signedUrlData } = await supabase
+    const { data: signedUrlData } = await supabaseAdmin
       .storage
       .from('sam-attachments')
       .createSignedUrl(attachment.storage_path, 3600)
@@ -333,15 +314,12 @@ export async function GET(request: NextRequest) {
 // DELETE endpoint to remove attachment
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = createClient()
-
-    // Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const searchParams = request.nextUrl.searchParams
+    const { searchParams } = new URL(request.url);
     const attachmentId = searchParams.get('id')
 
     if (!attachmentId) {
@@ -349,19 +327,18 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Fetch attachment
-    const { data: attachment, error: fetchError } = await supabase
-      .from('sam_conversation_attachments')
-      .select('*')
-      .eq('id', attachmentId)
-      .eq('user_id', user.id)
-      .single()
+    const attachmentRes = await pool.query(
+      'SELECT * FROM sam_conversation_attachments WHERE id = $1 AND user_id = $2',
+      [attachmentId, auth.user.uid]
+    );
+    const attachment = attachmentRes.rows[0];
 
-    if (fetchError || !attachment) {
+    if (!attachment) {
       return NextResponse.json({ error: 'Attachment not found or unauthorized' }, { status: 404 })
     }
 
     // Delete from storage
-    const { error: storageError } = await supabase
+    const { error: storageError } = await supabaseAdmin
       .storage
       .from('sam-attachments')
       .remove([attachment.storage_path])
@@ -370,18 +347,8 @@ export async function DELETE(request: NextRequest) {
       console.error('Storage deletion error:', storageError)
     }
 
-    // Delete from database (cascade will handle)
-    const { error: dbError } = await supabase
-      .from('sam_conversation_attachments')
-      .delete()
-      .eq('id', attachmentId)
-
-    if (dbError) {
-      return NextResponse.json({
-        error: 'Failed to delete attachment',
-        details: dbError.message
-      }, { status: 500 })
-    }
+    // Delete from database
+    await pool.query('DELETE FROM sam_conversation_attachments WHERE id = $1', [attachmentId]);
 
     return NextResponse.json({
       success: true,

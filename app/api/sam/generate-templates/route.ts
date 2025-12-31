@@ -5,18 +5,17 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 import { claudeClient } from '@/lib/llm/claude-client';
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-    
-    // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    const auth = await verifyAuth(req);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const user = auth.user;
 
     const {
       workspace_id,
@@ -31,15 +30,15 @@ export async function POST(req: NextRequest) {
     // Fetch relevant KB insights
     let kbInsights: any[] = [];
     if (workspace_id) {
-      const { data: kbContent } = await supabase
-        .from('knowledge_base')
-        .select('title, content')
-        .eq('workspace_id', workspace_id)
-        .eq('is_active', true)
-        .or('section_id.eq.messaging,section_id.eq.value_proposition,section_id.eq.company_info')
-        .limit(5);
+      const kbRes = await pool.query(
+        `SELECT title, content FROM knowledge_base 
+         WHERE workspace_id = $1 AND is_active = true 
+         AND (section_id = 'messaging' OR section_id = 'value_proposition' OR section_id = 'company_info')
+         LIMIT 5`,
+        [workspace_id]
+      );
 
-      kbInsights = kbContent || [];
+      kbInsights = kbRes.rows || [];
     }
 
     // Build context for SAM AI
@@ -111,11 +110,6 @@ async function generateLinkedInTemplates(context: any) {
   // Call OpenRouter AI for intelligent template generation
   try {
     console.log('🤖 Generating templates with AI for campaign:', context.campaign.name);
-    console.log('📊 Context:', {
-      campaignType: context.campaign.type,
-      prospectCount: context.campaign.prospect_count,
-      hasKB: kbContext.length > 0
-    });
 
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('❌ ANTHROPIC_API_KEY is not set - falling back to rule-based generation');
@@ -137,7 +131,7 @@ async function generateLinkedInTemplates(context: any) {
 
 **Instructions:**
 ${context.campaign.type === 'connector'
-  ? `Generate a 6-step LinkedIn messaging sequence:
+        ? `Generate a 6-step LinkedIn messaging sequence:
 
 1. CONNECTION REQUEST (max 275 characters including {first_name} variable)
    - Sent with the connection request to 2nd/3rd degree connections
@@ -159,8 +153,8 @@ ${context.campaign.type === 'connector'
 6. MESSAGE 6 - Goodbye message (no first name)
    - Polite closing if still no response
    - Leave door open for future connection`
-  : context.campaign.type === 'email'
-  ? `Generate a 6-step cold email outreach sequence:
+        : context.campaign.type === 'email'
+          ? `Generate a 6-step cold email outreach sequence:
 
 IMPORTANT: This is EMAIL outreach, NOT LinkedIn. Do NOT mention "connecting", "LinkedIn", or "thanks for connecting".
 
@@ -186,7 +180,7 @@ IMPORTANT: This is EMAIL outreach, NOT LinkedIn. Do NOT mention "connecting", "L
 6. FOLLOW-UP EMAIL 5 - Goodbye email (no first name)
    - Polite closing if still no response
    - Leave door open for future contact`
-  : `Generate a 6-step LinkedIn direct messaging sequence:
+          : `Generate a 6-step LinkedIn direct messaging sequence:
 
 1. INITIAL MESSAGE - Direct message for 1st degree connections
    - Must include {first_name} personalization
@@ -203,13 +197,13 @@ IMPORTANT: This is EMAIL outreach, NOT LinkedIn. Do NOT mention "connecting", "L
 **Template Requirements:**
 - Use personalization variables: {first_name}, {last_name}, {company_name}, {title}, {industry}
 ${context.campaign.type === 'email'
-  ? `- Initial Email: Professional cold email introduction
+        ? `- Initial Email: Professional cold email introduction
 - Follow-up emails should NOT mention "connecting" or "LinkedIn"
 - Keep emails concise and scannable
 - Do NOT include placeholders like [Your name], [Link], [Calendar link], etc.
 - End emails with just "Best regards" - the sender's name will be added automatically
 - Do NOT include square bracket placeholders - these are not variables`
-  : `- Connection Request: MUST be max 275 characters including all variables`}
+        : `- Connection Request: MUST be max 275 characters including all variables`}
 - Message 2: MUST start with "Hello {first_name}," or "Hi {first_name},"
 - Messages 3-6: NO first name greeting
 - Message 6: Should be a polite goodbye/closing message
@@ -341,7 +335,8 @@ function generateFallbackTemplates(context: any, industries: string[], jobTitles
   let followUpMessages = [''];
 
   // Extract value prop from KB if available
-  let valueProp = valueProps.length > 0 ? valueProps[0].content.substring(0, 150) : `help ${jobTitles.length > 0 ? jobTitles[0].toLowerCase() : 'professionals'} like yourself streamline operations and drive growth`;
+  const valuePropsInside = kbContext.filter((kb: any) => kb.title?.toLowerCase().includes('value') || kb.title?.toLowerCase().includes('pitch'));
+  let valueProp = valuePropsInside.length > 0 ? valuePropsInside[0].content.substring(0, 150) : `help ${jobTitles.length > 0 ? jobTitles[0].toLowerCase() : 'professionals'} like yourself streamline operations and drive growth`;
 
   if (context.campaign.type === 'connector') {
     // Connector campaigns: Need connection request + follow-ups

@@ -7,7 +7,7 @@
  * - GDPR compliant EU region processing
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/auth';
 import { claudeClient, CLAUDE_MODELS } from './claude-client';
 
 interface ChatMessage {
@@ -34,10 +34,6 @@ interface CustomerLLMPreferences {
 }
 
 class LLMRouter {
-  private supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
 
   /**
    * Main chat method - routes directly to Claude SDK
@@ -136,18 +132,16 @@ class LLMRouter {
    */
   private async getCustomerPreferences(userId: string): Promise<CustomerLLMPreferences> {
     try {
-      const { data, error } = await this.supabase
-        .from('customer_llm_preferences')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('enabled', true)
-        .single();
+      const { rows } = await pool.query(
+        'SELECT * FROM customer_llm_preferences WHERE user_id = $1 AND enabled = true LIMIT 1',
+        [userId]
+      );
 
-      if (error || !data) {
+      if (rows.length === 0) {
         return this.getDefaultPreferences();
       }
 
-      return data as CustomerLLMPreferences;
+      return rows[0] as CustomerLLMPreferences;
     } catch {
       return this.getDefaultPreferences();
     }

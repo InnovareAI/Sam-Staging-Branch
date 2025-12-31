@@ -1,26 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+import { verifyAuth, pool } from '@/lib/auth';
 
-async function getWorkspaceId(supabase: any, userId: string) {
-  const { data: profile } = await supabase
-    .from('users')
-    .select('current_workspace_id')
-    .eq('id', userId)
-    .single();
 
-  if (profile?.current_workspace_id) {
-    return profile.current_workspace_id;
-  }
-
-  const { data: membership } = await supabase
-    .from('workspace_members')
-    .select('workspace_id')
-    .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
-
-  return membership?.workspace_id ?? null;
-}
 
 // Analyze individual document quality
 function analyzeDocument(doc: any) {
@@ -252,31 +233,44 @@ async function analyzeKBDocuments(documents: any[], icpCount: number) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseRouteClient();
-
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) {
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const workspaceId = await getWorkspaceId(supabase, user.id);
+    const { user } = auth;
+    let workspaceId = auth.workspaceId;
+
+    if (!workspaceId) {
+      // Fallback: fetch directly from DB if not in token (mostly handled by verifyAuth but just in case)
+      const userRes = await pool.query('SELECT current_workspace_id FROM users WHERE id = $1', [user.uid]);
+      workspaceId = userRes.rows[0]?.current_workspace_id;
+
+      if (!workspaceId) {
+        const memberRes = await pool.query('SELECT workspace_id FROM workspace_members WHERE user_id = $1 LIMIT 1', [user.uid]);
+        workspaceId = memberRes.rows[0]?.workspace_id;
+      }
+    }
+
     if (!workspaceId) {
       return NextResponse.json({ error: 'Workspace not found' }, { status: 400 });
     }
 
     // Fetch KB documents with full details
-    const { data: documents } = await supabase
-      .from('knowledge_base_documents')
-      .select('id, section_id, filename, updated_at, created_at, metadata, extracted_content, vectorized_at, vector_chunks')
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true);
+    const docResult = await pool.query(
+      `SELECT id, section_id, filename, updated_at, created_at, metadata, extracted_content, vectorized_at, vector_chunks 
+       FROM knowledge_base_documents 
+       WHERE workspace_id = $1 AND is_active = true`,
+      [workspaceId]
+    );
+    const documents = docResult.rows;
 
     // Fetch ICP count
-    const { count: icpCount } = await supabase
-      .from('knowledge_base_icps')
-      .select('id', { count: 'exact', head: true })
-      .eq('workspace_id', workspaceId)
-      .eq('is_active', true);
+    const icpResult = await pool.query(
+      `SELECT COUNT(*) as count FROM knowledge_base_icps WHERE workspace_id = $1 AND is_active = true`,
+      [workspaceId]
+    );
+    const icpCount = parseInt(icpResult.rows[0]?.count || '0');
 
     // Generate document-level feedback
     const documentFeedback: Record<string, any> = {};

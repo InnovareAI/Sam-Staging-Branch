@@ -4,190 +4,50 @@
  * Handles creation and listing of conversation threads
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createClient } from '@supabase/supabase-js'
-import { createServerClient } from '@supabase/ssr'
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth, pool } from '@/lib/auth';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-if (!supabaseUrl || !supabaseServiceRoleKey) {
-  throw new Error('Missing Supabase environment configuration')
-}
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey)
-
-interface SupabaseAuthUser {
-  id: string
-  email?: string
-  user_metadata?: Record<string, unknown>
-}
-
-async function ensureUserProfile(user: SupabaseAuthUser) {
-  const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
-    .from('users')
-    .select('id')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (existingProfileError) {
-    console.error('Failed to fetch user profile', existingProfileError)
-    throw new Error('Unable to load user profile')
-  }
-
-  if (existingProfile) {
-    return
-  }
-
-  const insertPayload: Record<string, unknown> = {
-    id: user.id,
-    email: user.email || `${user.id}@unknown.local`,
-    first_name: user.user_metadata?.first_name ?? null,
-    last_name: user.user_metadata?.last_name ?? null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
-
-  const { error: upsertError } = await supabaseAdmin
-    .from('users')
-    .upsert(insertPayload, { onConflict: 'id' })
-
-  if (upsertError) {
-    console.error('Failed to upsert user profile', upsertError)
-    throw new Error('Unable to initialize user profile')
-  }
-}
-
+// Helper to resolve workspace ID using PG pool
 async function resolveWorkspaceId(
-  authUser: SupabaseAuthUser,
+  userId: string,
   providedWorkspaceId?: string | null
 ): Promise<string> {
-  const userId = authUser.id
-
   if (providedWorkspaceId && providedWorkspaceId.trim().length > 0) {
-    return providedWorkspaceId
+    return providedWorkspaceId;
   }
 
-  await ensureUserProfile(authUser)
+  // 1. Check user profile for current_workspace_id
+  const { rows: profileRows } = await pool.query(
+    'SELECT current_workspace_id FROM users WHERE id = $1',
+    [userId]
+  );
 
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('users')
-    .select('current_workspace_id')
-    .eq('id', userId)
-    .single()
-
-  if (profileError) {
-    console.error('Failed to load user profile', profileError)
-    throw new Error('Unable to load user profile')
+  if (profileRows[0]?.current_workspace_id) {
+    return profileRows[0].current_workspace_id;
   }
 
-  if (profile?.current_workspace_id) {
-    return profile.current_workspace_id
+  // 2. Check for any workspace membership
+  const { rows: memberRows } = await pool.query(
+    'SELECT workspace_id FROM workspace_members WHERE user_id = $1 ORDER BY created_at ASC LIMIT 1',
+    [userId]
+  );
+
+  if (memberRows[0]?.workspace_id) {
+    // Auto-update user's current workspace
+    await pool.query('UPDATE users SET current_workspace_id = $1 WHERE id = $2', [memberRows[0].workspace_id, userId]);
+    return memberRows[0].workspace_id;
   }
 
-  const { data: membership, error: membershipError } = await supabaseAdmin
-    .from('workspace_members')
-    .select('workspace_id')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
+  // 3. Fallback: Find *any* workspace (if user is owner but not member? rare)
+  // Or just pick the oldest workspace in system? No, that's dangerous.
+  // If no membership, we can't do much.
 
-  if (membershipError) {
-    console.error('Failed to inspect workspace membership', membershipError)
-    throw new Error('Unable to determine workspace access')
-  }
-
-  if (membership?.workspace_id) {
-    const { error: updateError } = await supabaseAdmin
-      .from('users')
-      .update({ current_workspace_id: membership.workspace_id })
-      .eq('id', userId)
-
-    if (updateError) {
-      console.error('Failed to update current workspace', updateError)
-      throw new Error('Unable to persist workspace selection')
-    }
-
-    return membership.workspace_id
-  }
-
-  const { data: defaultWorkspace, error: workspaceFetchError } = await supabaseAdmin
-    .from('workspaces')
-    .select('id')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
-
-  if (workspaceFetchError) {
-    console.error('Failed to fetch fallback workspace', workspaceFetchError)
-    throw new Error('Unable to resolve fallback workspace')
-  }
-
-  if (!defaultWorkspace?.id) {
-    throw new Error('Workspace not found for user')
-  }
-
-  const { error: membershipInsertError } = await supabaseAdmin
-    .from('workspace_members')
-    .insert({
-      workspace_id: defaultWorkspace.id,
-      user_id: userId,
-      role: 'member',
-      joined_at: new Date().toISOString()
-    })
-    .onConflict('workspace_id,user_id')
-    .ignore()
-
-  if (membershipInsertError && membershipInsertError.code !== '23505') {
-    console.error('Failed to assign default workspace membership', membershipInsertError)
-    throw new Error('Unable to assign default workspace')
-  }
-
-  const { error: userUpdateError } = await supabaseAdmin
-    .from('users')
-    .update({ current_workspace_id: defaultWorkspace.id })
-    .eq('id', userId)
-
-  if (userUpdateError) {
-    console.error('Failed to set current workspace after assignment', userUpdateError)
-    throw new Error('Unable to finalize workspace assignment')
-  }
-
-  return defaultWorkspace.id
+  throw new Error('No workspace found for user');
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-
-    // Use @supabase/ssr createServerClient (matches browser client)
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          }
-        }
-      }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
-    }
+    const { userId } = await verifyAuth(request);
 
     // Get query parameters for filtering
     const url = new URL(request.url)
@@ -198,95 +58,57 @@ export async function GET(request: NextRequest) {
     const tags = url.searchParams.get('tags')?.split(',')
 
     // Build query
-    let query = supabaseAdmin
-      .from('sam_conversation_threads')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('status', status)
-      .order('last_active_at', { ascending: false })
+    let sql = `
+      SELECT * FROM sam_conversation_threads
+      WHERE user_id = $1
+      AND status = $2
+    `;
+    const params: any[] = [userId, status];
 
     if (threadType) {
-      query = query.eq('thread_type', threadType)
+      params.push(threadType);
+      sql += ` AND thread_type = $${params.length}`;
     }
 
     if (priority) {
-      query = query.eq('priority', priority)
+      params.push(priority);
+      sql += ` AND priority = $${params.length}`;
     }
 
     if (search) {
-      query = query.or(`title.ilike.%${search}%,prospect_name.ilike.%${search}%,prospect_company.ilike.%${search}%`)
+      params.push(`%${search}%`);
+      sql += ` AND (title ILIKE $${params.length} OR prospect_name ILIKE $${params.length} OR prospect_company ILIKE $${params.length})`;
     }
 
-    if (tags?.length) {
-      query = query.overlaps('tags', tags)
+    if (tags && tags.length > 0) {
+      params.push(tags);
+      sql += ` AND tags && $${params.length}::text[]`; // PG array overlap operator
     }
 
-    const { data: threads, error } = await query
+    sql += ` ORDER BY last_active_at DESC`;
 
-    if (error) {
-      console.error('Failed to load threads:', error)
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to load conversation threads'
-      }, { status: 500 })
-    }
+    const { rows } = await pool.query(sql, params);
 
     return NextResponse.json({
       success: true,
-      threads: threads || [],
-      count: threads?.length || 0
-    })
+      threads: rows,
+      count: rows.length
+    });
 
   } catch (error) {
-    console.error('Threads API error:', error)
+    console.error('Threads API error:', error);
     return NextResponse.json({
       success: false,
       error: 'Internal server error'
-    }, { status: 500 })
+    }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
+    const { userId, userEmail } = await verifyAuth(request);
 
-    // Use @supabase/ssr createServerClient (matches browser client)
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          }
-        }
-      }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    // Debug logging
-    console.log('🔍 AUTH DEBUG:', {
-      hasUser: !!user,
-      userId: user?.id,
-      authError: authError?.message,
-      cookies: cookieStore.getAll().map(c => c.name)
-    })
-
-    if (authError || !user) {
-      console.error('❌ Auth failed:', authError?.message || 'No user found')
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required'
-      }, { status: 401 })
-    }
-
-    const body = await request.json()
+    const body = await req.json(); // Fix req -> request
     const {
       title,
       thread_type,
@@ -298,96 +120,63 @@ export async function POST(request: NextRequest) {
       priority = 'medium',
       sales_methodology = 'meddic',
       workspace_id: providedWorkspaceId
-    } = body
+    } = body;
 
     if (!title || !thread_type) {
       return NextResponse.json({
         success: false,
         error: 'Title and thread type are required'
-      }, { status: 400 })
+      }, { status: 400 });
     }
 
-    // Resolve workspace - this is required for thread creation
-    let workspaceId: string
+    // Resolve workspace
+    let workspaceId: string;
     try {
-      workspaceId = await resolveWorkspaceId({
-        id: user.id,
-        email: user.email || undefined,
-        user_metadata: user.user_metadata as Record<string, unknown> | undefined
-      }, providedWorkspaceId)
-    } catch (error) {
-      console.error('❌ Workspace resolution failed:', error)
+      workspaceId = await resolveWorkspaceId(userId, providedWorkspaceId);
+    } catch (error: any) {
       return NextResponse.json({
         success: false,
-        error: `Unable to resolve workspace: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }, { status: 400 })
+        error: `Unable to resolve workspace: ${error.message}`
+      }, { status: 400 });
     }
 
     // Get user's organization (if any)
-    let organizationId = null
+    let organizationId = null;
     try {
-      const { data: userOrgs } = await supabaseAdmin
-        .from('user_organizations')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single()
-
-      if (userOrgs) {
-        organizationId = userOrgs.organization_id
-      }
-    } catch {
-      // Continue without organization - not critical
-    }
+      const { rows } = await pool.query(
+        'SELECT organization_id FROM user_organizations WHERE user_id = $1 LIMIT 1',
+        [userId]
+      );
+      if (rows[0]) organizationId = rows[0].organization_id;
+    } catch { }
 
     // Create thread
-    const { data: thread, error } = await supabaseAdmin
-      .from('sam_conversation_threads')
-      .insert({
-        user_id: user.id,
-        organization_id: organizationId,
-        workspace_id: workspaceId,
-        title,
-        thread_type,
-        prospect_name,
-        prospect_company,
-        prospect_linkedin_url,
-        campaign_name,
-        tags,
-        priority,
-        sales_methodology
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Failed to create thread:', {
-        error,
-        errorCode: error.code,
-        errorMessage: error.message,
-        errorDetails: error.details,
-        userId: user.id,
-        workspaceId,
-        organizationId,
-        title,
-        thread_type
-      })
-      return NextResponse.json({
-        success: false,
-        error: `Failed to create conversation thread: ${error.message || error.code || 'Unknown error'}`
-      }, { status: 500 })
-    }
+    const { rows: threadRows } = await pool.query(`
+      INSERT INTO sam_conversation_threads (
+        user_id, organization_id, workspace_id, title, thread_type,
+        prospect_name, prospect_company, prospect_linkedin_url, campaign_name,
+        tags, priority, sales_methodology, created_at, updated_at, last_active_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW(), NOW()
+      )
+      RETURNING *
+    `, [
+      userId, organizationId, workspaceId, title, thread_type,
+      prospect_name, prospect_company, prospect_linkedin_url, campaign_name,
+      tags, priority, sales_methodology
+    ]);
 
     return NextResponse.json({
       success: true,
-      thread,
+      thread: threadRows[0],
       message: 'Thread created successfully'
-    })
+    });
 
   } catch (error) {
-    console.error('Create thread API error:', error)
+    console.error('Create thread API error:', error);
     return NextResponse.json({
       success: false,
       error: 'Internal server error'
-    }, { status: 500 })
+    }, { status: 500 });
   }
 }

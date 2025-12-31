@@ -1,67 +1,65 @@
 /**
  * SAM AI ICP Configurations API
  * Manages the 20 B2B market niche ICP configurations
+ * Updated Dec 31, 2025: Migrated to verifyAuth and pool.query
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { verifyAuth, pool } from '@/lib/auth';
 
 // Get all available ICP configurations
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const market_niche = searchParams.get('market_niche');
     const industry = searchParams.get('industry');
     const search = searchParams.get('search');
 
-    let query = supabase
-      .from('icp_configurations')
-      .select(`
-        id,
-        name,
-        display_name,
-        description,
-        market_niche,
-        industry_vertical,
-        target_profile,
-        decision_makers,
-        pain_points,
-        buying_process,
-        messaging_strategy,
-        success_metrics,
-        tags,
-        complexity_level,
-        created_at,
-        updated_at
-      `)
-      .eq('is_template', true)
-      .eq('is_active', true)
-      .order('display_name');
+    let queryText = `
+      SELECT 
+        id, name, display_name, description, market_niche, industry_vertical,
+        target_profile, decision_makers, pain_points, buying_process,
+        messaging_strategy, success_metrics, tags, complexity_level,
+        created_at, updated_at
+      FROM icp_configurations
+      WHERE is_template = true AND is_active = true
+    `;
+    const queryParams: any[] = [];
 
-    // Filter by market niche if provided
     if (market_niche) {
-      query = query.eq('market_niche', market_niche);
+      queryParams.push(market_niche);
+      queryText += ` AND market_niche = $${queryParams.length}`;
     }
 
-    // Filter by industry if provided
     if (industry) {
-      query = query.eq('industry_vertical', industry);
+      queryParams.push(industry);
+      queryText += ` AND industry_vertical = $${queryParams.length}`;
     }
 
-    // Search functionality
     if (search) {
-      query = query.or(`display_name.ilike.%${search}%,description.ilike.%${search}%,industry_vertical.ilike.%${search}%,tags.cs.{${search}}`);
+      const searchTerm = `%${search}%`;
+      queryParams.push(searchTerm);
+      const searchIdx = queryParams.length;
+      queryParams.push(search);
+      const tagIdx = queryParams.length;
+
+      queryText += ` AND (
+        display_name ILIKE $${searchIdx} OR 
+        description ILIKE $${searchIdx} OR 
+        industry_vertical ILIKE $${searchIdx} OR 
+        $${tagIdx} = ANY(tags)
+      )`;
     }
 
-    const { data: icpConfigurations, error } = await query;
+    queryText += ` ORDER BY display_name`;
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const res = await pool.query(queryText, queryParams);
+    const icpConfigurations = res.rows;
 
     // Format the data for easier consumption
     const formattedConfigurations = icpConfigurations?.map(config => ({
@@ -104,24 +102,22 @@ export async function GET(request: NextRequest) {
 // Get available market niches summary and specific configurations
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const auth = await verifyAuth(request);
+    if (!auth.isAuthenticated || !auth.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { action } = body;
 
     if (action === 'get_market_niches') {
-      const { data: niches, error } = await supabase
-        .from('icp_configurations')
-        .select('market_niche, display_name, tags, industry_vertical')
-        .eq('is_template', true)
-        .eq('is_active', true)
-        .order('display_name');
-
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
+      const res = await pool.query(
+        `SELECT market_niche, display_name, tags, industry_vertical 
+         FROM icp_configurations 
+         WHERE is_template = true AND is_active = true 
+         ORDER BY display_name`
+      );
+      const niches = res.rows;
 
       const formattedNiches = niches?.map(niche => ({
         value: niche.market_niche,
@@ -138,20 +134,20 @@ export async function POST(request: NextRequest) {
 
     if (action === 'get_configuration_by_niche') {
       const { market_niche } = body;
-      
+
       if (!market_niche) {
         return NextResponse.json({ error: 'Market niche required' }, { status: 400 });
       }
 
-      const { data: configs, error } = await supabase
-        .from('icp_configurations')
-        .select('*')
-        .eq('market_niche', market_niche)
-        .eq('is_template', true)
-        .eq('is_active', true)
-        .limit(1);
+      const res = await pool.query(
+        `SELECT * FROM icp_configurations 
+         WHERE market_niche = $1 AND is_template = true AND is_active = true 
+         LIMIT 1`,
+        [market_niche]
+      );
+      const configs = res.rows;
 
-      if (error || !configs || configs.length === 0) {
+      if (!configs || configs.length === 0) {
         return NextResponse.json({ error: 'Configuration not found' }, { status: 404 });
       }
 

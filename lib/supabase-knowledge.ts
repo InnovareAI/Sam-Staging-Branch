@@ -1,11 +1,5 @@
-// Supabase-based persistent knowledge base service
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-// Use service role key for server-side operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+// Postgres-based persistent knowledge base service
+import { pool } from '@/lib/auth';
 
 export interface KnowledgeBaseItem {
   id: string;
@@ -126,8 +120,8 @@ export interface KnowledgeBasePersona {
   updated_at: string;
 }
 
-export class SupabaseKnowledgeBase {
-  
+export class PostgresKnowledgeBase {
+
   // Get all knowledge base items by category
   async getByCategory(options: {
     category?: string;
@@ -136,40 +130,37 @@ export class SupabaseKnowledgeBase {
   } = {}): Promise<KnowledgeBaseItem[]> {
     const { category, workspaceId, includeGlobal = true } = options;
     try {
-      let query = supabaseAdmin
-        .from('knowledge_base')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-      
+      let query = `SELECT * FROM knowledge_base WHERE is_active = true`;
+      const params: any[] = [];
+
       if (category) {
-        query = query.eq('category', category);
+        params.push(category);
+        query += ` AND category = $${params.length}`;
       }
-      
-       if (workspaceId) {
-         const filters = includeGlobal
-           ? `workspace_id.eq.${workspaceId},workspace_id.is.null`
-           : `workspace_id.eq.${workspaceId}`;
-         query = query.or(filters);
-       }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching knowledge base:', error);
-        return [];
+
+      if (workspaceId) {
+        if (includeGlobal) {
+          params.push(workspaceId);
+          query += ` AND (workspace_id = $${params.length} OR workspace_id IS NULL)`;
+        } else {
+          params.push(workspaceId);
+          query += ` AND workspace_id = $${params.length}`;
+        }
       }
-      
-      return data || [];
+
+      query += ` ORDER BY created_at DESC`;
+
+      const { rows } = await pool.query(query, params);
+      return rows;
     } catch (error) {
       console.error('Knowledge base fetch error:', error);
       return [];
     }
   }
-  
-  // Search knowledge base with full text search
+
+  // Search knowledge base with full text search (ilike)
   async search(
-    query: string,
+    queryText: string,
     options: {
       category?: string;
       workspaceId?: string;
@@ -178,51 +169,50 @@ export class SupabaseKnowledgeBase {
   ): Promise<SearchResult[]> {
     const { category, workspaceId, includeGlobal = true } = options;
     try {
-      let builder = supabaseAdmin
-        .from('knowledge_base')
-        .select('*')
-        .eq('is_active', true);
+      let sql = `SELECT * FROM knowledge_base WHERE is_active = true`;
+      const params: any[] = [];
 
       if (category) {
-        builder = builder.eq('category', category);
+        params.push(category);
+        sql += ` AND category = $${params.length}`;
       }
 
       if (workspaceId) {
-        const filters = includeGlobal
-          ? `workspace_id.eq.${workspaceId},workspace_id.is.null`
-          : `workspace_id.eq.${workspaceId}`;
-        builder = builder.or(filters);
+        if (includeGlobal) {
+          params.push(workspaceId);
+          sql += ` AND (workspace_id = $${params.length} OR workspace_id IS NULL)`;
+        } else {
+          params.push(workspaceId);
+          sql += ` AND workspace_id = $${params.length}`;
+        }
       }
 
-      if (query) {
-        builder = builder.or(`content.ilike.%${query}%,title.ilike.%${query}%`);
+      if (queryText) {
+        params.push(`%${queryText}%`);
+        sql += ` AND (content ILIKE $${params.length} OR title ILIKE $${params.length})`;
       }
 
-      const { data, error } = await builder.order('updated_at', { ascending: false });
+      sql += ` ORDER BY updated_at DESC`;
 
-      if (error) {
-        console.error('Error searching knowledge base:', error);
-        return [];
-      }
-
-      return (data || []).map(item => ({ ...item, rank: 1 }));
+      const { rows } = await pool.query(sql, params);
+      return rows.map(item => ({ ...item, rank: 1 }));
     } catch (error) {
       console.error('Knowledge base search error:', error);
       return [];
     }
   }
-  
+
   // Get persona-specific guidance based on user input
   async getPersonaGuidance(userInput: string, workspaceId?: string): Promise<string> {
     await this.search('personas founder sales marketing consultant coach agency recruiting financial legal pharma manufacturing', {
       workspaceId,
       includeGlobal: true
     });
-    
+
     const input = userInput.toLowerCase();
     const personaKeywords = {
       'founder': 'Growth, fundraising, efficient GTM',
-      'sales': 'Pipeline generation, conversion rates', 
+      'sales': 'Pipeline generation, conversion rates',
       'marketing': 'Brand consistency, multi-channel campaigns',
       'consultant': 'High-value client acquisition',
       'coach': 'Personal connection, steady lead flow',
@@ -242,14 +232,15 @@ export class SupabaseKnowledgeBase {
 
     return '';
   }
-  
+
   // Get objection handling response
   async getObjectionResponse(objection: string, workspaceId?: string): Promise<string> {
+    // Just cache warm-up, no logical impact
     await this.search('objections apollo sales nav hire sdr ai compliance', {
       workspaceId,
       includeGlobal: true
     });
-    
+
     const input = objection.toLowerCase();
     const objectionMap: { [key: string]: string } = {
       'apollo': 'Great tools for data, but SAM orchestrates 14 agents across enrichment, personalization, outreach, replies, and analytics.',
@@ -267,7 +258,7 @@ export class SupabaseKnowledgeBase {
 
     return '';
   }
-  
+
   // Get industry-specific messaging
   async getIndustryBurst(industry: string, workspaceId?: string): Promise<string> {
     const industryData = await this.search(`industry ${industry} vertical messaging`, {
@@ -275,14 +266,14 @@ export class SupabaseKnowledgeBase {
       workspaceId,
       includeGlobal: true
     });
-    
+
     if (industryData.length > 0) {
       return industryData[0].content;
     }
-    
+
     return '';
   }
-  
+
   // Get comprehensive system prompt with all knowledge
   async getSystemPrompt(workspaceId?: string): Promise<string> {
     try {
@@ -294,7 +285,7 @@ export class SupabaseKnowledgeBase {
         this.search('objection handling', { category: 'strategy', workspaceId, includeGlobal: true }),
         this.search('industry messaging', { category: 'verticals', workspaceId, includeGlobal: true })
       ]);
-      
+
       const systemPrompt = `You are Sam, an AI-powered B2B sales assistant with sophisticated training in automated outreach, lead scoring, and personalized messaging.
 
 ## Core Identity:
@@ -323,28 +314,27 @@ You are context-aware and adapt your responses based on the user's industry, rol
       return 'You are Sam, an AI-powered B2B sales assistant focused on helping optimize sales processes.';
     }
   }
-  
+
   // Add new knowledge base item
   async addKnowledgeItem(item: Omit<KnowledgeBaseItem, 'id' | 'created_at' | 'updated_at'>): Promise<KnowledgeBaseItem | null> {
     try {
-      const { data, error } = await supabaseAdmin
-        .from('knowledge_base')
-        .insert([{ ...item, workspace_id: item.workspace_id ?? null }])
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Error adding knowledge item:', error);
-        return null;
-      }
-      
-      return data;
+      const keys = Object.keys(item);
+      const values = Object.values(item);
+      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+
+      const { rows } = await pool.query(`
+        INSERT INTO knowledge_base (${keys.join(', ')}, workspace_id)
+        VALUES (${placeholders}, $${keys.length + 1})
+        RETURNING *
+      `, [...values, item.workspace_id || null]);
+
+      return rows[0];
     } catch (error) {
       console.error('Knowledge base add error:', error);
       return null;
     }
   }
-  
+
   // Update knowledge base item
   async updateKnowledgeItem(
     id: string,
@@ -352,50 +342,45 @@ You are context-aware and adapt your responses based on the user's industry, rol
     workspaceId?: string | null
   ): Promise<KnowledgeBaseItem | null> {
     try {
-      let query = supabaseAdmin
-        .from('knowledge_base')
-        .update(updates)
-        .eq('id', id);
+      const keys = Object.keys(updates);
+      const values = Object.values(updates);
+
+      if (keys.length === 0) return null;
+
+      let setQuery = keys.map((key, i) => `${key} = $${i + 2}`).join(', ');
+      const params = [id, ...values];
+      let whereQuery = 'WHERE id = $1';
 
       if (workspaceId) {
-        query = query.eq('workspace_id', workspaceId);
+        whereQuery += ` AND workspace_id = $${params.length + 1}`;
+        params.push(workspaceId);
       }
 
-      const { data, error } = await query
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Error updating knowledge item:', error);
-        return null;
-      }
-      
-      return data;
+      const { rows } = await pool.query(`
+        UPDATE knowledge_base SET ${setQuery}
+        ${whereQuery}
+        RETURNING *
+      `, params);
+
+      return rows[0] || null;
     } catch (error) {
       console.error('Knowledge base update error:', error);
       return null;
     }
   }
-  
+
   // Soft delete knowledge base item
   async deleteKnowledgeItem(id: string, workspaceId?: string | null): Promise<boolean> {
     try {
-      let query = supabaseAdmin
-        .from('knowledge_base')
-        .update({ is_active: false })
-        .eq('id', id);
+      const params = [id];
+      let sql = `UPDATE knowledge_base SET is_active = false WHERE id = $1`;
 
       if (workspaceId) {
-        query = query.eq('workspace_id', workspaceId);
+        params.push(workspaceId);
+        sql += ` AND workspace_id = $2`;
       }
 
-      const { error } = await query;
-      
-      if (error) {
-        console.error('Error deleting knowledge item:', error);
-        return false;
-      }
-      
+      await pool.query(sql, params);
       return true;
     } catch (error) {
       console.error('Knowledge base delete error:', error);
@@ -411,29 +396,23 @@ You are context-aware and adapt your responses based on the user's industry, rol
   }): Promise<KnowledgeBaseDocument[]> {
     const { workspaceId, sectionId, includeInactive = false, limit = 50 } = options;
     try {
-      let query = supabaseAdmin
-        .from('knowledge_base_documents')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
+      let sql = `SELECT * FROM knowledge_base_documents WHERE workspace_id = $1`;
+      const params: any[] = [workspaceId];
 
       if (!includeInactive) {
-        query = query.eq('is_active', true);
+        sql += ` AND is_active = true`;
       }
 
       if (sectionId) {
-        query = query.eq('section_id', sectionId);
+        params.push(sectionId);
+        sql += ` AND section_id = $${params.length}`;
       }
 
-      const { data, error } = await query;
+      sql += ` ORDER BY created_at DESC LIMIT $${params.length + 1}`;
+      params.push(limit);
 
-      if (error) {
-        console.error('Error fetching knowledge base documents:', error);
-        return [];
-      }
-
-      return (data || []) as KnowledgeBaseDocument[];
+      const { rows } = await pool.query(sql, params);
+      return rows;
     } catch (error) {
       console.error('Knowledge base documents fetch error:', error);
       return [];
@@ -446,41 +425,29 @@ You are context-aware and adapt your responses based on the user's industry, rol
   }): Promise<KnowledgeBaseICP[]> {
     const { workspaceId, includeInactive = false } = options;
     try {
-      let query = supabaseAdmin
-        .from('knowledge_base_icps')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .order('created_at', { ascending: false });
-
+      let sql = `SELECT * FROM knowledge_base_icps WHERE workspace_id = $1`;
       if (!includeInactive) {
-        query = query.eq('is_active', true);
+        sql += ` AND is_active = true`;
       }
+      sql += ` ORDER BY created_at DESC`;
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching knowledge base ICPs:', error);
-        return [];
-      }
+      const { rows: structuredICPs } = await pool.query(sql, [workspaceId]);
 
       // ALSO count ICP documents from knowledge_base_documents table
-      // This fixes completion calculation for workspaces with uploaded ICP docs
-      // Also catches ICP docs that may be miscategorized (e.g., "Ideal Client Dossier" in products section)
-      const { data: icpDocs, error: docsError} = await supabaseAdmin
-        .from('knowledge_base_documents')
-        .select('id, filename, created_at')
-        .eq('workspace_id', workspaceId)
-        .or('section_id.eq.icp,section_id.eq.ideal-customer,filename.ilike.%ideal%client%,filename.ilike.%icp%')
-        .order('created_at', { ascending: false});
+      const docSql = `
+        SELECT id, filename, created_at 
+        FROM knowledge_base_documents
+        WHERE workspace_id = $1
+        AND (
+          section_id IN ('icp', 'ideal-customer') 
+          OR filename ILIKE '%ideal%client%' 
+          OR filename ILIKE '%icp%'
+        )
+        ORDER BY created_at DESC
+      `;
+      const { rows: icpDocs } = await pool.query(docSql, [workspaceId]);
 
-      if (docsError) {
-        console.error('Error fetching ICP documents:', docsError);
-        // Don't fail, just return structured ICPs
-      }
-
-      // Combine structured ICPs and ICP documents
-      const structuredICPs = (data || []) as KnowledgeBaseICP[];
-      const documentICPs = (icpDocs || []).map(doc => ({
+      const documentICPs = icpDocs.map((doc: any) => ({
         id: doc.id,
         workspace_id: workspaceId,
         name: doc.filename,
@@ -512,37 +479,23 @@ You are context-aware and adapt your responses based on the user's industry, rol
   }): Promise<KnowledgeBaseProduct[]> {
     const { workspaceId, includeInactive = false } = options;
     try {
-      let query = supabaseAdmin
-        .from('knowledge_base_products')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .order('created_at', { ascending: false });
-
+      let sql = `SELECT * FROM knowledge_base_products WHERE workspace_id = $1`;
       if (!includeInactive) {
-        query = query.eq('is_active', true);
+        sql += ` AND is_active = true`;
       }
+      sql += ` ORDER BY created_at DESC`;
 
-      const { data, error } = await query;
+      const { rows: structuredProducts } = await pool.query(sql, [workspaceId]);
 
-      if (error) {
-        console.error('Error fetching knowledge base products:', error);
-        return [];
-      }
+      // ALSO count product documents
+      const { rows: productDocs } = await pool.query(`
+        SELECT id, filename, created_at, extracted_content
+        FROM knowledge_base_documents
+        WHERE workspace_id = $1 AND section_id = 'products'
+        ORDER BY created_at DESC
+      `, [workspaceId]);
 
-      // ALSO count product documents from knowledge_base_documents table
-      const { data: productDocs, error: docsError } = await supabaseAdmin
-        .from('knowledge_base_documents')
-        .select('id, filename, created_at, extracted_content')
-        .eq('workspace_id', workspaceId)
-        .eq('section_id', 'products')
-        .order('created_at', { ascending: false });
-
-      if (docsError) {
-        console.error('Error fetching product documents:', docsError);
-      }
-
-      const structuredProducts = (data || []) as KnowledgeBaseProduct[];
-      const documentProducts = (productDocs || []).map(doc => ({
+      const documentProducts = productDocs.map((doc: any) => ({
         id: doc.id,
         workspace_id: workspaceId,
         name: doc.filename,
@@ -573,37 +526,23 @@ You are context-aware and adapt your responses based on the user's industry, rol
   }): Promise<KnowledgeBaseCompetitor[]> {
     const { workspaceId, includeInactive = false } = options;
     try {
-      let query = supabaseAdmin
-        .from('knowledge_base_competitors')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .order('created_at', { ascending: false });
-
+      let sql = `SELECT * FROM knowledge_base_competitors WHERE workspace_id = $1`;
       if (!includeInactive) {
-        query = query.eq('is_active', true);
+        sql += ` AND is_active = true`;
       }
+      sql += ` ORDER BY created_at DESC`;
 
-      const { data, error } = await query;
+      const { rows: structuredCompetitors } = await pool.query(sql, [workspaceId]);
 
-      if (error) {
-        console.error('Error fetching knowledge base competitors:', error);
-        return [];
-      }
+      // ALSO count competitor documents
+      const { rows: competitorDocs } = await pool.query(`
+        SELECT id, filename, created_at, extracted_content
+        FROM knowledge_base_documents
+        WHERE workspace_id = $1 AND section_id = 'competition'
+        ORDER BY created_at DESC
+      `, [workspaceId]);
 
-      // ALSO count competitor documents from knowledge_base_documents table
-      const { data: competitorDocs, error: docsError } = await supabaseAdmin
-        .from('knowledge_base_documents')
-        .select('id, filename, created_at, extracted_content')
-        .eq('workspace_id', workspaceId)
-        .eq('section_id', 'competition')
-        .order('created_at', { ascending: false });
-
-      if (docsError) {
-        console.error('Error fetching competitor documents:', docsError);
-      }
-
-      const structuredCompetitors = (data || []) as KnowledgeBaseCompetitor[];
-      const documentCompetitors = (competitorDocs || []).map(doc => ({
+      const documentCompetitors = competitorDocs.map((doc: any) => ({
         id: doc.id,
         workspace_id: workspaceId,
         name: doc.filename,
@@ -635,28 +574,22 @@ You are context-aware and adapt your responses based on the user's industry, rol
   }): Promise<KnowledgeBasePersona[]> {
     const { workspaceId, icpId, includeInactive = false } = options;
     try {
-      let query = supabaseAdmin
-        .from('knowledge_base_personas')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .order('created_at', { ascending: false });
+      let sql = `SELECT * FROM knowledge_base_personas WHERE workspace_id = $1`;
+      const params: any[] = [workspaceId];
 
       if (icpId) {
-        query = query.eq('icp_id', icpId);
+        params.push(icpId);
+        sql += ` AND icp_id = $${params.length}`;
       }
 
       if (!includeInactive) {
-        query = query.eq('is_active', true);
+        sql += ` AND is_active = true`;
       }
 
-      const { data, error } = await query;
+      sql += ` ORDER BY created_at DESC`;
 
-      if (error) {
-        console.error('Error fetching knowledge base personas:', error);
-        return [];
-      }
-
-      return (data || []) as KnowledgeBasePersona[];
+      const { rows } = await pool.query(sql, params);
+      return rows;
     } catch (error) {
       console.error('Knowledge base personas fetch error:', error);
       return [];
@@ -670,30 +603,19 @@ You are context-aware and adapt your responses based on the user's industry, rol
     missingCritical: string[];
   }> {
     try {
-      // Define KB sections and their importance (aligned with frontend UX)
-      // Critical sections (60% total) - Required for SAM to function
-      // Important sections (30% total) - High value for effectiveness
-      // Supporting sections (10% total) - Nice to have
       const sections = {
-        // Critical: 60% total weight
         products: { category: 'products', weight: 15, minEntries: 2 },
         icp: { category: 'icp-intelligence', weight: 15, minEntries: 3 },
         messaging: { category: 'messaging', weight: 15, minEntries: 3 },
         pricing: { category: 'pricing', weight: 15, minEntries: 1 },
-        
-        // Important: 30% total weight
         objections: { category: 'objection-handling', weight: 10, minEntries: 3 },
         success_stories: { category: 'case-studies', weight: 10, minEntries: 2 },
         competition: { category: 'competitive-intelligence', weight: 10, minEntries: 2 },
-        
-        // Supporting: 10% total weight
         company_info: { category: 'company-info', weight: 2, minEntries: 1 },
         buying_process: { category: 'sales-process', weight: 2, minEntries: 1 },
         personas: { category: 'personas', weight: 2, minEntries: 2 },
         compliance: { category: 'compliance', weight: 2, minEntries: 1 },
         tone_of_voice: { category: 'tone-of-voice', weight: 2, minEntries: 1 },
-        
-        // Optional/deprecated
         overview: { category: 'business-model', weight: 0, minEntries: 0 },
         success_metrics: { category: 'success-metrics', weight: 0, minEntries: 0 },
         documents: { category: 'documents', weight: 0, minEntries: 0 }
@@ -704,14 +626,13 @@ You are context-aware and adapt your responses based on the user's industry, rol
       let totalWeightedScore = 0;
       let totalWeight = 0;
 
-      // Query all KB sources
+      // Query all KB sources concurrently
       const [kbEntries, icpEntries, icps, products, competitors, personas] = await Promise.all([
         this.getByCategory({ workspaceId, includeGlobal: false }),
-        supabaseAdmin
-          .from('sam_icp_knowledge_entries')
-          .select('category')
-          .eq('workspace_id', workspaceId)
-          .eq('is_active', true),
+        pool.query(`
+          SELECT category FROM sam_icp_knowledge_entries 
+          WHERE workspace_id = $1 AND is_active = true
+        `, [workspaceId]).then(res => res.rows),
         this.getICPs({ workspaceId }),
         this.getProducts({ workspaceId }),
         this.getCompetitors({ workspaceId }),
@@ -724,8 +645,8 @@ You are context-aware and adapt your responses based on the user's industry, rol
         let totalContentLength = 0;
 
         // Count entries from knowledge_base
-        const categoryEntries = kbEntries.filter(e => 
-          e.category === config.category || 
+        const categoryEntries = kbEntries.filter(e =>
+          e.category === config.category ||
           e.category?.includes(sectionName.replace('_', '-'))
         );
         entries += categoryEntries.length;
@@ -733,11 +654,11 @@ You are context-aware and adapt your responses based on the user's industry, rol
 
         // Count from ICP knowledge entries
         if (sectionName === 'icp') {
-          const icpKnowledgeCount = icpEntries.data?.filter((e: any) => 
+          const icpKnowledgeCount = icpEntries.filter((e: any) =>
             e.category === 'icp' || e.category?.includes('target')
           ).length || 0;
           entries += icpKnowledgeCount;
-          entries += icps.length * 2; // Each ICP config counts as 2 entries
+          entries += icps.length * 2;
         }
 
         // Count structured data
@@ -745,23 +666,19 @@ You are context-aware and adapt your responses based on the user's industry, rol
         if (sectionName === 'competition') entries += competitors.length;
         if (sectionName === 'personas') entries += personas.length;
 
-        // Calculate depth score (0-100 based on content richness)
         const avgContentLength = entries > 0 ? totalContentLength / entries : 0;
         const depth = Math.min(100, Math.round((avgContentLength / 500) * 100)); // 500 chars = 100% depth
 
-        // Calculate percentage (based on entries vs. minEntries)
-        const percentage = config.minEntries > 0 
+        const percentage = config.minEntries > 0
           ? Math.min(100, Math.round((entries / config.minEntries) * 100))
           : entries > 0 ? 100 : 0;
 
         sectionResults[sectionName] = { percentage, entries, depth };
 
-        // Track critical missing sections (weight 15 = critical)
         if (config.weight === 15 && percentage < 70) {
           missingCritical.push(sectionName);
         }
 
-        // Calculate weighted score
         totalWeightedScore += percentage * config.weight;
         totalWeight += config.weight;
       }
@@ -784,5 +701,5 @@ You are context-aware and adapt your responses based on the user's industry, rol
   }
 }
 
-// Export singleton instance
-export const supabaseKnowledge = new SupabaseKnowledgeBase();
+// Export singleton instance - renamed from SupabaseKnowledgeBase to supabaseKnowledge to maintain compatibility
+export const supabaseKnowledge = new PostgresKnowledgeBase();
