@@ -1,17 +1,25 @@
 # Rolling TODO List - Sam AI Project
 
-**Last Updated**: December 16, 2025
+**Last Updated**: December 31, 2025
 
 ---
 
 ## 🔥 URGENT - Do Today
 
-- [x] **Deploy SuperAdmin Analytics Migration** - Create 6 analytics tables in production database ✅ COMPLETED Oct 20
-- [x] **Deploy SAM Learning Triggers in Production** - Integrate learning system tracking into SAM conversations ✅ COMPLETED Oct 20
+- [x] **Supabase → Firebase Auth Migration** - ~150 API routes migrated ✅ COMPLETED Dec 31
+- [x] **Supabase → Firebase Storage Migration** - Attachments + DPA PDFs ✅ COMPLETED Dec 31
 
 ---
 
 ## 📋 This Week
+
+### Post-Migration Cleanup (Dec 31)
+
+- [ ] **Test Firebase auth in production** - Verify login/logout flow works
+- [ ] **Test file uploads** - SAM chat attachments using Firebase Storage
+- [ ] **Remove legacy Supabase packages** - `@supabase/auth-helpers-nextjs`, `@supabase/ssr` from package.json
+- [ ] **Configure Firebase Storage bucket rules** - Set proper security rules for public/private access
+- [ ] **Verify workspace switching** - Test multi-workspace access
 
 ### Meeting Agent & Calendar Integrations (Dec 16)
 - [x] **Meeting Agent** - Full meeting lifecycle management (booking, reminders, no-shows, follow-ups) ✅ COMPLETED Dec 16
