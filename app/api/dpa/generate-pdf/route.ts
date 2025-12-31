@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/auth';
+import { getStorageBucket } from '@/lib/firebase-admin';
 import { generateSignedDpaPdf, generateDpaPdfFilename } from '@/lib/dpa/generate-signed-pdf';
-
-// Use service role for file uploads
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * POST /api/dpa/generate-pdf
@@ -35,11 +30,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get workspace name for PDF
-    const { data: workspace } = await supabaseAdmin
-      .from('workspaces')
-      .select('name')
-      .eq('id', workspaceId)
-      .single();
+    const { rows: workspaceRows } = await pool.query(
+      'SELECT name FROM workspaces WHERE id = $1',
+      [workspaceId]
+    );
+    const workspace = workspaceRows[0];
 
     // Generate PDF
     const pdfBuffer = await generateSignedDpaPdf({
@@ -51,39 +46,35 @@ export async function POST(request: NextRequest) {
 
     // Generate filename
     const filename = generateDpaPdfFilename(workspaceId, dpaVersion);
+    const storagePath = `legal-documents/${filename}`;
 
-    // Upload to Supabase Storage
-    const { data: upload, error: uploadError } = await supabaseAdmin.storage
-      .from('legal-documents')
-      .upload(filename, pdfBuffer, {
+    // Upload to Firebase Storage
+    const bucket = getStorageBucket();
+    const fileRef = bucket.file(storagePath);
+
+    await fileRef.save(pdfBuffer, {
+      metadata: {
         contentType: 'application/pdf',
-        upsert: false
-      });
+        cacheControl: 'private, max-age=31536000', // 1 year cache for legal docs
+      },
+    });
 
-    if (uploadError) {
-      console.error('Failed to upload signed DPA PDF:', uploadError);
-      return NextResponse.json(
-        { error: 'Failed to upload PDF' },
-        { status: 500 }
-      );
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
-      .from('legal-documents')
-      .getPublicUrl(upload.path);
+    // Generate signed URL (valid for 10 years for legal documents)
+    const [signedUrl] = await fileRef.getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 10 * 365 * 24 * 60 * 60 * 1000, // 10 years
+    });
 
     // Update agreement record with PDF URL
-    const { error: updateError } = await supabaseAdmin
-      .from('workspace_dpa_agreements')
-      .update({
-        signed_dpa_pdf_url: publicUrl,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', agreementId);
+    const { rowCount } = await pool.query(
+      `UPDATE workspace_dpa_agreements
+       SET signed_dpa_pdf_url = $1, updated_at = NOW()
+       WHERE id = $2`,
+      [signedUrl, agreementId]
+    );
 
-    if (updateError) {
-      console.error('Failed to update agreement with PDF URL:', updateError);
+    if (rowCount === 0) {
+      console.error('Failed to update agreement with PDF URL - no rows affected');
       return NextResponse.json(
         { error: 'Failed to update agreement record' },
         { status: 500 }
@@ -92,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      pdfUrl: publicUrl,
+      pdfUrl: signedUrl,
       filename
     });
 

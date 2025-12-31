@@ -14,10 +14,12 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getStorage, Storage } from 'firebase-admin/storage';
 
 let adminApp: App | null = null;
 let adminAuth: Auth | null = null;
 let adminDb: Firestore | null = null;
+let adminStorage: Storage | null = null;
 
 function getServiceAccountCredential() {
     // Try environment variable first (base64 encoded JSON)
@@ -100,6 +102,31 @@ export function getAdminFirestore(): Firestore {
 }
 
 /**
+ * Get Firebase Admin Storage instance for server-side file operations
+ * Use for: uploading files, generating signed URLs, managing storage
+ */
+export function getAdminStorage(): Storage {
+    if (!adminStorage) {
+        const app = initializeFirebaseAdmin();
+        adminStorage = getStorage(app);
+    }
+    return adminStorage;
+}
+
+/**
+ * Get the default storage bucket
+ * Bucket name comes from NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET env var
+ */
+export function getStorageBucket() {
+    const storage = getAdminStorage();
+    const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    if (!bucketName) {
+        throw new Error('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET not configured');
+    }
+    return storage.bucket(bucketName);
+}
+
+/**
  * Verify a Firebase ID token from the client
  * @param token - Firebase ID token from client
  * @returns Decoded token with user info, or null if invalid
@@ -135,4 +162,4 @@ export async function setCustomClaims(uid: string, claims: Record<string, unknow
 }
 
 // Export types
-export type { App, Auth, Firestore };
+export type { App, Auth, Firestore, Storage };
