@@ -20,6 +20,11 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV NODE_ENV production
 
+# Set dummy env vars for build (required by Next.js build)
+ENV UNIPILE_DSN=dummy
+ENV UNIPILE_API_KEY=dummy
+ENV DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
+
 # Build Next.js
 RUN npm run build
 
