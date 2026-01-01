@@ -105,19 +105,20 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Create Supabase service role client for webhook operations
+ * DEPRECATED: Using pool from lib/db instead of Supabase client
+ * TODO: Refactor all supabase.from() calls to pool.query()
  */
 function getServiceClient() {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    }
-  )
+  // This function is deprecated - using pool.query() directly
+  console.warn('⚠️ getServiceClient is deprecated - use pool.query() instead');
+  return {
+    from: (table: string) => ({
+      select: () => ({ data: null, error: new Error('Use pool.query() instead') }),
+      insert: () => ({ data: null, error: new Error('Use pool.query() instead') }),
+      update: () => ({ data: null, error: new Error('Use pool.query() instead') }),
+      delete: () => ({ data: null, error: new Error('Use pool.query() instead') }),
+    })
+  };
 }
 
 /**
@@ -245,8 +246,8 @@ function detectHITLAction(body: string): { action: 'approve' | 'refuse' | 'edit'
 
   // Check for REFUSE/REJECT keyword
   if (bodyLower === 'refuse' || bodyLower === 'reject' ||
-      bodyLower.includes('refuse') && bodyLower.length < 50 ||
-      bodyLower.includes('reject') && bodyLower.length < 50) {
+    bodyLower.includes('refuse') && bodyLower.length < 50 ||
+    bodyLower.includes('reject') && bodyLower.length < 50) {
     return { action: 'refuse' }
   }
 

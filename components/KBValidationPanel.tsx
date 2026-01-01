@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/app/lib/supabase';
 import { InfoModal, PromptModal } from '@/components/ui/CustomModal';
 
 interface KBItemToValidate {

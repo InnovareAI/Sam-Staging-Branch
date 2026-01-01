@@ -5,7 +5,7 @@
  * Handles rate limits, Unipile errors, and other failures
  */
 
-import { createSupabaseRouteClient } from '@/lib/supabase-route-client';
+
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';

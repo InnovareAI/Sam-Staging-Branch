@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/app/lib/supabase';
 
 interface InviteUserFormProps {
   organizations: { id: string; name: string }[];

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { createPostmarkHelper } from '@/lib/postmark-helper'
 import { generateTrialConfirmationEmail } from '@/lib/email-templates'
+
+export const dynamic = 'force-dynamic';
 
 const PLAN_PRICES = {
   perseat: 99,
@@ -15,8 +17,6 @@ const PLAN_PRICES = {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient()
-
     const body = await request.json()
     const { workspaceId, userId, plan } = body
 
@@ -34,40 +34,40 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch user details
-    const { data: profile } = await supabase
-      .from('users')
-      .select('email, first_name, last_name')
-      .eq('id', userId)
-      .single()
+    const userResult = await pool.query(
+      `SELECT email, first_name, last_name FROM users WHERE id = $1`,
+      [userId]
+    );
+    const profile = userResult.rows[0];
 
     if (!profile) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     // Fetch workspace details
-    const { data: workspace } = await supabase
-      .from('workspaces')
-      .select('name, slug')
-      .eq('id', workspaceId)
-      .single()
+    const workspaceResult = await pool.query(
+      `SELECT name, slug FROM workspaces WHERE id = $1`,
+      [workspaceId]
+    );
+    const workspace = workspaceResult.rows[0];
 
     if (!workspace) {
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
     }
 
     // Fetch subscription trial end date
-    const { data: subscription } = await supabase
-      .from('workspace_subscriptions')
-      .select('trial_end')
-      .eq('workspace_id', workspaceId)
-      .single()
+    const subscriptionResult = await pool.query(
+      `SELECT trial_end FROM workspace_subscriptions WHERE workspace_id = $1`,
+      [workspaceId]
+    );
+    const subscription = subscriptionResult.rows[0];
 
     const trialEndDate = subscription?.trial_end
       ? new Date(subscription.trial_end)
       : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // Default: 14 days from now
 
     // Determine company (InnovareAI is default)
-    const company = 'InnovareAI' // TODO: Add logic to detect company based on workspace or subdomain
+    const company = 'InnovareAI'
 
     // Generate email content
     const emailTemplate = generateTrialConfirmationEmail({

@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { pool } from '@/lib/db';
+import { verifyAuth } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 // Helper function to make Unipile API calls
 async function callUnipileAPI(endpoint: string, method: string = 'GET') {
@@ -58,7 +63,7 @@ async function getRecentMessagesViaMCP(accountId: string) {
   }
 
   const result = await response.json();
-  return result; // This should be an array of messages
+  return result;
 }
 
 export async function GET(request: NextRequest) {
@@ -76,49 +81,32 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Authenticate user via cookies for this endpoint
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          }
-        }
-      }
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (!user) {
+    // Authenticate user via Firebase session
+    const { user, error: authError } = await verifyAuth(request);
+    if (!user || authError) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     // Get user's current workspace
-    const { data: userProfile } = await pool
-      .from('users')
-      .select('current_workspace_id')
-      .eq('id', user.id)
-      .single();
+    const userResult = await pool.query(
+      `SELECT current_workspace_id FROM users WHERE id = $1`,
+      [user.uid]
+    );
 
-    const workspaceId = userProfile?.current_workspace_id;
+    const workspaceId = userResult.rows[0]?.current_workspace_id;
     if (!workspaceId) {
       return NextResponse.json({ error: 'No workspace found' }, { status: 400 });
     }
 
     // Get connected LinkedIn accounts for THIS workspace ONLY
-    const { data: workspaceAccounts } = await pool
-      .from('workspace_accounts')
-      .select('unipile_account_id, account_name')
-      .eq('workspace_id', workspaceId)
-      .eq('account_type', 'linkedin')
-      .in('connection_status', ['CONNECTED', 'OK']);
+    const accountsResult = await pool.query(
+      `SELECT unipile_account_id, account_name FROM workspace_accounts 
+       WHERE workspace_id = $1 AND account_type = 'linkedin' 
+       AND connection_status IN ('CONNECTED', 'OK')`,
+      [workspaceId]
+    );
+
+    const workspaceAccounts = accountsResult.rows;
 
     if (!workspaceAccounts || workspaceAccounts.length === 0) {
       return NextResponse.json({
@@ -130,8 +118,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const accountIds = workspaceAccounts.map(a => a.unipile_account_id);
-    console.log(`🔒 Found ${accountIds.length} workspace accounts for message fetching`);
+    console.log(`🔒 Found ${workspaceAccounts.length} workspace accounts for message fetching`);
 
     // Fetch messages for each account
     const allMessages: any[] = [];
@@ -166,7 +153,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Sort messages by time (most recent first) - MCP format uses 'timestamp'
+    // Sort messages by time (most recent first)
     allMessages.sort((a, b) => new Date(b.rawMessage.timestamp || 0).getTime() - new Date(a.rawMessage.timestamp || 0).getTime());
 
     console.log(`✅ Successfully fetched ${allMessages.length} total messages`);
@@ -175,7 +162,7 @@ export async function GET(request: NextRequest) {
       success: true,
       messages: allMessages,
       total: allMessages.length,
-      accounts_checked: userAccounts.length,
+      accounts_checked: workspaceAccounts.length,
       timestamp: new Date().toISOString()
     });
 
@@ -201,15 +188,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Mock messages generator deleted for production safety.
-
 // Helper functions
 function determineMessageType(message: any): 'linkedin' | 'inmail' {
-  // Check if it's a LinkedIn InMail (formal connection request or structured message)
   const text = (message.text || message.body || '').toLowerCase();
   const chatName = message.chat_info?.name || '';
 
-  // InMail characteristics: formal language, business proposals, structured messaging
   if (text.includes('connect') ||
     text.includes('your profile') ||
     text.includes('would like to connect') ||
@@ -219,21 +202,17 @@ function determineMessageType(message: any): 'linkedin' | 'inmail' {
     return 'inmail';
   }
 
-  // Default to regular LinkedIn message
   return 'linkedin';
 }
 
 function extractSenderName(message: any): string {
-  // For MCP format, try to extract sender name from various possible fields
   if (message.sender_name) return message.sender_name;
   if (message.from?.name) return message.from.name;
   if (message.sender?.name) return message.sender.name;
 
-  // Look for patterns in sender_id or chat info
   const chatName = message.chat_info?.name;
   if (chatName && !chatName.includes('null')) return chatName;
 
-  // Try to extract from the first words of the message text
   const text = message.text || '';
   const firstLine = text.split('\n')[0];
   const nameMatch = firstLine.match(/^Hi\s+([A-Z][a-z]+)/);
@@ -244,18 +223,14 @@ function extractSenderName(message: any): string {
 
 function extractSubjectFromText(text: string): string {
   if (!text) return '';
-
-  // Take first 50 characters and add ellipsis if longer
   const subject = text.substring(0, 50).trim();
   return subject.length < text.length ? `${subject}...` : subject;
 }
 
 function extractCompanyFromMessage(message: any): string {
-  // Try to extract company from various fields
   if (message.from?.company) return message.from.company;
   if (message.sender?.company) return message.sender.company;
 
-  // Look for company patterns in text
   const text = message.text || message.body || '';
   const companyMatch = text.match(/(?:from|at|with)\s+([A-Z][a-zA-Z0-9\s&]+?)(?:\.|,|$)/);
   if (companyMatch) return companyMatch[1].trim();

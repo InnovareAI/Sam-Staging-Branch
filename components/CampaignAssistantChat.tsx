@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, ArrowDown } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/app/lib/supabase';
 
 interface Message {
   id: string;
