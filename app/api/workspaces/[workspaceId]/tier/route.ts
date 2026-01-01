@@ -4,10 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { z } from 'zod'
 
-const supabase = supabaseAdmin()
+const supabase = pool
 
 interface RouteParams {
   params: {

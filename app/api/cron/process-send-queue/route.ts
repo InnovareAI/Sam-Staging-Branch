@@ -1,6 +1,6 @@
 // DEPLOYED_MARKER: DEC19_SILENT_RETRY_FIX
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import moment from 'moment-timezone';
 import {
   getHolidaysForCountry,
@@ -214,11 +214,6 @@ async function resolveToProviderId(linkedinUserIdOrUrl: string, accountId: strin
   console.log(`✅ Resolved to provider_id: ${profile.provider_id}`);
   return profile.provider_id;
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * Log activity to database for auditing and debugging

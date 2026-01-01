@@ -8,13 +8,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/db';
 import { sendApprovalNotification } from '@/lib/notifications/sam-email'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 /**
  * Generate a consistent random number based on session ID (seeded random)

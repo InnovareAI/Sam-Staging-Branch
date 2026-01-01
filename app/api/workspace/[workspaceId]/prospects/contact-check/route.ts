@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { WorkspaceProspectManager } from '@/lib/workspace-prospect-manager'
 
 export async function POST(
@@ -7,7 +7,7 @@ export async function POST(
   { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     const { workspaceId } = await params
     const body = await request.json()
 

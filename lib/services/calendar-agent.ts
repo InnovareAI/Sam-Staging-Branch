@@ -8,7 +8,7 @@
  * Created: December 20, 2025
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // ============================================
 // TYPES
@@ -112,11 +112,6 @@ export function hasCalendarLink(message: string): boolean {
 // ============================================
 // PROSPECT CALENDAR LINK HANDLING
 // ============================================
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * Store detected prospect calendar link and update conversation stage

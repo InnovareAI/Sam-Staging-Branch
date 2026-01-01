@@ -151,11 +151,6 @@ export default function ProspectSearchChat({
   useEffect(() => {
     if (!currentJobId) return;
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     const subscription = supabase
       .channel('prospect-search-updates')
       .on(

@@ -12,14 +12,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { airtableService } from '@/lib/airtable';
 import { activeCampaignService } from '@/lib/activecampaign';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Airtable constants
 const AIRTABLE_BASE_ID = 'appbBGI8aqW6Lxm5O';

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment'
 
 export async function POST(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     // Get current user from Authorization header
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     // Get current user from Authorization header
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
@@ -176,7 +176,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 401 })
     }
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     // Get current user from Authorization header
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))

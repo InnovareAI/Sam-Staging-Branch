@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import {
   generateLinkedInComment,
   CommentGenerationContext
@@ -46,9 +46,7 @@ async function validateApiKey(request: NextRequest): Promise<{ valid: boolean; w
   const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+  const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   const { data: apiKeyRecord, error } = await supabase
     .from('api_keys')
     .select('id, workspace_id, is_active, expires_at, scopes')
@@ -111,9 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+    const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const { data: workspace, error: workspaceError} = await supabase
       .from('workspaces')
       .select('*')

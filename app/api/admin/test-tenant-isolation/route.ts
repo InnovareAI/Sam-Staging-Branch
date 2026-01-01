@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { requireAdmin } from '@/lib/security/route-auth';
 
 export async function GET(request: NextRequest) {
@@ -11,11 +11,6 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🧪 Testing tenant isolation enforcement...');
     
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     const results = {
       tenantIsolationStatus: {},
       dataLeakageCheck: {},

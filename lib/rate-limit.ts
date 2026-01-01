@@ -3,11 +3,11 @@
  * Provides DDoS protection, abuse prevention, and usage quota management
  */
 
-import { supabaseAdmin } from '../app/lib/supabase'
+import { pool } from '../app/lib/supabase'
 import { logger } from './logging'
 
 // Use admin client for rate limit storage
-const supabase = supabaseAdmin()
+const supabase = pool
 
 interface RateLimitConfig {
   key: string                 // Unique identifier for the rate limit

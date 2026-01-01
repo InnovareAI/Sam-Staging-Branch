@@ -1,10 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 async function fixSendingcellTenant() {
   const workspaceId = 'b070d94f-11e2-41d4-a913-cc5a8c017208'
 

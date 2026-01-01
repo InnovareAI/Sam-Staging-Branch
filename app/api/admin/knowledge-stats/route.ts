@@ -1,20 +1,10 @@
 import { requireAdmin } from '@/lib/security/route-auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // Admin API for Knowledge Classification Statistics and Management
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
+// Pool imported from lib/db
 // GET /api/admin/knowledge-stats - Get knowledge classification statistics
 export async function GET(req: NextRequest) {
 
@@ -28,7 +18,7 @@ export async function GET(req: NextRequest) {
     const timeRange = searchParams.get('timeRange') as 'day' | 'week' | 'month' | 'all' || 'all';
 
     // Get overall conversation statistics
-    const { data: conversations, error: convError } = await supabaseAdmin
+    const { data: conversations, error: convError } = await pool
       .from('sam_conversations')
       .select('id, user_id, organization_id, knowledge_extracted, extraction_confidence, created_at')
       .order('created_at', { ascending: false });
@@ -39,7 +29,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get extracted knowledge statistics
-    const { data: extractedKnowledge, error: knowledgeError } = await supabaseAdmin
+    const { data: extractedKnowledge, error: knowledgeError } = await pool
       .from('sam_extracted_knowledge')
       .select('knowledge_type, category, confidence_score, sharing_scope, data_sensitivity, created_at, is_active')
       .eq('is_active', true);
@@ -50,7 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get knowledge patterns performance
-    const { data: patterns, error: patternsError } = await supabaseAdmin
+    const { data: patterns, error: patternsError } = await pool
       .from('sam_knowledge_patterns')
       .select('pattern_name, knowledge_type, category, accuracy_score, true_positive_count, false_positive_count');
 
@@ -111,7 +101,7 @@ export async function GET(req: NextRequest) {
     };
 
     // Get privacy preferences statistics
-    const { data: privacyPrefs } = await supabaseAdmin
+    const { data: privacyPrefs } = await pool
       .from('sam_user_privacy_preferences')
       .select('communication_style_sharing, professional_context_sharing, customer_intelligence_sharing, auto_knowledge_extraction');
 
@@ -172,7 +162,7 @@ export async function POST(req: NextRequest) {
         }
         
         // Get conversation details and queue for extraction
-        const { data: conversations } = await supabaseAdmin
+        const { data: conversations } = await pool
           .from('sam_conversations')
           .select('id, user_id, organization_id')
           .in('id', conversationIds);
@@ -248,7 +238,7 @@ export async function PUT(req: NextRequest) {
 
     // Update pattern performance (would need implementation)
     if (patternUpdates && Array.isArray(patternUpdates)) {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await pool
         .from('sam_knowledge_patterns')
         .upsert(patternUpdates);
       
@@ -294,7 +284,7 @@ export async function DELETE(req: NextRequest) {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - parseInt(olderThan || '90'));
         
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await pool
           .from('sam_extracted_knowledge')
           .update({ is_active: false })
           .lt('created_at', cutoffDate.toISOString());
@@ -314,7 +304,7 @@ export async function DELETE(req: NextRequest) {
         }
         
         // Delete user's personal knowledge
-        const { error: deleteError } = await supabaseAdmin
+        const { error: deleteError } = await pool
           .from('sam_extracted_knowledge')
           .delete()
           .eq('user_id', userId)
@@ -334,7 +324,7 @@ export async function DELETE(req: NextRequest) {
           );
         }
         
-        const { error: archiveError } = await supabaseAdmin
+        const { error: archiveError } = await pool
           .from('sam_extracted_knowledge')
           .update({ is_active: false })
           .eq('organization_id', organizationId);

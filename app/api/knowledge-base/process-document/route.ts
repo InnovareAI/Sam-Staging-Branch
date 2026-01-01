@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // Initialize service-role Supabase client for background processing
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // Claude Sonnet 4.5 processing using OpenRouter
 async function processWithClaude(content: string, section: string, filename: string) {
   const systemPrompt = `You are an AI document analysis expert. Analyze the provided document content and extract structured information for a knowledge base system.

@@ -38,7 +38,6 @@ export default function GoogleCalendarModal({ isOpen, onClose, workspaceId }: Go
     setLoading(true);
     setError('');
     try {
-      const supabase = createClient();
       const { data, error: fetchError } = await supabase
         .from('workspace_accounts')
         .select('*')
@@ -103,7 +102,6 @@ export default function GoogleCalendarModal({ isOpen, onClose, workspaceId }: Go
     if (!confirm('Are you sure you want to disconnect Google Calendar?')) return;
 
     try {
-      const supabase = createClient();
       await supabase
         .from('workspace_accounts')
         .delete()

@@ -13,17 +13,6 @@ const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
 const UNIPILE_DSN = process.env.UNIPILE_DSN;
 const UNIPILE_BASE_URL = `https://${UNIPILE_DSN}`; // DSN already includes full domain + port
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // Service role for background access
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
 export const handler: Handler = async (event, context) => {
   console.log('🚀 Background job started:', new Date().toISOString());
 

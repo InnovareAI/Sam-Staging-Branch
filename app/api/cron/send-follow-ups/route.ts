@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import {
   canSendNow as canSendNowCheck,
   DEFAULT_TIMEZONE,
@@ -211,11 +211,6 @@ export async function POST(req: NextRequest) {
         processed: 0
       });
     }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
 
     // Calculate start of today (midnight) for same-day check
     const todayStart = new Date();

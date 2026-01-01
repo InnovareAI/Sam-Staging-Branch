@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import {
   checkRecentCommentsPerformance,
   aggregatePerformanceStats,
@@ -36,8 +36,6 @@ export async function POST(request: NextRequest) {
 
   console.log('📊 Track Comment Performance Cron Starting...');
   console.log(`   Time: ${new Date().toISOString()}`);
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
   try {
     // Get all active workspaces with LinkedIn accounts

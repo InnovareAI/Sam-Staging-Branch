@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update slack_app_config status to inactive (this is the main table used for status checks)
-    const { error: appConfigError } = await supabaseAdmin()
+    const { error: appConfigError } = await pool
       .from('slack_app_config')
       .update({
         status: 'inactive',
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Also update workspace_integrations for backward compatibility
-    const { error: integrationError } = await supabaseAdmin()
+    const { error: integrationError } = await pool
       .from('workspace_integrations')
       .update({
         status: 'inactive',

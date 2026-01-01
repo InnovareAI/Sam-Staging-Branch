@@ -125,7 +125,6 @@ export default function WorkspaceScheduleSettings({
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
       const { data, error } = await supabase
         .from('workspace_schedule_settings')
         .select('*')
@@ -149,8 +148,6 @@ export default function WorkspaceScheduleSettings({
   const saveSettings = async () => {
     setSaving(true);
     try {
-      const supabase = createClient();
-
       const { error } = await supabase
         .from('workspace_schedule_settings')
         .upsert({

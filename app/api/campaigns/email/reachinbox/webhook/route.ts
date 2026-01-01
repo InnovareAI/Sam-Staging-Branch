@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { airtableService } from '@/lib/airtable';
 import { activeCampaignService } from '@/lib/activecampaign';
 import { sendEmailReplyNotification } from '@/lib/notifications/google-chat';
 
 // Service role client for webhook processing (no user auth needed)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+// Pool imported from lib/db
 /**
  * ReachInbox Email Account → Country Mapping
  * Since ReachInbox doesn't send workspace_id in webhooks,
@@ -236,7 +232,7 @@ async function handleEmailSent(webhook: ReachInboxWebhook) {
     console.log(`📤 Email sent: ${webhook.lead_email} (${leadName}) via ${webhook.email_account}`);
 
     // Track in campaign_messages
-    await supabaseAdmin
+    await pool
       .from('campaign_messages')
       .insert({
         campaign_id: String(webhook.campaign_id),
@@ -259,7 +255,7 @@ async function handleEmailSent(webhook: ReachInboxWebhook) {
     const country = getCountryForAccount(webhook.email_account);
     if (country) {
       // Find Innovare workspace for this region
-      const { data: workspace } = await supabaseAdmin
+      const { data: workspace } = await pool
         .from('workspaces')
         .select('id')
         .ilike('name', '%innovare%')
@@ -267,7 +263,7 @@ async function handleEmailSent(webhook: ReachInboxWebhook) {
         .single();
 
       if (workspace) {
-        await supabaseAdmin
+        await pool
           .from('linkedin_messages')
           .insert({
             workspace_id: workspace.id,
@@ -317,7 +313,7 @@ async function handleEmailOpened(webhook: ReachInboxWebhook) {
     console.log(`👁️ Email opened: ${webhook.lead_email} - Campaign: ${webhook.campaign_name}`);
 
     // Track interaction
-    await supabaseAdmin
+    await pool
       .from('campaign_interactions')
       .insert({
         campaign_id: String(webhook.campaign_id),
@@ -342,7 +338,7 @@ async function handleEmailClicked(webhook: ReachInboxWebhook) {
     console.log(`🔗 Email clicked: ${webhook.lead_email} - Campaign: ${webhook.campaign_name}`);
 
     // Track interaction
-    await supabaseAdmin
+    await pool
       .from('campaign_interactions')
       .insert({
         campaign_id: String(webhook.campaign_id),
@@ -372,7 +368,7 @@ async function handleReplyReceived(webhook: ReachInboxWebhook) {
     console.log(`   Reply preview: ${replyBody.substring(0, 100)}...`);
 
     // Track interaction
-    await supabaseAdmin
+    await pool
       .from('campaign_interactions')
       .insert({
         campaign_id: String(webhook.campaign_id),
@@ -510,7 +506,7 @@ async function handleEmailBounced(webhook: ReachInboxWebhook) {
     console.log(`⚠️ Email bounced: ${webhook.lead_email} - Campaign: ${webhook.campaign_name}`);
 
     // Track interaction
-    await supabaseAdmin
+    await pool
       .from('campaign_interactions')
       .insert({
         campaign_id: String(webhook.campaign_id),
@@ -526,7 +522,7 @@ async function handleEmailBounced(webhook: ReachInboxWebhook) {
       });
 
     // Add to suppression list
-    await supabaseAdmin
+    await pool
       .from('email_suppressions')
       .upsert({
         email: webhook.lead_email,
@@ -669,7 +665,7 @@ async function handleCampaignCompleted(webhook: ReachInboxWebhook) {
     console.log(`✅ Campaign completed: ${webhook.campaign_name} (ID: ${webhook.campaign_id})`);
 
     // Log completion for analytics
-    await supabaseAdmin
+    await pool
       .from('campaign_interactions')
       .insert({
         campaign_id: String(webhook.campaign_id),

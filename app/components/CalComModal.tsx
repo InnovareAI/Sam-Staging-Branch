@@ -36,7 +36,6 @@ export default function CalComModal({ isOpen, onClose, workspaceId }: CalComModa
     setLoading(true);
     setError('');
     try {
-      const supabase = createClient();
       const { data, error: fetchError } = await supabase
         .from('workspace_accounts')
         .select('*')
@@ -101,7 +100,6 @@ export default function CalComModal({ isOpen, onClose, workspaceId }: CalComModa
     if (!confirm('Are you sure you want to disconnect Cal.com?')) return;
 
     try {
-      const supabase = createClient();
       await supabase
         .from('workspace_accounts')
         .delete()

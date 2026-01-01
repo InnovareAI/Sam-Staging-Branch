@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Get all LinkedIn accounts from Unipile API (source of truth)
     const unipileDsn = process.env.UNIPILE_DSN;

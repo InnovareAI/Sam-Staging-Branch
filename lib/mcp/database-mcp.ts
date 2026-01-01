@@ -5,7 +5,7 @@
  * Supports Supabase, PostgreSQL, MySQL, and SQLite databases
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/db';
 import { 
   MCPTool, 
   MCPCallToolRequest, 

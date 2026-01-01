@@ -4,7 +4,7 @@
  * Supports multiple campaigns per funnel with A/B testing and multi-ICP targeting
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 
 export interface CampaignReplyDetectionResult {
   is_campaign_reply: boolean
@@ -109,7 +109,7 @@ export class EnhancedCampaignReplyDetector {
   ): Promise<CampaignReplyDetectionResult | null> {
     if (!message.conversation_id) return null
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     const { data: campaignMessage, error } = await supabase
       .from('campaign_messages')
@@ -149,7 +149,7 @@ export class EnhancedCampaignReplyDetector {
   ): Promise<CampaignReplyDetectionResult | null> {
     if (!message.thread_id) return null
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     const { data: campaignMessage, error } = await supabase
       .from('campaign_messages')
@@ -192,7 +192,7 @@ export class EnhancedCampaignReplyDetector {
 
     if (!senderEmail && !senderLinkedIn) return null
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     let query = supabase
       .from('campaign_messages')
@@ -245,7 +245,7 @@ export class EnhancedCampaignReplyDetector {
     const messageTime = new Date(message.timestamp)
     const timeWindowStart = new Date(messageTime.getTime() - 24 * 60 * 60 * 1000) // 24 hours before
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     const { data: recentCampaigns, error } = await supabase
       .from('campaign_messages')
@@ -417,7 +417,7 @@ export class EnhancedCampaignReplyDetector {
       return null
     }
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     const { data, error } = await supabase.rpc('track_campaign_reply', {
       p_platform: this.getPlatformFromMessage(message),
@@ -461,7 +461,7 @@ export class EnhancedCampaignReplyDetector {
     positive_sentiment_replies: number
     avg_response_time_hours: number
   }> {
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     const { data, error } = await supabase
       .from('campaign_replies')

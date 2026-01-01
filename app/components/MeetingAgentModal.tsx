@@ -86,7 +86,6 @@ export default function MeetingAgentModal({ isOpen, onClose, workspaceId }: Meet
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
       const { data, error } = await supabase
         .from('workspace_meeting_agent_config')
         .select('*')
@@ -108,8 +107,6 @@ export default function MeetingAgentModal({ isOpen, onClose, workspaceId }: Meet
 
   const loadStats = async () => {
     try {
-      const supabase = createClient();
-
       // Get meeting counts
       const [scheduled, completed, noShows, pendingFollowUps] = await Promise.all([
         supabase
@@ -150,8 +147,6 @@ export default function MeetingAgentModal({ isOpen, onClose, workspaceId }: Meet
     setSaveMessage('');
 
     try {
-      const supabase = createClient();
-
       const { error } = await supabase
         .from('workspace_meeting_agent_config')
         .upsert({

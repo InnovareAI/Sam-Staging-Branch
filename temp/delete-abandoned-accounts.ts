@@ -1,10 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 async function deleteAbandonedAccounts() {
   const accountsToDelete = [
     { email: 'magerery@gmail.com', id: 'f0296ec8-d6dd-403d-97f5-d9c6e855e4de' },

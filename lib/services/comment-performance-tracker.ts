@@ -12,7 +12,7 @@
  * Created: December 16, 2025
  */
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import { Pool } from 'pg';
 
 const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6.unipile.com:13670';
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 
 // Manual LinkedIn account linking for troubleshooting
 export async function POST(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     const body = await request.json()
     
     const { email, unipile_account_id } = body

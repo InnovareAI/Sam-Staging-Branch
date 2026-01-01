@@ -47,7 +47,6 @@ export function WorkspaceSettingsModal({ isOpen, onClose, workspaceId, workspace
     setSaveMessage('');
 
     try {
-      const supabase = createClient();
       const { error } = await supabase
         .from('workspaces')
         .update({ name: name.trim() })

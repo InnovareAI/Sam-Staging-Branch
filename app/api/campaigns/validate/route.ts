@@ -16,7 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const maxDuration = 30;
@@ -38,11 +38,6 @@ interface CampaignValidation {
   issues: ValidationIssue[];
   auto_fixed?: string[];
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {

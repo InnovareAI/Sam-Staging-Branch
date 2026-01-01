@@ -15,8 +15,6 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
-
     // Authenticate
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -98,8 +96,6 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
-
     // Authenticate
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

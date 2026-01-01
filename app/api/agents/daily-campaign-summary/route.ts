@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import {
   sendDailyCampaignSummary,
   getIAWorkspaceIds,
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   console.log('📊 Starting daily campaign summary...');
 
-  const supabase = supabaseAdmin();
+  const supabase = pool;
 
   try {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();

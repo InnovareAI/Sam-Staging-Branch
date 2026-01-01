@@ -1,13 +1,10 @@
 import { NextRequest } from 'next/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
 import { importQueue } from '@/lib/import-queue';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 /**
  * Streaming LinkedIn Import API
@@ -31,14 +28,14 @@ export async function POST(request: NextRequest) {
 
     if (!saved_search_url) {
       return new Response(
-        encoder.encode(`event: error\ndata: ${JSON.stringify({error: 'saved_search_url is required'})}\n\n`),
+        encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'saved_search_url is required' })}\n\n`),
         { status: 400 }
       );
     }
 
     if (!user_id || !workspace_id) {
       return new Response(
-        encoder.encode(`event: error\ndata: ${JSON.stringify({error: 'Authentication required'})}\n\n`),
+        encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Authentication required' })}\n\n`),
         { status: 401 }
       );
     }
@@ -48,7 +45,7 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         try {
           // Get user data
-          const { data: userData } = await supabaseAdmin
+          const { data: userData } = await pool
             .from('users')
             .select('id, email')
             .eq('id', user_id)
@@ -56,14 +53,14 @@ export async function POST(request: NextRequest) {
 
           if (!userData) {
             controller.enqueue(encoder.encode(
-              `event: error\ndata: ${JSON.stringify({error: 'User not found'})}\n\n`
+              `event: error\ndata: ${JSON.stringify({ error: 'User not found' })}\n\n`
             ));
             controller.close();
             return;
           }
 
           // Get LinkedIn account
-          const { data: linkedInAccounts } = await supabaseAdmin
+          const { data: linkedInAccounts } = await pool
             .from('workspace_accounts')
             .select('unipile_account_id, account_name')
             .eq('workspace_id', workspace_id)
@@ -73,7 +70,7 @@ export async function POST(request: NextRequest) {
 
           if (!linkedInAccounts || linkedInAccounts.length === 0) {
             controller.enqueue(encoder.encode(
-              `event: error\ndata: ${JSON.stringify({error: 'No LinkedIn account connected'})}\n\n`
+              `event: error\ndata: ${JSON.stringify({ error: 'No LinkedIn account connected' })}\n\n`
             ));
             controller.close();
             return;
@@ -85,7 +82,7 @@ export async function POST(request: NextRequest) {
           const sessionId = uuidv4();
           const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
 
-          const { data: workspace } = await supabaseAdmin
+          const { data: workspace } = await pool
             .from('workspaces')
             .select('name')
             .eq('id', workspace_id)
@@ -97,7 +94,7 @@ export async function POST(request: NextRequest) {
           const finalCampaignName = campaign_name || `${today}-${companyCode}-SavedSearch-${savedSearchId}`;
 
           // Get next batch number
-          const { data: existingSessions } = await supabaseAdmin
+          const { data: existingSessions } = await pool
             .from('prospect_approval_sessions')
             .select('batch_number')
             .eq('user_id', user_id)
@@ -108,7 +105,7 @@ export async function POST(request: NextRequest) {
           const nextBatchNumber = (existingSessions?.[0]?.batch_number || 0) + 1;
 
           // Create session
-          await supabaseAdmin
+          await pool
             .from('prospect_approval_sessions')
             .insert({
               id: sessionId,

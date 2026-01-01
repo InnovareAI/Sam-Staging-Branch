@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { normalizeCompanyName } from '@/lib/prospect-normalization';
 import { extractLinkedInSlug, getBestLinkedInIdentifier } from '@/lib/linkedin-utils';
 
@@ -16,11 +16,6 @@ import { extractLinkedInSlug, getBestLinkedInIdentifier } from '@/lib/linkedin-u
  */
 
 export const maxDuration = 60;
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(req: NextRequest) {
   // Verify cron secret

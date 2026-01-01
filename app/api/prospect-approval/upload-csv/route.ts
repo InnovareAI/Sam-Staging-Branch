@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { normalizeFullName } from '@/lib/enrich-prospect-name';
 import {
   normalizeCompanyName,
@@ -92,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     if (internalAuth === 'true' && internalUserId) {
       console.log('🔐 Internal auth detected in CSV upload');
-      const { data: userData, error: userError } = await supabaseAdmin()
+      const { data: userData, error: userError } = await pool
         .from('users')
         .select('id, email, current_workspace_id')
         .eq('id', internalUserId)
@@ -115,15 +114,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Create user client for authentication
-      const userSupabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          global: { headers: { Authorization: authHeaderValue } }
-        }
-      );
-
-      // Get authenticated user
+      // Pool imported from lib/db
+// Get authenticated user
       const { data: { user: authUser }, error: authError } = await userSupabase.auth.getUser();
       if (authError || !authUser) {
         return NextResponse.json({
@@ -135,11 +127,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Create service role client for database operations
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const campaignName = formData.get('campaign_name') as string || 'CSV Upload';

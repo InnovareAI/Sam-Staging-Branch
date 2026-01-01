@@ -26,7 +26,7 @@ import {
   Copy,
   RefreshCw
 } from 'lucide-react'
-import { createClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/db';
 
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(false)
@@ -70,11 +70,6 @@ export default function AdminSettingsPage() {
 
   const fetchUserData = async () => {
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      
       const { data: { user } } = await supabase.auth.getUser()
       
       if (user) {
@@ -106,11 +101,6 @@ export default function AdminSettingsPage() {
     setMessage(null)
     
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      
       const { error } = await supabase.auth.updateUser({
         data: {
           full_name: profileForm.fullName,
@@ -148,11 +138,6 @@ export default function AdminSettingsPage() {
     }
     
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      
       const { error } = await supabase.auth.updateUser({
         password: passwordForm.newPassword
       })

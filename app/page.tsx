@@ -116,8 +116,8 @@ const AnimatedMessage = ({ content }: { content: string; animate?: boolean }) =>
 };
 
 export default function Page() {
-  // Initialize Supabase client
   const supabase = createClient();
+  // Initialize Supabase client
   const router = useRouter();
 
   // Initialize confirm modal hook

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 /**
  * ⚠️ DEPRECATED - DO NOT USE
@@ -17,11 +17,6 @@ import { createClient } from '@supabase/supabase-js';
  *
  * DELETE this webhook URL from Unipile dashboard after deploying this change.
  */
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(req: NextRequest) {
   console.warn('⚠️ DEPRECATED WEBHOOK CALLED: /api/webhooks/unipile-connection-accepted');

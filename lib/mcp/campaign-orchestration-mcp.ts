@@ -3,7 +3,7 @@
  * Handles campaign creation, execution, and monitoring through conversational interface
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { mcp__template__get_by_criteria, mcp__template__get_by_id } from './template-mcp';
 import { mcp__sonnet__personalize_for_prospect } from './sonnet-mcp';
 
@@ -66,7 +66,7 @@ export async function mcp__sam__create_campaign(request: CampaignRequest): Promi
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // 1. Find suitable template
     const templateResult = await findBestTemplate(request);
@@ -166,7 +166,7 @@ export async function mcp__sam__execute_campaign(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // 1. Get campaign details
     const { data: campaign, error: campaignError } = await supabase
@@ -327,7 +327,7 @@ export async function mcp__sam__get_campaign_status(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Get campaign details
     const { data: campaign, error: campaignError } = await supabase
@@ -408,7 +408,7 @@ async function findBestTemplate(request: CampaignRequest) {
 
 async function findProspectsForCampaign(request: CampaignRequest) {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     let query = supabase
       .from('workspace_prospects')
@@ -530,7 +530,7 @@ async function executeViaN8NWorkflow(params: {
 }): Promise<{ success: boolean; execution_id?: string; error?: string }> {
   try {
     // Get workspace N8N configuration
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     const { data: workspaceConfig } = await supabase
       .from('workspace_n8n_workflows')
       .select('*')
@@ -654,7 +654,7 @@ export async function mcp__sam__create_linkedin_campaign_with_flow(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     const flow_settings = {
       connection_wait_hours: params.connection_wait_hours || 36,
@@ -741,7 +741,7 @@ export async function mcp__sam__create_ab_test_campaigns(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     const createdCampaigns = [];
 
     for (const config of params.campaigns) {
@@ -819,7 +819,7 @@ export async function mcp__sam__split_prospects_between_campaigns(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Shuffle prospects for random distribution
     const prospects = params.shuffle !== false
@@ -936,7 +936,7 @@ export async function mcp__sam__create_linkedin_dm_campaign(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     const flow_settings = {
       campaign_type: 'linkedin_dm',

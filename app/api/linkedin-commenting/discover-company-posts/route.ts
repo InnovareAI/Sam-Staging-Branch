@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
@@ -54,7 +54,7 @@ function parseRelativeDate(dateStr: string): Date | null {
 export async function POST(request: NextRequest) {
   try {
     // Use admin client to bypass RLS policies - this is a system endpoint
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     console.log('🏢 Starting company page post discovery...');
 

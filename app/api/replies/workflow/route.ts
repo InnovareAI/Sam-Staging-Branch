@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { emailApprovalParser } from '@/lib/services/email-approval-parser';
 import { unipileSender } from '@/lib/services/unipile-sender';
 import { prospectResearcher, type ResearchResult } from '@/lib/services/prospect-research';
@@ -18,7 +18,7 @@ import { prospectResearcher, type ResearchResult } from '@/lib/services/prospect
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     const { searchParams } = new URL(request.url);
     const threadId = searchParams.get('threadId');
 

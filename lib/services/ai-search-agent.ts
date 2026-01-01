@@ -15,7 +15,7 @@
  */
 
 import { claudeClient, CLAUDE_MODELS } from '@/lib/llm/claude-client';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // ============================================
 // TYPES

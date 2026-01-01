@@ -117,7 +117,6 @@ export default function AccountLimitsModal({
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
       const { data, error } = await supabase
         .from('workspace_account_limits')
         .select('*')
@@ -140,8 +139,6 @@ export default function AccountLimitsModal({
   const saveSettings = async () => {
     setSaving(true);
     try {
-      const supabase = createClient();
-
       const { error } = await supabase
         .from('workspace_account_limits')
         .upsert({

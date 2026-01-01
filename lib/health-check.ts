@@ -1,10 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+// Pool imported from lib/db
 // Critical tables that MUST exist
 const CRITICAL_TABLES = [
   'sam_conversation_threads',
@@ -27,7 +23,7 @@ export async function ensureDatabaseHealth(): Promise<{ healthy: boolean; issues
     // Check critical tables
     for (const tableName of CRITICAL_TABLES) {
       try {
-        const { error } = await supabaseAdmin
+        const { error } = await pool
           .from(tableName)
           .select('id')
           .limit(0);

@@ -10,7 +10,7 @@
  * Created: December 20, 2025
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // ============================================
 // TYPES
@@ -44,11 +44,6 @@ export interface LinkClickEvent {
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.meet-sam.com';
 const TRACKING_PATH = '/t';  // Short path for tracked links
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // ============================================
 // LINK TYPE DETECTION

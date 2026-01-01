@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // Set Netlify function timeout to 5 minutes (campaigns can take time to execute)
 export const maxDuration = 300;
@@ -67,17 +67,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Use service role for cron operations
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
     // Find campaigns that are due for execution
     // INCLUDES:
     // 1. 'scheduled' campaigns with next_execution_time <= now

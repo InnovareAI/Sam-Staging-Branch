@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Received Stripe event: ${event.type}`)
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     // Handle different event types
     switch (event.type) {

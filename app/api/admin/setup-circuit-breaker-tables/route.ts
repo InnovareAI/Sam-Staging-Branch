@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   const { error: authError } = await requireAdmin(request);
   if (authError) return authError;
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     logger.info('Setting up circuit breaker database schema')
 

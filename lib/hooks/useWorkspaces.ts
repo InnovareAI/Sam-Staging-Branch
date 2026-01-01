@@ -54,7 +54,6 @@ async function getAuthToken(): Promise<string | null> {
   try {
     // Try to get from Supabase session
     const { createClient } = await import('@/app/lib/supabase');
-    const supabase = createClient();
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token || null;
   } catch {

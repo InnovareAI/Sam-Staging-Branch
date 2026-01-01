@@ -28,7 +28,6 @@ export default function LinkedInImportPage({ params }: PageProps) {
   useEffect(() => {
     async function initAuth() {
       try {
-        const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {

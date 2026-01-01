@@ -23,7 +23,6 @@ const DPA_REQUIRED_COUNTRIES = [
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
     const { searchParams } = new URL(request.url)
     const workspaceId = searchParams.get('workspaceId')
 

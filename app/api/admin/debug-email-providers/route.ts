@@ -1,12 +1,7 @@
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { requireAdmin } from '@/lib/security/route-auth';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 async function callUnipileAPI(endpoint: string) {
   const unipileDsn = process.env.UNIPILE_DSN;

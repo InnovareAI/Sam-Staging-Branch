@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { getClaudeClient } from '@/lib/llm/claude-client';
 import { sendReplyAgentHITLNotification } from '@/lib/notifications/google-chat';
 import { slackService } from '@/lib/slack';
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = supabaseAdmin();
+  const supabase = pool;
   const results: any[] = [];
 
   try {

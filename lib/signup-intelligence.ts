@@ -8,13 +8,9 @@
  * 4. Auto-populates workspace KB
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+// Pool imported from lib/db
 // Industry taxonomy (should match knowledge_base categories)
 export const SUPPORTED_INDUSTRIES = {
   'saas': 'SaaS & Software',
@@ -130,7 +126,7 @@ Signup Intelligence Complete:
  */
 async function loadIndustryKnowledge(industry: Industry, workspaceId: string): Promise<IndustryKnowledge> {
   try {
-    const { data: industryData, error } = await supabaseAdmin
+    const { data: industryData, error } = await pool
       .from('knowledge_base')
       .select('*')
       .or(`category.eq.verticals,category.ilike.%${industry}%,tags.cs.{${industry}}`)
@@ -491,7 +487,7 @@ async function populateWorkspaceKB(params: {
 
   // Insert all entries
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await pool
       .from('knowledge_base')
       .insert(entriesWithValidation)
       .select();

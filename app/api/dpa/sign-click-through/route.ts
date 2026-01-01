@@ -13,8 +13,6 @@ import { createClient } from '@/app/lib/supabase/server';
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
-
     // 1. Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -180,8 +178,6 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
-
     // Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

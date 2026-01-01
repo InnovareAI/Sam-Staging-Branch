@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // First check for App mode (slack_app_config with bot token)
-    const { data: appConfig } = await supabaseAdmin()
+    const { data: appConfig } = await pool
       .from('slack_app_config')
       .select('bot_token, default_channel, slack_team_name')
       .eq('workspace_id', workspace_id)
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fall back to webhook mode
-    const { data: integration, error } = await supabaseAdmin()
+    const { data: integration, error } = await pool
       .from('workspace_integrations')
       .select('*')
       .eq('workspace_id', workspace_id)

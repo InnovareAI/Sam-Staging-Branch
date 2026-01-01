@@ -5,11 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { HITLApprovalEmailService } from '@/lib/services/hitl-approval-email-service'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
 import { z } from 'zod'
 
-const supabase = supabaseAdmin()
+const supabase = pool
 const hitlService = new HITLApprovalEmailService()
 
 // Validation schema for creating approval sessions

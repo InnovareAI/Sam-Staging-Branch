@@ -5,7 +5,7 @@
  */
 
 import { createClient } from '@/lib/supabase-server';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { Pool } from 'pg';
 
 export interface WorkspaceAuthResult {
   authorized: boolean;
@@ -28,8 +28,6 @@ export async function authorizeWorkspaceAccess(
   workspaceId: string,
   requiredRole?: 'owner' | 'admin' | 'member'
 ): Promise<WorkspaceAuthResult> {
-  const supabase = createClient();
-
   // Get authenticated user
   const {
     data: { user },
@@ -134,8 +132,6 @@ export async function getUserWorkspaces(): Promise<
     is_owner: boolean;
   }>
 > {
-  const supabase = createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -170,8 +166,6 @@ export async function getUserDefaultWorkspace(): Promise<{
   id: string;
   name: string;
 } | null> {
-  const supabase = createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();

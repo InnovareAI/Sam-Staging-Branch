@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 export const maxDuration = 300; // 5 minutes (for cron job)
 export const dynamic = 'force-dynamic';
@@ -33,17 +33,6 @@ interface BrightDataEnrichmentResult {
 export async function POST(request: NextRequest) {
   try {
     // Use service role to bypass RLS
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
     // Get job ID from request or find next pending job
     const body = await request.json().catch(() => ({}));
     let jobId = body.jobId;

@@ -1,5 +1,5 @@
 
-import { supabase, supabaseAdmin } from '../../../lib/supabase';
+import { supabase, pool } from '../../../lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { createPostmarkHelper, shouldBypassEmail, getSafeTestEmail } from '../../../../lib/postmark-helper';
 import { requireAdmin } from '@/lib/security/route-auth';
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use shared Supabase clients
-    const adminSupabase = supabaseAdmin();
+    const adminSupabase = pool;
 
     // Verify the requesting user is the super admin
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));

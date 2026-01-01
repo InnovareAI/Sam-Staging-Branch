@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-                // Authentication is handled via supabaseAdmin inside the endpoint
+                // Authentication is handled via pool inside the endpoint
             }
         });
 

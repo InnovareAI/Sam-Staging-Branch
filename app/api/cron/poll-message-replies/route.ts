@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { airtableService } from '@/lib/airtable';
 import { classifyIntent } from '@/lib/services/intent-classifier';
 import { syncInterestedLeadToCRM } from '@/lib/services/crm-sync';
@@ -43,11 +43,6 @@ export async function POST(request: NextRequest) {
     console.log('📨 Poll message replies starting...');
 
     // Create Supabase client with service role key (bypasses RLS)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // MULTI-TURN SUPPORT (Dec 13, 2025):
     // 1. First get prospects who haven't replied yet (first reply detection)
     // 2. Then get prospects who HAVE replied (second/third reply detection)

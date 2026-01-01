@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react';
 import ScheduleSettings, { ScheduleSettingsData } from '@/components/ScheduleSettings';
 
 export default function CampaignsPage() {
-  const supabase = createClient();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 

@@ -1,13 +1,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { requireAdmin } from '@/lib/security/route-auth';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+// Pool imported from lib/db
 export async function POST(request: NextRequest) {
 
   // Require admin authentication
@@ -18,7 +14,7 @@ export async function POST(request: NextRequest) {
     
     // First, let's create the threads table by trying to insert a dummy record and catch the error
     try {
-      const { error: createThreadsError } = await supabaseAdmin
+      const { error: createThreadsError } = await pool
         .from('sam_conversation_threads')
         .insert([{
           title: 'test',

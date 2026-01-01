@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check workspace_integrations table for basic Slack status
-    const { data: integration, error } = await supabaseAdmin()
+    const { data: integration, error } = await pool
       .from('workspace_integrations')
       .select('*')
       .eq('workspace_id', workspaceId)
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check for full app config (two-way messaging)
-    const { data: appConfig } = await supabaseAdmin()
+    const { data: appConfig } = await pool
       .from('slack_app_config')
       .select('slack_team_id, slack_team_name, bot_user_id, status, features_enabled')
       .eq('workspace_id', workspaceId)

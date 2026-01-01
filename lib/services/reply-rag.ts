@@ -3,7 +3,7 @@
  * Uses embeddings to find similar past conversations and successful replies
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 

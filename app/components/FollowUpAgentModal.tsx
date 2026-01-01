@@ -63,7 +63,6 @@ export default function FollowUpAgentModal({ isOpen, onClose, workspaceId }: Fol
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
       const { data, error } = await supabase
         .from('workspace_follow_up_agent_config')
         .select('*')
@@ -85,7 +84,6 @@ export default function FollowUpAgentModal({ isOpen, onClose, workspaceId }: Fol
 
   const loadPendingDrafts = async () => {
     try {
-      const supabase = createClient();
       const { count } = await supabase
         .from('follow_up_drafts')
         .select('id', { count: 'exact', head: true })
@@ -103,8 +101,6 @@ export default function FollowUpAgentModal({ isOpen, onClose, workspaceId }: Fol
     setSaveMessage('');
 
     try {
-      const supabase = createClient();
-
       const { error } = await supabase
         .from('workspace_follow_up_agent_config')
         .upsert({

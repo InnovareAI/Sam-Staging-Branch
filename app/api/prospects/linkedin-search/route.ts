@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 // Unipile API for LinkedIn search
 // API Docs: https://developer.unipile.com/docs/linkedin-search
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
         };
 
         // Try to upsert (insert or update if exists)
-        const { data: upsertedProspect, error: upsertError } = await supabaseAdmin
+        const { data: upsertedProspect, error: upsertError } = await pool
           .from('workspace_prospects')
           .upsert(prospectData, {
             onConflict: 'workspace_id,linkedin_url_hash',
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
           if (upsertError.code === '23505') {
             duplicateCount++;
             // Fetch the existing record
-            const { data: existingProspect } = await supabaseAdmin
+            const { data: existingProspect } = await pool
               .from('workspace_prospects')
               .select('*')
               .eq('workspace_id', workspaceId)

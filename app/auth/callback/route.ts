@@ -93,12 +93,8 @@ export async function GET(request: NextRequest) {
       if (data.user) {
         // Create user profile if it doesn't exist
         try {
-          const supabaseAdmin = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-          );
-
-          // Create user profile
+          // Pool imported from lib/db
+// Create user profile
           const { data: userProfile, error: profileError } = await supabaseAdmin
             .from('users')
             .upsert({

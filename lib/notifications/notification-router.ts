@@ -11,17 +11,12 @@
  * Created: December 16, 2025
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { slackService } from '@/lib/slack';
 import {
   sendRateLimitNotification as sendGoogleChatRateLimitNotification,
   sendFailedProspectsAlert as sendGoogleChatFailedProspectsAlert,
 } from '@/lib/notifications/google-chat';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export type NotificationChannel = 'slack' | 'google_chat' | 'none';
 

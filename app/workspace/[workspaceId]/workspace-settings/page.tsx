@@ -35,8 +35,6 @@ export default function WorkspaceSettingsPage() {
     const loadWorkspaceData = async () => {
         setLoading(true)
         try {
-            const supabase = createClient()
-
             // Load workspace details
             const { data: workspaceData } = await supabase
                 .from('workspaces')

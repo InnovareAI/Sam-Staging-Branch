@@ -1,5 +1,5 @@
 
-import { supabaseAdmin } from '../../../lib/supabase';
+import { pool } from '../../../lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/security/route-auth';
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Use shared Supabase admin client
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Get organizations
     const { data: organizations, error: orgError } = await supabase

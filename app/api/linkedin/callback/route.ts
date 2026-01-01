@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 
 // In-memory lock to prevent race conditions when webhook is called multiple times
 const processingLocks = new Map<string, Promise<any>>()
@@ -7,7 +7,7 @@ const processingLocks = new Map<string, Promise<any>>()
 // LinkedIn connection callback with workspace isolation - Unipile hosted auth webhook
 export async function POST(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     const body = await request.json()
     
     console.log(`🔄 LinkedIn hosted auth webhook received:`, body)

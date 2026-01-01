@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { slackService } from '@/lib/slack';
 
 /**
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     console.log('[Daily Digest] Starting daily digest generation...', { isManualTrigger, channel: body.channel });
 
     // Get all workspaces with active Slack app config
-    const query = supabaseAdmin()
+    const query = pool
       .from('slack_app_config')
       .select('workspace_id, slack_team_name, default_channel')
       .eq('status', 'active');
@@ -126,7 +126,7 @@ async function gatherDailyStats(
   const endIso = endDate.toISOString();
 
   // Connection requests sent yesterday
-  const { count: crSent } = await supabaseAdmin()
+  const { count: crSent } = await pool
     .from('campaign_prospects')
     .select('*', { count: 'exact', head: true })
     .eq('workspace_id', workspaceId)
@@ -134,7 +134,7 @@ async function gatherDailyStats(
     .lt('contacted_at', endIso);
 
   // Connections accepted yesterday
-  const { count: crAccepted } = await supabaseAdmin()
+  const { count: crAccepted } = await pool
     .from('campaign_prospects')
     .select('*', { count: 'exact', head: true })
     .eq('workspace_id', workspaceId)
@@ -143,7 +143,7 @@ async function gatherDailyStats(
     .lt('updated_at', endIso);
 
   // Replies received yesterday (from linkedin_messages table)
-  const { count: repliesReceived } = await supabaseAdmin()
+  const { count: repliesReceived } = await pool
     .from('linkedin_messages')
     .select('*', { count: 'exact', head: true })
     .eq('workspace_id', workspaceId)
@@ -152,7 +152,7 @@ async function gatherDailyStats(
     .lt('created_at', endIso);
 
   // Follow-ups sent yesterday
-  const { count: followUpsSent } = await supabaseAdmin()
+  const { count: followUpsSent } = await pool
     .from('campaign_prospects')
     .select('*', { count: 'exact', head: true })
     .eq('workspace_id', workspaceId)
@@ -161,21 +161,21 @@ async function gatherDailyStats(
     .lt('follow_up_sent_at', endIso);
 
   // Active campaigns count
-  const { count: activeCampaigns } = await supabaseAdmin()
+  const { count: activeCampaigns } = await pool
     .from('campaigns')
     .select('*', { count: 'exact', head: true })
     .eq('workspace_id', workspaceId)
     .eq('status', 'active');
 
   // Hot leads (prospects marked as hot or with positive sentiment)
-  const { count: hotLeads } = await supabaseAdmin()
+  const { count: hotLeads } = await pool
     .from('campaign_prospects')
     .select('*', { count: 'exact', head: true })
     .eq('workspace_id', workspaceId)
     .or('lead_score.gte.80,status.eq.hot_lead');
 
   // Get top performing campaign
-  const { data: campaigns } = await supabaseAdmin()
+  const { data: campaigns } = await pool
     .from('campaigns')
     .select(`
       id,
@@ -204,7 +204,7 @@ async function gatherDailyStats(
   }
 
   // Pending approval actions
-  const { count: pendingActions } = await supabaseAdmin()
+  const { count: pendingActions } = await pool
     .from('slack_pending_actions')
     .select('*', { count: 'exact', head: true })
     .eq('workspace_id', workspaceId)

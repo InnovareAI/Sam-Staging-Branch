@@ -107,7 +107,6 @@ export default function TestAuthPage() {
     // Test 4: Supabase client
     log('\nTest 4: Supabase Authentication', 'info');
     try {
-      const supabase = createClient();
       const { data: { user }, error } = await supabase.auth.getUser();
 
       if (error) {

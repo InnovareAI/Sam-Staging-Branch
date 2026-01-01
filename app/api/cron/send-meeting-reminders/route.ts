@@ -12,15 +12,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { generateReminderMessage, MeetingContext } from '@/lib/services/meeting-agent';
 
 export const maxDuration = 60; // 1 minute
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const POSTMARK_API_KEY = process.env.POSTMARK_SERVER_TOKEN;
 const POSTMARK_FROM_EMAIL = process.env.POSTMARK_FROM_EMAIL || 'sam@meet-sam.com';

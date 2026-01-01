@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 export async function GET() {
   try {
     // Test the EXACT query that find-prospects uses
-    const { data: accounts, error } = await supabaseAdmin()
+    const { data: accounts, error } = await pool
       .from('workspace_accounts')
       .select('account_name, account_type, connection_status, unipile_account_id')
       .eq('workspace_id', 'babdcab8-1a78-4b2f-913e-6e9fd9821009')

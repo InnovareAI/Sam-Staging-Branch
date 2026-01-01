@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
@@ -8,8 +8,6 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function POST() {
   try {
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-
     console.log('📧 Deploying Daily Email Cron Job...\n');
 
     // Step 1: Enable http extension

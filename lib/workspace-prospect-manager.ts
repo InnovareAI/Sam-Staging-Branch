@@ -4,7 +4,7 @@
  * Ensures no prospect gets messaged twice from the same workspace
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 
 export interface WorkspaceProspect {
   id: string
@@ -81,7 +81,7 @@ export class WorkspaceProspectManager {
     prospectData: Partial<WorkspaceProspect>,
     data_source: string = 'manual'
   ): Promise<WorkspaceProspect> {
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     const { data, error} = await supabase.rpc('add_or_get_workspace_prospect', {
       p_workspace_id: workspace_id,
@@ -125,7 +125,7 @@ export class WorkspaceProspectManager {
     user_id: string,
     contact_method: string = 'any'
   ): Promise<ContactEligibilityResult> {
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     const { data, error } = await supabase.rpc('can_contact_prospect', {
       p_workspace_id: workspace_id,
@@ -147,7 +147,7 @@ export class WorkspaceProspectManager {
   static async recordProspectContact(
     contactData: ProspectContactAttempt
   ): Promise<string> {
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     const { data, error } = await supabase.rpc('record_prospect_contact', {
       p_workspace_id: contactData.workspace_id,
@@ -177,7 +177,7 @@ export class WorkspaceProspectManager {
     prospectData: Partial<WorkspaceProspect>,
     limit: number = 10
   ): Promise<WorkspaceProspect[]> {
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     // Build OR conditions for potential matches
     const orConditions: any[] = []
@@ -233,7 +233,7 @@ export class WorkspaceProspectManager {
     prospects: any[]
     total: number
   }> {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     let query = supabase
       .from('workspace_prospect_summary')
@@ -288,7 +288,7 @@ export class WorkspaceProspectManager {
     assigned_to: string,
     assigned_by: string
   ): Promise<void> {
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     // Verify prospect exists in workspace
     const { data: prospect, error: prospectError } = await supabase
@@ -418,7 +418,7 @@ export class WorkspaceProspectManager {
     response_rate: number
     avg_contacts_per_prospect: number
   }> {
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     // Calculate date filter
     let dateFilter = new Date()
@@ -511,7 +511,7 @@ export class WorkspaceProspectManager {
     user_id: string,
     status?: string[]
   ): Promise<WorkspaceProspect[]> {
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     let query = supabase
       .from('workspace_prospects')
@@ -543,7 +543,7 @@ export class WorkspaceProspectManager {
     platform_message_id: string,
     response_content: string
   ): Promise<void> {
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     // Update contact history
     const { error: historyError } = await supabase

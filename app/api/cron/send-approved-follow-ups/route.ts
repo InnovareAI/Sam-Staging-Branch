@@ -13,16 +13,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { calculateNextFollowUpDate, FollowUpScenario } from '@/lib/services/follow-up-agent-v2';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const maxDuration = 300; // 5 minutes
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Unipile REST API configuration
 const UNIPILE_BASE_URL = `https://${process.env.UNIPILE_DSN}`;

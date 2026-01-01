@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { analyzeWebsite } from '@/lib/services/ai-search-agent';
 import { apiSuccess, apiError } from '@/lib/api-error-handler';
 

@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { generateEmbedding } from '@/lib/services/reply-rag';
 
 // Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // Extract insights from SAM conversations using Mistral AI
 async function extractConversationInsights(conversationData: any[]) {
   const systemPrompt = `You are an AI conversation analyst specialized in extracting valuable business insights from SAM AI conversations for knowledge base enhancement.

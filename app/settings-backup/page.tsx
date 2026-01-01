@@ -28,7 +28,6 @@ interface WorkspaceMember {
 }
 
 export default function SettingsPage() {
-  const supabase = createClient();
   const [user, setUser] = useState<any>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);

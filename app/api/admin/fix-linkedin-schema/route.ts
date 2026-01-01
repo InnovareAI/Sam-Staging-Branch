@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { requireAdmin } from '@/lib/security/route-auth';
 
 export async function POST(request: NextRequest) {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   const { error: authError } = await requireAdmin(request);
   if (authError) return authError;
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     console.log('🔧 Fixing LinkedIn database schema...')
     

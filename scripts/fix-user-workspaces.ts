@@ -15,8 +15,6 @@ if (!supabaseUrl || !supabaseServiceKey) {
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 async function fixAllUserWorkspaces() {
   console.log('🔍 Finding users without workspace IDs...\n');
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/db';
 
 /**
  * DEBUG ENDPOINT: Investigate Canada campaign issue
@@ -7,17 +7,6 @@ import { createClient } from '@supabase/supabase-js'
 export async function GET(request: NextRequest) {
   try {
     // Use service role to bypass RLS for debugging
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
-
     const results: any = {
       timestamp: new Date().toISOString(),
       queries: {}

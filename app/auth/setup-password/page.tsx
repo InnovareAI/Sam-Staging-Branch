@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Lock, Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-react'
-import { createClient } from '@/app/lib/supabase'
+import { getFirebaseAuth, onAuthStateChanged, updatePassword } from '@/lib/firebase'
+import type { User } from 'firebase/auth'
 
 /**
  * Password Setup Page
@@ -17,8 +18,6 @@ import { createClient } from '@/app/lib/supabase'
  */
 export default function SetupPasswordPage() {
   const router = useRouter()
-  const supabase = createClient()
-
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -27,31 +26,21 @@ export default function SetupPasswordPage() {
   const [error, setError] = useState('')
   const [validating, setValidating] = useState(true)
   const [userEmail, setUserEmail] = useState('')
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
 
   useEffect(() => {
-    // Verify user is authenticated
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-
+    const auth = getFirebaseAuth()
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        // Not authenticated, redirect to home
         router.push('/')
         return
       }
-
-      // Check if user has onboarding_type = '3cubed_enterprise'
-      if (user.user_metadata?.onboarding_type !== '3cubed_enterprise') {
-        // Not a 3cubed enterprise user, redirect to main app
-        router.push('/')
-        return
-      }
-
+      setCurrentUser(user)
       setUserEmail(user.email || '')
       setValidating(false)
-    }
-
-    checkAuth()
-  }, [router, supabase])
+    })
+    return () => unsubscribe()
+  }, [router])
 
   const validatePassword = (pwd: string): string[] => {
     const errors: string[] = []
@@ -80,29 +69,16 @@ export default function SetupPasswordPage() {
       return
     }
 
+    if (!currentUser) {
+      setError('Not authenticated')
+      return
+    }
+
     setLoading(true)
 
     try {
-      // Update user password
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password
-      })
-
-      if (updateError) {
-        throw updateError
-      }
-
-      // Update user metadata to mark password as set
-      const { error: metadataError } = await supabase.auth.updateUser({
-        data: {
-          password_set: true,
-          password_set_at: new Date().toISOString()
-        }
-      })
-
-      if (metadataError) {
-        console.error('Failed to update user metadata:', metadataError)
-      }
+      // Update user password using Firebase
+      await updatePassword(currentUser, password)
 
       // Success! Redirect to main SAM interface
       setTimeout(() => {

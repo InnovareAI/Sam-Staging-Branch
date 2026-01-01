@@ -16,7 +16,7 @@
  */
 
 import { logger, PerformanceMonitor, MetricsTracker } from '@/lib/logging'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 
 // Circuit breaker states
 export enum CircuitBreakerState {
@@ -511,7 +511,7 @@ export class CircuitBreaker<T = any> {
   private async recordMetrics(outcome: 'success' | 'failure', responseTime: number): Promise<void> {
     try {
       // Store metrics in database for historical analysis
-      await supabaseAdmin()
+      await pool
         .from('circuit_breaker_metrics')
         .insert({
           circuit_name: this.config.name,

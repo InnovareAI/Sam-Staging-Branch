@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 /**
  * Individual ICP API
@@ -8,11 +8,6 @@ import { createClient } from '@supabase/supabase-js';
  * PUT /api/workspace/[workspaceId]/icp/[icpId] - Update ICP
  * DELETE /api/workspace/[workspaceId]/icp/[icpId] - Delete ICP
  */
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // GET - Get single ICP
 export async function GET(

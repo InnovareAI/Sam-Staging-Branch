@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // Service role client for admin access
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+// Pool imported from lib/db
 // Failed statuses to include
 const FAILED_STATUSES = [
   'failed',
@@ -27,7 +23,7 @@ export async function GET(
     const campaignId = params.id;
 
     // Get campaign info
-    const { data: campaign, error: campaignError } = await supabaseAdmin
+    const { data: campaign, error: campaignError } = await pool
       .from('campaigns')
       .select('campaign_name, name, workspace_id')
       .eq('id', campaignId)
@@ -38,7 +34,7 @@ export async function GET(
     }
 
     // Get failed prospects
-    const { data: prospects, error } = await supabaseAdmin
+    const { data: prospects, error } = await pool
       .from('campaign_prospects')
       .select('first_name, last_name, email, company_name, title, linkedin_url, linkedin_user_id, status, notes, updated_at')
       .eq('campaign_id', campaignId)
@@ -55,7 +51,7 @@ export async function GET(
     }
 
     // Get error messages from send_queue
-    const { data: queueErrors } = await supabaseAdmin
+    const { data: queueErrors } = await pool
       .from('send_queue')
       .select('linkedin_user_id, error_message')
       .eq('campaign_id', campaignId)

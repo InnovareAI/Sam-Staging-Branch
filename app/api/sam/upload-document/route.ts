@@ -5,8 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAuth, pool } from '@/lib/auth'
-import { createClient } from '@supabase/supabase-js'
+import { verifyAuth } from '@/lib/auth'
+import { pool } from '@/lib/db'
 import { processDocumentWithContext } from '@/lib/document-intelligence'
 import type { DocumentAnalysis } from '@/lib/document-intelligence'
 
@@ -23,11 +23,7 @@ const ALLOWED_TYPES = [
 ]
 
 // Initialize Supabase admin client for storage operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
+// Pool imported from lib/db
 export async function POST(request: NextRequest) {
   try {
     const auth = await verifyAuth(request);
@@ -92,7 +88,7 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer)
 
     // Upload to Supabase Storage using admin client
-    const { error: uploadError } = await supabaseAdmin
+    const { error: uploadError } = await pool
       .storage
       .from('sam-attachments')
       .upload(storagePath, buffer, {
@@ -212,7 +208,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get signed URL for temporary access
-    const { data: signedUrlData } = await supabaseAdmin
+    const { data: signedUrlData } = await pool
       .storage
       .from('sam-attachments')
       .createSignedUrl(storagePath, 3600)
@@ -289,7 +285,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get signed URL
-    const { data: signedUrlData } = await supabaseAdmin
+    const { data: signedUrlData } = await pool
       .storage
       .from('sam-attachments')
       .createSignedUrl(attachment.storage_path, 3600)
@@ -338,7 +334,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete from storage
-    const { error: storageError } = await supabaseAdmin
+    const { error: storageError } = await pool
       .storage
       .from('sam-attachments')
       .remove([attachment.storage_path])

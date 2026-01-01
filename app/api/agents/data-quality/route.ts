@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     const issues: DataQualityIssue[] = [];
 
     // 1. Check for duplicate prospects (same LinkedIn URL in same workspace)

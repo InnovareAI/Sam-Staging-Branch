@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import moment from 'moment-timezone';
 import { getHolidaysForCountry, BUSINESS_HOURS } from '@/lib/scheduling-config';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
@@ -138,11 +138,6 @@ export async function POST(req: NextRequest) {
       skipped_reason: 'holiday'
     });
   }
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
 
   const now = new Date();
   let processed = 0;

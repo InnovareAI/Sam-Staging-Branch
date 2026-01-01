@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { claudeClient } from '@/lib/llm/claude-client';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     const body: DebugRequest = await request.json();
     console.log('🔧 Debug agent starting:', body.issue_type);
 
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Step 1: Gather context based on issue type
     const contextData = await gatherContext(supabase, body);
@@ -337,7 +337,7 @@ async function applyLowRiskFixes(fixes: FixProposal[]): Promise<string[]> {
     if (fix.fix_type === 'data_fix' && fix.proposed_fix.toLowerCase().includes('update')) {
       // Only apply UPDATE statements (no DELETE or DROP)
       try {
-        const supabase = supabaseAdmin();
+        const supabase = pool;
         // Log the fix attempt
         console.log('📝 Auto-applying data fix:', fix.proposed_fix.substring(0, 100));
         // Note: In production, you'd execute the SQL here

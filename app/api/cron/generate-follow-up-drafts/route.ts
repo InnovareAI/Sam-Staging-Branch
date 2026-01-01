@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import {
   generateFollowUpMessage,
   createFollowUpDraft,
@@ -26,11 +26,6 @@ import {
 } from '@/lib/services/follow-up-agent-v2';
 
 export const maxDuration = 300; // 5 minutes
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(req: NextRequest) {
   try {

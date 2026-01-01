@@ -18,8 +18,6 @@ export async function GET(request: Request) {
       );
     }
 
-    const supabase = createClient();
-
     console.log('🔐 Force login attempt for:', email);
 
     // Sign in with email/password

@@ -3,8 +3,6 @@ import { createClient } from '@/app/lib/supabase/server';
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -102,8 +100,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

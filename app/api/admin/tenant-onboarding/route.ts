@@ -49,11 +49,6 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🏢 Starting new tenant onboarding...');
     
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // 1. VALIDATE SUPER ADMIN ACCESS
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.email || 
@@ -450,11 +445,6 @@ export async function GET(request: NextRequest) {
   const { error: authError } = await requireAdmin(request);
   if (authError) return authError;
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // Get comprehensive tenant report
     const { data: separationReport } = await supabase.rpc('get_tenant_separation_report');
     const { data: isolationStatus } = await supabase.rpc('verify_multi_tenant_isolation');

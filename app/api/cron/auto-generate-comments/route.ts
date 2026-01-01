@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { generateLinkedInComment, generateCommentReply } from '@/lib/services/linkedin-commenting-agent';
 import type { CommentGenerationContext, CommentReplyGenerationContext } from '@/lib/services/linkedin-commenting-agent';
 import { fetchPostComments, shouldReplyToComment } from '@/lib/services/linkedin-comment-replies';
@@ -100,8 +100,6 @@ export async function POST(request: NextRequest) {
       duration_ms: Date.now() - startTime
     });
   }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
   // ============================================
   // ANTI-DETECTION: Get random daily limit for this run

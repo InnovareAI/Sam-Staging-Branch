@@ -4,7 +4,7 @@
  * Supports: HubSpot, ActiveCampaign, Airtable, Salesforce, and more
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { mcpRegistry } from '@/lib/mcp/mcp-registry';
 
 interface InterestedLead {

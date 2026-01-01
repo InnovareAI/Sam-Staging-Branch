@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { claudeClient } from '@/lib/llm/claude-client';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Get campaigns to analyze
     const campaignFilter = body.campaign_id

@@ -12,12 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { pool } from '@/lib/db';
 
 const CALENDLY_CLIENT_ID = process.env.CALENDLY_CLIENT_ID;
 const CALENDLY_CLIENT_SECRET = process.env.CALENDLY_CLIENT_SECRET;

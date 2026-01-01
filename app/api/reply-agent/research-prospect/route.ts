@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing draftId or token' }, { status: 400 });
     }
 
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Verify the draft exists and token matches
     const { data: draft, error: draftError } = await supabase

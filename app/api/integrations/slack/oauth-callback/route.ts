@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 /**
  * GET /api/integrations/slack/oauth-callback
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
     if (isDirectInstall) {
       // Store the pending Slack installation (not yet linked to a SAM workspace)
       // Use slack_team_id as the unique identifier
-      const { error: pendingError } = await supabaseAdmin()
+      const { error: pendingError } = await pool
         .from('slack_pending_installations')
         .upsert({
           slack_team_id: team.id,
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
     const workspaceId = state;
 
     // Store the app config
-    const { error: configError } = await supabaseAdmin()
+    const { error: configError } = await pool
       .from('slack_app_config')
       .upsert({
         workspace_id: workspaceId,
@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Also update workspace_integrations for backward compatibility
-    await supabaseAdmin()
+    await pool
       .from('workspace_integrations')
       .upsert({
         workspace_id: workspaceId,

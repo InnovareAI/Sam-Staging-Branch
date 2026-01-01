@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { requireAdmin } from '@/lib/security/route-auth';
 
 export async function GET(request: NextRequest) {
@@ -10,11 +10,11 @@ export async function GET(request: NextRequest) {
   if (authError) return authError;
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    // Using pool from lib/db
 
     // Get table schemas
-    const { data: tables, error: tablesError } = await supabaseAdmin
+    const { data: tables, error: tablesError } = await pool
       .rpc('get_table_info', {});
 
     if (tablesError) {
@@ -22,14 +22,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get organizations table schema
-    const { data: orgsSchema, error: orgsError } = await supabaseAdmin
+    const { data: orgsSchema, error: orgsError } = await pool
       .from('information_schema.columns')
       .select('column_name, data_type, is_nullable')
       .eq('table_name', 'organizations')
       .eq('table_schema', 'public');
 
     // Get workspaces table schema  
-    const { data: workspacesSchema, error: workspacesError } = await supabaseAdmin
+    const { data: workspacesSchema, error: workspacesError } = await pool
       .from('information_schema.columns')
       .select('column_name, data_type, is_nullable')
       .eq('table_name', 'workspaces')

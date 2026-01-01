@@ -12,7 +12,7 @@
  */
 
 import { claudeClient } from '@/lib/llm/claude-client';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // ============================================
 // TYPES
@@ -526,11 +526,6 @@ function calculateConfidence(context: FollowUpContext, tone: FollowUpTone): numb
 // ============================================
 // HITL APPROVAL WORKFLOW
 // ============================================
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function createFollowUpDraft(
   context: FollowUpContext,

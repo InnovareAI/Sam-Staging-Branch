@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,17 +25,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Use service role for cron operations
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
     // Find pending prospects with LinkedIn URLs (ready to contact)
     // Only process prospects from active or scheduled campaigns
     const { data: pendingProspects, error: queryError } = await supabase

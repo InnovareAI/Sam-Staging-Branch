@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { createPostmarkHelper } from '../../../../lib/postmark-helper';
 import { requireAdmin } from '@/lib/security/route-auth';
 
@@ -24,15 +24,12 @@ export async function GET(request: NextRequest) {
 
     // Create Supabase client with service role for admin operations
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+    const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const adminSupabase = createClient(supabaseUrl, poolKey);
 
     // Also create client with user context for verification
-    const userSupabase = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Verify the requesting user is authenticated and has admin rights
+    // Pool imported from lib/db
+// Verify the requesting user is authenticated and has admin rights
     const { data: { user }, error: authError } = await userSupabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(
@@ -101,15 +98,12 @@ export async function POST(request: NextRequest) {
 
     // Create Supabase client with service role for admin operations
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+    const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const adminSupabase = createClient(supabaseUrl, poolKey);
 
     // Also create client with user context for verification
-    const userSupabase = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Verify the requesting user is authenticated and has admin rights
+    // Pool imported from lib/db
+// Verify the requesting user is authenticated and has admin rights
     const { data: { user }, error: authError } = await userSupabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json(

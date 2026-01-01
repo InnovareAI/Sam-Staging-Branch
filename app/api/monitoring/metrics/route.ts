@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 /**
  * PRODUCTION METRICS ENDPOINT
@@ -67,11 +67,6 @@ export async function GET(request: NextRequest) {
   const start = Date.now();
   
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // Collect system metrics
     const systemMetrics = collectSystemMetrics(start);
     

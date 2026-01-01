@@ -8,7 +8,7 @@
  * SOLUTION: Type-safe schema definitions that TypeScript validates at compile time
  */
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import { Pool } from 'pg';
 
 /**
  * prospect_approval_sessions table schema

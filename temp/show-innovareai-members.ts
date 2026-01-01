@@ -1,10 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 async function showInnovareAIMembers() {
   const workspaceId = 'babdcab8-1a78-4b2f-913e-6e9fd9821009'
 

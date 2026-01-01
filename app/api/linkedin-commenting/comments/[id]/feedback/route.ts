@@ -7,7 +7,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,8 +110,6 @@ export async function GET(
         '?'
       );
     }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // First, get the current comment to check if it exists
     const { data: comment, error: fetchError } = await supabase

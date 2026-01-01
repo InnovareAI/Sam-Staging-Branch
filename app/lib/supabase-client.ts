@@ -1,6 +1,6 @@
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { supabase } from './supabase';
 
 // Enhanced Supabase client with tenant-aware helpers

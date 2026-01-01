@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/app/lib/supabase';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { getClaudeClient } from '@/lib/llm/claude-client';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export async function POST(
   try {
     const postId = params.id;
 
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Get the post details - postId is from linkedin_posts_discovered
     const { data: post, error: fetchError } = await supabase

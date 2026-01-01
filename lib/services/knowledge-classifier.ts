@@ -1,19 +1,13 @@
 // SAM AI Knowledge Classification Service
 // Classifies conversation content into personal vs team-shareable knowledge
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // Use service role key for server-side operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
-
+// Pool imported from lib/db
 export interface KnowledgeClassification {
   personal_data: Record<string, any>;
   team_shareable: Record<string, any>;
@@ -56,7 +50,7 @@ export class KnowledgeClassifier {
     userContext: Record<string, any> = {}
   ): Promise<KnowledgeClassification> {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await pool
         .rpc('classify_conversation_content', {
           conversation_text: conversationText,
           user_context: userContext
@@ -471,7 +465,7 @@ export class KnowledgeClassifier {
   // Extract knowledge from conversation and store it
   async extractAndStoreKnowledge(conversationId: string): Promise<any> {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await pool
         .rpc('extract_knowledge_from_conversation', {
           p_conversation_id: conversationId
         });
@@ -496,7 +490,7 @@ export class KnowledgeClassifier {
     limit: number = 50
   ): Promise<any> {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await pool
         .rpc('get_user_knowledge_context', {
           p_user_id: userId,
           p_organization_id: organizationId,
@@ -519,7 +513,7 @@ export class KnowledgeClassifier {
   // Get user's privacy preferences
   async getUserPrivacyPreferences(userId: string): Promise<UserPrivacyPreferences | null> {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await pool
         .from('sam_user_privacy_preferences')
         .select('*')
         .eq('user_id', userId)
@@ -552,7 +546,7 @@ export class KnowledgeClassifier {
     preferences: Partial<UserPrivacyPreferences>
   ): Promise<boolean> {
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await pool
         .from('sam_user_privacy_preferences')
         .upsert({
           user_id: userId,
@@ -581,7 +575,7 @@ export class KnowledgeClassifier {
     limit: number = 100
   ): Promise<ExtractedKnowledge[]> {
     try {
-      let query = supabaseAdmin
+      let query = pool
         .from('sam_extracted_knowledge')
         .select('*')
         .eq('is_active', true)

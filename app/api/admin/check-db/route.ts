@@ -1,13 +1,9 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/security/route-auth';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+// Pool imported from lib/db
 // Define CRITICAL tables that MUST exist for the app to work
 const CRITICAL_TABLES = {
   sam_conversation_threads: [
@@ -47,7 +43,7 @@ export async function GET(request: NextRequest) {
     // Check CRITICAL tables first
     for (const [tableName, requiredColumns] of Object.entries(CRITICAL_TABLES)) {
       try {
-        const { error } = await supabaseAdmin
+        const { error } = await pool
           .from(tableName)
           .select('*')
           .limit(0);
@@ -89,7 +85,7 @@ export async function GET(request: NextRequest) {
     // Check OPTIONAL tables (these don't break the app)
     for (const [tableName] of Object.entries(OPTIONAL_TABLES)) {
       try {
-        const { error } = await supabaseAdmin
+        const { error } = await pool
           .from(tableName)
           .select('*')
           .limit(0);
@@ -122,7 +118,7 @@ export async function GET(request: NextRequest) {
 
     // Check auth system
     try {
-      const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+      const { data: authUsers, error: authError } = await pool.auth.admin.listUsers();
       if (authError) {
         result.critical_issues.push({
           type: 'AUTH_SYSTEM_ERROR',

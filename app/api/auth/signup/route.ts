@@ -1,3 +1,4 @@
+import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
@@ -97,12 +98,8 @@ export async function POST(request: NextRequest) {
     // If user created but requires email verification, still proceed to create profile and auto-assign proxy
     if (data.user && !data.session) {
       try {
-        const supabaseAdminClient = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        // Auto-assign proxy using profile country if provided; fallback to IP
+        // Pool imported from lib/db
+// Auto-assign proxy using profile country if provided; fallback to IP
         const autoIPService = new AutoIPAssignmentService();
         let detectedCountryCode = profileCountry; // Start with user-provided country
         
@@ -116,7 +113,7 @@ export async function POST(request: NextRequest) {
         }
         
         // Create user profile (best-effort)
-        await supabaseAdminClient
+        await poolClient
           .from('users')
           .upsert({
             id: data.user.id,
@@ -134,7 +131,7 @@ export async function POST(request: NextRequest) {
           detectedCountryCode || undefined
         );
 
-        await supabaseAdminClient
+        await poolClient
           .from('user_proxy_preferences')
           .upsert({
             user_id: data.user.id,
@@ -166,12 +163,8 @@ export async function POST(request: NextRequest) {
       // Create user profile in our database
       let workspace: any = null;
       try {
-        const supabaseAdmin = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        // Detect country from IP if not provided
+        // Pool imported from lib/db
+// Detect country from IP if not provided
         const autoIPService = new AutoIPAssignmentService();
         let detectedCountryCode = profileCountry; // Start with user-provided country
 
@@ -184,7 +177,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Create or update user profile (without profile_country for now)
-        const { error: profileError } = await supabaseAdmin
+        const { error: profileError } = await pool
           .from('users')
           .upsert({
             id: data.user.id,
@@ -221,7 +214,7 @@ export async function POST(request: NextRequest) {
           });
           
           // Store user's proxy preference in database
-          const { error: proxyError } = await supabaseAdmin
+          const { error: proxyError } = await pool
             .from('user_proxy_preferences')
             .insert({
               user_id: data.user.id,
@@ -252,7 +245,7 @@ export async function POST(request: NextRequest) {
 
           try {
             // Accept the invitation using database function
-            const { data: inviteResult, error: inviteError } = await supabaseAdmin
+            const { data: inviteResult, error: inviteError } = await pool
               .rpc('accept_workspace_invitation', {
                 invitation_token: inviteToken,
                 user_id: data.user.id
@@ -273,7 +266,7 @@ export async function POST(request: NextRequest) {
 
               // Update Stripe subscription - increase seat count
               try {
-                const { data: subscription } = await supabaseAdmin
+                const { data: subscription } = await pool
                   .from('workspace_subscriptions')
                   .select('stripe_subscription_id, plan')
                   .eq('workspace_id', workspace.id)
@@ -322,7 +315,7 @@ export async function POST(request: NextRequest) {
           // Try to find existing workspace with matching email domain using database function
           if (emailDomain) {
             try {
-              const { data: matchedWorkspaces, error: matchError } = await supabaseAdmin
+              const { data: matchedWorkspaces, error: matchError } = await pool
                 .rpc('find_workspace_by_email_domain', {
                   user_email: email
                 });
@@ -333,7 +326,7 @@ export async function POST(request: NextRequest) {
                 console.log('   Members in workspace:', matchedWorkspace.member_count);
 
                 // Add user to the existing workspace
-                const { error: memberError } = await supabaseAdmin
+                const { error: memberError } = await pool
                   .from('workspace_members')
                   .insert({
                     workspace_id: matchedWorkspace.workspace_id,
@@ -366,7 +359,7 @@ export async function POST(request: NextRequest) {
           // If no domain match found, create new workspace
           if (!workspace) {
             const workspaceSlug = `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${data.user.id.substring(0, 8)}`
-            const { data: workspaceData, error: workspaceError } = await supabaseAdmin
+            const { data: workspaceData, error: workspaceError } = await pool
               .from('workspaces')
               .insert({
                 name: companyName,
@@ -386,7 +379,7 @@ export async function POST(request: NextRequest) {
 
             // Add user as workspace member with admin role (owner_id is in workspaces table)
             if (workspace) {
-              const { error: memberError } = await supabaseAdmin
+              const { error: memberError } = await pool
                 .from('workspace_members')
                 .insert({
                   workspace_id: workspace.id,

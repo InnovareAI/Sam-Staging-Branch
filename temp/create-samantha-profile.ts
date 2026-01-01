@@ -1,10 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 async function createSamanthaProfile() {
   const userId = '1d1004ef-3cc7-47b3-942d-58c86f0a27c2'
   const email = 'samantha@truepeopleconsulting.com'

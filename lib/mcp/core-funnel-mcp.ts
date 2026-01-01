@@ -4,13 +4,8 @@
  * Integrates WebSearch, Apify, Bright Data, Unipile, ActiveCampaign, and Airtable MCP servers
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { createN8NClient } from '../n8n/n8n-client';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const n8nClient = createN8NClient();
 

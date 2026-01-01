@@ -9,12 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { pool } from '@/lib/db';
 
 const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6.unipile.com:13670';
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;

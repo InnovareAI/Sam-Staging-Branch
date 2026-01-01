@@ -4,7 +4,7 @@
  */
 
 import { logger } from '@/lib/logging'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { n8nClient } from '@/lib/n8n-client'
 
 export interface CampaignExecutionMetrics {
@@ -34,7 +34,7 @@ export interface N8NHealthStatus {
 }
 
 export class N8NCampaignMonitor {
-  private readonly supabase = supabaseAdmin()
+  private readonly supabase = pool
   private monitoringInterval: NodeJS.Timeout | null = null
   private readonly HEARTBEAT_INTERVAL_MS = 30000 // 30 seconds
   private readonly EXECUTION_TIMEOUT_MINUTES = 120 // 2 hours

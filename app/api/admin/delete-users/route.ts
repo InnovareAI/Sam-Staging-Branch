@@ -1,5 +1,5 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/security/route-auth';
 
@@ -21,8 +21,8 @@ export async function DELETE(request: NextRequest) {
 
     // Create Supabase client with service role
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+    const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const adminSupabase = createClient(supabaseUrl, poolKey);
 
     // Verify the request is from a super admin
     const authHeader = request.headers.get('authorization');

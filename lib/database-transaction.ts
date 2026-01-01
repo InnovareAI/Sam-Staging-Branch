@@ -7,7 +7,7 @@
  * RELIABILITY: Exponential backoff retry with jitter for transient failures
  */
 
-import { SupabaseClient } from '@supabase/supabase-js'
+import { Pool } from 'pg';
 import { logger } from '@/lib/logging'
 import { 
   CircuitBreaker, 

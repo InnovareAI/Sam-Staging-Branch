@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { verifyAuth, PERMISSIONS, AuthError } from '@/lib/auth'
 import { 
   validateRequest, 
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     // 5. DATABASE OPERATIONS WITH TRANSACTION SAFETY
     monitor.mark('database_start')
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     // Database health check and performance monitoring
     const transactionManager = createTransactionManager(supabase)
@@ -603,7 +603,7 @@ export async function POST(request: NextRequest) {
 // GET - Get campaign execution status
 export async function GET(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     const { searchParams } = new URL(request.url)
     const executionId = searchParams.get('execution_id')
     const workspaceId = request.headers.get('x-workspace-id') || 'default-workspace'

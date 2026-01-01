@@ -1,15 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+// Pool imported from lib/db
 export async function GET(request: Request) {
   try {
     // Fetch all learned insights from global KB
-    const { data: insights, error } = await supabaseAdmin
+    const { data: insights, error } = await pool
       .from('knowledge_base')
       .select('*')
       .eq('category', 'sam-learned-intelligence')

@@ -4,7 +4,7 @@
  * Handles AI-powered message categorization and intent detection
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import Anthropic from '@anthropic-ai/sdk';
 
 const getSupabase = () => createClient(

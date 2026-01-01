@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 /**
  * POST /api/integrations/slack/set-channel
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the slack_app_config table with the default channel
-    const { error: updateError } = await supabaseAdmin()
+    const { error: updateError } = await pool
       .from('slack_app_config')
       .update({
         default_channel: channel_id,
@@ -36,12 +36,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Also update slack_channels table for backward compatibility
-    await supabaseAdmin()
+    await pool
       .from('slack_channels')
       .update({ is_default: false })
       .eq('workspace_id', workspace_id);
 
-    await supabaseAdmin()
+    await pool
       .from('slack_channels')
       .upsert({
         workspace_id,

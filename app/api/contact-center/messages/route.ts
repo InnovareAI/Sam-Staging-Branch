@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's current workspace
-    const { data: userProfile } = await supabaseAdmin()
+    const { data: userProfile } = await pool
       .from('users')
       .select('current_workspace_id')
       .eq('id', user.id)
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get connected LinkedIn accounts for THIS workspace ONLY
-    const { data: workspaceAccounts } = await supabaseAdmin()
+    const { data: workspaceAccounts } = await pool
       .from('workspace_accounts')
       .select('unipile_account_id, account_name')
       .eq('workspace_id', workspaceId)

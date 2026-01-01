@@ -34,7 +34,7 @@ import {
   CreditCard,
   TrendingUp
 } from 'lucide-react'
-import { createClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/db';
 
 interface WorkspaceMember {
   id: string
@@ -89,11 +89,6 @@ export default function AdminWorkspacePage() {
   const fetchWorkspaceData = async () => {
     try {
       setLoading(true)
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      
       const { data: { user } } = await supabase.auth.getUser()
       
       if (user) {
@@ -123,11 +118,6 @@ export default function AdminWorkspacePage() {
 
   const fetchMembers = async () => {
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      
       const { data, error } = await supabase
         .from('workspace_members')
         .select(`
@@ -164,11 +154,6 @@ export default function AdminWorkspacePage() {
     setMessage(null)
     
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      
       const { error } = await supabase
         .from('workspaces')
         .update({
@@ -224,11 +209,6 @@ export default function AdminWorkspacePage() {
     setMessage(null)
     
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      
       const { error } = await supabase
         .from('workspace_members')
         .update({ role: newRole })
@@ -256,11 +236,6 @@ export default function AdminWorkspacePage() {
         setMessage(null)
 
         try {
-          const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-          )
-
           const { error } = await supabase
             .from('workspace_members')
             .delete()

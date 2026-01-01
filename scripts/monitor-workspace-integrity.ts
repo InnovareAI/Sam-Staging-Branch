@@ -13,11 +13,6 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 interface IntegrityIssue {
   type: 'orphaned_membership' | 'no_membership' | 'invalid_current_workspace' | 'invalid_user' | 'missing_profile'
   severity: 'critical' | 'warning' | 'info'

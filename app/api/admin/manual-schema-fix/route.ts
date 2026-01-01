@@ -1,5 +1,5 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/security/route-auth';
 
@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
 
     // Create Supabase client with service role for schema operations
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+    const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const adminSupabase = createClient(supabaseUrl, poolKey);
 
     // First, check the current structure
     console.log('📊 Checking current table structure...');

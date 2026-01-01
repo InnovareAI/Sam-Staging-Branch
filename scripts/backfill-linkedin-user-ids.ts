@@ -30,8 +30,6 @@ if (!UNIPILE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
 interface Prospect {
   id: string;
   campaign_id: string;

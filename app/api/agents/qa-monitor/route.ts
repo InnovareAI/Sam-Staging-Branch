@@ -33,7 +33,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { claudeClient } from '@/lib/llm/claude-client';
 import { sendHealthCheckNotification } from '@/lib/notifications/google-chat';
 import { sendFailedProspectsAlert } from '@/lib/notifications/notification-router';
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
 
   console.log(`🔍 QA Monitor Agent starting ${quickCheck ? 'QUICK CHECK' : 'DETAILED SCAN'} with auto-fix...`);
 
-  const supabase = supabaseAdmin();
+  const supabase = pool;
   const allChecks: QACheck[] = [];
   const autoFixes: AutoFixResult[] = [];
   const workspaceReports: AnomalyReport[] = [];

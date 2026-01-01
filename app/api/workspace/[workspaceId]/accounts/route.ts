@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     const { workspaceId } = await params
 
     // Get current user
@@ -77,7 +77,7 @@ export async function POST(
   { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     const { workspaceId } = await params
     const body = await request.json()
 

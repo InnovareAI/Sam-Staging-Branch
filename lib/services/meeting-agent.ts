@@ -5,7 +5,7 @@
  * Created: December 16, 2025
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { claudeClient } from '@/lib/llm/claude-client';
 
 // ============================================
@@ -123,11 +123,6 @@ export function detectMeetingIntent(message: string): boolean {
 // ============================================
 // MEETING CREATION & BOOKING
 // ============================================
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * Create a meeting record when booking is detected

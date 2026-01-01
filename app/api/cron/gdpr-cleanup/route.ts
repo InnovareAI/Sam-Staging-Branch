@@ -7,7 +7,7 @@
  * Netlify: Configure in netlify.toml or Netlify dashboard
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -26,11 +26,6 @@ export async function GET(request: NextRequest) {
     console.log('🧹 Starting GDPR automated cleanup job...');
 
     // Use service role for cron jobs (no user session needed)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // Stats tracking
     const stats = {
       start_time: new Date().toISOString(),

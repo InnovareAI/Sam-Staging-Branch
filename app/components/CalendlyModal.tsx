@@ -36,7 +36,6 @@ export default function CalendlyModal({ isOpen, onClose, workspaceId }: Calendly
     setLoading(true);
     setError('');
     try {
-      const supabase = createClient();
       const { data, error: fetchError } = await supabase
         .from('workspace_accounts')
         .select('*')
@@ -101,7 +100,6 @@ export default function CalendlyModal({ isOpen, onClose, workspaceId }: Calendly
     if (!confirm('Are you sure you want to disconnect Calendly?')) return;
 
     try {
-      const supabase = createClient();
       await supabase
         .from('workspace_accounts')
         .delete()

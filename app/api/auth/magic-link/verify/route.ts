@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/db';
+import { getAdminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers'
 
-const supabaseAdmin = createServiceClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/auth/magic-link/verify
@@ -23,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch magic link token
-    const { data: tokenData, error: tokenError } = await supabaseAdmin
+    const { data: tokenData, error: tokenError } = await pool
       .from('magic_link_tokens')
       .select('*')
       .eq('token', token)
@@ -44,14 +42,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(tokenData.user_id)
+    const { data: userData, error: userError } = await pool.auth.admin.getUserById(tokenData.user_id)
 
     if (userError || !userData.user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     // Generate session for user
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+    const { data: sessionData, error: sessionError } = await pool.auth.admin.generateLink({
       type: 'magiclink',
       email: userData.user.email!,
       options: {
@@ -65,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark token as used
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await pool
       .from('magic_link_tokens')
       .update({
         used: true,
@@ -87,11 +85,7 @@ export async function POST(request: NextRequest) {
 
     if (accessToken && refreshToken) {
       // Create Supabase client session
-      const userSupabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-
+      // Pool imported from lib/db
       await userSupabase.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken

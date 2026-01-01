@@ -1,12 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/db';
 import { requireAdmin } from '@/lib/security/route-auth';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 // POST - Deploy N8N workflows globally for all users/workspaces
 export async function POST(request: NextRequest) {

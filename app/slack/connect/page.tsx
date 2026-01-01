@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { createBrowserClient } from '@supabase/ssr';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { Check, AlertCircle, Slack, ArrowRight, Loader2 } from 'lucide-react';
 
 /**

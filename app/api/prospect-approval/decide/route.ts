@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { apiError, handleApiError, apiSuccess } from '@/lib/api-error-handler'
 
 export async function POST(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       throw apiError.unauthorized()
     }
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
     if (authError || !user) {
       throw apiError.unauthorized()

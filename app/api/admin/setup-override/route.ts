@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import crypto from 'crypto';
 import { requireAdmin } from '@/lib/security/route-auth';
 
@@ -11,17 +11,6 @@ export async function POST(req: NextRequest) {
   if (authError) return authError;
   try {
     // Create admin client
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
     const body = await req.json();
     const { email, pin, password, setupToken } = body;
 

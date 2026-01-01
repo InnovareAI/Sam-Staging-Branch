@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 /**
  * Workspace ICP (Ideal Customer Profile) API
@@ -7,11 +7,6 @@ import { createClient } from '@supabase/supabase-js';
  * GET /api/workspace/[workspaceId]/icp - List all ICPs
  * POST /api/workspace/[workspaceId]/icp - Create new ICP
  */
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // GET - List all ICPs for a workspace
 export async function GET(

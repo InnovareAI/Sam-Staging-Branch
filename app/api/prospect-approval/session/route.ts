@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { pool } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,15 +13,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Create user client to get authenticated user
-    const userSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: { headers: { Authorization: authHeader } }
-      }
-    )
-
-    const { data: { user }, error: authError } = await userSupabase.auth.getUser()
+    // Pool imported from lib/db
+const { data: { user }, error: authError } = await userSupabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({
         success: false,
@@ -90,15 +78,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user client to get authenticated user
-    const userSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: { headers: { Authorization: authHeader } }
-      }
-    )
-
-    const { data: { user }, error: authError } = await userSupabase.auth.getUser()
+    // Pool imported from lib/db
+const { data: { user }, error: authError } = await userSupabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({
         success: false,

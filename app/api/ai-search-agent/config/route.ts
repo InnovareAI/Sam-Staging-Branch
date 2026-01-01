@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-error-handler';
 
 const getSupabase = () => createClient(

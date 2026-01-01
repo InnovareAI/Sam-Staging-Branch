@@ -3,10 +3,10 @@
  * Implements email-based approval system for SAM AI message responses
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { COMPANY_BRANDING, CompanyBranding } from '@/lib/email-templates'
 
-const supabase = supabaseAdmin()
+const supabase = pool
 
 export interface HITLApprovalSession {
   id: string

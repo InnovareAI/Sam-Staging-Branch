@@ -1,6 +1,6 @@
 import { toastSuccess, toastError, toastWarning, toastInfo } from '@/lib/toast';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { HITLApprovalEmailService } from '@/lib/services/hitl-approval-email-service';
 
 /**
@@ -8,7 +8,7 @@ import { HITLApprovalEmailService } from '@/lib/services/hitl-approval-email-ser
  * Handles approval decisions for HITL sessions
  */
 
-const supabase = supabaseAdmin()
+const supabase = pool
 const hitlService = new HITLApprovalEmailService()
 
 interface RouteParams {

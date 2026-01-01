@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 import { personalizeMessage as personalizeMessageUniversal } from '@/lib/personalization';
 
@@ -9,7 +9,7 @@ const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;
 
 // Use service role client to bypass RLS for campaign execution
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 interface UnipileResponse<T> {
   object: string;
@@ -72,8 +72,6 @@ interface Campaign {
 export async function POST(req: NextRequest) {
   try {
     // Use service role client to bypass RLS
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     // Get request data
     const { campaignId } = await req.json();
 

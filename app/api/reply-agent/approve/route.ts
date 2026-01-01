@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 import { airtableService } from '@/lib/airtable';
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     return redirectWithMessage('error', 'Missing token or action');
   }
 
-  const supabase = supabaseAdmin();
+  const supabase = pool;
 
   // Find the draft by approval token
   const { data: draft, error } = await supabase
@@ -349,7 +349,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing draft_id or token' }, { status: 400 });
     }
 
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Fetch draft by either draft_id or token
     let query = supabase

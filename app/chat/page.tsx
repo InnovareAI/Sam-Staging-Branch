@@ -12,7 +12,6 @@ export default function ChatFallbackPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {

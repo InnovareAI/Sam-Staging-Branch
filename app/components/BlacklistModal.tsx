@@ -66,7 +66,6 @@ export default function BlacklistModal({ isOpen, onClose, workspaceId }: Blackli
   const loadEntries = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
       const { data, error } = await supabase
         .from('workspace_blacklists')
         .select('*')
@@ -87,7 +86,6 @@ export default function BlacklistModal({ isOpen, onClose, workspaceId }: Blackli
 
     setSaving(true);
     try {
-      const supabase = createClient();
       const { error } = await supabase
         .from('workspace_blacklists')
         .insert({
@@ -118,7 +116,6 @@ export default function BlacklistModal({ isOpen, onClose, workspaceId }: Blackli
   const handleUpdateEntry = async (id: string, updates: Partial<BlacklistEntry>) => {
     setSaving(true);
     try {
-      const supabase = createClient();
       const { error } = await supabase
         .from('workspace_blacklists')
         .update({
@@ -142,7 +139,6 @@ export default function BlacklistModal({ isOpen, onClose, workspaceId }: Blackli
     if (!confirm('Are you sure you want to delete this blacklist entry?')) return;
 
     try {
-      const supabase = createClient();
       const { error } = await supabase
         .from('workspace_blacklists')
         .delete()
@@ -172,7 +168,6 @@ export default function BlacklistModal({ isOpen, onClose, workspaceId }: Blackli
                        lines[0]?.toLowerCase().includes('company');
       const dataLines = hasHeader ? lines.slice(1) : lines;
 
-      const supabase = createClient();
       let success = 0;
       let failed = 0;
 

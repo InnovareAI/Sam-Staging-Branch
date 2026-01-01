@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import nodemailer from 'nodemailer';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()

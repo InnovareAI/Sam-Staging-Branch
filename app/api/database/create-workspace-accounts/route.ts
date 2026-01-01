@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     console.log('🛠️ Creating workspace_accounts table...')
     

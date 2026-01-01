@@ -88,6 +88,7 @@ export {
     sendPasswordResetEmail,
     sendEmailVerification,
     updateProfile,
+    updatePassword,
     type User,
     type UserCredential,
 } from 'firebase/auth';

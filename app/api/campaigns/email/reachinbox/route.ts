@@ -38,8 +38,6 @@ interface ReachInboxCampaignRequest {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -387,8 +385,6 @@ function personalizeMessage(template: string, prospect: any): string {
 // GET endpoint for checking ReachInbox configuration
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

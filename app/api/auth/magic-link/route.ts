@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // Create Supabase admin client for generating magic links
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+// Pool imported from lib/db
 // Create regular client for fallback
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 // Function to determine sender based on user affiliation
 function getSenderByAffiliation(userEmail: string): string {
   console.log('🔍 MAGIC LINK - Checking sender affiliation for:', userEmail);
@@ -82,7 +73,7 @@ export async function POST(request: NextRequest) {
     console.log('Sending magic link to:', email);
 
     // Check if user exists first
-    const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: users, error: userError } = await pool.auth.admin.listUsers();
     
     if (userError) {
       console.error('Error checking users:', userError);
@@ -113,7 +104,7 @@ export async function POST(request: NextRequest) {
       console.log(`🌐 Using origin for magic link: ${origin}`);
 
       // Generate a magic link token using Supabase admin
-      const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      const { data, error: linkError } = await pool.auth.admin.generateLink({
         type: 'magiclink',
         email: email,
         options: {

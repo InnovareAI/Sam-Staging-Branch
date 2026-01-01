@@ -1,0 +1,331 @@
+[build]
+  command = "rm -rf .next && rm -rf node_modules/.cache && npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NETLIFY_NEXT_PLUGIN_SKIP_CACHE = "true"
+
+# Staging environment configuration
+[context.staging]
+  command = "rm -rf .next && rm -rf node_modules/.cache && npm run build"
+[context.staging.environment]
+  NEXT_PUBLIC_ENVIRONMENT = "staging"
+  NODE_VERSION = "20"
+  NETLIFY_NEXT_PLUGIN_SKIP_CACHE = "true"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/workspace/*/commenting-agent"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/_next/static/chunks/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[dev]
+  command = "npm run dev"
+  port = 3000
+
+[functions]
+  node_bundler = "esbuild"
+  directory = "netlify/functions"
+
+[functions."*"]
+  body_size_limit = "10mb"
+
+# Note: Next.js API routes have maxDuration configured in the route file
+# See app/api/prospects/enrich/route.ts: export const maxDuration = 60
+
+# Scheduled function: Execute campaigns every 2 minutes
+[functions."scheduled-campaign-execution"]
+  schedule = "*/2 * * * *"
+
+# Scheduled function: Process pending prospects every 5 minutes
+[functions."process-pending-prospects"]
+  schedule = "*/5 * * * *"
+
+# Scheduled function: Queue pending prospects every 5 minutes
+# CRITICAL: Adds prospects with status='pending' to send_queue with proper scheduling
+# Without this, prospects uploaded to campaigns never get queued for sending
+[functions."queue-pending-prospects"]
+  schedule = "*/5 * * * *"
+
+# Scheduled function: Process send queue every minute
+# Checks ALL workspaces for due messages (each user has 30-min spacing)
+# Limits: 20 CRs/day per LinkedIn account, business hours, no weekends/holidays
+[functions."process-send-queue"]
+  schedule = "* * * * *"
+
+# Scheduled function: Process email queue every 13 minutes (sends 1 email per run = ~40 emails/day max)
+# Compliance: 40 emails/day, 8 AM - 5 PM business hours, no weekends/holidays
+[functions."process-email-queue"]
+  schedule = "*/13 * * * *"
+
+# Scheduled function: Send follow-up messages every 30 minutes
+# Processes connected prospects with due follow-ups (10 per run)
+# Compliance: 9 AM - 5 PM business hours, no weekends/holidays
+[functions."send-follow-ups"]
+  schedule = "*/30 * * * *"
+
+# Scheduled function: Poll for accepted LinkedIn connections every 15 minutes
+# Checks if pending CRs have been accepted and schedules follow-ups
+# Backup for webhook delays (Unipile webhooks can have 8hr latency)
+# Changed from 2 hours to 15 minutes (Nov 27) - faster follow-up scheduling
+[functions."poll-accepted-connections"]
+  schedule = "*/15 * * * *"
+
+# Scheduled function: Poll for LinkedIn message replies every 5 minutes
+# CRITICAL: Backup for new_message webhook - stops follow-ups when prospect replies
+# Without this, prospects get follow-ups after they've already replied
+# Changed from 15 minutes to 5 minutes (Dec 20) - faster reply detection for better response time
+[functions."poll-message-replies"]
+  schedule = "*/5 * * * *"
+
+# Scheduled function: Poll for EMAIL replies every 5 minutes
+# CRITICAL: Detects email replies for workspaces with email-only accounts (e.g., Jennifer Fleming)
+# Stops follow-up sequences when prospects reply via email
+# Triggers SAM Reply Agent for AI-generated response drafts
+# Added Dec 12, 2025 - Changed to 5 min (Dec 20) for faster detection
+[functions."poll-email-replies"]
+  schedule = "*/5 * * * *"
+
+# Scheduled function: Reply Agent - Generate AI drafts every 5 minutes
+# Processes drafts in pending_generation status:
+# 1. Fetches LinkedIn profile + company research
+# 2. Generates AI reply using Claude Opus 4.5
+# 3. Sends HITL notification to Google Chat with Approve/Reject buttons
+# 4. Updates status to pending_approval
+[functions."reply-agent-process"]
+  schedule = "*/5 * * * *"
+
+# ============================================
+# AI AGENT SCHEDULED FUNCTIONS (Nov 29, 2025)
+# ============================================
+
+# QA Monitor: Hourly health checks on weekdays, daily on weekends
+# Weekdays (Mon-Fri): Run every hour from 5 AM UTC (6 AM CET)
+# - 5 AM UTC (6 AM CET): Full detailed report
+# - Other hours: Quick health check (only report problems)
+# Weekends (Sat-Sun): Single detailed run at 5 AM UTC (6 AM CET)
+# Covers ALL workspaces, clients, and customers
+# Updated Dec 12, 2025 - smart scheduling for faster stuck campaign detection
+[functions."qa-monitor"]
+  schedule = "0 5-18 * * 1-5"
+
+# QA Monitor Weekend: Single detailed run on weekends
+[functions."qa-monitor-weekend"]
+  schedule = "0 5 * * 0,6"
+
+# Daily Health Check: Comprehensive system health at 7 AM UTC
+# Checks database, campaigns, queue, Unipile accounts, error rates
+[functions."daily-health-check"]
+  schedule = "0 7 * * *"
+
+# Data Quality: Weekly cleanup on Monday at 8 AM UTC
+# Finds duplicates, invalid emails, missing fields, stale data
+[functions."data-quality-check"]
+  schedule = "0 8 * * 1"
+
+# Rate Limit Monitor: Track LinkedIn usage every 30 minutes
+# Monitors daily/weekly CR limits per account
+[functions."rate-limit-monitor"]
+  schedule = "*/30 * * * *"
+
+# Daily Campaign Summary: Posted to Google Chat at 4 PM UTC (8 AM PT)
+# Reports CRs sent, accepts, replies for IA1-IA7 workspaces
+[functions."daily-campaign-summary"]
+  schedule = "0 16 * * *"
+
+# Daily Sync Verification: Check data consistency at 5 AM UTC (6 AM CET)
+# Verifies: LinkedIn → Airtable, Email → Airtable, Positive replies → ActiveCampaign
+# Syncs any missing records and sends summary to Google Chat
+[functions."daily-sync-verification"]
+  schedule = "0 5 * * *"
+
+# ============================================
+# LINKEDIN COMMENTING AGENT (Dec 1, 2025)
+# ============================================
+
+# Discover Posts (Apify): DISABLED - Costs $4+ per run, ignores all limits
+# Was: Uses Apify to scrape LinkedIn posts
+# Discover Posts (Profiles): Find new posts from PROFILE monitors via Unipile API
+# Runs every 6 hours to check monitored profiles for new posts
+# Changed from 2 hours to 6 hours (Dec 18) - content expires next business day anyway
+[functions."discover-posts"]
+  schedule = "0 */6 * * *"
+
+# Discover Posts (Hashtags): REMOVED - Replaced by Unipile API (Dec 17, 2025)
+# Was: Used Bright Data Scraping Browser to scrape linkedin.com/feed/hashtag/{tag}
+# Now: Hashtag discovery handled by discover-posts via Unipile API
+# [functions."discover-posts-brightdata"]
+#   schedule = "0 */4 * * *"
+
+# Auto-Generate Comments: Create AI comments every 30 minutes
+# Generates thoughtful comments for discovered posts (pending approval)
+[functions."auto-generate-comments"]
+  schedule = "*/30 * * * *"
+
+# Process Comment Queue: Post scheduled comments every 45 minutes
+# Comments approved by user are queued and spread throughout the day
+# Also auto-likes posts when commenting
+[functions."process-comment-queue"]
+  schedule = "*/45 * * * *"
+
+# Daily Repost: DISABLED - Does not repost full article content
+# Was: Share high-engagement posts once per day at 10 AM PT (6 PM UTC)
+# [functions."daily-repost"]
+#   schedule = "0 18 * * *"
+
+# Commenting Digest: Workday email with pending comments for approval - Mon-Fri 5:00 AM PT (13:00 UTC)
+# Users can approve/reject comments directly from email links
+[functions."commenting-digest"]
+  schedule = "0 13 * * 1-5"
+
+# Track Comment Performance: Check engagement on our posted comments every 6 hours
+# Updates performance scores, relationship tracking, and weekly aggregations
+# Learns what comment styles work best for each workspace
+# Added Dec 16, 2025
+[functions."track-comment-performance"]
+  schedule = "0 */6 * * *"
+
+# Expire Comment Content: Daily cleanup of unapproved posts/comments at 6 AM UTC
+# Posts/comments not approved expire on next business day
+# After expiration, new posts will be scraped on the next discovery run
+# Added Dec 18, 2025
+[functions."expire-comment-content"]
+  schedule = "0 6 * * 1-5"
+
+# ============================================
+# SELF-POST ENGAGEMENT (Dec 9, 2025)
+# ============================================
+
+# Discover Self-Post Comments: Find new comments on monitored own posts every 30 minutes
+# Monitors posts you've created and queues comments for AI reply generation
+[functions."discover-self-post-comments"]
+  schedule = "*/30 * * * *"
+
+# Process Self-Post Replies: Generate and post threaded replies every 30 minutes
+# 1. Generates AI replies using per-post custom prompts (e.g., event signup links)
+# 2. Posts approved replies as threaded comments to the original commenter
+[functions."process-self-post-replies"]
+  schedule = "*/30 * * * *"
+
+# ============================================
+# CRM BI-DIRECTIONAL SYNC (Dec 2, 2025)
+# ============================================
+
+# CRM Bi-directional Sync: Sync data between SAM and connected CRMs every 15 minutes
+# Fetches updates from HubSpot, ActiveCampaign, Airtable and syncs to SAM
+# Uses N8N MCP workflows for API routing (supports 400+ CRMs via HTTP Request + Switch)
+[functions."sync-crm-bidirectional"]
+  schedule = "*/15 * * * *"
+
+# ============================================
+# REAL-TIME ERROR MONITOR (Dec 3, 2025)
+# ============================================
+
+# Real-time Error Monitor: Check for critical campaign errors every 5 minutes
+# RE-ENABLED (Dec 17): Smart filtering added to ignore auto-cleaned items
+# Filters out: stale/expired items, rate limit delays, auto-cleanups
+# Only alerts on REAL failures that need attention
+# Detects: failed sends, stuck prospects, unqueued pending prospects
+[functions."realtime-error-monitor"]
+  schedule = "*/5 * * * *"
+
+# ============================================
+# ORPHAN PROSPECT RECOVERY (Dec 10, 2025)
+# ============================================
+
+# Orphan Prospect Recovery: Auto-fix approved prospects that weren't added to campaigns
+# Runs every hour to find and recover "orphan" prospects from last 7 days
+# Root cause: Supabase bulk insert fails ALL records if ANY has constraint violation
+# This agent detects orphans by comparing prospect_approval_data vs campaign_prospects
+# Automatically adds missing prospects to campaign_prospects and send_queue
+# Sends Google Chat summary when recoveries are made
+[functions."recover-orphan-prospects"]
+  schedule = "0 * * * *"
+
+# ============================================
+# INVITATION MANAGEMENT (Dec 16, 2025)
+# ============================================
+
+# Withdraw Stale Invitations: Daily cleanup of pending LinkedIn connection requests
+# Withdraws invitations older than 21 days to:
+# 1. Free up weekly invitation limit (100/week)
+# 2. Improve account health score
+# 3. Allow re-targeting non-responsive prospects
+# Runs daily at 3 AM EST (8 AM UTC) - off-peak hours
+[functions."withdraw-stale-invitations"]
+  schedule = "0 8 * * *"
+
+# ============================================
+# FOLLOW-UP AGENT V2 (Dec 16, 2025)
+# AI-powered re-engagement for ghosting prospects
+# ============================================
+
+# Generate Follow-Up Drafts: Create AI-powered follow-up messages every hour
+# Finds prospects due for follow-up (no response after X days)
+# Detects scenario: no_reply_to_cr, replied_then_silent, no_show_to_call, etc.
+# Generates contextual AI message with appropriate tone (light_bump → breakup)
+# Saves to follow_up_drafts table for HITL approval
+[functions."generate-follow-up-drafts"]
+  schedule = "15 * * * *"
+
+# Send Approved Follow-Ups: Send HITL-approved follow-up drafts every 15 minutes
+# Processes follow_up_drafts with status='approved'
+# Sends via Unipile (LinkedIn or Email based on channel)
+# Updates prospect status and schedules next follow-up if applicable
+[functions."send-approved-follow-ups"]
+  schedule = "*/15 * * * *"
+
+# ============================================
+# MEETING AGENT (Dec 16, 2025)
+# Full meeting lifecycle: booking, reminders, no-show handling, follow-ups
+# ============================================
+
+# Check Meeting Status: Detect no-shows and trigger follow-ups every 15 minutes
+# Finds meetings past scheduled time without completion marker
+# Generates AI no-show/cancellation follow-up drafts for HITL approval
+# Also handles post-meeting follow-ups (1-24h after completed meetings)
+[functions."check-meeting-status"]
+  schedule = "*/15 * * * *"
+
+# Send Meeting Reminders: Process 24h, 1h, 15m reminders every 5 minutes
+# Checks meeting_reminders table for due reminders
+# Sends via Postmark (email) with meeting details and join link
+[functions."send-meeting-reminders"]
+  schedule = "*/5 * * * *"
+
+# Send Meeting Follow-ups: Send HITL-approved meeting follow-up drafts every 15 minutes
+# Processes meeting_follow_up_drafts with status='approved'
+# Sends via Postmark (email) or Unipile (LinkedIn)
+# Handles no-show, cancellation, and post-meeting follow-ups
+[functions."send-meeting-follow-ups"]
+  schedule = "*/15 * * * *"
+
+# ============================================
+# OPPORTUNITY DIGEST (Dec 30, 2025)
+# Daily email with trending posts worth engaging with
+# ============================================
+
+# Opportunity Digest: Daily email with high-quality posts to engage with
+# Different from commenting-digest (which shows pending comments for approval)
+# This shows trending posts from monitors that haven't been commented on yet
+# Runs daily at 7 AM PT (3 PM UTC) - start of workday
+[functions."opportunity-digest"]
+  schedule = "0 15 * * 1-5"

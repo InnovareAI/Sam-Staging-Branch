@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 
 // N8N Configuration
 const N8N_BASE_URL = 'https://workflows.innovareai.com'
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update campaign status in database
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     // Record N8N execution
     await supabase

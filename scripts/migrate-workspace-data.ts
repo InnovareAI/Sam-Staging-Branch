@@ -28,9 +28,6 @@ const CLOUD_SQL_CONFIG = {
 };
 console.log('Postgres Config Host:', CLOUD_SQL_CONFIG.host);
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: { persistSession: false }
-});
 const pool = new Pool(CLOUD_SQL_CONFIG);
 
 async function migrateTable(tableName: string, conflictColumn: string = 'id') {

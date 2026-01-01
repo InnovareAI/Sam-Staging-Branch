@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createServerClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/db';
 import { verifyPostmarkWebhook, getRequestBody } from '@/lib/security/webhook-auth'
 
 interface PostmarkInboundEmail {

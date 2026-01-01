@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { createServerSupabaseClient } from '@/app/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -11,9 +11,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-
+    const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     // Verify user is authenticated
     const authSupabase = await createServerSupabaseClient();
     const { data: { user }, error: authError } = await authSupabase.auth.getUser();

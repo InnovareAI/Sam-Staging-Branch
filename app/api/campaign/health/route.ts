@@ -16,7 +16,7 @@ import { circuitBreakerRegistry } from '@/lib/circuit-breaker'
 import { externalServiceManager } from '@/lib/external-service-circuit-breakers'
 import { createTransactionManager } from '@/lib/database-transaction'
 import { n8nClient } from '@/lib/n8n-client'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limit'
 
 // GET - Comprehensive campaign system health check
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
  */
 async function checkDatabaseHealth(): Promise<any> {
   try {
-    const transactionManager = createTransactionManager(supabaseAdmin())
+    const transactionManager = createTransactionManager(pool)
     const health = await transactionManager.healthCheck()
     
     return {

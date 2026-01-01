@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import {
   detectIntent,
   getConversationState,
@@ -176,30 +176,30 @@ export async function POST(request: NextRequest) {
       { data: recentReplies },
       { data: hotLeads }
     ] = await Promise.all([
-      supabaseAdmin()
+      pool
         .from('workspaces')
         .select('id, name, industry, company_description')
         .eq('id', workspace_id)
         .single(),
-      supabaseAdmin()
+      pool
         .from('campaigns')
         .select('id, name, status, created_at')
         .eq('workspace_id', workspace_id)
         .order('created_at', { ascending: false })
         .limit(5),
-      supabaseAdmin()
+      pool
         .from('campaign_prospects')
         .select('status')
         .eq('workspace_id', workspace_id)
         .limit(500),  // Cap to avoid huge queries
-      supabaseAdmin()
+      pool
         .from('linkedin_messages')
         .select('content, sender_name, created_at')
         .eq('workspace_id', workspace_id)
         .eq('direction', 'incoming')
         .order('created_at', { ascending: false })
         .limit(5),
-      supabaseAdmin()
+      pool
         .from('campaign_prospects')
         .select('first_name, last_name, company, title')
         .eq('workspace_id', workspace_id)
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
     // Create or continue SAM thread
     let samThreadId = thread_id;
     if (!samThreadId) {
-      const { data: newThread } = await supabaseAdmin()
+      const { data: newThread } = await pool
         .from('sam_threads')
         .insert({
           workspace_id,
@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
 
     // Store the conversation
     if (samThreadId) {
-      await supabaseAdmin().from('sam_conversation_messages').insert([
+      await pool.from('sam_conversation_messages').insert([
         {
           thread_id: samThreadId,
           role: 'user',
@@ -324,7 +324,7 @@ ${hotLeadsSummary}
 
 async function findCampaignByName(workspaceId: string, campaignName: string): Promise<any | null> {
   // Try exact match first
-  let { data: campaign } = await supabaseAdmin()
+  let { data: campaign } = await pool
     .from('campaigns')
     .select('*')
     .eq('workspace_id', workspaceId)
@@ -333,7 +333,7 @@ async function findCampaignByName(workspaceId: string, campaignName: string): Pr
 
   if (!campaign) {
     // Try fuzzy match
-    const { data: campaigns } = await supabaseAdmin()
+    const { data: campaigns } = await pool
       .from('campaigns')
       .select('*')
       .eq('workspace_id', workspaceId);
@@ -388,7 +388,7 @@ async function executePauseCampaign(workspaceId: string, campaignName: string): 
     return `Campaign "${campaign.name}" is already paused.`;
   }
 
-  const { error } = await supabaseAdmin()
+  const { error } = await pool
     .from('campaigns')
     .update({ status: 'paused', updated_at: new Date().toISOString() })
     .eq('id', campaign.id);
@@ -411,7 +411,7 @@ async function executeResumeCampaign(workspaceId: string, campaignName: string):
     return `Campaign "${campaign.name}" is already active.`;
   }
 
-  const { error } = await supabaseAdmin()
+  const { error } = await pool
     .from('campaigns')
     .update({ status: 'active', updated_at: new Date().toISOString() })
     .eq('id', campaign.id);
@@ -424,7 +424,7 @@ async function executeResumeCampaign(workspaceId: string, campaignName: string):
 }
 
 async function executeShowProspects(workspaceId: string, campaignName?: string): Promise<string> {
-  let query = supabaseAdmin()
+  let query = pool
     .from('campaign_prospects')
     .select('first_name, last_name, company, title, status, contacted_at, campaign_id, campaigns!inner(name)')
     .eq('workspace_id', workspaceId)
@@ -480,7 +480,7 @@ async function executeArchiveCampaign(workspaceId: string, campaignName: string)
     return `I couldn't find a campaign matching "${campaignName}".`;
   }
 
-  const { error } = await supabaseAdmin()
+  const { error } = await pool
     .from('campaigns')
     .update({ status: 'archived', updated_at: new Date().toISOString() })
     .eq('id', campaign.id);
@@ -541,7 +541,7 @@ async function executeUpdateMessage(
     }
   }
 
-  const { error } = await supabaseAdmin()
+  const { error } = await pool
     .from('campaigns')
     .update({ message_templates: templates, updated_at: new Date().toISOString() })
     .eq('id', campaign.id);
@@ -561,7 +561,7 @@ async function executeCampaignStats(workspaceId: string, campaignName: string): 
     return `I couldn't find a campaign matching "${campaignName}".`;
   }
 
-  const { data: prospects } = await supabaseAdmin()
+  const { data: prospects } = await pool
     .from('campaign_prospects')
     .select('status')
     .eq('campaign_id', campaign.id);

@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // Initialize Supabase client (service role) for vector operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // Create embeddings using Google Gemini REST API
 // Generates 768-dimensional embeddings for text chunks
 async function createEmbeddings(text: string): Promise<number[]> {

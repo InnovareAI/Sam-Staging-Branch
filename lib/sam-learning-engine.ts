@@ -12,15 +12,11 @@
  * Updated Nov 29, 2025: Migrated to Claude Direct API for GDPR compliance
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { Industry } from './signup-intelligence';
 import { claudeClient } from '@/lib/llm/claude-client';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+// Pool imported from lib/db
 export interface LearningInsight {
   id?: string;
   insight_type: 'value_prop' | 'objection' | 'messaging' | 'icp_criteria' | 'campaign_strategy' | 'pain_point' | 'competitive_positioning';
@@ -57,7 +53,7 @@ export async function extractLearningFromConversation(params: {
 
   try {
     // Get conversation messages
-    const { data: messages } = await supabaseAdmin
+    const { data: messages } = await pool
       .from('sam_conversation_messages')
       .select('*')
       .eq('thread_id', params.threadId)
@@ -68,7 +64,7 @@ export async function extractLearningFromConversation(params: {
     }
 
     // Get validated KB entries from this workspace
-    const { data: validatedEntries } = await supabaseAdmin
+    const { data: validatedEntries } = await pool
       .from('knowledge_base')
       .select('*')
       .eq('workspace_id', params.workspaceId)
@@ -217,7 +213,7 @@ async function saveInsightsToGlobalKB(
   try {
     // Check if similar insight already exists
     for (const entry of entries) {
-      const { data: existing } = await supabaseAdmin
+      const { data: existing } = await pool
         .from('knowledge_base')
         .select('id, source_metadata')
         .eq('category', 'sam-learned-intelligence')
@@ -228,7 +224,7 @@ async function saveInsightsToGlobalKB(
 
       if (existing) {
         // Update validation count instead of creating duplicate
-        await supabaseAdmin
+        await pool
           .from('knowledge_base')
           .update({
             source_metadata: {
@@ -248,7 +244,7 @@ async function saveInsightsToGlobalKB(
         console.log(`🔄 Updated existing insight (validation count +1)`);
       } else {
         // Create new insight
-        await supabaseAdmin
+        await pool
           .from('knowledge_base')
           .insert([entry]);
 
@@ -271,7 +267,7 @@ export async function getLearnedInsightsForWorkspace(params: {
 }): Promise<LearningInsight[]> {
 
   try {
-    let query = supabaseAdmin
+    let query = pool
       .from('knowledge_base')
       .select('*')
       .eq('category', 'sam-learned-intelligence')
@@ -365,7 +361,7 @@ export async function applyLearnedInsightsToWorkspace(params: {
       version: '1.0'
     }));
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await pool
       .from('knowledge_base')
       .insert(entries)
       .select();

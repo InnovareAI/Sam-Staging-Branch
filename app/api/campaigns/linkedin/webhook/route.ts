@@ -60,8 +60,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Non-LinkedIn webhook ignored' });
     }
 
-    const supabase = createClient();
-
     // Handle different webhook events
     switch (webhook.event) {
       case 'new_relation':

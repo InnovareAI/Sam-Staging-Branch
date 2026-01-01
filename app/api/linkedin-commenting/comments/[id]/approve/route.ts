@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,8 +92,6 @@ export async function GET(
 ) {
   try {
     const { id: commentId } = await params;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
     // Update the comment status in linkedin_post_comments table
     const { data, error } = await supabase
       .from('linkedin_post_comments')
@@ -140,8 +138,6 @@ export async function POST(
     const { id: commentId } = await params;
     const body = await request.json().catch(() => ({}));
     const editedComment = body.comment;
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // Update the comment status and optionally the comment text
     const updateData: Record<string, any> = {

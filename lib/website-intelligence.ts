@@ -12,7 +12,7 @@
  */
 
 import { INDUSTRY_BLUEPRINTS, findBlueprintByIndustry } from './templates/industry-blueprints'
-import { createClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/db';
 import { claudeClient } from '@/lib/llm/claude-client'
 // import { addKnowledgeItem } from './supabase-knowledge' // TODO: Function not implemented yet
 
@@ -380,11 +380,6 @@ export async function storeWebsiteAnalysis(
   analysis: WebsiteAnalysis
 ): Promise<void> {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
     const { error } = await supabase
       .from('workspaces')
       .update({
@@ -421,11 +416,6 @@ export async function analyzeWebsiteInBackground(params: {
   companyName: string
 }): Promise<void> {
   // Update status to analyzing
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-
   await supabase
     .from('workspaces')
     .update({ website_analysis_status: 'analyzing' })

@@ -3,7 +3,7 @@
  * Handles messaging template creation, optimization, and performance tracking
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 export interface MessageTemplate {
   id?: string;
@@ -41,7 +41,7 @@ export async function mcp__template__create(template: Omit<MessageTemplate, 'id'
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     const { data, error } = await supabase
       .from('messaging_templates')
@@ -91,7 +91,7 @@ export async function mcp__template__get_by_criteria(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     let query = supabase
       .from('messaging_templates')
@@ -133,7 +133,7 @@ export async function mcp__template__get_by_id(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     const { data, error } = await supabase
       .from('messaging_templates')
@@ -167,7 +167,7 @@ export async function mcp__template__update(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     const { error } = await supabase
       .from('messaging_templates')
@@ -202,7 +202,7 @@ export async function mcp__template__delete(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     const { error } = await supabase
       .from('messaging_templates')
@@ -231,7 +231,7 @@ export async function mcp__template__track_performance(performance: TemplatePerf
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     const { error } = await supabase
       .from('template_performance')
@@ -273,7 +273,7 @@ export async function mcp__template__get_performance(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     // Get template performance data
     const { data: performanceData, error: perfError } = await supabase
@@ -358,7 +358,7 @@ export async function mcp__template__get_top_performers(params: {
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     const { data, error } = await supabase
       .rpc('get_templates_by_criteria', {

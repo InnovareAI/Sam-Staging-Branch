@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 /**
  * GET /api/integrations/slack/channels
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the Slack app config for this workspace
-    const { data: config, error: configError } = await supabaseAdmin()
+    const { data: config, error: configError } = await pool
       .from('slack_app_config')
       .select('bot_token')
       .eq('workspace_id', workspaceId)
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get default channel from slack_channels table (backward compatible)
-    const { data: defaultChannelData } = await supabaseAdmin()
+    const { data: defaultChannelData } = await pool
       .from('slack_channels')
       .select('channel_id')
       .eq('workspace_id', workspaceId)

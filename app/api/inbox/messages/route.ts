@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 
 // MCP Tools for message fetching (MCP-first approach)
 declare const mcp__unipile__unipile_get_accounts: () => Promise<any[]>
@@ -14,7 +14,7 @@ declare const mcp__unipile__unipile_get_emails: (params: {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()

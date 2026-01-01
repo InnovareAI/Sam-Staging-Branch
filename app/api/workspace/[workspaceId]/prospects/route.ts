@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { WorkspaceProspectManager } from '@/lib/workspace-prospect-manager'
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     const { workspaceId } = await params
     const { searchParams } = new URL(request.url)
 
@@ -103,7 +103,7 @@ export async function POST(
     }
 
     // Get current user
-    const supabase = supabaseAdmin()
+    const supabase = pool
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({

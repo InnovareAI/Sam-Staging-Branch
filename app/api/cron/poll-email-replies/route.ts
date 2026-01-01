@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { airtableService } from '@/lib/airtable';
 import { classifyIntent } from '@/lib/services/intent-classifier';
 import { syncInterestedLeadToCRM } from '@/lib/services/crm-sync';
@@ -40,11 +40,6 @@ export async function POST(request: NextRequest) {
     console.log('📧 Poll email replies starting (Inbound-First)...');
 
     // Create Supabase client
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // Get all active email accounts via Unipile
     const { data: emailAccounts, error: accountsError } = await supabase
       .from('user_unipile_accounts')

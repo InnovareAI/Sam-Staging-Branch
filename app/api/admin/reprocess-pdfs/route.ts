@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 /**
  * POST /api/admin/reprocess-pdfs
@@ -62,11 +62,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Create service-role client
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // Find all failed PDFs (content contains the error message)
     const { data: failedDocs, error: fetchError } = await supabase
       .from('knowledge_base')

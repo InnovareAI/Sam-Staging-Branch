@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LinkTrackingOptions } from 'postmark/dist/client/models/message/SupportingTypes';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { ServerClient } from 'postmark';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const COMPANIES = {
   innovareai: {

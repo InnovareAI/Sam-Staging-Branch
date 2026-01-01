@@ -3,7 +3,7 @@
  * Handles incoming webhooks from both Core and Dynamic funnels
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 export interface WebhookPayload {
   executionId: string;
@@ -51,7 +51,7 @@ export interface ProspectProgress {
 }
 
 export class WebhookManager {
-  private supabase = supabaseAdmin();
+  private supabase = pool;
 
   // ============================================================================
   // MAIN WEBHOOK HANDLER

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 /**
  * ORPHAN PROSPECT RECOVERY AGENT
@@ -14,11 +14,6 @@ import { createClient } from '@supabase/supabase-js';
  * 4. Adds missing prospects to send_queue (if campaign is active)
  * 5. Sends alert to Google Chat with recovery summary
  */
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const GOOGLE_CHAT_WEBHOOK = process.env.GOOGLE_CHAT_WEBHOOK_URL;
 

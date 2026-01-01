@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { requireAdmin } from '@/lib/security/route-auth';
 
 // SAM Conversation Analytics API - Deep Learning Insights for SAM Optimization
@@ -139,17 +139,6 @@ export async function GET(request: NextRequest) {
     const organizationId = searchParams.get('organization_id');
     
     // Create admin Supabase client for analytics
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
     const timeframeDays = parseInt(timeframe);
     const startDate = new Date(Date.now() - timeframeDays * 24 * 60 * 60 * 1000).toISOString();
 

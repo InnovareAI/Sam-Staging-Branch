@@ -4,13 +4,6 @@ const SUPABASE_URL = 'https://latxadqrvrrrcvkktrog.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 async function checkWorkspaceContamination() {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-
   console.log('\n=== WORKSPACE CONTAMINATION CHECK ===\n');
 
   // First, find workspaces by name

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin()
+    const supabase = pool
     
     const { data: users, error } = await supabase.auth.admin.listUsers()
     

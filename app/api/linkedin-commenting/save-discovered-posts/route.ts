@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
       posts_count: Array.isArray(body.posts) ? body.posts.length : 1
     });
 
-    const { supabaseAdmin } = await import('@/app/lib/supabase');
-    const supabase = supabaseAdmin();
+    const { pool } = await import('@/app/lib/supabase');
+    const supabase = pool;
     const monitor = body.monitor;
     const SCRAPING_LIMIT = 10;
     let posts = Array.isArray(body.posts) ? body.posts : [body.posts];

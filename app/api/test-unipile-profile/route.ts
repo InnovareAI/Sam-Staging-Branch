@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export async function GET(request: NextRequest) {
   try {
     // Create Supabase client with service role key (bypasses RLS for testing)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // For testing, use the known test user email
     const testUserEmail = 'tl@innovareai.com';
 

@@ -69,8 +69,6 @@ Sound human, not templated. No "just checking in" or "thanks so much for getting
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-
       // Get the current user's email
       const { data: { user } } = await supabase.auth.getUser();
       const userEmail = user?.email || null;
@@ -108,7 +106,6 @@ Sound human, not templated. No "just checking in" or "thanks so much for getting
       console.error('Failed to load reply agent config:', error);
       // Still try to get user email on error
       try {
-        const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.email) {
           setConfig(prev => ({ ...prev, connected_email: user.email }));
@@ -124,8 +121,6 @@ Sound human, not templated. No "just checking in" or "thanks so much for getting
     setSaveMessage('');
 
     try {
-      const supabase = createClient();
-
       // Map frontend state to backend fields
       const updates = {
         workspace_id: workspaceId,

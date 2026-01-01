@@ -260,7 +260,6 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
       const { data, error } = await supabase
         .from('linkedin_brand_guidelines')
         .select('*')
@@ -357,8 +356,6 @@ export default function CommentingAgentSettings({ workspaceId, onSaveSuccess }: 
     setSaveMessage('');
 
     try {
-      const supabase = createClient();
-
       // Validate required field
       if (!settings.tone_of_voice.trim()) {
         setSaveMessage('Please fill in "Tone of Voice" in the Brand Voice section');

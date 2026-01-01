@@ -41,8 +41,6 @@ export default function CRMIntegrationsPage() {
   const [acAccountUrl, setAcAccountUrl] = useState('')
   const [acApiKey, setAcApiKey] = useState('')
 
-  const supabase = createClient()
-
   const fetchWorkspaceAndConnections = async () => {
     try {
       setError(null)

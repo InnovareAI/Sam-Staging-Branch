@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 /**
  * POST /api/integrations/slack/link-pending
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the pending installation
-    const { data: pending, error: pendingError } = await supabaseAdmin()
+    const { data: pending, error: pendingError } = await pool
       .from('slack_pending_installations')
       .select('*')
       .eq('slack_team_id', slack_team_id)
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Move the installation to slack_app_config
-    const { error: configError } = await supabaseAdmin()
+    const { error: configError } = await pool
       .from('slack_app_config')
       .upsert({
         workspace_id,
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Also update workspace_integrations for backward compatibility
-    await supabaseAdmin()
+    await pool
       .from('workspace_integrations')
       .upsert({
         workspace_id,
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       });
 
     // Mark the pending installation as linked
-    await supabaseAdmin()
+    await pool
       .from('slack_pending_installations')
       .update({
         status: 'linked',

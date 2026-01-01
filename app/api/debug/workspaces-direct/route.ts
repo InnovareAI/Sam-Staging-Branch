@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -6,8 +6,8 @@ export async function GET() {
     console.log('🔍 Debug: Fetching workspaces directly from database...');
     
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+    const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const adminSupabase = createClient(supabaseUrl, poolKey);
 
     // Direct database query using service role (bypasses RLS)
     const { data: workspaces, error } = await adminSupabase

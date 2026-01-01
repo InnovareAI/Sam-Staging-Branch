@@ -12,7 +12,7 @@
  *   }
  */
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import { Pool } from 'pg';
 
 interface CronRunResult {
   records_processed?: number;

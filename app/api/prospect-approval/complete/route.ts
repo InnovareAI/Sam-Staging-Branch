@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { pool } from '@/lib/db';
 
 /**
  * Extract LinkedIn slug from URL or return as-is if already a slug
@@ -13,11 +13,6 @@ function extractLinkedInSlug(urlOrSlug: string | null): string | null {
   const match = urlOrSlug.match(/linkedin\.com\/in\/([^\/\?#]+)/i);
   return match ? match[1] : urlOrSlug;
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export async function POST(request: NextRequest) {
   try {

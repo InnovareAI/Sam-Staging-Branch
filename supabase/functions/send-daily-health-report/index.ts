@@ -24,8 +24,6 @@ interface CronJobResult {
 serve(async (req) => {
   try {
     // Create Supabase client
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-
     // Get latest status from all cron jobs
     const { data: cronResults, error } = await supabase.rpc('get_latest_cron_status')
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 /**
  * ⚠️ DISABLED - DO NOT USE
@@ -37,11 +37,6 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
 
   return response.json();
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(req: NextRequest) {
   return NextResponse.json({

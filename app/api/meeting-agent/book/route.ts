@@ -20,7 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 import {
   detectBookingLinks,
@@ -38,11 +38,6 @@ import {
   createEvent,
   checkAvailability,
 } from '@/lib/unipile/calendar-service';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const UNIPILE_DSN = process.env.UNIPILE_DSN || 'api6.unipile.com:13670';
 const UNIPILE_API_KEY = process.env.UNIPILE_API_KEY;

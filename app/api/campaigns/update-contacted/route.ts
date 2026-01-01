@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 /**
  * N8N Callback Endpoint - Updates prospects after sending LinkedIn connection requests
@@ -21,11 +21,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Use service role key to update database
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // Update prospect with contacted timestamp and status
     const { data, error } = await supabase
       .from('campaign_prospects')

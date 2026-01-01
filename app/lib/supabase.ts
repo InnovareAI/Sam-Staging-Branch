@@ -1,141 +1,129 @@
-import { createBrowserClient as createBrowserSupabaseClient } from '@supabase/ssr';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-
-function getSupabaseConfig() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://latxadqrvrrrcvkktrog.supabase.co';
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhdHhhZHFydnJycmN2a2t0cm9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTk5ODYsImV4cCI6MjA2ODI3NTk4Nn0.3WkAgXpk_MyQioVf_SED9O_ArjcT9nH0uy9we2okftE';
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-  return { supabaseUrl, supabaseAnonKey, supabaseServiceKey };
-}
-
-// Singleton browser client to prevent multiple GoTrueClient instances
-let browserClient: ReturnType<typeof createBrowserSupabaseClient> | null = null;
-
-// Browser client - use @supabase/ssr createBrowserClient with minimal configuration
-export function createClient() {
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
-
-  // Only use cookie-based auth in browser
-  if (typeof window !== 'undefined') {
-    // Return existing singleton instance if available
-    if (browserClient) {
-      return browserClient;
-    }
-
-    // Create new singleton instance - let Supabase SSR handle everything
-    browserClient = createBrowserSupabaseClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        cookieOptions: {
-          // CRITICAL: These settings must match server-side configuration
-          global: {
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
-          }
-        },
-        auth: {
-          // CRITICAL: Session persistence configuration
-          persistSession: true,        // Enable 7-day session persistence
-          autoRefreshToken: true,       // Auto-refresh before token expires
-          detectSessionInUrl: true,     // Required for magic links & OAuth
-          // CRITICAL: storageKey must match the cookie name set by server
-          // Server sets: sb-{project-ref}-auth-token
-          // Do NOT override - let Supabase SSR auto-generate the correct key
-          flowType: 'pkce'             // PKCE flow for better security
-        }
-      }
-    );
-
-    return browserClient;
-  }
-
-  // Server-side: return basic client (no auth needed for server components importing this)
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey);
-}
-
-// Admin client with service role key (server-side only)
-export function supabaseAdmin() {
-  const { supabaseUrl, supabaseServiceKey } = getSupabaseConfig();
-
-  if (!supabaseServiceKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured');
-  }
-
-  return createSupabaseClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-}
-
-// Server-side route helper - properly configured createServerClient
-export { createServerClient } from '@supabase/ssr';
-
 /**
- * Create a properly configured Supabase server client for API routes
- * This ensures consistent cookie handling across all server-side code
- *
- * @example
- * import { createServerSupabaseClient } from '@/app/lib/supabase';
- *
- * export async function GET() {
- *   const supabase = await createServerSupabaseClient();
- *   const { data, error } = await supabase.auth.getUser();
- * }
+ * Supabase Compatibility Layer for Client Components
+ * Migrated to Firebase Auth - Dec 31, 2025
+ * 
+ * This provides a Supabase-like interface that uses Firebase under the hood.
+ * Components using supabase.auth.* methods will now use Firebase.
  */
-export async function createServerSupabaseClient() {
-  const { cookies } = await import('next/headers');
-  const { createServerClient } = await import('@supabase/ssr');
+'use client';
 
-  const cookieStore = await cookies();
-  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
+import {
+  getFirebaseAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  type User
+} from '@/lib/firebase';
 
-  // Note: Cookie cleanup is handled in middleware and route-auth helpers
-  // This function creates a clean client for API routes
-  // If you're using requireAuth(), cookie cleanup is automatic
-
-  return createServerClient(
-    supabaseUrl,
-    supabaseAnonKey,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // Cookie setting can fail in middleware/API route context
-            // This is expected and safe to ignore
-          }
+// Firebase Auth wrapper that mimics Supabase auth interface
+const authWrapper = {
+  async getUser(): Promise<{ data: { user: { id: string; email: string | null } | null }; error: Error | null }> {
+    return new Promise((resolve) => {
+      const auth = getFirebaseAuth();
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        unsubscribe();
+        if (user) {
+          resolve({
+            data: { user: { id: user.uid, email: user.email } },
+            error: null
+          });
+        } else {
+          resolve({
+            data: { user: null },
+            error: null
+          });
         }
-      },
-      cookieOptions: {
-        // CRITICAL: Must match browser client configuration
-        global: {
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 60 * 60 * 24 * 7 // 7 days in seconds
+      });
+    });
+  },
+
+  async getSession(): Promise<{ data: { session: { access_token: string; user: { id: string; email: string | null } } | null }; error: Error | null }> {
+    const { data } = await this.getUser();
+    if (data.user) {
+      const auth = getFirebaseAuth();
+      const token = await auth.currentUser?.getIdToken();
+      return {
+        data: {
+          session: {
+            access_token: token || '',
+            user: { id: data.user.id, email: data.user.email }
+          }
+        },
+        error: null
+      };
+    }
+    return { data: { session: null }, error: null };
+  },
+
+  async signInWithPassword({ email, password }: { email: string; password: string }) {
+    try {
+      const auth = getFirebaseAuth();
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      return {
+        data: {
+          user: { id: result.user.uid, email: result.user.email },
+          session: { access_token: await result.user.getIdToken() }
+        },
+        error: null
+      };
+    } catch (error) {
+      return { data: { user: null, session: null }, error: error as Error };
+    }
+  },
+
+  async signOut() {
+    try {
+      const auth = getFirebaseAuth();
+      await firebaseSignOut(auth);
+      // Clear session cookie
+      await fetch('/api/auth/session', { method: 'DELETE' });
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  },
+
+  onAuthStateChange(callback: (event: string, session: any) => void) {
+    const auth = getFirebaseAuth();
+    return {
+      data: {
+        subscription: {
+          unsubscribe: onAuthStateChanged(auth, async (user) => {
+            if (user) {
+              const token = await user.getIdToken();
+              callback('SIGNED_IN', {
+                access_token: token,
+                user: { id: user.uid, email: user.email }
+              });
+            } else {
+              callback('SIGNED_OUT', null);
+            }
+          })
         }
       }
-    }
-  );
+    };
+  }
+};
+
+// Supabase-compatible client
+export const supabase = {
+  auth: authWrapper,
+  // DB queries are no longer supported via this compat layer
+  // Use pool.query() directly instead
+  from: (table: string) => {
+    console.warn(`⚠️ Direct Supabase DB access deprecated. Use pool.query() for table: ${table}`);
+    return {
+      select: () => ({ data: null, error: new Error('Supabase DB access deprecated') }),
+      insert: () => ({ data: null, error: new Error('Supabase DB access deprecated') }),
+      update: () => ({ data: null, error: new Error('Supabase DB access deprecated') }),
+      delete: () => ({ data: null, error: new Error('Supabase DB access deprecated') }),
+    };
+  }
+};
+
+// For compatibility
+export function createClient() {
+  return supabase;
 }
 
-// Legacy exports for backward compatibility
-let _supabase: any = null;
-export const supabase = new Proxy({}, {
-  get(target, prop) {
-    if (!_supabase) {
-      _supabase = createClient();
-    }
-    return _supabase[prop];
-  }
-});
+export default supabase;

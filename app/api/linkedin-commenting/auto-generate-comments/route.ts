@@ -3,7 +3,7 @@
  * POST /api/linkedin-commenting/auto-generate-comments
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateLinkedInComment } from '@/lib/services/linkedin-commenting-agent';
 import type { CommentGenerationContext } from '@/lib/services/linkedin-commenting-agent';
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`🤖 Auto-generating comments for ${post_ids.length} posts...`);
 
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Fetch workspace context
     const { data: workspace, error: workspaceError } = await supabase

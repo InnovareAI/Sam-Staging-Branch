@@ -69,8 +69,6 @@ export async function POST(req: NextRequest) {
   }, { status: 503 });
 
   try {
-    const supabase = createClient();
-
     // DISABLED - DO NOT USE
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

@@ -15,7 +15,7 @@ import { logger } from '@/lib/logging'
 import { circuitBreakerRegistry } from '@/lib/circuit-breaker'
 import { externalServiceManager } from '@/lib/external-service-circuit-breakers'
 import { createTransactionManager } from '@/lib/database-transaction'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 
 // GET - Circuit breaker health overview
 export async function GET(request: NextRequest) {
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const externalServicesStatus = externalServiceManager.getStatusReport()
     
     // Get database circuit breaker status
-    const dbTransactionManager = createTransactionManager(supabaseAdmin())
+    const dbTransactionManager = createTransactionManager(pool)
     const dbHealthCheck = await dbTransactionManager.healthCheck()
 
     const circuitBreakerStatuses: Record<string, any> = {}

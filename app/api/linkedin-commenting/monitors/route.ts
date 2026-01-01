@@ -1,4 +1,4 @@
-import { createServerSupabaseClient, supabaseAdmin } from '@/app/lib/supabase';
+import { createServerSupabaseClient, pool } from '@/app/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const adminClient = supabaseAdmin();
+    const adminClient = pool;
     const { data: { user } } = await supabase.auth.getUser();
 
     console.log('🔍 GET monitors - User:', user?.email, 'ID:', user?.id);
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const adminClient = supabaseAdmin(); // Use admin client to bypass RLS
+    const adminClient = pool; // Use admin client to bypass RLS
 
     console.log('🔐 Step 1: Getting user...');
     const { data: { user }, error: userError } = await supabase.auth.getUser();

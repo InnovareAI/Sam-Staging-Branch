@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { requireAdmin } from '@/lib/security/route-auth';
 
 export async function GET(request: Request) {
@@ -9,11 +9,6 @@ export async function GET(request: Request) {
   if (authError) return authError;
 
   // Create Supabase client at runtime (not build time)
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
   try {
     // First, let's check if we can insert a test 3CubedAI record
     const testEmail = `constraint-test-${Date.now()}@example.com`;

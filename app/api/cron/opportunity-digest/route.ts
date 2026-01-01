@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     console.log('🎯 Starting opportunity digest cron...');
     console.log(`🧪 Test mode: ${testEmail ? `sending to ${testEmail}` : 'OFF'}`);
 
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Get workspaces with opportunity digest enabled
     let workspacesQuery = supabase

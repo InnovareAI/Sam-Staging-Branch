@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 // Service role client for admin access
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+// Pool imported from lib/db
 // Failed statuses that can be reset
 const FAILED_STATUSES = [
   'failed',
@@ -17,7 +13,7 @@ const FAILED_STATUSES = [
 // Handle both GET (from Google Chat link) and POST
 async function handleReset(campaignId: string) {
   // Get campaign info
-  const { data: campaign, error: campaignError } = await supabaseAdmin
+  const { data: campaign, error: campaignError } = await pool
     .from('campaigns')
     .select('id, campaign_name, name, workspace_id')
     .eq('id', campaignId)
@@ -28,7 +24,7 @@ async function handleReset(campaignId: string) {
   }
 
   // Reset failed prospects to 'pending'
-  const { data: updated, error } = await supabaseAdmin
+  const { data: updated, error } = await pool
     .from('campaign_prospects')
     .update({
       status: 'pending',
@@ -49,7 +45,7 @@ async function handleReset(campaignId: string) {
   // Also delete failed queue entries so they can be re-queued
   if (resetCount > 0) {
     const prospectIds = updated!.map(p => p.id);
-    await supabaseAdmin
+    await pool
       .from('send_queue')
       .delete()
       .eq('campaign_id', campaignId)

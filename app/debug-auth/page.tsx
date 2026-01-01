@@ -24,7 +24,6 @@ export default function DebugAuthPage() {
     addLog(`📦 Cookies: ${allCookies.substring(0, 100)}...`);
 
     // Create Supabase client
-    const supabase = createClient();
     addLog('✅ Supabase client created');
 
     // Check current session
@@ -84,8 +83,6 @@ export default function DebugAuthPage() {
     const password = (document.getElementById('password') as HTMLInputElement).value;
 
     addLog(`🔐 Attempting signin: ${email}`);
-    const supabase = createClient();
-
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,

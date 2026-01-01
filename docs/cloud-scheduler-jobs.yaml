@@ -1,0 +1,331 @@
+# ================================================
+# Google Cloud Scheduler - SAM Platform Jobs
+# ================================================
+# 
+# This YAML file documents all 40 Cloud Scheduler jobs
+# Use scripts/setup-cloud-scheduler.sh to deploy
+#
+# Estimated Monthly Cost: ~$4 (40 jobs × $0.10/job)
+# ================================================
+
+# ============================================
+# CORE CAMPAIGN EXECUTION (5 jobs)
+# These are critical for campaign operation
+# ============================================
+
+jobs:
+  # CRITICAL: Executes campaigns - must run frequently
+  - name: sam-execute-campaigns
+    schedule: "*/2 * * * *"  # Every 2 minutes
+    endpoint: /api/cron/execute-scheduled-campaigns
+    method: POST
+    timeout: 540s
+    priority: critical
+    description: Execute scheduled campaigns
+
+  # CRITICAL: Sends connection requests and messages
+  - name: sam-process-send-queue
+    schedule: "* * * * *"  # Every minute
+    endpoint: /api/cron/process-send-queue
+    method: POST
+    timeout: 540s
+    priority: critical
+    description: Process send queue - sends CRs and messages
+    notes: |
+      - Respects daily limits (20 CRs/day)
+      - Business hours only
+      - No weekends/holidays
+
+  - name: sam-process-pending-prospects
+    schedule: "*/5 * * * *"  # Every 5 minutes
+    endpoint: /api/cron/process-pending-prospects
+    method: POST
+    timeout: 300s
+    priority: high
+
+  - name: sam-queue-pending-prospects
+    schedule: "*/5 * * * *"  # Every 5 minutes
+    endpoint: /api/cron/queue-pending-prospects
+    method: POST
+    timeout: 300s
+    priority: high
+    description: Queue approved prospects for sending
+
+  - name: sam-process-email-queue
+    schedule: "*/13 * * * *"  # Every 13 minutes (~40 emails/day)
+    endpoint: /api/cron/process-email-queue
+    method: POST
+    timeout: 300s
+    priority: high
+
+# ============================================
+# REPLY DETECTION & PROCESSING (4 jobs)
+# ============================================
+
+  - name: sam-poll-accepted-connections
+    schedule: "*/15 * * * *"
+    endpoint: /api/cron/poll-accepted-connections
+    method: POST
+    timeout: 300s
+    description: Backup for webhook - detects accepted CRs
+
+  - name: sam-poll-message-replies
+    schedule: "*/5 * * * *"
+    endpoint: /api/cron/poll-message-replies
+    method: POST
+    timeout: 300s
+    priority: high
+    description: Detect LinkedIn message replies
+
+  - name: sam-poll-email-replies
+    schedule: "*/5 * * * *"
+    endpoint: /api/cron/poll-email-replies
+    method: POST
+    timeout: 300s
+    priority: high
+    description: Detect email replies
+
+  - name: sam-reply-agent-process
+    schedule: "*/5 * * * *"
+    endpoint: /api/cron/reply-agent-process
+    method: POST
+    timeout: 60s
+    priority: high
+    description: Generate AI reply drafts
+
+# ============================================
+# FOLLOW-UP SEQUENCES (3 jobs)
+# ============================================
+
+  - name: sam-send-follow-ups
+    schedule: "*/30 * * * *"
+    endpoint: /api/cron/send-follow-ups
+    method: POST
+    timeout: 300s
+
+  - name: sam-generate-follow-up-drafts
+    schedule: "15 * * * *"  # Every hour at :15
+    endpoint: /api/cron/generate-follow-up-drafts
+    method: POST
+    timeout: 300s
+    description: AI-powered follow-up generation
+
+  - name: sam-send-approved-follow-ups
+    schedule: "*/15 * * * *"
+    endpoint: /api/cron/send-approved-follow-ups
+    method: POST
+    timeout: 300s
+
+# ============================================
+# COMMENTING AGENT (7 jobs)
+# ============================================
+
+  - name: sam-discover-posts
+    schedule: "0 */6 * * *"  # Every 6 hours
+    endpoint: /api/cron/discover-profile-posts
+    method: GET
+    timeout: 300s
+    description: Find posts from monitored profiles
+
+  - name: sam-auto-generate-comments
+    schedule: "*/30 * * * *"
+    endpoint: /api/cron/auto-generate-comments
+    method: POST
+    timeout: 300s
+    description: Generate AI comments for discovered posts
+
+  - name: sam-process-comment-queue
+    schedule: "*/45 * * * *"
+    endpoint: /api/cron/process-comment-queue
+    method: POST
+    timeout: 300s
+    description: Post approved comments
+
+  - name: sam-track-comment-performance
+    schedule: "0 */6 * * *"
+    endpoint: /api/cron/track-comment-performance
+    method: POST
+    timeout: 300s
+
+  - name: sam-commenting-digest
+    schedule: "0 13 * * 1-5"  # Mon-Fri 1 PM UTC
+    endpoint: /api/cron/commenting-digest
+    method: POST
+    timeout: 300s
+    description: Daily email with pending comments
+
+  - name: sam-expire-comment-content
+    schedule: "0 6 * * 1-5"
+    endpoint: /api/cron/expire-comment-content
+    method: POST
+    timeout: 300s
+
+  - name: sam-daily-repost
+    schedule: "0 18 * * *"  # 6 PM UTC
+    endpoint: /api/cron/daily-repost
+    method: POST
+    timeout: 300s
+
+# ============================================
+# SELF-POST ENGAGEMENT (2 jobs)
+# ============================================
+
+  - name: sam-discover-self-post-comments
+    schedule: "*/30 * * * *"
+    endpoint: /api/cron/discover-self-post-comments
+    method: POST
+    timeout: 300s
+
+  - name: sam-process-self-post-replies
+    schedule: "*/30 * * * *"
+    endpoint: /api/cron/process-self-post-replies
+    method: POST
+    timeout: 300s
+
+# ============================================
+# MEETING AGENT (4 jobs)
+# ============================================
+
+  - name: sam-calendar-agent
+    schedule: "*/15 * * * *"
+    endpoint: /api/cron/calendar-agent
+    method: POST
+    timeout: 300s
+
+  - name: sam-check-meeting-status
+    schedule: "*/15 * * * *"
+    endpoint: /api/cron/check-meeting-status
+    method: POST
+    timeout: 300s
+    description: Detect no-shows, trigger follow-ups
+
+  - name: sam-send-meeting-reminders
+    schedule: "*/5 * * * *"
+    endpoint: /api/cron/send-meeting-reminders
+    method: POST
+    timeout: 300s
+
+  - name: sam-send-meeting-follow-ups
+    schedule: "*/15 * * * *"
+    endpoint: /api/cron/send-meeting-follow-ups
+    method: POST
+    timeout: 300s
+
+# ============================================
+# CRM & SYNC (2 jobs)
+# ============================================
+
+  - name: sam-sync-crm-bidirectional
+    schedule: "*/15 * * * *"
+    endpoint: /api/cron/sync-crm-bidirectional
+    method: POST
+    timeout: 300s
+
+  - name: sam-airtable-reverse-sync
+    schedule: "*/15 * * * *"
+    endpoint: /api/cron/airtable-reverse-sync
+    method: POST
+    timeout: 300s
+
+# ============================================
+# MAINTENANCE & CLEANUP (7 jobs)
+# ============================================
+
+  - name: sam-health-monitor
+    schedule: "0 * * * *"  # Every hour
+    endpoint: /api/cron/health-monitor
+    method: POST
+    timeout: 300s
+
+  - name: sam-daily-sync-verification
+    schedule: "0 5 * * *"  # 5 AM UTC
+    endpoint: /api/cron/daily-sync-verification
+    method: POST
+    timeout: 300s
+
+  - name: sam-gdpr-cleanup
+    schedule: "0 3 * * *"  # 3 AM UTC
+    endpoint: /api/cron/gdpr-cleanup
+    method: POST
+    timeout: 300s
+
+  - name: sam-cleanup-corrupted-statuses
+    schedule: "0 4 * * *"  # 4 AM UTC
+    endpoint: /api/cron/cleanup-corrupted-statuses
+    method: POST
+    timeout: 300s
+
+  - name: sam-cleanup-expired-posts
+    schedule: "0 2 * * *"
+    endpoint: /api/cron/cleanup-expired-posts
+    method: POST
+    timeout: 300s
+
+  - name: sam-withdraw-stale-invitations
+    schedule: "0 8 * * *"  # 8 AM UTC
+    endpoint: /api/cron/withdraw-stale-invitations
+    method: POST
+    timeout: 300s
+    description: Free up LinkedIn invitation limit
+
+  - name: sam-check-pending-notifications
+    schedule: "*/10 * * * *"
+    endpoint: /api/cron/check-pending-notifications
+    method: POST
+    timeout: 300s
+
+# ============================================
+# DIGESTS & NOTIFICATIONS (2 jobs)
+# ============================================
+
+  - name: sam-opportunity-digest
+    schedule: "0 15 * * 1-5"  # Mon-Fri 3 PM UTC
+    endpoint: /api/cron/opportunity-digest
+    method: POST
+    timeout: 300s
+
+  - name: sam-slack-daily-digest
+    schedule: "0 14 * * 1-5"  # Mon-Fri 2 PM UTC
+    endpoint: /api/cron/slack-daily-digest
+    method: POST
+    timeout: 300s
+
+# ============================================
+# LEAD PROCESSING (2 jobs)
+# ============================================
+
+  - name: sam-process-lead-capture-queue
+    schedule: "*/10 * * * *"
+    endpoint: /api/cron/process-lead-capture-queue
+    method: POST
+    timeout: 300s
+
+  - name: sam-process-outbox
+    schedule: "*/5 * * * *"
+    endpoint: /api/cron/process-outbox
+    method: POST
+    timeout: 300s
+
+# ============================================
+# SUMMARY
+# ============================================
+# 
+# Total Jobs: 38
+# 
+# Frequency Distribution:
+#   Every minute:     1 job  (process-send-queue)
+#   Every 2 minutes:  1 job  (execute-campaigns)
+#   Every 5 minutes:  8 jobs
+#   Every 10 minutes: 2 jobs
+#   Every 13 minutes: 1 job  (email queue)
+#   Every 15 minutes: 7 jobs
+#   Every 30 minutes: 4 jobs
+#   Every 45 minutes: 1 job
+#   Every hour:       2 jobs
+#   Every 6 hours:    2 jobs
+#   Daily:            9 jobs
+#
+# Monthly Executions: ~175,000
+# Monthly Cost: ~$4 (40 jobs × $0.10/job)
+# 
+# ============================================

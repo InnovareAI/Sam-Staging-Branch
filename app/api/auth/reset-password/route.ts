@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
+import { getAdminAuth } from '@/lib/firebase-admin';
 import { randomBytes } from 'crypto';
 
-// Create Supabase admin client for generating reset tokens
-const supabaseAdmin = createServiceClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 // Function to determine sender based on user affiliation
 function getSenderByAffiliation(userEmail: string): string {
   // Debug logging
   console.log('🔍 GENERAL ROUTE - Checking sender affiliation for:', userEmail);
-  
+
   // Check if user belongs to 3cubed or sendingcell.com
   if (userEmail.includes('3cubed') || userEmail.includes('cubedcapital') || userEmail.includes('sendingcell.com')) {
     console.log('✅ GENERAL ROUTE - 3cubed affiliation detected, using Sophia Caldwell');
     return 'Sophia Caldwell <sophia@3cubed.ai>';
   }
-  
+
   // Default to Sarah Powell for InnovareAI and other users
   console.log('✅ GENERAL ROUTE - InnovareAI affiliation, using Sarah Powell');
   return 'Sarah Powell <sp@innovareai.com>';
@@ -29,8 +25,8 @@ function getSenderByAffiliation(userEmail: string): string {
 async function sendEmail(to: string, subject: string, htmlBody: string) {
   // Use the correct Postmark API key based on user affiliation
   const is3Cubed = to.includes('3cubed') || to.includes('cubedcapital') || to.includes('sendingcell.com');
-  const postmarkApiKey = is3Cubed 
-    ? process.env.POSTMARK_3CUBEDAI_API_KEY 
+  const postmarkApiKey = is3Cubed
+    ? process.env.POSTMARK_3CUBEDAI_API_KEY
     : process.env.POSTMARK_INNOVAREAI_API_KEY;
 
   if (!postmarkApiKey) {
@@ -79,14 +75,14 @@ export async function POST(request: NextRequest) {
     console.log('Sending password reset to:', email);
 
     // Check if user exists first
-    const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers();
-    
+    const { data: users, error: userError } = await pool.auth.admin.listUsers();
+
     if (userError) {
       console.error('Error checking users:', userError);
     }
-    
+
     const userExists = users?.users?.find((user: any) => user.email === email);
-    
+
     if (!userExists) {
       // Still return success for security (don't reveal if email exists)
       return NextResponse.json({
@@ -97,8 +93,8 @@ export async function POST(request: NextRequest) {
 
     // Use Postmark for reliable email delivery
     const is3Cubed = email.includes('3cubed') || email.includes('cubedcapital') || email.includes('sendingcell.com');
-    const postmarkApiKey = is3Cubed 
-      ? process.env.POSTMARK_3CUBEDAI_API_KEY 
+    const postmarkApiKey = is3Cubed
+      ? process.env.POSTMARK_3CUBEDAI_API_KEY
       : process.env.POSTMARK_INNOVAREAI_API_KEY;
 
     if (postmarkApiKey) {
@@ -113,7 +109,7 @@ export async function POST(request: NextRequest) {
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
       // Store token in database
-      const { error: tokenError } = await supabaseAdmin
+      const { error: tokenError } = await pool
         .from('password_reset_tokens')
         .upsert({
           email: email.toLowerCase(),

@@ -31,8 +31,6 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-
       // Check if commenting agent is enabled for workspace
       const { data: workspace } = await supabase
         .from('workspaces')
@@ -66,8 +64,6 @@ export default function CommentingAgentModal({ isOpen, onClose, workspaceId }: C
     setSaveMessage('');
 
     try {
-      const supabase = createClient();
-
       const { error } = await supabase
         .from('workspaces')
         .update({

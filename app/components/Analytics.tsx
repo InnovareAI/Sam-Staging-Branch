@@ -170,8 +170,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ workspaceId }) => {
   const [campaignKPIs, setCampaignKPIs] = useState<{ totalProspects: number; totalMessages: number; totalReplies: number; totalInfoRequests: number; totalMeetings: number }>({ totalProspects: 0, totalMessages: 0, totalReplies: 0, totalInfoRequests: 0, totalMeetings: 0 });
   const [campaignsData, setCampaignsData] = useState<any[]>([]);
 
-  const supabase = createClient();
-
   // Sync workspace ID from props - ensures complete data separation between workspaces
   useEffect(() => {
     if (workspaceId) {

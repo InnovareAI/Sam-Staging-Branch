@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { parse } from 'csv-parse/sync'
 
 // Helper to normalize LinkedIn URL to hash (vanity name only)
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const supabase = supabaseAdmin()
+    const supabase = pool
 
     // Charissa's campaign configuration
     const charissaConfig = {

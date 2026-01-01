@@ -43,8 +43,6 @@ export async function POST(req: NextRequest) {
   try {
     console.log(`🔥 ULTRAHARD EXECUTION INITIATED: ${executionId}`);
     
-    const supabase = createClient();
-    
     // Authentication with enhanced validation
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -380,7 +378,6 @@ export async function POST(req: NextRequest) {
 // GET endpoint for ULTRAHARD campaign status
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {

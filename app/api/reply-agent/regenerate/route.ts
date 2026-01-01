@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { getClaudeClient } from '@/lib/llm/claude-client';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Fetch the draft
     const { data: draft, error: fetchError } = await supabase

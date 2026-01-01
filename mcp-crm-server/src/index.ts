@@ -13,11 +13,6 @@ import { AirtableAdapter } from './adapters/airtable.js';
 import { registerCRMTools } from './tools/index.js';
 
 // Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 // Cache adapters by workspace to avoid re-authentication
 const adapterCache = new Map<string, CRMAdapter>();
 

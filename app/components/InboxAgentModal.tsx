@@ -87,8 +87,6 @@ export default function InboxAgentModal({ isOpen, onClose, workspaceId }: InboxA
   const loadConfig = async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-
       const { data, error } = await supabase
         .from('workspace_inbox_agent_config')
         .select('*')
@@ -111,8 +109,6 @@ export default function InboxAgentModal({ isOpen, onClose, workspaceId }: InboxA
 
   const loadCategories = async () => {
     try {
-      const supabase = createClient();
-
       // Load system categories and workspace-specific categories
       const { data, error } = await supabase
         .from('inbox_message_categories')
@@ -133,8 +129,6 @@ export default function InboxAgentModal({ isOpen, onClose, workspaceId }: InboxA
     setSaveMessage('');
 
     try {
-      const supabase = createClient();
-
       const { error } = await supabase
         .from('workspace_inbox_agent_config')
         .upsert({

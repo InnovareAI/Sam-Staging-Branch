@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 /**
  * PRODUCTION HEALTH CHECK ENDPOINT
@@ -91,11 +91,6 @@ async function checkDatabase(): Promise<HealthStatus> {
   const start = Date.now();
   
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // Test basic connectivity
     const { data, error } = await supabase
       .from('users')
@@ -259,11 +254,6 @@ async function checkInvitations(): Promise<HealthStatus> {
   const start = Date.now();
   
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // Check invitation system functionality
     const { data, error } = await supabase
       .from('workspace_invitations')

@@ -7,7 +7,7 @@
  * - Campaign Creation
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 // Conversation state storage (in-memory for now, should move to Redis/DB for production)
@@ -185,7 +185,7 @@ export async function handleICPSetupFlow(
       const icpData = { ...state.data, locations };
 
       // Save ICP to database
-      const { data: icp, error } = await supabaseAdmin()
+      const { data: icp, error } = await pool
         .from('workspace_icp')
         .insert({
           workspace_id: workspaceId,
@@ -263,7 +263,7 @@ export async function handleSearchFlow(
   input: string
 ): Promise<SearchResponse> {
   // Get the workspace's default ICP
-  const { data: icp } = await supabaseAdmin()
+  const { data: icp } = await pool
     .from('workspace_icp')
     .select('*')
     .eq('workspace_id', workspaceId)
@@ -417,7 +417,7 @@ function buildUnipileQuery(params: any): any {
 async function executeLinkedInSearch(workspaceId: string, query: any): Promise<any> {
   try {
     // Get LinkedIn account for workspace
-    const { data: account } = await supabaseAdmin()
+    const { data: account } = await pool
       .from('workspace_accounts')
       .select('unipile_account_id')
       .eq('workspace_id', workspaceId)
@@ -566,7 +566,7 @@ export async function handleCampaignCreateFlow(
 
       if (targetMethod.includes('icp') || targetMethod.includes('my icp')) {
         // Get ICP and search
-        const { data: icp } = await supabaseAdmin()
+        const { data: icp } = await pool
           .from('workspace_icp')
           .select('*')
           .eq('workspace_id', workspaceId)
@@ -865,12 +865,12 @@ export async function handleCampaignCreateFlow(
 async function generateMessageDraft(workspaceId: string, type: 'connection_request' | 'follow_up', context: any): Promise<string> {
   // Get workspace and ICP info in parallel for speed
   const [{ data: workspace }, { data: icp }] = await Promise.all([
-    supabaseAdmin()
+    pool
       .from('workspaces')
       .select('name, industry, company_description')
       .eq('id', workspaceId)
       .single(),
-    supabaseAdmin()
+    pool
       .from('workspace_icp')
       .select('*')
       .eq('workspace_id', workspaceId)
@@ -956,7 +956,7 @@ async function createCampaign(workspaceId: string, data: {
 }): Promise<{ success: boolean; campaign?: any; error?: string }> {
   try {
     // Get LinkedIn account for the workspace
-    const { data: account } = await supabaseAdmin()
+    const { data: account } = await pool
       .from('workspace_accounts')
       .select('unipile_account_id')
       .eq('workspace_id', workspaceId)
@@ -969,7 +969,7 @@ async function createCampaign(workspaceId: string, data: {
     }
 
     // Create the campaign
-    const { data: campaign, error: campaignError } = await supabaseAdmin()
+    const { data: campaign, error: campaignError } = await pool
       .from('campaigns')
       .insert({
         workspace_id: workspaceId,
@@ -1008,7 +1008,7 @@ async function createCampaign(workspaceId: string, data: {
         status: 'pending',
       }));
 
-      await supabaseAdmin()
+      await pool
         .from('campaign_prospects')
         .insert(prospectRecords);
     }
@@ -1068,7 +1068,7 @@ export async function handleAnalyzeFlow(
 
 async function getWorkspaceAnalytics(workspaceId: string): Promise<any> {
   // Get campaigns with stats
-  const { data: campaigns } = await supabaseAdmin()
+  const { data: campaigns } = await pool
     .from('campaigns')
     .select('id, name, status, created_at, message_templates')
     .eq('workspace_id', workspaceId)
@@ -1076,13 +1076,13 @@ async function getWorkspaceAnalytics(workspaceId: string): Promise<any> {
     .limit(10);
 
   // Get prospect stats by status
-  const { data: prospects } = await supabaseAdmin()
+  const { data: prospects } = await pool
     .from('campaign_prospects')
     .select('status, campaign_id, contacted_at, responded_at, company_name, title')
     .eq('workspace_id', workspaceId);
 
   // Get recent replies
-  const { data: replies } = await supabaseAdmin()
+  const { data: replies } = await pool
     .from('campaign_prospects')
     .select('first_name, last_name, company_name, title, responded_at, campaign_id')
     .eq('workspace_id', workspaceId)

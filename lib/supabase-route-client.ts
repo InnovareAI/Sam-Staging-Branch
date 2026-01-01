@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr';
+import { pool } from '@/lib/db';
 import { cookies } from 'next/headers';
 
 /**

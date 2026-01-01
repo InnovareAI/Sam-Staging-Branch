@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 export const maxDuration = 30;
 
-const supabaseAdmin = () => createClient(
+const pool = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
@@ -51,7 +51,7 @@ async function resolveVanityToProviderId(vanity: string, unipileAccountId: strin
  * When we detect "User ID does not match provider's expected format" errors,
  * automatically resolve vanities to provider_ids and reset to pending
  */
-async function autoFixVanityFailures(supabase: ReturnType<typeof supabaseAdmin>): Promise<number> {
+async function autoFixVanityFailures(supabase: ReturnType<typeof pool>): Promise<number> {
   console.log('🔧 Auto-fixing vanity resolution failures...');
 
   // Get failed items with vanity format errors (limit to 20 per run to avoid timeout)
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
 
   console.log('🔴 Real-time error monitor starting...');
 
-  const supabase = supabaseAdmin();
+  const supabase = pool;
   const errors: ErrorCheck[] = [];
   const now = new Date();
   const fifteenMinAgo = new Date(now.getTime() - 15 * 60 * 1000);

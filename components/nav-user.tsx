@@ -42,8 +42,6 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const router = useRouter()
-  const supabase = createClient()
-
   const handleLogout = async () => {
     try {
       console.log('🚪 Signing out user...')

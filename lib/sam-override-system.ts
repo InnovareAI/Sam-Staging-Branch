@@ -1,7 +1,7 @@
 // SAM AI System Override Authentication
 // Allows authorized users to bypass onboarding and issue direct commands
 
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import crypto from 'crypto';
 
 export interface OverrideCredentials {
@@ -82,7 +82,7 @@ export async function validateOverrideCredentials(
   error?: string;
 }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     // First, verify user has InnovareAI workspace access
     if (currentUserId) {
@@ -258,7 +258,7 @@ export async function createAdminUser(
   fullAccess: boolean = true
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     const { error } = await supabase
       .from('sam_admin_users')
@@ -288,7 +288,7 @@ export async function createAdminUser(
  */
 export async function listAdminUsers(): Promise<AdminUser[]> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     const { data: adminUsers } = await supabase
       .from('sam_admin_users')
@@ -308,7 +308,7 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
  */
 export async function deactivateAdminUser(email: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = supabaseAdmin();
+    const supabase = pool;
     
     const { error } = await supabase
       .from('sam_admin_users')

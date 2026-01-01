@@ -1,10 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 async function cleanupOrphanedMembership() {
   const userId = 'f6885ff3-deef-4781-8721-93011c990b1b'
   const orphanedWorkspaceId = 'ffed2d0f-a5a7-4d46-b221-b673a412bf44'

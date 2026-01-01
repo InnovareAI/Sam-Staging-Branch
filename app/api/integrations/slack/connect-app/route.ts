@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 /**
  * Connect Slack App with Bot Token
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const botInfo = await botInfoResponse.json();
 
     // Store the app config
-    const { error: configError } = await supabaseAdmin()
+    const { error: configError } = await pool
       .from('slack_app_config')
       .upsert({
         workspace_id,
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Also update workspace_integrations for backward compatibility
-    await supabaseAdmin()
+    await pool
       .from('workspace_integrations')
       .upsert({
         workspace_id,

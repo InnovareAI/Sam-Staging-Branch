@@ -3,7 +3,7 @@
  * Called directly from the UI to generate AI comments for discovered posts
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   generateLinkedInComment,
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     console.log('💬 Generating comment for post (UI-triggered):', body.post_id);
 
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Get post details
     const { data: post, error: postError } = await supabase

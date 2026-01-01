@@ -12,8 +12,6 @@ import { createClient } from '@/app/lib/supabase/server';
 // GET - Check ReachInbox configuration status
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createClient();
-
     const {
       data: { user },
       error: authError,
@@ -64,8 +62,6 @@ export async function GET(req: NextRequest) {
 // POST - Save ReachInbox API key
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
-
     const {
       data: { user },
       error: authError,
@@ -182,8 +178,6 @@ export async function POST(req: NextRequest) {
 // DELETE - Remove ReachInbox configuration
 export async function DELETE(req: NextRequest) {
   try {
-    const supabase = createClient();
-
     const {
       data: { user },
       error: authError,

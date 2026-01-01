@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import Anthropic from '@anthropic-ai/sdk';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 import {
@@ -170,11 +170,6 @@ export async function POST(req: NextRequest) {
   }
 
   console.log('🤖 Processing self-post replies...');
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
 
   let generated = 0;
   let posted = 0;

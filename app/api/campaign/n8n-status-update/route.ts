@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/app/lib/supabase'
+import { pool } from '@/lib/db'
 import { logger, PerformanceMonitor } from '@/lib/logging'
 import { validateRequest } from '@/lib/validation'
 import { z } from 'zod'
@@ -41,7 +41,7 @@ const N8NStatusUpdateSchema = z.object({
   }).optional()
 }).strict()
 
-const supabase = supabaseAdmin()
+const supabase = pool
 
 // POST - Receive status updates from N8N workflow
 export async function POST(request: NextRequest) {

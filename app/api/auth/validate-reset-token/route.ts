@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
-const supabaseAdmin = createServiceClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Query token from database
-    const { data: tokenData, error: queryError } = await supabaseAdmin
+    const { data: tokenData, error: queryError } = await pool
       .from('password_reset_tokens')
       .select('*')
       .eq('email', email.toLowerCase())
@@ -37,7 +33,7 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(tokenData.expires_at);
     if (expiresAt < new Date()) {
       // Delete expired token
-      await supabaseAdmin
+      await pool
         .from('password_reset_tokens')
         .delete()
         .eq('email', email.toLowerCase());

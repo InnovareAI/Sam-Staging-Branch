@@ -19,7 +19,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 export const maxDuration = 300; // 5 minutes
 
@@ -45,11 +45,6 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
 
   return response.json();
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /**
  * Calculate next business day at 9 AM local time

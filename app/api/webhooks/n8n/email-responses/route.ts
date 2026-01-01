@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { verifyN8NWebhook, getRequestBody } from '@/lib/security/webhook-auth';
 import { airtableService } from '@/lib/airtable';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Webhook handler for email response notifications from N8N/ActiveCampaign
 export async function POST(request: NextRequest) {

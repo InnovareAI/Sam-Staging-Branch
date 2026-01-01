@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { VALID_CONNECTION_STATUSES } from '@/lib/constants/connection-status';
 
 export const dynamic = 'force-dynamic';
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const adminClient = supabaseAdmin();
+    const adminClient = pool;
 
     // Get all connected LinkedIn accounts across all workspaces
     const { data: linkedinAccounts, error: accountsError } = await adminClient

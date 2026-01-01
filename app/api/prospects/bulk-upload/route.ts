@@ -6,8 +6,6 @@ export const maxDuration = 60; // 60 seconds
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -149,8 +147,6 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
     // Get user and workspace
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

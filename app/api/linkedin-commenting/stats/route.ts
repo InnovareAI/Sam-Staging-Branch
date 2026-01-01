@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient, supabaseAdmin } from '@/app/lib/supabase';
+import { createServerSupabaseClient, pool } from '@/app/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Use admin client to bypass RLS
-    const supabase = supabaseAdmin();
+    const supabase = pool;
 
     // Get total and active profiles (monitors)
     const { data: monitors, error: monitorsError } = await supabase

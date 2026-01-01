@@ -10,7 +10,7 @@
  * Created: December 16, 2025
  */
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import { Pool } from 'pg';
 
 export interface AuthorRelationship {
   id?: string;

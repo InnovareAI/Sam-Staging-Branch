@@ -28,8 +28,6 @@ interface UnipileWebhookPayload {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
-    
     // Parse webhook payload
     const webhook: UnipileWebhookPayload = await req.json();
     

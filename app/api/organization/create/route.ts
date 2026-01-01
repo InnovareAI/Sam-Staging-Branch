@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,12 +11,12 @@ export async function POST(request: NextRequest) {
 
     // Create Supabase admin client
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const poolKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    // Using pool from lib/db
 
     // Get user from token
     const token = authHeader.replace('Bearer ', '');
-    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const { data: userData, error: userError } = await pool.auth.getUser(token);
     
     if (userError || !userData.user) {
       return NextResponse.json({ error: 'Invalid authorization' }, { status: 401 });
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     // Create organization using admin client
     const slug = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const { data: orgData, error: orgError } = await supabaseAdmin
+    const { data: orgData, error: orgError } = await pool
       .from('organizations')
       .insert({
         name: name.trim(),
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Add user to org
-    const { error: userOrgError } = await supabaseAdmin.from('user_organizations').insert({
+    const { error: userOrgError } = await pool.from('user_organizations').insert({
       organization_id: orgData.id,
       user_id: userId,
       role: 'owner'

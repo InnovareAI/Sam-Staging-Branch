@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { normalizeCompanyName } from '@/lib/prospect-normalization';
 import {
   getRandomizedFollowUpInterval,
@@ -45,11 +45,6 @@ async function unipileRequest(endpoint: string, options: RequestInit = {}) {
 
   return response.json();
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // Follow-up intervals are now RANDOMIZED via getRandomizedFollowUpInterval()
 // Base intervals: [5, 7, 5, 7] with +/- 2 days variance

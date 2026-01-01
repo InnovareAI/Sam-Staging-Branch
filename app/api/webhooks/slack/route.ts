@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { slackService } from '@/lib/slack';
 import crypto from 'crypto';
 
@@ -573,7 +573,7 @@ async function handleIncomingMessage(workspaceId: string, event: any): Promise<v
 
   // Check if this is a reply in a SAM thread
   if (thread_ts) {
-    const existingThread = await supabaseAdmin()
+    const existingThread = await pool
       .from('slack_messages')
       .select('sam_thread_id')
       .eq('workspace_id', workspaceId)
@@ -638,7 +638,7 @@ async function handleReactionAdded(workspaceId: string, event: any): Promise<voi
   // Quick approve/reject via emoji
   if (reaction === 'white_check_mark' || reaction === '+1' || reaction === 'thumbsup') {
     // Find pending action for this message
-    const { data: pendingAction } = await supabaseAdmin()
+    const { data: pendingAction } = await pool
       .from('slack_pending_actions')
       .select('*')
       .eq('workspace_id', workspaceId)
@@ -654,7 +654,7 @@ async function handleReactionAdded(workspaceId: string, event: any): Promise<voi
       }
     }
   } else if (reaction === 'x' || reaction === '-1' || reaction === 'thumbsdown') {
-    const { data: pendingAction } = await supabaseAdmin()
+    const { data: pendingAction } = await pool
       .from('slack_pending_actions')
       .select('*')
       .eq('workspace_id', workspaceId)
@@ -719,7 +719,7 @@ async function processSamConversation(
 
       // Store the SAM thread ID for continuity
       if (replyResult.success && result.thread_id) {
-        await supabaseAdmin()
+        await pool
           .from('slack_messages')
           .update({ sam_thread_id: result.thread_id })
           .eq('workspace_id', workspaceId)
@@ -752,7 +752,7 @@ async function handleApproveComment(
   console.log(`[Slack] Approving comment ${commentId}`);
 
   // Update comment status
-  const { error } = await supabaseAdmin()
+  const { error } = await pool
     .from('linkedin_post_comments')
     .update({ status: 'approved', approved_at: new Date().toISOString() })
     .eq('id', commentId)
@@ -764,7 +764,7 @@ async function handleApproveComment(
   }
 
   // Update pending action
-  await supabaseAdmin()
+  await pool
     .from('slack_pending_actions')
     .update({ status: 'completed', completed_at: new Date().toISOString(), completed_by: userId })
     .eq('workspace_id', workspaceId)
@@ -789,7 +789,7 @@ async function handleRejectComment(
 ): Promise<void> {
   console.log(`[Slack] Rejecting comment ${commentId}`);
 
-  const { error } = await supabaseAdmin()
+  const { error } = await pool
     .from('linkedin_post_comments')
     .update({ status: 'rejected', rejected_at: new Date().toISOString() })
     .eq('id', commentId)
@@ -800,7 +800,7 @@ async function handleRejectComment(
     return;
   }
 
-  await supabaseAdmin()
+  await pool
     .from('slack_pending_actions')
     .update({ status: 'completed', completed_at: new Date().toISOString(), completed_by: userId })
     .eq('workspace_id', workspaceId)
@@ -899,7 +899,7 @@ async function handleMarkHotLead(
 ): Promise<void> {
   console.log(`[Slack] Marking prospect ${prospectId} as hot lead`);
 
-  const { error } = await supabaseAdmin()
+  const { error } = await pool
     .from('campaign_prospects')
     .update({
       status: 'hot_lead',
@@ -933,7 +933,7 @@ async function handleArchiveConversation(
   console.log(`[Slack] Archiving conversation for message ${messageId}`);
 
   // Archive the message/conversation
-  await supabaseAdmin()
+  await pool
     .from('linkedin_messages')
     .update({
       status: 'archived',
@@ -961,7 +961,7 @@ async function handleQuickFollowup(
   console.log(`[Slack] Triggering quick follow-up for prospect ${prospectId}`);
 
   // Get prospect and campaign details
-  const { data: prospect } = await supabaseAdmin()
+  const { data: prospect } = await pool
     .from('campaign_prospects')
     .select('*, campaigns!inner(name, message_templates)')
     .eq('id', prospectId)
@@ -976,7 +976,7 @@ async function handleQuickFollowup(
   }
 
   // Queue the follow-up for immediate sending
-  const { error } = await supabaseAdmin()
+  const { error } = await pool
     .from('campaign_prospects')
     .update({
       follow_up_due_at: new Date().toISOString(), // Set to now for immediate processing
@@ -1015,7 +1015,7 @@ async function findWorkspaceBySlackTeam(teamId: string): Promise<{ id: string; n
   if (!teamId) return null;
 
   // First get the workspace_id from slack_app_config
-  const { data: config, error: configError } = await supabaseAdmin()
+  const { data: config, error: configError } = await pool
     .from('slack_app_config')
     .select('workspace_id')
     .eq('slack_team_id', teamId)
@@ -1028,7 +1028,7 @@ async function findWorkspaceBySlackTeam(teamId: string): Promise<{ id: string; n
   }
 
   // Then get the workspace details
-  const { data: workspace, error: wsError } = await supabaseAdmin()
+  const { data: workspace, error: wsError } = await pool
     .from('workspaces')
     .select('id, name')
     .eq('id', config.workspace_id)
@@ -1046,7 +1046,7 @@ async function findWorkspaceBySlackTeam(teamId: string): Promise<{ id: string; n
 }
 
 async function getActiveCampaigns(workspaceId: string): Promise<any[]> {
-  const { data } = await supabaseAdmin()
+  const { data } = await pool
     .from('campaigns')
     .select('id, name, status, campaign_prospects(count)')
     .eq('workspace_id', workspaceId)

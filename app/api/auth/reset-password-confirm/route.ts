@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
+import { getAdminAuth } from '@/lib/firebase-admin';
 
-// Create Supabase admin client for user management
-const supabaseAdmin = createServiceClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate token from database
-    const { data: tokenData, error: queryError } = await supabaseAdmin
+    const { data: tokenData, error: queryError } = await pool
       .from('password_reset_tokens')
       .select('*')
       .eq('email', email.toLowerCase())
@@ -45,7 +41,7 @@ export async function POST(request: NextRequest) {
     const expiresAt = new Date(tokenData.expires_at);
     if (expiresAt < new Date()) {
       // Delete expired token
-      await supabaseAdmin
+      await pool
         .from('password_reset_tokens')
         .delete()
         .eq('email', email.toLowerCase());
@@ -57,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the user by email and update their password
-    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: users, error: listError } = await pool.auth.admin.listUsers();
 
     if (listError) {
       console.error('Error listing users:', listError);
@@ -77,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the user's password using admin API
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+    const { error: updateError } = await pool.auth.admin.updateUserById(
       user.id,
       { password: password }
     );
@@ -91,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Delete used token
-    await supabaseAdmin
+    await pool
       .from('password_reset_tokens')
       .delete()
       .eq('email', email.toLowerCase());

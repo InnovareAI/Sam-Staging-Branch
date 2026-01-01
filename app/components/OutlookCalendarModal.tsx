@@ -36,7 +36,6 @@ export default function OutlookCalendarModal({ isOpen, onClose, workspaceId }: O
     setLoading(true);
     setError('');
     try {
-      const supabase = createClient();
       const { data, error: fetchError } = await supabase
         .from('workspace_accounts')
         .select('*')
@@ -101,7 +100,6 @@ export default function OutlookCalendarModal({ isOpen, onClose, workspaceId }: O
     if (!confirm('Are you sure you want to disconnect Outlook Calendar?')) return;
 
     try {
-      const supabase = createClient();
       await supabase
         .from('workspace_accounts')
         .delete()

@@ -6,7 +6,7 @@
  * Runs once per hour or as scheduled
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const supabase = supabaseAdmin();
+        const supabase = pool;
         const now = new Date().toISOString();
 
         console.log('🧹 Starting cleanup of expired posts...');

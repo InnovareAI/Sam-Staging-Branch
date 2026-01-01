@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import moment from 'moment-timezone';
 
 /**
@@ -147,11 +147,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Supabase client with service role key (bypasses RLS)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     // COMPLIANCE: Check daily quota (40 emails max per day)
     const today = moment().tz('America/New_York').startOf('day').toISOString();
     const { count: sentToday } = await supabase

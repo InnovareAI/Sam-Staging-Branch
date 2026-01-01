@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient, supabaseAdmin } from '@/app/lib/supabase';
+import { createServerSupabaseClient, pool } from '@/app/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ export async function GET(
   try {
     const monitorId = params.id;
     const supabase = await createServerSupabaseClient();
-    const adminClient = supabaseAdmin();
+    const adminClient = pool;
 
     // Verify user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -63,7 +63,7 @@ export async function PATCH(
     const monitorId = params.id;
     const body = await request.json();
     const supabase = await createServerSupabaseClient();
-    const adminClient = supabaseAdmin();
+    const adminClient = pool;
 
     // Verify user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -144,7 +144,7 @@ export async function DELETE(
   try {
     const monitorId = params.id;
     const supabase = await createServerSupabaseClient();
-    const adminClient = supabaseAdmin();
+    const adminClient = pool;
 
     // Verify user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();

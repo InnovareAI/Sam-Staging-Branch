@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { classifyIntent } from '@/lib/services/intent-classifier';
 import { generateReplyDraft, getDefaultSettings } from '@/lib/services/reply-draft-generator';
 import { syncInterestedLeadToCRM } from '@/lib/services/crm-sync';

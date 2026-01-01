@@ -8,7 +8,7 @@ import {
   ApifyProspectRequest,
   MCPCallToolResult
 } from '@/lib/mcp/types';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Pool } from 'pg';
 
 let registryInitialized = false;
 type GenericRecord = Record<string, unknown>;

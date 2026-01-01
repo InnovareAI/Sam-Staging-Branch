@@ -7,8 +7,6 @@ import { NextResponse } from 'next/server';
  */
 export async function GET() {
   try {
-    const supabase = createClient();
-
     console.log('🧹 Clearing auth session...');
 
     // Sign out completely

@@ -12,7 +12,7 @@
  * KILL SWITCH: Set PAUSE_NOTIFICATIONS=true to disable ALL notifications
  */
 
-import { supabaseAdmin } from '@/app/lib/supabase';
+import { pool } from '@/lib/db';
 
 // Global kill switch - set PAUSE_NOTIFICATIONS=true to pause all notifications
 const NOTIFICATIONS_PAUSED = process.env.PAUSE_NOTIFICATIONS === 'true';
@@ -104,7 +104,7 @@ class SlackService {
    * Get Slack app config for a workspace
    */
   async getAppConfig(workspaceId: string): Promise<SlackAppConfig | null> {
-    const { data, error } = await supabaseAdmin()
+    const { data, error } = await pool
       .from('slack_app_config')
       .select('bot_token, signing_secret, slack_team_id, slack_team_name')
       .eq('workspace_id', workspaceId)
@@ -372,7 +372,7 @@ class SlackService {
     workspaceId: string,
     message: SlackMessage
   ): Promise<{ success: boolean; error?: string }> {
-    const { data } = await supabaseAdmin()
+    const { data } = await pool
       .from('workspace_integrations')
       .select('config')
       .eq('workspace_id', workspaceId)
@@ -421,7 +421,7 @@ class SlackService {
     }
   ): Promise<void> {
     try {
-      await supabaseAdmin().from('slack_messages').upsert({
+      await pool.from('slack_messages').upsert({
         workspace_id: workspaceId,
         channel_id: message.channel_id,
         message_ts: message.message_ts,
@@ -526,7 +526,7 @@ class SlackService {
 
     // Store pending action for button handling
     if (botResult.success && botResult.ts) {
-      await supabaseAdmin().from('slack_pending_actions').insert({
+      await pool.from('slack_pending_actions').insert({
         workspace_id: workspaceId,
         action_type: 'approve_comment',
         resource_type: 'comment',
@@ -1036,7 +1036,7 @@ class SlackService {
    * Get the default channel for a workspace
    */
   async getDefaultChannel(workspaceId: string): Promise<string> {
-    const { data } = await supabaseAdmin()
+    const { data } = await pool
       .from('slack_channels')
       .select('channel_id')
       .eq('workspace_id', workspaceId)
@@ -1048,7 +1048,7 @@ class SlackService {
     }
 
     // Fall back to config in workspace_integrations
-    const { data: integration } = await supabaseAdmin()
+    const { data: integration } = await pool
       .from('workspace_integrations')
       .select('config')
       .eq('workspace_id', workspaceId)
@@ -1063,13 +1063,13 @@ class SlackService {
    */
   async setDefaultChannel(workspaceId: string, channelId: string, channelName?: string): Promise<void> {
     // Remove default from existing
-    await supabaseAdmin()
+    await pool
       .from('slack_channels')
       .update({ is_default: false })
       .eq('workspace_id', workspaceId);
 
     // Set new default
-    await supabaseAdmin()
+    await pool
       .from('slack_channels')
       .upsert({
         workspace_id: workspaceId,

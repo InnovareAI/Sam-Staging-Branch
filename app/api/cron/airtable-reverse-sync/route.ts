@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { pool } from '@/lib/db';
 import { airtableService } from '@/lib/airtable';
 
 export const maxDuration = 300; // 5 minutes
@@ -23,11 +23,6 @@ export async function POST(request: NextRequest) {
         console.log('🔄 Starting Airtable Reverse Sync...');
 
         // Create Supabase client
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
         // 1. Fetch recent contacts from Airtable
         const recentContacts = await airtableService.listRecentContacts(50);
         console.log(`📊 Found ${recentContacts.length} recent contacts in Airtable`);
