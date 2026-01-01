@@ -1,36 +1,16 @@
 import { pool } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { getAdminAuth } from '@/lib/firebase-admin';
 import { AutoIPAssignmentService } from '@/lib/services/auto-ip-assignment';
 import { analyzeWebsiteInBackground } from '@/lib/website-intelligence';
 
+export const dynamic = 'force-dynamic';
+
+const SESSION_COOKIE_NAME = 'session';
+
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Cookie setting can fail in middleware context
-            }
-          }
-        }
-      }
-    );
-
     const { email, password, firstName, lastName, companyName, companyWebsite, country, inviteToken } = await request.json();
 
     // Validate input
@@ -62,400 +42,192 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Creating user with Supabase Auth:', { email, firstName, lastName });
+    console.log('Creating user with Firebase Auth:', { email, firstName, lastName });
 
-    // Create user with Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-        },
-        // Configure email confirmation redirect
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.meet-sam.com'}/auth/callback`,
-      }
-    });
+    const adminAuth = getAdminAuth();
 
-    if (error) {
-      console.error('Supabase signup error:', error);
-      
-      // Handle specific error types
-      if (error.message.includes('User already registered')) {
+    // Create user with Firebase Auth
+    let firebaseUser;
+    try {
+      firebaseUser = await adminAuth.createUser({
+        email,
+        password,
+        displayName: `${firstName} ${lastName}`,
+        emailVerified: true, // Auto-verify for simplicity
+      });
+    } catch (authError: any) {
+      console.error('Firebase signup error:', authError);
+
+      if (authError.code === 'auth/email-already-exists') {
         return NextResponse.json(
           { error: 'User already exists with this email address' },
           { status: 409 }
         );
       }
-      
+
       return NextResponse.json(
-        { error: error.message },
+        { error: authError.message },
         { status: 400 }
       );
     }
 
-    // If user created but requires email verification, still proceed to create profile and auto-assign proxy
-    if (data.user && !data.session) {
-      try {
-        // Pool imported from lib/db
-// Auto-assign proxy using profile country if provided; fallback to IP
-        const autoIPService = new AutoIPAssignmentService();
-        let detectedCountryCode = profileCountry; // Start with user-provided country
-        
-        // If no country provided, detect from IP
-        if (!detectedCountryCode) {
-          const userLocation = await autoIPService.detectUserLocation(request);
-          if (userLocation?.countryCode) {
-            detectedCountryCode = userLocation.countryCode.toLowerCase();
-            console.log('🌍 Auto-detected country from IP:', detectedCountryCode);
-          }
-        }
-        
-        // Create user profile (best-effort)
-        await poolClient
-          .from('users')
-          .upsert({
-            id: data.user.id,
-            supabase_id: data.user.id,
-            email: data.user.email,
-            first_name: firstName,
-            last_name: lastName,
-            profile_country: detectedCountryCode, // Auto-detected or user-provided
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'id' });
+    console.log('User created successfully:', firebaseUser.uid);
 
+    // Create user profile in database
+    let workspace: any = null;
+    try {
+      // Detect country from IP if not provided
+      const autoIPService = new AutoIPAssignmentService();
+      let detectedCountryCode = profileCountry;
+
+      if (!detectedCountryCode) {
+        const userLocation = await autoIPService.detectUserLocation(request);
+        if (userLocation?.countryCode) {
+          detectedCountryCode = userLocation.countryCode.toLowerCase();
+          console.log('🌍 Auto-detected country from IP:', detectedCountryCode);
+        }
+      }
+
+      // Create user profile using pool.query
+      await pool.query(
+        `INSERT INTO users (id, email, first_name, last_name, profile_country, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+         ON CONFLICT (id) DO UPDATE SET
+           email = EXCLUDED.email,
+           first_name = EXCLUDED.first_name,
+           last_name = EXCLUDED.last_name,
+           updated_at = NOW()`,
+        [firebaseUser.uid, email, firstName, lastName, detectedCountryCode]
+      );
+
+      // Auto-assign proxy configuration
+      try {
         const proxyConfig = await autoIPService.generateOptimalProxyConfig(
-          null,
+          undefined,
           detectedCountryCode || undefined
         );
 
-        await poolClient
-          .from('user_proxy_preferences')
-          .upsert({
-            user_id: data.user.id,
-            detected_location: detectedCountryCode || null,
-            linkedin_location: null,
-            preferred_country: proxyConfig.country,
-            preferred_state: proxyConfig.state,
-            preferred_city: proxyConfig.city,
-            confidence_score: proxyConfig.confidence,
-            session_id: proxyConfig.sessionId,
-            is_auto_assigned: true,
-            last_updated: new Date().toISOString()
-          }, { onConflict: 'user_id' });
-      } catch (e) {
-        console.error('Post-signup auto-assign (verification) failed (non-critical):', e);
+        await pool.query(
+          `INSERT INTO user_proxy_preferences 
+           (user_id, detected_location, preferred_country, preferred_state, preferred_city, confidence_score, session_id, is_auto_assigned, last_updated)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, true, NOW())
+           ON CONFLICT (user_id) DO UPDATE SET
+             detected_location = EXCLUDED.detected_location,
+             preferred_country = EXCLUDED.preferred_country,
+             preferred_state = EXCLUDED.preferred_state,
+             preferred_city = EXCLUDED.preferred_city,
+             confidence_score = EXCLUDED.confidence_score,
+             session_id = EXCLUDED.session_id,
+             last_updated = NOW()`,
+          [firebaseUser.uid, detectedCountryCode, proxyConfig.country, proxyConfig.state, proxyConfig.city, proxyConfig.confidence, proxyConfig.sessionId]
+        );
+        console.log('✅ Proxy config assigned');
+      } catch (proxyError) {
+        console.error('⚠️ Proxy assignment failed (non-critical):', proxyError);
       }
 
-      return NextResponse.json({
-        message: 'Registration successful! Please check your email to verify your account.',
-        requiresVerification: true,
-        email: email
-      });
+      // Handle invitation token
+      if (inviteToken) {
+        console.log('🎟️ User has invitation token:', inviteToken);
+        try {
+          const inviteResult = await pool.query(
+            `SELECT accept_workspace_invitation($1, $2) as result`,
+            [inviteToken, firebaseUser.uid]
+          );
+          if (inviteResult.rows[0]?.result) {
+            const inviteData = inviteResult.rows[0].result;
+            workspace = { id: inviteData.workspace_id, name: inviteData.workspace_name };
+            console.log('✅ Joined workspace via invitation:', workspace?.name);
+          }
+        } catch (inviteErr) {
+          console.error('Invitation acceptance failed:', inviteErr);
+        }
+      }
+
+      // If no invitation, try domain-based matching or create new workspace
+      if (!workspace) {
+        const emailDomain = email.split('@')[1]?.toLowerCase();
+        console.log('📧 Checking for workspace with domain:', emailDomain);
+
+        if (emailDomain) {
+          try {
+            const matchResult = await pool.query(
+              `SELECT workspace_id, workspace_name FROM find_workspace_by_email_domain($1)`,
+              [email]
+            );
+            if (matchResult.rows.length > 0) {
+              const matched = matchResult.rows[0];
+              await pool.query(
+                `INSERT INTO workspace_members (workspace_id, user_id, role) VALUES ($1, $2, 'member')`,
+                [matched.workspace_id, firebaseUser.uid]
+              );
+              workspace = { id: matched.workspace_id, name: matched.workspace_name };
+              console.log('✅ User joined workspace via domain match');
+            }
+          } catch (matchErr) {
+            console.error('⚠️ Domain matching failed (non-critical):', matchErr);
+          }
+        }
+
+        // Create new workspace if no match
+        if (!workspace) {
+          const workspaceSlug = `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${firebaseUser.uid.substring(0, 8)}`;
+          try {
+            const wsResult = await pool.query(
+              `INSERT INTO workspaces (name, slug, owner_id, company_url) VALUES ($1, $2, $3, $4) RETURNING id, name`,
+              [companyName, workspaceSlug, firebaseUser.uid, companyWebsite]
+            );
+            workspace = wsResult.rows[0];
+
+            await pool.query(
+              `INSERT INTO workspace_members (workspace_id, user_id, role) VALUES ($1, $2, 'admin')`,
+              [workspace.id, firebaseUser.uid]
+            );
+            console.log('✅ Workspace created:', workspace.id);
+
+            // Trigger website analysis
+            if (companyWebsite) {
+              analyzeWebsiteInBackground({
+                url: companyWebsite,
+                workspaceId: workspace.id,
+                companyName: companyName
+              }).catch(err => console.error('⚠️ Website analysis failed:', err));
+            }
+          } catch (wsErr) {
+            console.error('Workspace creation error:', wsErr);
+          }
+        }
+      }
+
+    } catch (profileErr) {
+      console.error('Error creating user profile:', profileErr);
     }
 
-    // If session exists, user is automatically logged in (email verification disabled)
-    if (data.session && data.user) {
-      console.log('User created successfully:', data.user.id);
-
-      // Create user profile in our database
-      let workspace: any = null;
-      try {
-        // Pool imported from lib/db
-// Detect country from IP if not provided
-        const autoIPService = new AutoIPAssignmentService();
-        let detectedCountryCode = profileCountry; // Start with user-provided country
-
-        if (!detectedCountryCode) {
-          const userLocation = await autoIPService.detectUserLocation(request);
-          if (userLocation?.countryCode) {
-            detectedCountryCode = userLocation.countryCode.toLowerCase();
-            console.log('🌍 Auto-detected country from IP:', detectedCountryCode);
-          }
-        }
-
-        // Create or update user profile (without profile_country for now)
-        const { error: profileError } = await pool
-          .from('users')
-          .upsert({
-            id: data.user.id,
-            supabase_id: data.user.id, // Supabase user ID
-            email: data.user.email,
-            first_name: firstName,
-            last_name: lastName,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'id' });
-
-        if (profileError && !profileError.message.includes('duplicate key')) {
-          console.error('Profile creation error:', profileError);
-        }
-
-        // Automatically assign Bright Data dedicated IP based on user location
-        try {
-          console.log('🌍 Assigning dedicated IP for new user...');
-          
-          // Use the detected country code from above
-          console.log('📍 Signup country code:', detectedCountryCode);
-          
-          // Generate optimal proxy configuration for the user
-          const proxyConfig = await autoIPService.generateOptimalProxyConfig(
-            undefined,
-            detectedCountryCode || undefined
-          );
-          
-          console.log('✅ Generated proxy config for new user:', {
-            country: proxyConfig.country,
-            state: proxyConfig.state,
-            confidence: proxyConfig.confidence,
-            sessionId: proxyConfig.sessionId
-          });
-          
-          // Store user's proxy preference in database
-          const { error: proxyError } = await pool
-            .from('user_proxy_preferences')
-            .insert({
-              user_id: data.user.id,
-              detected_location: detectedCountryCode || null,
-              preferred_country: proxyConfig.country,
-              preferred_state: proxyConfig.state,
-              preferred_city: proxyConfig.city,
-              confidence_score: proxyConfig.confidence,
-              session_id: proxyConfig.sessionId,
-              is_auto_assigned: true,
-              last_updated: new Date().toISOString()
-            });
-          
-          if (proxyError) {
-            console.error('❌ Failed to store proxy preference during signup:', proxyError);
-          } else {
-            console.log('✅ Successfully assigned dedicated IP during signup');
-          }
-          
-        } catch (ipAssignmentError) {
-          console.error('⚠️ IP assignment during signup failed (non-critical):', ipAssignmentError);
-          // Don't fail the entire signup if IP assignment fails
-        }
-
-        // Check if user has an invitation token
-        if (inviteToken) {
-          console.log('🎟️ User has invitation token:', inviteToken);
-
-          try {
-            // Accept the invitation using database function
-            const { data: inviteResult, error: inviteError } = await pool
-              .rpc('accept_workspace_invitation', {
-                invitation_token: inviteToken,
-                user_id: data.user.id
-              });
-
-            if (inviteError) {
-              console.error('❌ Failed to accept invitation:', inviteError);
-              throw inviteError;
-            }
-
-            if (inviteResult && inviteResult.length > 0) {
-              const inviteData = inviteResult[0];
-              workspace = {
-                id: inviteData.workspace_id,
-                name: inviteData.workspace_name
-              };
-              console.log('✅ Joined workspace via invitation:', workspace.name);
-
-              // Update Stripe subscription - increase seat count
-              try {
-                const { data: subscription } = await pool
-                  .from('workspace_subscriptions')
-                  .select('stripe_subscription_id, plan')
-                  .eq('workspace_id', workspace.id)
-                  .eq('status', 'active')
-                  .single();
-
-                if (subscription?.stripe_subscription_id && subscription.plan === 'perseat') {
-                  // Only increase seat count for per-seat plans
-                  const Stripe = require('stripe');
-                  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-                  // Get current subscription
-                  const stripeSubscription = await stripe.subscriptions.retrieve(
-                    subscription.stripe_subscription_id
-                  );
-
-                  // Increase quantity by 1
-                  const currentQuantity = stripeSubscription.items.data[0].quantity || 1;
-                  await stripe.subscriptions.update(subscription.stripe_subscription_id, {
-                    items: [{
-                      id: stripeSubscription.items.data[0].id,
-                      quantity: currentQuantity + 1
-                    }],
-                    proration_behavior: 'always_invoice' // Charge immediately
-                  });
-
-                  console.log(`✅ Stripe subscription updated: ${currentQuantity} → ${currentQuantity + 1} seats`);
-                }
-              } catch (stripeErr) {
-                console.error('⚠️ Failed to update Stripe subscription (non-critical):', stripeErr);
-                // Don't fail signup if Stripe update fails - can be fixed manually
-              }
-            }
-          } catch (inviteErr) {
-            console.error('Invitation acceptance failed:', inviteErr);
-            // Continue to create new workspace if invitation fails
-          }
-        }
-
-        // If no invitation or invitation failed, check for domain-based workspace matching
-        if (!workspace) {
-          // Extract email domain
-          const emailDomain = email.split('@')[1]?.toLowerCase();
-          console.log('📧 Checking for existing workspace with domain:', emailDomain);
-
-          // Try to find existing workspace with matching email domain using database function
-          if (emailDomain) {
-            try {
-              const { data: matchedWorkspaces, error: matchError } = await pool
-                .rpc('find_workspace_by_email_domain', {
-                  user_email: email
-                });
-
-              if (!matchError && matchedWorkspaces && matchedWorkspaces.length > 0) {
-                const matchedWorkspace = matchedWorkspaces[0];
-                console.log('✅ Found existing workspace with matching domain:', matchedWorkspace.workspace_name);
-                console.log('   Members in workspace:', matchedWorkspace.member_count);
-
-                // Add user to the existing workspace
-                const { error: memberError } = await pool
-                  .from('workspace_members')
-                  .insert({
-                    workspace_id: matchedWorkspace.workspace_id,
-                    user_id: data.user.id,
-                    role: 'member' // Default to member role
-                  });
-
-                if (!memberError) {
-                  workspace = {
-                    id: matchedWorkspace.workspace_id,
-                    name: matchedWorkspace.workspace_name,
-                    company_url: matchedWorkspace.workspace_company_url
-                  };
-                  console.log('✅ User automatically joined workspace via domain match');
-                } else {
-                  console.error('❌ Failed to add user to matched workspace:', memberError);
-                }
-              } else if (matchError) {
-                console.error('⚠️ Domain matching query failed:', matchError);
-                // Continue to create new workspace if domain matching fails
-              } else {
-                console.log('📧 No existing workspace found with matching domain');
-              }
-            } catch (err) {
-              console.error('⚠️ Domain matching error (non-critical):', err);
-              // Continue to create new workspace if domain matching fails
-            }
-          }
-
-          // If no domain match found, create new workspace
-          if (!workspace) {
-            const workspaceSlug = `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${data.user.id.substring(0, 8)}`
-            const { data: workspaceData, error: workspaceError } = await pool
-              .from('workspaces')
-              .insert({
-                name: companyName,
-                slug: workspaceSlug,
-                owner_id: data.user.id,
-                company_url: companyWebsite
-              })
-              .select()
-              .single();
-
-            if (workspaceError) {
-              console.error('Workspace creation error:', workspaceError);
-            } else {
-              workspace = workspaceData;
-              console.log('✅ Workspace created:', workspace.id);
-            }
-
-            // Add user as workspace member with admin role (owner_id is in workspaces table)
-            if (workspace) {
-              const { error: memberError } = await pool
-                .from('workspace_members')
-                .insert({
-                  workspace_id: workspace.id,
-                  user_id: data.user.id,
-                  role: 'admin'
-                });
-
-              if (memberError) {
-                console.error('Workspace member creation error:', memberError);
-              } else {
-                console.log('✅ Workspace member added as admin');
-              }
-
-              // Trigger website analysis in background (non-blocking)
-              // Note: Results are treated as initial hypotheses that need validation during discovery
-              if (companyWebsite) {
-                console.log('🌐 Triggering website analysis for:', companyWebsite);
-                analyzeWebsiteInBackground({
-                  url: companyWebsite,
-                  workspaceId: workspace.id,
-                  companyName: companyName
-                }).catch(err => {
-                  console.error('⚠️ Website analysis trigger failed (non-critical):', err);
-                  // Don't fail signup if website analysis fails
-                });
-              }
-            }
-          }
-        }
-
-        // Sync to ActiveCampaign for InnovareAI customers (non-blocking)
-        if (workspace) {
-          try {
-            console.log('🔄 Syncing user to ActiveCampaign...');
-
-            const syncResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/activecampaign/sync-user`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: data.user.id })
-            });
-
-            const syncResult = await syncResponse.json();
-
-            if (syncResult.success) {
-              console.log('✅ User synced to ActiveCampaign');
-            } else if (syncResult.skipped) {
-              console.log(`⚠️ ActiveCampaign sync skipped: ${syncResult.reason}`);
-            } else {
-              console.error('❌ ActiveCampaign sync failed:', syncResult.error);
-            }
-          } catch (acError) {
-            console.error('⚠️ ActiveCampaign sync failed (non-critical):', acError);
-            // Don't fail signup if ActiveCampaign is down
-          }
-        }
-
-      } catch (profileErr) {
-        console.error('Error creating user profile:', profileErr);
-      }
+    // Create session cookie
+    try {
+      const customToken = await adminAuth.createCustomToken(firebaseUser.uid);
+      // Note: The client should exchange this for a session
+      // For now, we'll return the custom token
 
       return NextResponse.json({
         message: 'Registration successful! You are now logged in.',
+        customToken, // Client exchanges this for ID token
         user: {
-          id: data.user.id,
-          email: data.user.email,
+          id: firebaseUser.uid,
+          email: email,
           firstName: firstName,
           lastName: lastName
         },
         workspace: workspace ? { id: workspace.id, name: workspace.name } : null
       });
+    } catch (tokenErr) {
+      console.error('Token creation error:', tokenErr);
+      return NextResponse.json({
+        message: 'Registration successful!',
+        user: { id: firebaseUser.uid, email },
+        workspace: workspace ? { id: workspace.id, name: workspace.name } : null
+      });
     }
-
-    return NextResponse.json({
-      message: 'Registration initiated. Please complete the verification process.',
-      requiresVerification: true
-    });
 
   } catch (error) {
     console.error('Signup API error:', error);
@@ -489,64 +261,54 @@ export async function GET() {
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label for="firstName" class="block text-sm font-medium text-gray-300 mb-2">First Name</label>
-                    <input 
-                        type="text" 
-                        id="firstName" 
-                        name="firstName"
-                        required
+                    <input type="text" id="firstName" name="firstName" required
                         class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        placeholder="First name"
-                    >
+                        placeholder="First name">
                 </div>
                 <div>
                     <label for="lastName" class="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
-                    <input 
-                        type="text" 
-                        id="lastName" 
-                        name="lastName"
-                        required
+                    <input type="text" id="lastName" name="lastName" required
                         class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        placeholder="Last name"
-                    >
+                        placeholder="Last name">
                 </div>
             </div>
             
             <div>
                 <label for="email" class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email"
-                    required
+                <input type="email" id="email" name="email" required
                     class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Enter your email"
-                >
+                    placeholder="Enter your email">
+            </div>
+            
+            <div>
+                <label for="companyName" class="block text-sm font-medium text-gray-300 mb-2">Company Name</label>
+                <input type="text" id="companyName" name="companyName" required
+                    class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Your company">
+            </div>
+            
+            <div>
+                <label for="companyWebsite" class="block text-sm font-medium text-gray-300 mb-2">Company Website</label>
+                <input type="url" id="companyWebsite" name="companyWebsite" required
+                    class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="https://yourcompany.com">
             </div>
             
             <div>
                 <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password"
-                    required
-                    minlength="6"
+                <input type="password" id="password" name="password" required minlength="8"
                     class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Create a password (min 8 characters)"
-                >
+                    placeholder="Create a password (min 8 characters)">
             </div>
             
-            <button 
-                type="submit"
-                class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
-            >
+            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
                 Create Account
             </button>
             
             <div class="text-center">
                 <p class="text-gray-400 text-sm">
                     Already have an account? 
-                    <a href="/api/auth/signin" class="text-purple-400 hover:text-purple-300">Sign in</a>
+                    <a href="/signin" class="text-purple-400 hover:text-purple-300">Sign in</a>
                 </p>
             </div>
         </form>
@@ -559,46 +321,36 @@ export async function GET() {
         document.getElementById('signup-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const firstName = document.getElementById('firstName').value;
-            const lastName = document.getElementById('lastName').value;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            const data = {
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                email: document.getElementById('email').value,
+                companyName: document.getElementById('companyName').value,
+                companyWebsite: document.getElementById('companyWebsite').value,
+                password: document.getElementById('password').value
+            };
             
             const errorDiv = document.getElementById('error-message');
             const successDiv = document.getElementById('success-message');
             
-            // Clear previous messages
             errorDiv.classList.add('hidden');
             successDiv.classList.add('hidden');
             
             try {
                 const response = await fetch('/api/auth/signup', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ firstName, lastName, email, password })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
                 });
                 
-                const data = await response.json();
+                const result = await response.json();
                 
                 if (response.ok) {
-                    successDiv.textContent = data.message;
+                    successDiv.textContent = result.message;
                     successDiv.classList.remove('hidden');
-                    
-                    // If no verification required, redirect to main app
-                    if (!data.requiresVerification) {
-                        setTimeout(() => {
-                            window.location.href = '/';
-                        }, 1000);
-                    } else {
-                        // Show verification message
-                        setTimeout(() => {
-                            window.location.href = '/api/auth/signin';
-                        }, 3000);
-                    }
+                    setTimeout(() => window.location.href = '/', 1500);
                 } else {
-                    errorDiv.textContent = data.error;
+                    errorDiv.textContent = result.error;
                     errorDiv.classList.remove('hidden');
                 }
             } catch (error) {
@@ -610,7 +362,7 @@ export async function GET() {
 </body>
 </html>
   `;
-  
+
   return new NextResponse(html, {
     headers: { 'Content-Type': 'text/html' },
   });
