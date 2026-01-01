@@ -27,6 +27,11 @@ ENV DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
 ENV OPENAI_API_KEY=sk-dummy
 ENV OPENROUTER_API_KEY=sk-dummy
 ENV N8N_API_KEY=dummy
+ENV STRIPE_SECRET_KEY=sk_test_dummy
+ENV ANTHROPIC_API_KEY=sk-ant-dummy
+ENV GEMINI_API_KEY=dummy
+ENV POSTMARK_SERVER_TOKEN=dummy
+ENV ACTIVECAMPAIGN_API_KEY=dummy
 
 # Build Next.js
 RUN npm run build

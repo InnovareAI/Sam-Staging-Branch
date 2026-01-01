@@ -111,11 +111,11 @@ echo ""
 # 5. CLOUD SCHEDULER JOBS
 echo "=== 5. CLOUD SCHEDULER JOBS ==="
 echo -n "  Jobs configured: "
-COUNT=$(gcloud scheduler jobs list --location=europe-west1 --format="value(name)" 2>/dev/null | wc -l | tr -d ' ')
+COUNT=$(gcloud scheduler jobs list --location=europe-west3 --format="value(name)" 2>/dev/null | wc -l | tr -d ' ')
 echo -e "${GREEN}$COUNT jobs${NC}"
 
 echo -n "  Paused jobs: "
-PAUSED=$(gcloud scheduler jobs list --location=europe-west1 --filter="state=PAUSED" --format="value(name)" 2>/dev/null | wc -l | tr -d ' ')
+PAUSED=$(gcloud scheduler jobs list --location=europe-west3 --filter="state=PAUSED" --format="value(name)" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$PAUSED" -gt "0" ]; then
   echo -e "${YELLOW}$PAUSED paused${NC}"
 else
