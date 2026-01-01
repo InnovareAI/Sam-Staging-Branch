@@ -24,6 +24,9 @@ ENV NODE_ENV production
 ENV UNIPILE_DSN=dummy
 ENV UNIPILE_API_KEY=dummy
 ENV DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
+ENV OPENAI_API_KEY=sk-dummy
+ENV OPENROUTER_API_KEY=sk-dummy
+ENV N8N_API_KEY=dummy
 
 # Build Next.js
 RUN npm run build
