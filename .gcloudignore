@@ -1,0 +1,48 @@
+# Git and version control
+.git/
+.gitignore
+.gitattributes
+
+# Dependencies (will be installed during Docker build)
+node_modules/
+
+# Build artifacts (built during Docker build)
+.next/cache/
+.next/trace/
+dist/
+build/
+out/
+
+# Development and testing
+.restore-points/
+backups/
+temp/
+*.log
+.DS_Store
+
+# Documentation
+*.md
+!README.md
+docs/
+!docs/UNIPILE_SEND_QUEUE_SYSTEM.md
+!docs/LINKEDIN_COMMENTING_AGENT.md
+!docs/LINKEDIN_MESSAGING_AGENT.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Templates and examples
+bundui-templates/
+examples/
+
+# Workers and MCP (if not needed in main app)
+workers/
+mcp-crm-server/
+
+# Test files
+**/*.test.ts
+**/*.test.js
+**/__tests__/

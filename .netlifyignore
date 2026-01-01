@@ -1,0 +1,41 @@
+# Node modules (Netlify installs fresh)
+node_modules
+
+# Build output (Netlify rebuilds from source)
+.next
+dist
+out
+
+# Development files
+.restore-points
+backups
+temp
+*.log
+.DS_Store
+
+# Large data directories (not needed for deployment)
+migration_data
+dist-deploy.tar.gz
+*.tar.gz
+*.zip
+
+# Documentation
+*.md
+!README.md
+docs
+
+# Templates and examples (not needed for deployment)
+bundui-templates
+
+# Workers and MCP
+workers
+mcp-crm-server
+
+# Test files
+**/*.test.ts
+**/*.test.js
+**/__tests__
+
+# Git
+.git
+.gitignore
