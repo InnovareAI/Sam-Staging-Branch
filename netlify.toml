@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# Use legacy-peer-deps for npm install
+[build.processing]
+  skip_processing = false
+
+# Install command override
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
